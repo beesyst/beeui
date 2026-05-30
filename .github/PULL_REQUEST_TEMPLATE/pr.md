@@ -56,7 +56,7 @@ Mark what changed:
 
 - [ ] no config changes
 - [ ] `config/settings.yml` contract changed
-- [ ] fail-fast validation updated in `src/beecap_module/core/settings.py`
+- [ ] fail-fast validation updated in `src/beeui_module/core/settings.py`
 - [ ] storage artifact contract changed
 - [ ] CLI/runtime behavior changed
 - [ ] docs must be updated

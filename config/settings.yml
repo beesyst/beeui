@@ -1,0 +1,39 @@
+app:
+  name: beeui
+  environment: local
+
+web:
+  host: 127.0.0.1
+  port: 8780
+  open_browser: false
+  route_prefix: ""
+  static_cache_seconds: 3600
+
+logging:
+  clear_logs: true
+  utc: true
+  level: INFO
+  file: logs/app.log
+
+storage:
+  enabled: true
+  root: storage
+
+security:
+  html_autoescape: true
+  allow_external_assets: false
+  allowed_static_roots:
+    - src/beeui_module/static
+
+product:
+  mode: demo
+  id: demo
+  title: BeeUI Demo
+  adapter: static
+
+features:
+  artifact_browser: false
+  config_preview: false
+  config_apply: false
+  operator_actions: false
+  api: false

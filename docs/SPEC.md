@@ -116,7 +116,7 @@ beeui становится вторым source of truth
 
 Обязательный стек:
 
-- Python 3.12+
+- Python 3.14+
 - FastAPI
 - Jinja2
 - Tabler
