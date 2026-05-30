@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.0](https://github.com/beesyst/beeui/compare/beeui-v0.2.0...beeui-v0.3.0) (2026-05-30)
+
+
+### Features
+
+* **web:** add BeeUI Tabler web shell v0 ([#5](https://github.com/beesyst/beeui/issues/5)) ([e12d13a](https://github.com/beesyst/beeui/commit/e12d13a2ded31333267a1460885ca4b640b2f624))
+
 ## [0.2.0](https://github.com/beesyst/beeui/compare/beeui-v0.1.0...beeui-v0.2.0) (2026-05-30)
 
 
