@@ -45,12 +45,14 @@ Product decides.
 
 Source of truth для `beeui` web surface:
 
+- `config/settings.yml` в Iteration 1;
 - product adapter;
 - product-provided read-models;
 - product artifacts, если они явно allowlisted adapter-ом;
-- `config/beeui.yml` или product-specific BeeUI config;
 - product-owned config validation callbacks;
 - product-owned bounded action callbacks.
+
+Будущий declarative UI config может использовать `config/beeui.yml` или product-specific BeeUI config после Iteration 2+.
 
 `beeui` не должен самостоятельно угадывать domain semantics из чужого `storage/`.
 
@@ -134,107 +136,61 @@ Later: standalone.
 
 ## Package layout
 
-Canonical web implementation lives in package-level modules:
+Canonical web implementation в Iteration 1 живёт в `src/beeui_module/web/`.
+Root-level `app.py` не является текущей точкой входа.
+Templates/static находятся внутри `web/`.
 
 ```text
 src/beeui_module/
-  app.py
-  server.py
-  config.py
-  settings.py
-
-  web/app.py                 # optional future split if app.py becomes too large
-
-  pages/
-    models.py
-    registry.py
-    renderer.py
-    router.py
-
-  blocks/
-    models.py
-    registry.py
-    renderers.py
-    types/
-
-  adapters/
-    base.py
-    product.py
-    filesystem.py
-    http.py
-    beecap.py
-    beeagent.py
-
-  artifacts/
-    browser.py
-    models.py
-    readers.py
-    safe_paths.py
-
-  api/
-    envelopes.py
-    routes.py
-
-  auth/
-    models.py
-    service.py
-    routes.py
-    sessions.py
-    permissions.py
-
-  config_ui/
-    read_model.py
-    preview.py
-    apply.py
-    audit.py
-    routes.py
-
-  theme/
-    models.py
-    service.py
-    css.py
-
-  templates/
-    base.html
-    page.html
-    error.html
-    login.html
-    components/
-
-  static/
-    vendor/tabler/
-    css/beeui.css
-    js/beeui.js
+  web/
+    app.py
+    templates/
+      base.html
+      index.html
+      components/        # planned
+    static/
+      css/beeui.css
+      js/beeui.js
+      vendor/tabler/     # planned vendored bundle
 
   cli/
     main.py
     serve.py
     doctor.py
+
+  core/
+    settings.py
+    paths.py
+    log.py
+    version.py
+
+  pages/                 # planned/future module
+  blocks/                # planned/future module
+  adapters/              # planned/future module
+  artifacts/             # planned/future module
+  api/                   # planned/future module
+  auth/                  # planned/future module
+  config_ui/             # planned/future module
+  theme/                 # planned/future module
 ```
 
 Rules:
 
 - CLI must stay thin.
 - Route/read-model/template logic must not accumulate under `src/beeui_module/cli/`.
-- Templates/static are package-local to `src/beeui_module/templates/` and `src/beeui_module/static/`.
+- Templates/static are package-local to `src/beeui_module/web/templates/` and `src/beeui_module/web/static/`.
 - Product-specific domain logic must not live in generic BeeUI renderers.
 - `src/beeui_module/__init__.py` should stay lightweight.
 
 ## Start
 
-Standalone demo start:
+Локальный demo start:
 
 ```bash
 ./start.sh serve
 ```
 
-With explicit config:
-
-```bash
-./start.sh serve --config config/demo.beeui.yml
-```
-
-With explicit host/port:
+С явным host/port:
 
 ```bash
 ./start.sh serve --host 127.0.0.1 --port 8780
@@ -246,25 +202,42 @@ Doctor:
 ./start.sh doctor
 ```
 
-Expected MVP commands:
+Ожидаемые MVP-команды:
 
 ```bash
 ./start.sh doctor
 ./start.sh serve
 ```
 
+В Iteration 1 `serve` читает `config/settings.yml`. Отдельный `--config` не является текущим CLI contract.
+
 ---
 
 ## Product integration
 
-### Embedded app factory
+### Current Iteration 1 app factory
 
-Product integration should use a small app factory or mount helper.
+В Iteration 1 app factory принимает загруженные settings и создаёт минимальный FastAPI/Jinja2 shell.
 
-Example:
+Пример:
 
 ```python
-from beeui_module.app import create_beeui_app
+from beeui_module.core.paths import settings_path
+from beeui_module.core.settings import load_settings
+from beeui_module.web.app import create_beeui_app
+
+settings = load_settings(settings_path())
+app = create_beeui_app(settings=settings)
+```
+
+### Future embedded app factory
+
+Фаза product integration должна использовать небольшой app factory или mount helper.
+
+Planned для Iteration 5-7 или embedded integration phase:
+
+```python
+from beeui_module.web.app import create_beeui_app
 from beecap_module.interfaces.ui.adapter import BeeCapUiAdapter
 
 app = create_beeui_app(
@@ -275,10 +248,10 @@ app = create_beeui_app(
 )
 ```
 
-Alternative mount form:
+Альтернативная planned mount form:
 
 ```python
-from beeui_module.app import mount_beeui
+from beeui_module.web.app import mount_beeui
 
 mount_beeui(
     app,
@@ -341,30 +314,55 @@ Write/config/action methods may return explicit `unsupported`.
 
 ## BeeUI config
 
-Default config file:
+Current Iteration 1 config file:
 
 ```text
-config/beeui.yml
+config/settings.yml
 ```
 
-Example:
+Пример:
 
 ```yaml
 app:
-  title: BeeUI Demo
-  product: demo
-  theme:
-    mode: dark
-    primary: blue
-    font: Inter
-    radius: 2
-    density: compact
+  name: beeui
+  environment: local
 
-server:
+web:
   host: 127.0.0.1
   port: 8780
   open_browser: false
+  route_prefix: ""
+  cache_static: 3600
 
+logging:
+  clear_logs: true
+  utc: true
+  level: INFO
+  file: logs/app.log
+
+security:
+  html_autoescape: true
+  assets_ext: false
+
+product:
+  mode: demo
+  id: demo
+  title: BeeUI Demo
+  adapter: static
+
+features:
+  browser_artifact: false
+  config_preview: false
+  config_apply: false
+  operator_actions: false
+  api: false
+```
+
+Будущий declarative UI config может использовать `config/beeui.yml` или product-specific BeeUI config после Iteration 2+.
+
+Planned Iteration 2+ declarative UI schema example:
+
+```yaml
 navigation:
   - title: Dashboard
     path: /
@@ -434,6 +432,7 @@ Rules:
 ## Tabler shell policy
 
 `beeui` uses Tabler as visual foundation.
+В Iteration 1 shell является Tabler-compatible local shell. Полный vendored Tabler bundle может быть добавлен отдельной задачей, если он не принесёт demo telemetry/tracking assets.
 
 Policy:
 
@@ -466,7 +465,7 @@ Allowed:
 Shared template primitives live in:
 
 ```text
-src/beeui_module/templates/components/
+src/beeui_module/web/templates/components/
 ```
 
 Current planned primitives:
@@ -511,7 +510,7 @@ Contract boundary:
 
 ## Surface model
 
-Generic BeeUI surface includes these canonical route families.
+Generic BeeUI surface ниже описывает planned route families. Iteration 1 route contract отдельно зафиксирован в разделе `MVP route contract`.
 
 HTML routes:
 
@@ -544,17 +543,11 @@ JSON routes:
 
 Not all routes must exist in MVP.
 
-MVP route set:
+MVP route set (Iteration 1):
 
 - `/`
 - `/health`
-- `/runs`
-- `/runs/{run_id}`
-- `/api/dashboard`
-- `/api/runs`
-- `/api/runs/{run_id}`
-- `/api/runs/{run_id}/artifacts`
-- `/api/runs/{run_id}/artifacts/{artifact_id}`
+- `/static/...`
 
 ## Read-only model
 
@@ -1319,10 +1312,14 @@ visual editor
 
 ## MVP route contract
 
-Iteration 1-4 MVP:
+Iteration 1 MVP:
 
 - `GET /`
 - `GET /health`
+- `GET /static/...`
+
+Iteration 2-4 MVP (planned):
+
 - `GET /api/dashboard`
 
 Iteration 5-10 MVP:

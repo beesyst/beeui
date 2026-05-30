@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{% block title %}BeeUI{% endblock %}</title>
+    <link rel="stylesheet" href="{{ route_prefix }}/static/css/beeui.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="Sidebar">
+        <div class="sidebar__brand">BeeUI</div>
+        <nav class="sidebar__nav">
+          <a href="{{ route_prefix or '/' }}" class="sidebar__link">Dashboard</a>
+        </nav>
+      </aside>
+
+      <div class="main-layout">
+        <header class="topbar" aria-label="Top navigation">
+          <div class="topbar__title">{{ product_title }}</div>
+          <div class="topbar__meta">Product ID: {{ product_id }}</div>
+        </header>
+
+        <main class="content" aria-label="Main content">
+          {% block content %}{% endblock %}
+        </main>
+      </div>
+    </div>
+
+    <script src="{{ route_prefix }}/static/js/beeui.js"></script>
+  </body>
+</html>
