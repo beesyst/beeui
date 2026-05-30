@@ -359,7 +359,7 @@ beeui/
 
 ### Итерация 0 — Project skeleton, startup and release contract
 
-**Статус:** PLANNED
+**Статус:** DONE
 
 #### Goal
 
@@ -428,65 +428,84 @@ beeui/
 
 ### Итерация 1 — Tabler web shell v0
 
-**Статус:** PLANNED
+**Статус:** DONE
 
 #### Goal
 
-Поднять минимальный FastAPI + Jinja2 + Tabler web shell.
+Поднять минимальный runnable FastAPI + Jinja2 + local Tabler-compatible web shell для BeeUI demo mode, чтобы `./start.sh serve` запускал реальную web surface вместо placeholder.
 
 #### Scope
 
 Включено:
 
 - FastAPI app factory;
-- Jinja2 templates;
-- локальные static assets;
-- base layout;
-- top navbar/sidebar placeholder;
-- page header;
-- demo page;
-- controlled Tabler asset loading;
-- no demo tracking scripts;
-- route tests.
+- `serve` CLI command with `--host`, `--port`, optional `--reload=false` не нужен;
+- чтение `web.host`, `web.port`, `web.route_prefix`, `web.cache_static` из `config/settings.yml`;
+- Jinja2 templates with autoescape;
+- package-local templates:
+  - `base.html`;
+  - `index.html`;
+- package-local static assets:
+  - `static/css/beeui.css`;
+  - `static/js/beeui.js`;
+  - minimal local Tabler-compatible placeholder assets if real Tabler vendor files are not added yet;
+- base layout:
+  - sidebar placeholder;
+  - top navbar placeholder;
+  - page header;
+  - demo dashboard content;
+- routes:
+  - `GET /`;
+  - `GET /health`;
+  - `GET /static/...`;
+- read-only headers for GET routes where practical:
+  - `X-BeeUI-Read-Only: true`;
+  - `Cache-Control: no-store` for HTML/health;
+- route tests with `httpx` / FastAPI TestClient;
+- tests that HTML has no external scripts/tracking references.
 
 Не включено:
 
-- declarative pages;
+- declarative pages/navigation schema;
+- block registry;
 - product adapters;
-- auth;
+- auth/session;
+- config preview/apply;
 - artifact browser;
-- config controls;
-- no-code builder.
+- operator actions;
+- JSON API v1 beyond `/health`;
+- no-code builder;
+- standalone multi-product service.
 
 #### Deliverable
 
-`beeui` запускает web shell и показывает demo dashboard.
-
-#### Suggested routes
-
-- `GET /`
-- `GET /health`
-- `GET /static/...`
+`./start.sh serve --host 127.0.0.1 --port 8780` starts a real BeeUI demo web shell with local static assets, renders `/`, returns `/health`, and passes route/static/security smoke tests.
 
 #### Checks
 
 - `uv run pytest -q`
+- `./start.sh doctor`
 - `./start.sh serve --host 127.0.0.1 --port 8780`
 - route smoke:
-  - `/`
-  - `/health`
-
-- static asset smoke
-- HTML contains no external tracking scripts
+  - `GET /`
+  - `GET /health`
+  - `GET /static/css/beeui.css`
+- HTML smoke:
+  - base layout renders;
+  - no external CDN/script/tracking references;
+  - no secrets in HTML;
+  - Jinja autoescape stays enabled.
 
 #### DoD
 
-- web app стартует;
-- Tabler assets подключены;
-- base layout рендерится;
-- HTML autoescape включён;
-- no secrets in HTML;
-- tests покрывают routes/static.
+- `serve` is no longer a placeholder;
+- FastAPI app starts;
+- base layout renders;
+- static assets are served from package-local static directory only;
+- `/health` returns safe JSON;
+- route tests cover HTML, health and static assets;
+- no product-specific domain logic is introduced;
+- no write/control surface is introduced.
 
 ### Итерация 2 — Declarative pages and navigation v0
 
@@ -832,7 +851,7 @@ src/beecap_module/interfaces/ui/
 #### Example
 
 ```python
-from beeui_module.app import create_beeui_app
+from beeui_module.web.app import create_beeui_app
 from beecap_module.interfaces.ui.adapter import BeeCapUiAdapter
 
 app = create_beeui_app(
@@ -1703,37 +1722,3 @@ Bee-продукты должны реализовывать:
 - `docs/API_CONTRACT.md` — JSON API envelopes and route contracts;
 - `docs/WEB_UI.md` — HTML routes, layout, dashboard behavior;
 - `docs/THEME.md` — theme/customization contract.
-
-## Следующий практический шаг
-
-Сейчас делай **Iteration 0**.
-
-Минимальный первый коммит:
-
-```bash
-cd ~/Projects/beeui
-
-mkdir -p config docs src/beeui_module/{cli,core} tests
-
-touch src/beeui_module/__init__.py
-touch src/beeui_module/cli/__init__.py
-touch src/beeui_module/core/__init__.py
-
-# вставить ROADMAP
-nano docs/ROADMAP.md
-```
-
-Первый issue:
-
-```text
-Feature: BeeUI Iteration 0 — project skeleton and startup contract
-```
-
-Главный критерий: через 1 итерацию у тебя должен работать:
-
-```bash
-./start.sh doctor
-uv run pytest -q
-```
-
-Без web. Web — уже Iteration 1.

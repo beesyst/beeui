@@ -7,7 +7,7 @@ web:
   port: 8780
   open_browser: false
   route_prefix: ""
-  static_cache_seconds: 3600
+  cache_static: 3600 # Время кэширования статических файлов в сек
 
 logging:
   clear_logs: true
@@ -21,9 +21,7 @@ storage:
 
 security:
   html_autoescape: true
-  allow_external_assets: false
-  allowed_static_roots:
-    - src/beeui_module/static
+  assets_ext: false
 
 product:
   mode: demo
@@ -32,7 +30,7 @@ product:
   adapter: static
 
 features:
-  artifact_browser: false
+  browser_artifact: false
   config_preview: false
   config_apply: false
   operator_actions: false

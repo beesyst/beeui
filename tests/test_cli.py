@@ -32,8 +32,10 @@ def test_main_prints_routes(capsys) -> None:
     assert main(["routes"]) == 0
 
     captured = capsys.readouterr()
-    assert "Iteration 0 route surface: none" in captured.out
+    assert "Iteration 1 route surface" in captured.out
+    assert "GET /" in captured.out
     assert "GET /health" in captured.out
+    assert "GET /static/..." in captured.out
 
 
 # Тест: чек обработки неизвестной команды и вывода ошибки
@@ -55,7 +57,7 @@ def test_start_script_dispatches_version() -> None:
     )
 
     assert result.returncode == 0
-    assert result.stdout.strip() == "beeui 0.1.0"
+    assert result.stdout.strip() == "beeui 0.2.0"
 
 
 # Тест: чек, что команда doctor пишет в stdout и создает лог-файл с ожидаемым содержимым
@@ -67,7 +69,33 @@ def test_doctor_writes_stdout_and_log(tmp_path, capsys) -> None:
         '[project]\nname = "beeui"\nversion = "0.1.0"\n', encoding="utf-8"
     )
     (root / "config" / "settings.yml").write_text(
-        "app:\n  name: beeui\nlogging:\n  clear_logs: true\n  utc: true\n  level: INFO\n  file: logs/app.log\nstorage:\n  enabled: true\n  root: storage\n",
+        "app:\n"
+        "  name: beeui\n"
+        "web:\n"
+        "  host: 127.0.0.1\n"
+        "  port: 8780\n"
+        "  route_prefix: ''\n"
+        "  cache_static: 60\n"
+        "logging:\n"
+        "  clear_logs: true\n"
+        "  utc: true\n"
+        "  level: INFO\n"
+        "  file: logs/app.log\n"
+        "security:\n"
+        "  html_autoescape: true\n"
+        "  assets_ext: false\n"
+        "features:\n"
+        "  browser_artifact: false\n"
+        "  config_preview: false\n"
+        "  config_apply: false\n"
+        "  operator_actions: false\n"
+        "  api: false\n"
+        "storage:\n"
+        "  enabled: true\n"
+        "  root: storage\n"
+        "product:\n"
+        "  id: demo\n"
+        "  title: BeeUI Demo\n",
         encoding="utf-8",
     )
 
@@ -79,18 +107,50 @@ def test_doctor_writes_stdout_and_log(tmp_path, capsys) -> None:
 
 
 # Тест: чек, что load_settings валидирует конфиг и выбрасывает исключения при проблемах с конфигом
-def test_serve_placeholder_returns_success(capsys) -> None:
-    assert main(["serve"]) == 0
+def test_main_dispatches_serve_args(monkeypatch) -> None:
+    calls: list[list[str]] = []
 
-    captured = capsys.readouterr()
-    assert "Iteration 1" in captured.out
+    def fake_run_serve(args) -> int:
+        calls.append(list(args))
+        return 0
+
+    monkeypatch.setattr("beeui_module.cli.main.run_serve", fake_run_serve)
+
+    assert main(["serve", "--host", "127.0.0.1", "--port", "8780"]) == 0
+    assert calls == [["--host", "127.0.0.1", "--port", "8780"]]
 
 
 # Тест: чек, что configure_logging создает лог-файл с ожидаемым содержимым
 def test_load_settings_reads_valid_config(tmp_path) -> None:
     config_path = tmp_path / "settings.yml"
     config_path.write_text(
-        "app:\n  name: beeui\nlogging:\n  clear_logs: true\n  utc: true\n  level: INFO\n  file: logs/app.log\nstorage:\n  enabled: true\n  root: storage\n",
+        "app:\n"
+        "  name: beeui\n"
+        "web:\n"
+        "  host: 127.0.0.1\n"
+        "  port: 8780\n"
+        "  route_prefix: ''\n"
+        "  cache_static: 60\n"
+        "logging:\n"
+        "  clear_logs: true\n"
+        "  utc: true\n"
+        "  level: INFO\n"
+        "  file: logs/app.log\n"
+        "security:\n"
+        "  html_autoescape: true\n"
+        "  assets_ext: false\n"
+        "features:\n"
+        "  browser_artifact: false\n"
+        "  config_preview: false\n"
+        "  config_apply: false\n"
+        "  operator_actions: false\n"
+        "  api: false\n"
+        "storage:\n"
+        "  enabled: true\n"
+        "  root: storage\n"
+        "product:\n"
+        "  id: demo\n"
+        "  title: BeeUI Demo\n",
         encoding="utf-8",
     )
 
@@ -105,7 +165,32 @@ def test_load_settings_reads_valid_config(tmp_path) -> None:
 def test_load_settings_fails_fast_on_missing_logging_level(tmp_path) -> None:
     config_path = tmp_path / "settings.yml"
     config_path.write_text(
-        "app:\n  name: beeui\nlogging:\n  clear_logs: true\n  utc: true\n  file: logs/app.log\nstorage:\n  enabled: true\n  root: storage\n",
+        "app:\n"
+        "  name: beeui\n"
+        "web:\n"
+        "  host: 127.0.0.1\n"
+        "  port: 8780\n"
+        "  route_prefix: ''\n"
+        "  cache_static: 60\n"
+        "logging:\n"
+        "  clear_logs: true\n"
+        "  utc: true\n"
+        "  file: logs/app.log\n"
+        "security:\n"
+        "  html_autoescape: true\n"
+        "  assets_ext: false\n"
+        "features:\n"
+        "  browser_artifact: false\n"
+        "  config_preview: false\n"
+        "  config_apply: false\n"
+        "  operator_actions: false\n"
+        "  api: false\n"
+        "storage:\n"
+        "  enabled: true\n"
+        "  root: storage\n"
+        "product:\n"
+        "  id: demo\n"
+        "  title: BeeUI Demo\n",
         encoding="utf-8",
     )
 

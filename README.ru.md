@@ -2,9 +2,9 @@
 
 **BeeUI** — общий Python-based UI framework для Bee-продуктов: `beecap`, `beeagent` и будущих модулей Bee ecosystem.
 
-## Iteration 0
+## Iteration 1
 
-Текущий deliverable — project skeleton и startup/release contract.
+Текущий deliverable — minimal runnable FastAPI + Jinja2 + local static web shell.
 
 Уже работает:
 
@@ -13,11 +13,17 @@
 - `./start.sh doctor`
 - `./start.sh version`
 - `./start.sh routes`
+- `./start.sh serve --host 127.0.0.1 --port 8780`
 - `import beeui_module`
+
+Минимальная web surface Iteration 1:
+
+- `GET /`
+- `GET /health`
+- `GET /static/...`
 
 Пока не входит в scope:
 
-- Tabler web shell;
 - product adapters;
 - auth/session;
 - config UI;
@@ -306,7 +312,13 @@ BeeUI не должен получать прямую authority на tools/MCP/r
 Используется для разработки BeeUI без BeeCap/BeeAgent.
 
 ```bash
-./start.sh serve --config config/demo.beeui.yml
+./start.sh serve
+```
+
+Вариант с явным host/port:
+
+```bash
+./start.sh serve --host 127.0.0.1 --port 8780
 ```
 
 Что показывает:
@@ -325,7 +337,7 @@ BeeUI не должен получать прямую authority на tools/MCP/r
 Пример:
 
 ```python
-from beeui_module.app import create_beeui_app
+from beeui_module.web.app import create_beeui_app
 from beecap_module.interfaces.ui.adapter import BeeCapUiAdapter
 
 app = create_beeui_app(
@@ -338,15 +350,9 @@ app = create_beeui_app(
 
 ### `standalone`
 
-Будущий mode.
+Future scope.
 
-BeeUI запускается отдельным процессом и ходит в product APIs.
-
-```bash
-./start.sh serve --config config/beecap.remote.beeui.yml
-```
-
-В MVP standalone не является приоритетом.
+В Iteration 1 standalone mode не реализован. Запуск с отдельным config-файлом будет добавлен позже, когда появится HTTP product adapter и standalone deployment contract.
 
 ## Основные возможности
 
@@ -709,12 +715,6 @@ cd beeui
 Запускает demo web app на конкретном host/port.
 
 ```bash
-./start.sh serve --config config/demo.beeui.yml
-```
-
-Запускает BeeUI с указанным config.
-
-```bash
 ./start.sh routes
 ```
 
@@ -777,7 +777,7 @@ uv run --frozen --extra dev python config/start.py serve
 ```text
 beeui/
 ├── config/
-│   ├── demo.beeui.yml
+│   ├── settings.yml
 │   └── start.py
 │
 ├── docs/
@@ -801,7 +801,6 @@ beeui/
 ├── src/
 │   └── beeui_module/
 │       ├── __init__.py
-│       ├── app.py
 │       ├── config.py
 │       ├── errors.py
 │       ├── server.py
@@ -878,33 +877,17 @@ beeui/
 │       │   ├── renderer.py
 │       │   └── router.py
 │       │
-│       ├── templates/
-│       │   ├── base.html
-│       │   ├── error.html
-│       │   ├── login.html
-│       │   ├── page.html
-│       │   └── components/
-│       │       ├── alert.html
-│       │       ├── artifact_links.html
-│       │       ├── badge.html
-│       │       ├── breadcrumbs.html
-│       │       ├── chart_card.html
-│       │       ├── data_table.html
-│       │       ├── json_viewer.html
-│       │       ├── kpi_card.html
-│       │       ├── metric_card.html
-│       │       ├── navbar.html
-│       │       ├── page_header.html
-│       │       ├── sidebar.html
-│       │       └── status_card.html
-│       │
-│       ├── static/
-│       │   ├── css/
-│       │   │   └── beeui.css
-│       │   ├── js/
-│       │   │   └── beeui.js
-│       │   └── vendor/
-│       │       └── tabler/
+│       ├── web/
+│       │   ├── __init__.py
+│       │   ├── app.py
+│       │   ├── templates/
+│       │   │   ├── base.html
+│       │   │   └── index.html
+│       │   └── static/
+│       │       ├── css/
+│       │       │   └── beeui.css
+│       │       └── js/
+│       │           └── beeui.js
 │       │
 │       └── theme/
 │           ├── css.py
@@ -943,11 +926,16 @@ beeui/
 Ключевые модули:
 
 ```text
-src/beeui_module/app.py
+src/beeui_module/web/app.py
+src/beeui_module/web/templates/
+src/beeui_module/web/static/
+```
+
+Planned после Iteration 1:
+
+```text
 src/beeui_module/server.py
 src/beeui_module/pages/
-src/beeui_module/templates/
-src/beeui_module/static/
 ```
 
 ### 2. Adapter layer
@@ -986,7 +974,7 @@ src/beeui_module/data/
 
 ```text
 src/beeui_module/blocks/
-src/beeui_module/templates/components/
+src/beeui_module/web/templates/components/
 ```
 
 ### 5. Artifact layer
@@ -1351,21 +1339,22 @@ Visual builder later.
 ~/Projects/beeui
 ```
 
-Первый этап:
+Текущий статус:
 
 ```text
-Iteration 0 — Project skeleton and startup contract
+Iteration 1 — Tabler web shell v0 — DONE
 ```
 
-Первый рабочий результат должен быть:
+Работает:
 
 ```bash
 ./start.sh doctor
 uv run pytest -q
+./start.sh serve --host 127.0.0.1 --port 8780
 ```
 
-После этого:
+Следующий шаг:
 
 ```text
-Iteration 1 — Tabler web shell v0
+Iteration 2 — Declarative pages and navigation v0
 ```

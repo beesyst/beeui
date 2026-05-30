@@ -18,7 +18,11 @@ def load_settings(config_path: Path) -> dict[str, Any]:
         raise ValueError("settings.yml must be a YAML mapping")
 
     _validate_app(payload)
+    _validate_web(payload)
     _validate_logging(payload)
+    _validate_security(payload)
+    _validate_features(payload)
+    _validate_product(payload)
     _validate_storage(payload)
 
     return payload
@@ -60,6 +64,89 @@ def _validate_logging(settings: dict[str, Any]) -> None:
     log_file_path = Path(log_file)
     if log_file_path.is_absolute() or ".." in log_file_path.parts:
         raise ValueError("logging.file must be a safe relative path")
+
+
+# Валидация секции web с проверкой наличия ключей и типов значений
+def _validate_web(settings: dict[str, Any]) -> None:
+    web_cfg = settings.get("web")
+    if not isinstance(web_cfg, dict):
+        raise ValueError("Missing required key: web")
+
+    for key in ("host", "port", "route_prefix", "cache_static"):
+        if key not in web_cfg:
+            raise ValueError(f"Missing required key: web.{key}")
+
+    host = web_cfg["host"]
+    if not isinstance(host, str) or not host.strip():
+        raise ValueError("web.host must be a non-empty string")
+
+    port = web_cfg["port"]
+    if not isinstance(port, int) or not (1 <= port <= 65535):
+        raise ValueError("web.port must be an integer in range 1..65535")
+
+    route_prefix = web_cfg["route_prefix"]
+    if not isinstance(route_prefix, str):
+        raise ValueError("web.route_prefix must be a string")
+    if route_prefix and ".." in route_prefix.split("/"):
+        raise ValueError("web.route_prefix must be a safe URL prefix")
+
+    cache_static = web_cfg["cache_static"]
+    if not isinstance(cache_static, int) or cache_static < 0:
+        raise ValueError("web.cache_static must be an integer >= 0")
+
+
+# Валидация секции security с проверкой наличия ключей и типов значений
+def _validate_security(settings: dict[str, Any]) -> None:
+    security_cfg = settings.get("security")
+    if not isinstance(security_cfg, dict):
+        raise ValueError("Missing required key: security")
+
+    for key in ("html_autoescape", "assets_ext"):
+        if key not in security_cfg:
+            raise ValueError(f"Missing required key: security.{key}")
+
+    if security_cfg["html_autoescape"] is not True:
+        raise ValueError("security.html_autoescape must be true")
+    if not isinstance(security_cfg["assets_ext"], bool):
+        raise ValueError("security.assets_ext must be a boolean")
+
+
+def _validate_features(settings: dict[str, Any]) -> None:
+    features_cfg = settings.get("features")
+    if not isinstance(features_cfg, dict):
+        raise ValueError("Missing required key: features")
+
+    required_keys = (
+        "browser_artifact",
+        "config_preview",
+        "config_apply",
+        "operator_actions",
+        "api",
+    )
+    for key in required_keys:
+        if key not in features_cfg:
+            raise ValueError(f"Missing required key: features.{key}")
+        if not isinstance(features_cfg[key], bool):
+            raise ValueError(f"features.{key} must be a boolean")
+
+
+# Валидация секции product с проверкой наличия ключей и типов значений
+def _validate_product(settings: dict[str, Any]) -> None:
+    product_cfg = settings.get("product")
+    if not isinstance(product_cfg, dict):
+        raise ValueError("Missing required key: product")
+
+    for key in ("id", "title"):
+        if key not in product_cfg:
+            raise ValueError(f"Missing required key: product.{key}")
+
+    product_id = product_cfg["id"]
+    if not isinstance(product_id, str) or not product_id.strip():
+        raise ValueError("product.id must be a non-empty string")
+
+    product_title = product_cfg["title"]
+    if not isinstance(product_title, str) or not product_title.strip():
+        raise ValueError("product.title must be a non-empty string")
 
 
 # Валидация секции storage с проверкой наличия ключей и типов значений

@@ -18,7 +18,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
-    "httpx>=0.28",
+    "httpx2>=2.2.0",
     "pytest>=9.0.3",
 ]
 
@@ -29,7 +29,7 @@ beeui = "beeui_module.cli.main:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-"beeui_module" = [
+"beeui_module.web" = [
     "templates/*.html",
     "templates/components/*.html",
     "static/css/*.css",
