@@ -1,0 +1,37 @@
+from __future__ import annotations
+
+from pathlib import Path
+
+from beeui_module.core.paths import (
+    CONFIG_DIR,
+    LOGS_DIR,
+    PROJECT_ROOT,
+    STORAGE_DIR,
+    log_file_path,
+    project_root,
+    settings_path,
+)
+
+
+# Тест: чек разрешения корневой директории проекта от произвольной точки внутри структуры
+def test_project_root_is_resolved_from_pyproject() -> None:
+    resolved_root = project_root(Path(__file__))
+
+    assert (resolved_root / "pyproject.toml").is_file()
+    assert resolved_root.name == "beeui"
+    assert resolved_root == PROJECT_ROOT
+
+
+# Тест: чек разрешения путей к лог файлу и конфигу от корневой директории проекта
+def test_log_and_settings_paths_are_under_project_root() -> None:
+    resolved_root = project_root(Path(__file__))
+
+    assert log_file_path(resolved_root) == resolved_root / "logs" / "app.log"
+    assert settings_path(resolved_root) == resolved_root / "config" / "settings.yml"
+
+
+# Тест: чек констант, указывающих на поддиректории проекта, относительно корневой директории
+def test_path_constants_point_to_project_subdirectories() -> None:
+    assert CONFIG_DIR == project_root(Path(__file__)) / "config"
+    assert LOGS_DIR == project_root(Path(__file__)) / "logs"
+    assert STORAGE_DIR == project_root(Path(__file__)) / "storage"

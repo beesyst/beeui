@@ -2,6 +2,28 @@
 
 **BeeUI** — общий Python-based UI framework для Bee-продуктов: `beecap`, `beeagent` и будущих модулей Bee ecosystem.
 
+## Iteration 0
+
+Текущий deliverable — project skeleton и startup/release contract.
+
+Уже работает:
+
+- `uv sync --frozen --extra dev`
+- `uv run pytest -q`
+- `./start.sh doctor`
+- `./start.sh version`
+- `./start.sh routes`
+- `import beeui_module`
+
+Пока не входит в scope:
+
+- Tabler web shell;
+- product adapters;
+- auth/session;
+- config UI;
+- artifact browser;
+- no-code builder.
+
 Проект нужен, чтобы не писать заново в каждом продукте:
 
 - web shell;
@@ -626,7 +648,7 @@ Forbidden by default:
 
 ## Технологический стек
 
-- **Python 3.12+**
+- **Python 3.14+**
 - **src-layout** — пакет `beeui_module` в `src/`
 - **FastAPI** — web runtime
 - **Jinja2** — templates
