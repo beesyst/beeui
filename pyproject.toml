@@ -1,0 +1,45 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "beeui"
+version = "0.1.0"
+description = "Reusable UI framework for Bee products"
+readme = "README.ru.md"
+requires-python = ">=3.14"
+dependencies = [
+    "fastapi>=0.135",
+    "jinja2>=3.1",
+    "pydantic>=2.11",
+    "pyyaml>=6.0",
+    "uvicorn>=0.44",
+]
+
+[project.optional-dependencies]
+dev = [
+    "httpx>=0.28",
+    "pytest>=9.0.3",
+]
+
+[project.scripts]
+beeui = "beeui_module.cli.main:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"beeui_module" = [
+    "templates/*.html",
+    "templates/components/*.html",
+    "static/css/*.css",
+    "static/js/*.js",
+    "static/vendor/tabler/**/*",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+markers = [
+    "slow: tests that involve filesystem recovery, route smoke, or larger fixture setup",
+]
