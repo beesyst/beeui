@@ -69,7 +69,33 @@ def test_get_static_css_returns_file() -> None:
     response = client.get("/static/css/beeui.css")
 
     assert response.status_code == 200
-    assert "--bg:" in response.text
+    assert "--beeui-sidebar-bg:" in response.text
+    assert response.headers["X-BeeUI-Read-Only"] == "true"
+
+
+# Тест: локальный vendor asset доступен через static route
+def test_get_local_tabler_vendor_asset_returns_file() -> None:
+    app = create_beeui_app()
+    client = TestClient(app)
+
+    response = client.get("/static/vendor/tabler/css/tabler-compatible.min.css")
+
+    assert response.status_code == 200
+    assert "--tblr-body-bg:" in response.text
+    assert "--tblr-primary-rgb:" in response.text
+    assert response.headers["X-BeeUI-Read-Only"] == "true"
+
+
+# Тест: локальный vendor JS asset доступен через static route
+def test_get_local_tabler_vendor_js_asset_returns_file() -> None:
+    app = create_beeui_app()
+    client = TestClient(app)
+
+    response = client.get("/static/vendor/tabler/js/tabler-compatible.min.js")
+
+    assert response.status_code == 200
+    assert "data-bs-toggle" in response.text
+    assert "collapse" in response.text
     assert response.headers["X-BeeUI-Read-Only"] == "true"
 
 
@@ -85,8 +111,26 @@ def test_html_does_not_include_external_assets_or_tracking() -> None:
     assert "https://" not in html
     assert "posthog" not in html
     assert "scripts.tabler.io" not in html
+    assert "docs.tabler.io" not in html
+    assert "preview.tabler.io" not in html
     assert "preview/js/demo" not in html
     assert "preview/css/demo" not in html
+    assert "@import url(http" not in html
+
+
+# Тест: главная страница подключает только локальные CSS/JS assets
+def test_html_uses_local_assets_only() -> None:
+    app = create_beeui_app()
+    client = TestClient(app)
+
+    response = client.get("/")
+
+    assert response.status_code == 200
+    assert "/static/vendor/tabler/css/tabler-compatible.min.css" in response.text
+    assert "/static/vendor/tabler/js/tabler-compatible.min.js" in response.text
+    assert "/static/css/beeui.css" in response.text
+    assert "/static/js/beeui.js" in response.text
+    assert 'data-bs-theme="dark"' in response.text
 
 
 # Тест: Jinja autoescape предотвращает вставку сырого script из title

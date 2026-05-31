@@ -615,13 +615,237 @@ pages:
 - no arbitrary HTML/JS from config;
 - no product-specific domain logic introduced.
 
-### Итерация 3 — Block registry and base blocks v0
+## Этап 2 — Tabler-compatible UI foundation
+
+### Итерация 3 — Local Tabler vendor/assets and layout parity v1
+
+**Статус:** DONE
+
+#### Goal
+
+Заменить минимальный placeholder shell на локальный Tabler-compatible foundation: package-local assets, production-safe base layout, sidebar/navbar/page-wrapper/page-header/footer primitives and dark vertical operator layout.
+
+#### Почему это нужно
+
+BeeUI должен стать reusable UI layer, а не набором самодельных карточек. До product adapters нужно зафиксировать визуальный и структурный фундамент, совместимый с Tabler, но безопасный для Bee-продуктов.
+
+#### Scope
+
+Включено:
+
+- package-local Tabler vendor assets under:
+
+```text
+src/beeui_module/static/vendor/tabler/
+```
+
+- локальные CSS/JS assets only;
+
+- no external CDN/import/script;
+
+- no PostHog/tracking;
+
+- no `scripts.tabler.io/banner.js`;
+
+- no demo sponsor blocks;
+
+- no external font import by default;
+
+- base layout primitives:
+  - vertical sidebar;
+  - top navbar/header;
+  - page wrapper;
+  - page header;
+  - page body;
+  - footer;
+  - responsive container;
+  - active nav state;
+  - collapsed/mobile sidebar behavior where Tabler supports it;
+
+- package templates:
+  - `base.html`;
+  - `page.html`;
+  - `components/sidebar.html`;
+  - `components/navbar.html`;
+  - `components/page_header.html`;
+  - `components/footer.html`;
+  - `components/empty_state.html`;
+
+- dark/light compatibility via Tabler attributes;
+
+- demo dashboard still read-only;
+
+- tests that forbid external scripts/styles/tracking references.
+
+Не включено:
+
+- full Tabler demo page copy;
+- product adapters;
+- block data resolver;
+- forms/config apply;
+- auth/session;
+- arbitrary HTML/JS injection;
+- no-code builder.
+
+#### Deliverable
+
+`./start.sh web --host 127.0.0.1 --port 8780` renders BeeUI with a real local Tabler-compatible vertical layout, not a crude placeholder.
+
+#### Checks
+
+- `uv run pytest -q`
+
+- `./start.sh doctor`
+
+- `./start.sh routes`
+
+- `./start.sh web --host 127.0.0.1 --port 8780`
+
+- route smoke:
+  - `GET /`
+  - `GET /health`
+  - `GET /static/css/beeui.css`
+  - `GET /static/vendor/tabler/...`
+
+- HTML/security smoke:
+  - no `preview.tabler.io`;
+  - no `docs.tabler.io`;
+  - no `scripts.tabler.io`;
+  - no `posthog`;
+  - no external `http://` / `https://` scripts;
+  - no external CSS imports;
+  - no secrets in HTML;
+  - Jinja autoescape enabled.
+
+#### DoD
+
+- BeeUI uses local Tabler-compatible assets;
+- base layout looks structurally close to Tabler vertical layout;
+- no demo/tracking/external dependencies are shipped;
+- static files are served only from controlled package-local paths;
+- current demo pages still render;
+- no product-specific domain logic introduced.
+
+### Итерация 4 — Theme, layout and navigation schema v1
 
 **Статус:** PLANNED
 
 #### Goal
 
-Добавить reusable block registry и первые базовые dashboard blocks.
+Добавить controlled schema-driven customization для theme/layout/navigation, чтобы каждый Bee-продукт мог настраивать внешний вид и навигацию без копирования HTML/CSS.
+
+#### Scope
+
+Включено:
+
+- schema fields:
+
+```yaml
+app:
+  title: BeeUI Demo
+  product: demo
+  logo_text: BeeUI
+  theme:
+    mode: dark
+    primary: blue
+    base: gray
+    font: sans-serif
+    radius: 1
+    density: default
+  layout:
+    type: vertical
+    container: xl
+    sidebar:
+      variant: dark
+      collapsed: false
+    navbar:
+      enabled: true
+```
+
+- supported theme options:
+  - `mode`: `light`, `dark`, `auto`;
+  - `primary`: controlled Tabler palette values only;
+  - `base`: `slate`, `gray`, `zinc`, `neutral`, `stone`;
+  - `font`: `sans-serif`, `serif`, `monospace`;
+  - `radius`: controlled numeric enum;
+  - `density`: `default`, `compact`, `comfortable`;
+
+- supported layout options:
+  - `vertical`;
+  - `fluid`;
+  - `boxed`;
+  - `condensed`;
+  - `navbar_dark`;
+  - `navbar_sticky`;
+  - future placeholders for `horizontal`, `right_vertical`, `rtl`;
+
+- grouped navigation schema:
+  - section/group title;
+  - icon;
+  - children;
+  - active item;
+  - disabled items;
+  - external links disabled by default;
+
+- validation:
+  - invalid theme rejected;
+  - unsafe path rejected;
+  - duplicate nav path rejected;
+  - nav path must match page path unless explicitly external and allowlisted;
+
+- CSS variable generation from safe enum values only;
+
+- no arbitrary CSS;
+
+- no arbitrary JS;
+
+- no localStorage-driven persistent theme mutation unless explicitly enabled later.
+
+Не включено:
+
+- runtime theme editor;
+- user-uploaded logos;
+- arbitrary color hex input;
+- arbitrary CSS editor;
+- no-code dashboard builder;
+- product adapters.
+
+#### Deliverable
+
+BeeUI visual style, layout and navigation are controlled by validated schema, not by hand-editing templates.
+
+#### Checks
+
+- `uv run pytest -q`
+- valid theme loads;
+- invalid theme rejected;
+- dark mode renders;
+- light mode renders;
+- primary color enum renders;
+- unsafe custom CSS rejected;
+- external nav link rejected unless allowlisted;
+- active nested navigation item renders;
+- no external assets introduced.
+
+#### DoD
+
+- theme/layout/navigation are schema-driven;
+- products can customize BeeUI safely;
+- no arbitrary CSS/JS injection;
+- no hidden runtime theme mutation;
+- Tabler customization is centralized.
+
+---
+
+## Этап 3 — Blocks and component system
+
+### Итерация 5 — Block registry and dashboard blocks v1
+
+**Статус:** PLANNED
+
+#### Goal
+
+Добавить reusable block registry и первые production-safe dashboard blocks, чтобы страницы собирались из declarative schema, а не из hardcoded HTML.
 
 #### Scope
 
@@ -629,26 +853,29 @@ pages:
 
 - block model;
 - block registry;
+- renderer registry;
 - layout rows/columns;
-- renderers:
-  - `metric_card`;
-  - `kpi_grid`;
-  - `status_card`;
-  - `table_card`;
-  - `links_card`;
-
+- responsive widths;
+- block ids;
+- block titles/subtitles;
 - empty state;
+- degraded state;
 - error state;
-- unknown block rejection.
+- unknown block rejection;
+- safe value rendering with Jinja autoescape;
 
-Не включено:
+Renderers:
 
-- charts;
-- artifact browser;
-- product adapters;
-- no-code layout editor.
+- `metric_card`;
+- `kpi_grid`;
+- `status_card`;
+- `table_card`;
+- `links_card`;
+- `alert_card`;
+- `text_card`;
+- `progress_card`;
 
-#### Example config
+Example:
 
 ```yaml
 pages:
@@ -666,135 +893,308 @@ blocks:
   latest_run:
     type: metric_card
     title: Latest Run
-    value: demo.latest_run
+    value: demo.latest_run.id
+    subtitle: demo.latest_run.status
+
+  runtime_status:
+    type: status_card
+    title: Runtime
+    status: demo.runtime.status
 ```
+
+Не включено:
+
+- charts;
+- maps;
+- artifact browser;
+- product adapters;
+- arbitrary HTML block;
+- arbitrary JS block;
+- drag-and-drop editor.
 
 #### Deliverable
 
-Dashboard можно собрать из reusable blocks.
+Dashboard pages can be assembled from reusable BeeUI blocks.
 
 #### Checks
 
 - metric card render;
 - KPI grid render;
+- status card render;
 - table render;
 - links render;
+- alert render;
+- progress render;
+- empty state render;
+- error state render;
 - unknown block type rejection;
-- missing data graceful state;
+- unsafe text escaped;
 - `pytest -q`.
 
 #### DoD
 
-- blocks рендерятся по schema;
-- renderer не содержит BeeCap/BeeAgent semantics;
-- layout rows/columns работают;
-- unknown/invalid blocks не ломают весь app.
+- blocks render from schema;
+- renderer does not contain BeeCap/BeeAgent semantics;
+- layout rows/columns work;
+- invalid block config fails safely;
+- missing data does not crash the page;
+- no arbitrary HTML/JS from config.
 
-### Итерация 4 — Data sources and resolver v0
+### Итерация 6 — Tabler component catalog and reusable primitives v0
 
 **Статус:** PLANNED
 
 #### Goal
 
-Добавить data source abstraction и selector resolver для передачи данных в blocks.
+Создать BeeUI component catalog, покрывающий основной полезный спектр Tabler Interface / Forms / Layout / Extra / Plugins как controlled reusable primitives.
+
+#### Почему это нужно
+
+BeeUI должен стать платформой, где новые Bee-продукты могут быстро собирать dashboard/admin/operator UI без повторного копирования Tabler examples.
 
 #### Scope
 
 Включено:
 
-- static JSON data source;
-- in-memory demo source;
-- selector syntax для вложенных полей;
-- response envelope:
-  - `status`;
-  - `data`;
-  - `warnings`;
-  - `source`;
+- internal component catalog pages:
+  - `/components`;
+  - `/components/interface`;
+  - `/components/forms`;
+  - `/components/layout`;
+  - `/components/extra`;
+  - `/components/plugins`;
 
-- timeout/error model для future HTTP source;
-- partial data handling.
+- reusable template components:
+  - `alert`;
+  - `badge`;
+  - `breadcrumb`;
+  - `button`;
+  - `button_group`;
+  - `card`;
+  - `card_header`;
+  - `dropdown`;
+  - `empty_state`;
+  - `modal_shell`;
+  - `tabs`;
+  - `table`;
+  - `data_grid`;
+  - `form_input`;
+  - `form_select`;
+  - `form_checkbox`;
+  - `form_radio`;
+  - `form_textarea`;
+  - `form_selectgroup`;
+  - `pagination`;
+  - `progress`;
+  - `status_dot`;
+  - `avatar_placeholder`;
+  - `toast_placeholder`;
+  - `offcanvas_shell`;
+
+- plugin placeholders:
+  - `chart_container`;
+  - `map_container`;
+  - `datatable_container`;
+
+- docs:
+  - `docs/COMPONENTS.md`;
+  - component naming rules;
+  - allowed/forbidden components;
+  - safe usage examples.
+
+Не включено:
+
+- full copy of every Tabler demo page;
+- WYSIWYG editor;
+- Dropzone/upload;
+- Fullcalendar runtime integration;
+- external maps;
+- external charts CDN;
+- arbitrary JS plugin config;
+- user-supplied HTML;
+- sponsor/marketing/demo pages.
+
+#### Deliverable
+
+BeeUI has a reusable component catalog and can show which Tabler-compatible primitives are available to pages/blocks.
+
+#### Checks
+
+- component catalog routes render;
+- each component template renders with safe sample data;
+- HTML escaping test for text-bearing components;
+- no external scripts;
+- no tracking scripts;
+- no broken static references;
+- `pytest -q`.
+
+#### DoD
+
+- BeeUI has a visible component catalog;
+- common Tabler primitives are centralized;
+- future product pages reuse components instead of copying HTML;
+- unsafe/demo-only Tabler features are explicitly excluded.
+
+### Итерация 7 — Data sources and resolver v0
+
+**Статус:** PLANNED
+
+#### Goal
+
+Добавить data source abstraction и selector resolver для передачи данных в blocks без hardcoded demo variables.
+
+#### Scope
+
+Включено:
+
+- data source model;
+- static YAML/JSON source;
+- in-memory demo source;
+- selector syntax для nested fields;
+- list selectors;
+- scalar selectors;
+- missing selector behavior;
+- response envelope:
+
+```json
+{
+  "status": "ok|partial|error",
+  "data": {},
+  "warnings": [],
+  "source": {
+    "type": "demo|static|adapter",
+    "id": "..."
+  }
+}
+```
+
+- degraded/partial data state;
+- timeout/error model placeholder for future HTTP source;
+- tests for missing/invalid data.
 
 Не включено:
 
 - BeeCap adapter;
 - BeeAgent adapter;
-- HTTP adapter в production mode;
-- artifact browser.
+- production HTTP adapter;
+- artifact browser;
+- write sources;
+- direct product storage crawling.
 
 #### Deliverable
 
-Blocks получают значения из data resolver, а не из hardcoded demo variables.
+Blocks receive values through resolver envelopes, not through hardcoded page variables.
 
 #### Checks
 
 - static source load;
+- demo source load;
 - selector success;
 - selector missing;
+- selector invalid;
 - partial data;
 - invalid source;
+- envelope shape stable;
+- block missing data renders degraded/empty state;
 - `pytest -q`.
 
 #### DoD
 
-- block renderer не знает source details;
-- missing data отображается как empty/degraded state;
-- envelope shape стабилен.
+- block renderer does not know source details;
+- missing data does not crash pages;
+- envelope shape is stable;
+- data resolver is read-only;
+- no product-specific assumptions.
 
 ---
 
-## Этап 2 — BeeCap MVP integration
+## Этап 4 — Product integration contracts
 
-### Итерация 5 — Product adapter contract v0
+### Итерация 8 — Product adapter contract v0
 
 **Статус:** PLANNED
 
 #### Goal
 
-Зафиксировать общий `ProductUiAdapter` contract для подключения Bee-продуктов.
+Зафиксировать общий `ProductUiAdapter` contract для подключения Bee-продуктов к BeeUI.
 
 #### Scope
 
 Включено:
 
-- `ProductUiAdapter` base class/protocol;
-- methods:
-  - `get_dashboard()`;
-  - `list_runs()`;
-  - `get_run(run_id)`;
-  - `list_artifacts(run_id)`;
-  - `read_artifact(run_id, artifact_id)`;
-  - `get_config_read_model()`;
+- `ProductUiAdapter` protocol/base class;
 
-- stable error types;
+- adapter metadata:
+  - product id;
+  - title;
+  - version;
+  - capabilities;
+  - supported pages;
+
+- methods:
+
+```python
+get_dashboard()
+list_runs()
+get_run(run_id)
+list_artifacts(run_id)
+read_artifact(run_id, artifact_id)
+get_config_read_model()
+validate_config_candidate(candidate)
+list_actions()
+preview_action(action_id, payload)
+execute_action(action_id, payload)
+```
+
+- read-only methods required;
+
+- write/action methods optional and disabled by default;
+
+- stable error types:
+  - `InvalidIdError`;
+  - `NotFoundError`;
+  - `PermissionDeniedError`;
+  - `UnavailableError`;
+  - `ValidationError`;
+  - `AdapterError`;
+
 - safe ID validation helpers;
-- product metadata.
+
+- response envelope consistency;
+
+- fake adapter tests.
 
 Не включено:
 
-- конкретный BeeCap adapter;
+- concrete BeeCap adapter;
 - concrete BeeAgent adapter;
-- write actions;
-- auth.
+- direct product filesystem crawling;
+- direct execution authority;
+- auth/session.
 
 #### Deliverable
 
-Есть минимальный adapter contract, который можно реализовать в BeeCap/BeeAgent.
+BeeUI has a stable integration point that BeeCap/BeeAgent can implement without BeeUI learning product internals.
 
 #### Checks
 
-- fake adapter test;
-- adapter error handling;
-- invalid run_id rejection;
-- response envelope consistency;
+- fake adapter dashboard;
+- fake adapter runs;
+- invalid run id rejection;
+- invalid artifact id rejection;
+- unavailable method behavior;
+- error envelope shape;
+- no mutation in read-only methods;
 - `pytest -q`.
 
 #### DoD
 
-- product integration point стабилен;
-- BeeUI не читает product internals без adapter;
-- invalid IDs handled safely.
+- product integration point is stable;
+- BeeUI does not read product internals without adapter;
+- invalid IDs handled safely;
+- write/action methods are unavailable unless product explicitly implements them.
 
-### Итерация 6 — BeeCap adapter MVP
+### Итерация 9 — BeeCap adapter MVP
 
 **Статус:** PLANNED
 
@@ -814,8 +1214,9 @@ Blocks получают значения из data resolver, а не из hardco
 - artifact references;
 - MRKT summary where artifacts exist;
 - Binance/paper summary where artifacts exist;
+- partial artifact handling;
 - `examples/beecap_embedded/beeui.yml`;
-- integration notes.
+- integration notes in `docs/INTEGRATION.md`.
 
 Не включено:
 
@@ -823,15 +1224,12 @@ Blocks получают значения из data resolver, а не из hardco
 - config apply;
 - operator actions;
 - auth;
-- no-code builder.
-
-#### Deliverable
-
-BeeUI может отрендерить BeeCap dashboard/run overview из BeeCap adapter/read-model.
+- no-code builder;
+- trading calculations inside BeeUI.
 
 #### Expected BeeCap side
 
-BeeCap должен предоставить тонкий integration module:
+BeeCap should provide a thin integration module:
 
 ```text
 src/beecap_module/interfaces/ui/
@@ -840,6 +1238,10 @@ src/beecap_module/interfaces/ui/
   artifacts.py
 ```
 
+#### Deliverable
+
+BeeUI can render BeeCap dashboard/run overview from BeeCap adapter/read-model fixtures.
+
 #### Checks
 
 - BeeCap-like fixture dashboard;
@@ -847,18 +1249,21 @@ src/beecap_module/interfaces/ui/
 - run detail render;
 - MRKT partial artifact scenario;
 - Binance partial artifact scenario;
+- no latest run scenario;
+- corrupted artifact scenario;
 - no secret leakage;
 - path traversal rejection;
+- source artifacts not mutated;
 - `pytest -q`.
 
 #### DoD
 
-- BeeUI не содержит trading logic;
-- BeeCap domain semantics остаются в BeeCap adapter/read-model;
-- source artifacts не мутируются;
-- dashboard работает на fixture artifacts.
+- BeeUI contains no trading logic;
+- BeeCap domain semantics remain in BeeCap adapter/read-model;
+- dashboard works on fixture artifacts;
+- source artifacts remain canonical and read-only.
 
-### Итерация 7 — Embedded mount API v0
+### Итерация 10 — Embedded mount API v0
 
 **Статус:** PLANNED
 
@@ -870,22 +1275,27 @@ src/beecap_module/interfaces/ui/
 
 Включено:
 
-- `create_beeui_app(...)`;
-- `mount_beeui(...)`;
+- public app factory:
+
+```python
+create_beeui_app(...)
+```
+
+- mount helper:
+
+```python
+mount_beeui(...)
+```
+
 - config path loading;
 - adapter injection;
 - static/templates registration;
 - route prefix support;
-- product metadata injection.
+- product metadata injection;
+- startup validation;
+- route collision notes.
 
-Не включено:
-
-- standalone multi-product service;
-- auth;
-- CORS;
-- distributed deployment.
-
-#### Example
+Example:
 
 ```python
 from beeui_module.web.app import create_beeui_app
@@ -899,9 +1309,17 @@ app = create_beeui_app(
 )
 ```
 
+Не включено:
+
+- standalone multi-product service;
+- auth;
+- CORS;
+- distributed deployment;
+- product runtime control.
+
 #### Deliverable
 
-BeeCap/BeeAgent могут подключить BeeUI одной app factory/mount function.
+BeeCap/BeeAgent can connect BeeUI through one stable app factory/mount function.
 
 #### Checks
 
@@ -909,15 +1327,18 @@ BeeCap/BeeAgent могут подключить BeeUI одной app factory/mou
 - route prefix test;
 - static path test;
 - adapter injection test;
+- invalid adapter rejection;
+- config path validation;
 - `pytest -q`.
 
 #### DoD
 
-- integration API простой;
-- product-specific app glue минимален;
-- no hidden product assumptions.
+- integration API is simple;
+- product-specific glue is minimal;
+- no hidden product assumptions;
+- embedded mode remains the MVP integration mode.
 
-### Итерация 8 — Generic artifact browser v1
+### Итерация 11 — Generic artifact browser v1
 
 **Статус:** PLANNED
 
@@ -930,41 +1351,47 @@ BeeCap/BeeAgent могут подключить BeeUI одной app factory/mou
 Включено:
 
 - artifact list block;
-- artifact metadata;
+- artifact metadata model;
 - safe artifact IDs;
-- allowlisted artifact access;
+- allowlisted artifact access through adapter;
 - JSON viewer;
 - JSONL preview;
 - text preview;
 - source links;
 - malformed artifact handling;
-- path traversal guard.
+- large artifact preview limits;
+- path traversal guard;
+- redaction hook placeholder.
+
+Suggested routes:
+
+```text
+GET /runs/{run_id}/artifacts
+GET /api/runs/{run_id}/artifacts
+GET /api/runs/{run_id}/artifacts/{artifact_id}
+```
 
 Не включено:
 
 - arbitrary filesystem browser;
 - artifact mutation;
 - upload/edit/delete;
-- binary viewers beyond safe metadata.
-
-#### Suggested routes
-
-- `GET /runs/{run_id}/artifacts`
-- `GET /api/runs/{run_id}/artifacts`
-- `GET /api/runs/{run_id}/artifacts/{artifact_id}`
+- binary viewers beyond safe metadata;
+- direct storage traversal from BeeUI.
 
 #### Deliverable
 
-BeeCap/BeeAgent могут показывать artifacts через общий BeeUI artifact browser.
+BeeCap/BeeAgent can show artifacts through a common BeeUI artifact browser.
 
 #### Checks
 
 - JSON artifact view;
 - JSONL artifact view;
 - malformed row handling;
+- large file preview limit;
 - forbidden path rejection;
 - non-allowlisted artifact rejection;
-- no mutation check;
+- no mutation;
 - no secrets leakage;
 - `pytest -q`.
 
@@ -972,14 +1399,14 @@ BeeCap/BeeAgent могут показывать artifacts через общий 
 
 - artifact browser reusable;
 - source artifacts remain canonical;
-- arbitrary file access невозможен;
+- arbitrary file access impossible;
 - corrupted artifacts render as partial/error state.
 
 ---
 
-## Этап 3 — BeeCap replacement MVP
+## Этап 5 — BeeCap replacement MVP
 
-### Итерация 9 — BeeCap dashboard parity MVP
+### Итерация 12 — BeeCap dashboard parity MVP
 
 **Статус:** PLANNED
 
@@ -992,6 +1419,7 @@ BeeCap/BeeAgent могут показывать artifacts через общий 
 Включено:
 
 - dashboard page;
+
 - mode-aware sections:
   - dry-run;
   - paper;
@@ -1010,16 +1438,21 @@ BeeCap/BeeAgent могут показывать artifacts через общий 
   - realized profit where available;
 
 - run links;
+
 - artifact links;
-- graceful missing state.
+
+- graceful missing state;
+
+- degraded state for partial/corrupted artifacts.
 
 Не включено:
 
 - config apply;
 - operator launch;
-- charts;
+- advanced charts;
 - auth;
-- no-code builder.
+- no-code builder;
+- BeeCap trading/business logic inside BeeUI.
 
 #### Deliverable
 
@@ -1034,15 +1467,17 @@ BeeCap can render useful operator dashboard through BeeUI.
 - paper artifact fixture;
 - partial/corrupted artifact fixture;
 - no mutation;
+- no secret leakage;
 - `pytest -q`.
 
 #### DoD
 
 - BeeUI dashboard gives enough value to stop expanding BeeCap templates manually;
 - BeeCap-specific calculations remain in BeeCap adapter/read-model;
-- dashboard is read-only.
+- dashboard is read-only;
+- operator can inspect current product state without browsing storage manually.
 
-### Итерация 10 — Runs list and run overview MVP
+### Итерация 13 — Runs list and run overview MVP
 
 **Статус:** PLANNED
 
@@ -1059,6 +1494,7 @@ BeeCap can render useful operator dashboard through BeeUI.
 - search/filter/sort v0;
 - run metadata;
 - health/status;
+- mode/venue filters where adapter provides fields;
 - latest decision/explain summary if adapter provides it;
 - linked artifacts;
 - source artifact references;
@@ -1066,10 +1502,11 @@ BeeCap can render useful operator dashboard through BeeUI.
 
 Не включено:
 
-- advanced chart;
+- advanced charts;
 - replay engine;
 - write actions;
-- DB index.
+- DB index;
+- product-specific calculations in BeeUI.
 
 #### Deliverable
 
@@ -1079,19 +1516,22 @@ Operator can inspect product runs through BeeUI.
 
 - run list render;
 - filter by mode/venue;
+- sort by timestamp/status;
 - run detail render;
 - malformed run_id rejection;
 - missing run;
 - partial artifacts;
+- no mutation;
 - `pytest -q`.
 
 #### DoD
 
 - runs can be inspected without manual storage browsing;
 - run detail remains read-only;
-- source artifact links visible.
+- source artifact links visible;
+- BeeUI uses adapter read-model only.
 
-### Итерация 11 — Stable BeeUI API v0 for dashboard/runs/artifacts
+### Итерация 14 — Stable BeeUI API v0 for dashboard/runs/artifacts
 
 **Статус:** PLANNED
 
@@ -1105,22 +1545,27 @@ Operator can inspect product runs through BeeUI.
 
 - API response envelope;
 - routes:
-  - `/api/dashboard`;
-  - `/api/runs`;
-  - `/api/runs/{run_id}`;
-  - `/api/runs/{run_id}/artifacts`;
-  - `/api/runs/{run_id}/artifacts/{artifact_id}`;
+
+```text
+GET /api/dashboard
+GET /api/runs
+GET /api/runs/{run_id}
+GET /api/runs/{run_id}/artifacts
+GET /api/runs/{run_id}/artifacts/{artifact_id}
+```
 
 - error envelope;
 - partial-data envelope;
-- API/UI parity tests.
+- API/UI parity tests;
+- `docs/API_CONTRACT.md`.
 
 Не включено:
 
 - public external API;
 - auth/RBAC;
 - websocket/SSE;
-- React frontend.
+- React/Vue frontend;
+- write/action API.
 
 #### Deliverable
 
@@ -1134,19 +1579,21 @@ Future frontend can attach to BeeUI backend read-model.
 - partial envelope;
 - malformed input;
 - no secret leakage;
+- OpenAPI smoke;
 - `pytest -q`.
 
 #### DoD
 
 - API responses deterministic;
 - documented contract exists;
-- frontend does not need to read product storage directly.
+- frontend does not need to read product storage directly;
+- server-rendered UI remains canonical for MVP.
 
 ---
 
-## Этап 4 — Config/admin/operator foundation
+## Этап 6 — Config/admin/operator foundation
 
-### Итерация 12 — Config read-model and validation preview v1
+### Итерация 15 — Config read-model and validation preview v1
 
 **Статус:** PLANNED
 
@@ -1165,7 +1612,13 @@ Future frontend can attach to BeeUI backend read-model.
 - product validation callback;
 - diff summary;
 - redaction rules;
-- HTML page and JSON endpoints.
+- HTML page and JSON endpoints:
+
+```text
+GET /config
+GET /api/config/read-model
+POST /api/config/preview
+```
 
 Не включено:
 
@@ -1174,15 +1627,9 @@ Future frontend can attach to BeeUI backend read-model.
 - arbitrary YAML editor;
 - live/broker controls.
 
-#### Suggested routes
-
-- `GET /config`
-- `GET /api/config/read-model`
-- `POST /api/config/preview`
-
 #### Deliverable
 
-Оператор видит config и может preview proposed changes без записи.
+Operator sees config and can preview proposed changes without writing.
 
 #### Checks
 
@@ -1192,16 +1639,18 @@ Future frontend can attach to BeeUI backend read-model.
 - invalid value rejection;
 - secrets redaction;
 - no file mutation;
+- CSRF placeholder if auth not implemented yet;
 - `pytest -q`.
 
 #### DoD
 
-- preview read-only;
+- preview is read-only;
 - product validation callback reused;
-- secrets не отображаются;
-- no second config source.
+- secrets are not displayed;
+- no second config source;
+- no arbitrary YAML editor.
 
-### Итерация 13 — Bounded config apply and audit v1
+### Итерация 16 — Bounded config apply and audit v1
 
 **Статус:** PLANNED
 
@@ -1221,6 +1670,13 @@ Future frontend can attach to BeeUI backend read-model.
 - product validation callback;
 - explicit rejection reasons.
 
+Suggested artifacts:
+
+```text
+storage/interfaces/config_revisions/<change_id>/settings.before.yml
+storage/interfaces/config_changes/<change_id>/audit.json
+```
+
 Не включено:
 
 - secrets editing;
@@ -1228,14 +1684,9 @@ Future frontend can attach to BeeUI backend read-model.
 - full YAML editor;
 - automatic runtime restart.
 
-#### Suggested artifacts
-
-- `storage/interfaces/config_revisions/<change_id>/settings.before.yml`
-- `storage/interfaces/config_changes/<change_id>/audit.json`
-
 #### Deliverable
 
-BeeUI даёт reusable bounded config apply layer, продукт определяет allowlist and validation.
+BeeUI provides reusable bounded config apply layer; product defines allowlist and validation.
 
 #### Checks
 
@@ -1253,9 +1704,10 @@ BeeUI даёт reusable bounded config apply layer, продукт опреде�
 - every apply attempt audited;
 - source config remains canonical;
 - write allowed only through product-defined allowlist;
-- no hidden runtime restart.
+- no hidden runtime restart;
+- no secret editing.
 
-### Итерация 14 — Bounded operator actions v1
+### Итерация 17 — Bounded operator actions v1
 
 **Статус:** PLANNED
 
@@ -1276,6 +1728,12 @@ BeeUI даёт reusable bounded config apply layer, продукт опреде�
 - audit artifact;
 - disabled/denied/unavailable states.
 
+Suggested artifacts:
+
+```text
+storage/interfaces/operator_actions/<action_id>.json
+```
+
 Не включено:
 
 - broker/manual order console;
@@ -1283,13 +1741,9 @@ BeeUI даёт reusable bounded config apply layer, продукт опреде�
 - hidden background jobs;
 - live authority by default.
 
-#### Suggested artifacts
-
-- `storage/interfaces/operator_actions/<action_id>.json`
-
 #### Deliverable
 
-BeeUI может показывать bounded operator buttons/forms, но выполнение происходит только через product-owned callback/API.
+BeeUI can show bounded operator buttons/forms, but execution happens only through product-owned callback/API.
 
 #### Checks
 
@@ -1299,6 +1753,7 @@ BeeUI может показывать bounded operator buttons/forms, но вы�
 - invalid payload;
 - audit linkage;
 - no secret leakage;
+- no direct runtime execution;
 - `pytest -q`.
 
 #### DoD
@@ -1310,9 +1765,9 @@ BeeUI может показывать bounded operator buttons/forms, но вы�
 
 ---
 
-## Этап 5 — Auth/security layer
+## Этап 7 — Auth/security layer
 
-### Итерация 15 — Auth/session/RBAC v0
+### Итерация 18 — Auth/session/RBAC v0
 
 **Статус:** PLANNED
 
@@ -1325,17 +1780,25 @@ BeeUI может показывать bounded operator buttons/forms, но вы�
 Включено:
 
 - login/logout;
+
 - password hash;
+
 - signed session cookie;
+
 - roles:
   - admin;
   - operator;
   - viewer;
 
 - route protection;
+
 - CSRF protection for POST routes;
+
 - secure cookie settings where applicable;
-- no default admin password in repo.
+
+- no default admin password in repo;
+
+- explicit local/dev auth-disabled mode.
 
 Не включено:
 
@@ -1347,7 +1810,7 @@ BeeUI может показывать bounded operator buttons/forms, но вы�
 
 #### Deliverable
 
-BeeUI может защищать internal operator/admin UI.
+BeeUI can protect internal operator/admin UI.
 
 #### Checks
 
@@ -1357,6 +1820,7 @@ BeeUI может защищать internal operator/admin UI.
 - POST CSRF rejection;
 - no plaintext password;
 - no session secret leakage;
+- auth disabled only when explicitly configured;
 - `pytest -q`.
 
 #### DoD
@@ -1368,9 +1832,9 @@ BeeUI может защищать internal operator/admin UI.
 
 ---
 
-## Этап 6 — BeeAgent integration
+## Этап 8 — BeeAgent integration
 
-### Итерация 16 — BeeAgent adapter MVP
+### Итерация 19 — BeeAgent adapter MVP
 
 **Статус:** PLANNED
 
@@ -1389,6 +1853,7 @@ BeeUI может защищать internal operator/admin UI.
 - artifacts;
 - capabilities;
 - approvals placeholder;
+- bounded action placeholders;
 - `examples/beeagent_embedded/beeui.yml`.
 
 Не включено:
@@ -1396,15 +1861,12 @@ BeeUI может защищать internal operator/admin UI.
 - execution authority;
 - autonomous agent controls;
 - MCP write actions;
-- no-code builder.
-
-#### Deliverable
-
-BeeAgent получает operator UI поверх BeeUI.
+- no-code builder;
+- direct local LLM/tool execution from BeeUI.
 
 #### Expected BeeAgent side
 
-BeeAgent должен предоставить тонкий integration module:
+BeeAgent should provide a thin integration module:
 
 ```text
 src/beeagent_module/interfaces/ui/
@@ -1415,92 +1877,34 @@ src/beeagent_module/interfaces/ui/
   actions.py
 ```
 
+#### Deliverable
+
+BeeAgent receives operator UI through BeeUI.
+
 #### Checks
 
 - modules page;
 - runs page;
 - artifacts page;
 - capabilities page;
+- approvals placeholder;
 - missing/partial artifacts;
 - no secret leakage;
+- authority boundary tests;
 - `pytest -q`.
 
 #### DoD
 
-- BeeAgent UI строится через BeeUI;
+- BeeAgent UI is built through BeeUI;
 - BeeAgent keeps authority boundary;
-- capabilities/actions remain product-controlled.
+- capabilities/actions remain product-controlled;
+- BeeUI never directly calls MCP/tools/LLM/runtime execution.
 
 ---
 
-## Этап 7 — Theme and customization
+## Этап 9 — Frontend/no-code foundation
 
-### Итерация 17 — Theme/customization v1
-
-**Статус:** PLANNED
-
-#### Goal
-
-Сделать controlled theme customization без ручного изменения CSS в каждом продукте.
-
-#### Scope
-
-Включено:
-
-- theme config:
-  - mode;
-  - primary color;
-  - font;
-  - radius;
-  - density;
-
-- CSS variable generation;
-- product branding;
-- logo/title;
-- local font/static asset policy.
-
-Не включено:
-
-- arbitrary CSS editor;
-- user-uploaded unsafe assets;
-- full design system editor.
-
-#### Example
-
-```yaml
-app:
-  theme:
-    mode: dark
-    primary: blue
-    font: Inter
-    radius: 2
-    density: compact
-```
-
-#### Deliverable
-
-Bee-продукты кастомизируют внешний вид через config/schema.
-
-#### Checks
-
-- dark/light;
-- primary color;
-- font variable;
-- invalid theme rejection;
-- no unsafe CSS injection;
-- `pytest -q`.
-
-#### DoD
-
-- theme controlled by schema;
-- no arbitrary CSS injection;
-- Tabler customization centralized.
-
----
-
-## Этап 8 — Frontend/no-code foundation
-
-### Итерация 18 — Dashboard schema editor v0
+### Итерация 20 — Dashboard schema editor v0
 
 **Статус:** FUTURE
 
@@ -1531,7 +1935,7 @@ Bee-продукты кастомизируют внешний вид через
 
 #### Deliverable
 
-Оператор может менять layout через безопасную schema, не редактируя YAML вручную.
+Operator can change layout through safe schema, without editing YAML manually.
 
 #### Checks
 
@@ -1546,9 +1950,9 @@ Bee-продукты кастомизируют внешний вид через
 
 - visual builder edits schema only;
 - schema validation protects layout;
-- no unsafe templates/scripts are accepted.
+- no unsafe templates/scripts accepted.
 
-### Итерация 19 — Separate frontend contract v0
+### Итерация 21 — Separate frontend contract v0
 
 **Статус:** FUTURE
 
@@ -1576,7 +1980,7 @@ Bee-продукты кастомизируют внешний вид через
 
 #### Deliverable
 
-BeeUI можно использовать как backend для future separate frontend.
+BeeUI can be used as backend for future separate frontend.
 
 #### Checks
 
@@ -1592,7 +1996,7 @@ BeeUI можно использовать как backend для future separate 
 - server-rendered UI still works;
 - no second source of truth introduced.
 
-### Итерация 20 — Standalone BeeUI service v0
+### Итерация 22 — Standalone BeeUI service v0
 
 **Статус:** FUTURE
 
@@ -1620,7 +2024,7 @@ BeeUI можно использовать как backend для future separate 
 
 #### Deliverable
 
-BeeUI может работать как отдельный контейнер поверх BeeCap/BeeAgent APIs.
+BeeUI can work as separate service over BeeCap/BeeAgent APIs.
 
 #### Checks
 

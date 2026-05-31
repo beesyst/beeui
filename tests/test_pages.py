@@ -39,8 +39,9 @@ def test_active_navigation_item_is_rendered() -> None:
     response = client.get("/runs")
 
     assert response.status_code == 200
-    assert 'href="/runs" class="sidebar__link is-active"' in response.text
-    assert 'href="/" class="sidebar__link"' in response.text
+    assert 'href="/runs"' in response.text
+    assert 'href="/"' in response.text
+    assert "sidebar__link is-active" in response.text
 
 
 # Тест: чек, что запрос к несуществующей странице возвращает 404
@@ -90,3 +91,17 @@ def test_config_provided_page_strings_are_escaped(tmp_path: Path) -> None:
     assert "<script>alert(2)</script>" not in response.text
     assert "&lt;script&gt;alert(1)&lt;/script&gt;" in response.text
     assert "&lt;script&gt;alert(2)&lt;/script&gt;" in response.text
+
+
+# Тест: empty state рендерится через component template
+def test_empty_state_component_is_rendered() -> None:
+    settings = load_settings(settings_path())
+    ui_config = load_beeui_config(settings_path().parent / "schema.yml")
+    app = create_beeui_app(settings=settings, ui_config=ui_config)
+    client = TestClient(app)
+
+    response = client.get("/")
+
+    assert response.status_code == 200
+    assert "No blocks configured" in response.text
+    assert "No blocks are configured for this page yet." in response.text

@@ -3,20 +3,16 @@
 {% block title %}{{ page.title }} · {{ app_title }}{% endblock %}
 
 {% block content %}
-<section class="page-header">
-  <h1>{{ page.title }}</h1>
-  {% if page.subtitle %}
-  <p>{{ page.subtitle }}</p>
-  {% endif %}
-</section>
+{% include "components/page_header.html" %}
 
-<section class="card" aria-label="Page blocks">
-  {% if has_blocks %}
-  <h2>Blocks</h2>
-  <p>Block rendering is not available in this iteration.</p>
-  {% else %}
-  <h2>Empty state</h2>
-  <p>No blocks are configured for this page yet.</p>
-  {% endif %}
-</section>
+<div class="container-xl">
+  <section class="card p-3" aria-label="Page blocks">
+    {% if has_blocks %}
+    <h3 class="beeui-card-title">Blocks</h3>
+    <p class="text-secondary">Block rendering is not available in this iteration.</p>
+    {% else %}
+    {% include "components/empty_state.html" %}
+    {% endif %}
+  </section>
+</div>
 {% endblock %}

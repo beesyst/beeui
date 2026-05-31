@@ -1,34 +1,28 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-bs-theme="dark">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{% block title %}BeeUI{% endblock %}</title>
+    <link rel="stylesheet" href="{{ route_prefix }}/static/vendor/tabler/css/tabler-compatible.min.css" />
     <link rel="stylesheet" href="{{ route_prefix }}/static/css/beeui.css" />
   </head>
-  <body>
-    <div class="app-shell">
-      <aside class="sidebar" aria-label="Sidebar">
-        <div class="sidebar__brand">{{ app_title }}</div>
-        <nav class="sidebar__nav">
-          {% for item in navigation %}
-          <a href="{{ item.href }}" class="sidebar__link{% if item.active %} is-active{% endif %}">{{ item.title }}</a>
-          {% endfor %}
-        </nav>
-      </aside>
+  <body class="layout-fluid">
+    <div class="page beeui-page">
+      {% include "components/sidebar.html" %}
 
-      <div class="main-layout">
-        <header class="topbar" aria-label="Top navigation">
-          <div class="topbar__title">{{ product_title }}</div>
-          <div class="topbar__meta">Product ID: {{ product_id }}</div>
-        </header>
+      <div class="page-wrapper">
+        {% include "components/navbar.html" %}
 
-        <main class="content" aria-label="Main content">
+        <main class="page-body" aria-label="Main content">
           {% block content %}{% endblock %}
         </main>
+
+        {% include "components/footer.html" %}
       </div>
     </div>
 
+    <script src="{{ route_prefix }}/static/vendor/tabler/js/tabler-compatible.min.js"></script>
     <script src="{{ route_prefix }}/static/js/beeui.js"></script>
   </body>
 </html>

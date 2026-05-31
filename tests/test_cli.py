@@ -33,7 +33,7 @@ def test_main_prints_routes(capsys) -> None:
     assert main(["routes"]) == 0
 
     captured = capsys.readouterr()
-    assert "Iteration 2 route surface" in captured.out
+    assert "Configured route surface:" in captured.out
     assert "GET /" in captured.out
     assert "GET /runs" in captured.out
     assert "GET /health" in captured.out
