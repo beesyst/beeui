@@ -1,133 +1,120 @@
 :root {
-  --bg: #f3f6fb;
-  --panel: #ffffff;
-  --ink: #1f2a44;
-  --muted: #62708f;
-  --accent: #2b6cb0;
-  --line: #d8e0ed;
+  --beeui-sidebar-bg: #f7f9fc;
+  --beeui-sidebar-border: #dbe2ea;
+  --beeui-surface: #ffffff;
+  --beeui-accent: #206bc4;
+  --beeui-accent-soft: rgba(var(--tblr-primary-rgb), 0.12);
 }
 
-* {
-  box-sizing: border-box;
+:root[data-bs-theme="dark"] {
+  --beeui-sidebar-bg: #0b1220;
+  --beeui-sidebar-border: #334155;
+  --beeui-surface: #111827;
+  --beeui-accent: #6ea8fe;
+  --beeui-accent-soft: rgba(var(--tblr-primary-rgb), 0.18);
 }
 
 body {
-  margin: 0;
-  font-family: "Segoe UI", "Noto Sans", sans-serif;
-  color: var(--ink);
-  background: radial-gradient(circle at top right, #e6edf8 0%, var(--bg) 45%);
+  background:
+    radial-gradient(circle at 8% 0%, rgba(var(--tblr-primary-rgb), 0.18), transparent 32%),
+    var(--tblr-body-bg);
 }
 
-.app-shell {
-  min-height: 100vh;
+.beeui-page {
   display: grid;
-  grid-template-columns: 240px 1fr;
+  min-height: 100vh;
+  grid-template-columns: 18rem minmax(0, 1fr);
 }
 
-.sidebar {
-  border-right: 1px solid var(--line);
-  background: #eef3fb;
-  padding: 20px 16px;
+.beeui-sidebar {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  align-self: start;
+  border-right: 1px solid var(--beeui-sidebar-border);
+  background: linear-gradient(180deg, var(--beeui-sidebar-bg), color-mix(in srgb, var(--beeui-sidebar-bg), #dbe2ea 7%));
 }
 
-.sidebar__brand {
-  font-weight: 700;
-  margin-bottom: 16px;
+.navbar-brand a {
+  color: inherit;
+  text-decoration: none;
+  font-size: 1.1rem;
 }
 
-.sidebar__nav {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+.beeui-sidebar .navbar-nav {
+  display: grid;
+  gap: 0.4rem;
 }
 
 .sidebar__link {
-  display: inline-block;
-  text-decoration: none;
-  color: var(--accent);
+  border-radius: 0.6rem;
+  padding: 0.55rem 0.7rem;
+  color: var(--tblr-body-color);
   font-weight: 600;
-  padding: 6px 8px;
-  border-radius: 8px;
+}
+
+.sidebar__link:hover {
+  background: color-mix(in srgb, var(--beeui-accent-soft), transparent 22%);
 }
 
 .sidebar__link.is-active {
-  background: #dce7f8;
-  color: #17477d;
+  background: var(--beeui-accent-soft);
+  color: var(--beeui-accent);
 }
 
-.main-layout {
-  display: flex;
-  flex-direction: column;
+.page-wrapper {
+  background: var(--beeui-surface);
   min-width: 0;
 }
 
-.topbar {
-  border-bottom: 1px solid var(--line);
-  background: var(--panel);
-  padding: 14px 20px;
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
+.beeui-navbar {
+  border-bottom: 1px solid var(--tblr-border-color);
+  background: color-mix(in srgb, var(--beeui-surface), #eaf1fb 8%);
 }
 
-.topbar__title {
-  font-weight: 700;
+.page-header {
+  border-bottom: 1px solid var(--tblr-border-color);
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
 }
 
-.topbar__meta {
-  color: var(--muted);
-  font-size: 14px;
-}
-
-.content {
-  padding: 20px;
-}
-
-.page-header h1 {
+.page-title {
   margin: 0;
+  font-size: 1.35rem;
 }
 
-.page-header p {
-  color: var(--muted);
-  margin: 8px 0 0;
+.beeui-card-title {
+  margin-top: 0;
+  margin-bottom: 0.5rem;
 }
 
-.cards-grid {
-  margin-top: 20px;
-  display: grid;
-  grid-template-columns: repeat(3, minmax(180px, 1fr));
-  gap: 12px;
+.beeui-empty-state {
+  border: 1px dashed var(--tblr-border-color);
+  border-radius: 0.65rem;
+  background: color-mix(in srgb, var(--beeui-surface), #f1f5fb 10%);
 }
 
-.card {
-  background: var(--panel);
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  padding: 14px;
+.beeui-footer {
+  background: color-mix(in srgb, var(--beeui-surface), #f5f8fd 10%);
 }
 
-.card h2 {
-  margin: 0 0 8px;
-  font-size: 18px;
-}
-
-.card p {
-  margin: 0;
-  color: var(--muted);
-}
-
-@media (max-width: 900px) {
-  .app-shell {
-    grid-template-columns: 1fr;
+@media (max-width: 991px) {
+  .beeui-page {
+    grid-template-columns: minmax(0, 1fr);
   }
 
-  .sidebar {
+  .beeui-sidebar {
+    position: static;
+    height: auto;
     border-right: 0;
-    border-bottom: 1px solid var(--line);
+    border-bottom: 1px solid var(--beeui-sidebar-border);
   }
 
-  .cards-grid {
-    grid-template-columns: 1fr;
+  .beeui-sidebar .navbar-collapse {
+    margin-top: 0.75rem;
+  }
+
+  .beeui-navbar {
+    display: none;
   }
 }

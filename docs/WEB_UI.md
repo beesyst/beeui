@@ -135,7 +135,7 @@ Later: standalone.
 
 ## Package layout
 
-Canonical web implementation after Iteration 2 живёт в `src/beeui_module/web/`.
+Canonical web implementation after Iteration 3 lives in `src/beeui_module/web/`.
 Root-level `app.py` не является текущей точкой входа.
 Templates/static находятся внутри `web/`.
 
@@ -146,11 +146,11 @@ src/beeui_module/
     templates/
       base.html
       page.html
-      components/        # planned
+      components/        # iteration 3 foundation
     static/
       css/beeui.css
       js/beeui.js
-      vendor/tabler/     # planned vendored bundle
+      vendor/tabler/     # local Tabler-compatible subset
 
   cli/
     main.py
@@ -219,9 +219,9 @@ Doctor:
 
 ## Product integration
 
-### Current Iteration 2 app factory
+### Current Iteration 3 app factory
 
-В Iteration 2 app factory принимает загруженные settings и declarative UI schema и создаёт FastAPI/Jinja2 shell.
+In the current Iteration 3 state, the app factory still accepts loaded settings and declarative UI schema and creates the FastAPI/Jinja2 shell.
 
 Пример:
 
@@ -348,6 +348,10 @@ logging:
   level: INFO
   file: logs/app.log
 
+storage:
+  enabled: true
+  root: storage
+
 security:
   html_autoescape: true
   assets_ext: false
@@ -404,7 +408,8 @@ Rules:
 - navigation paths must reference known page paths;
 - reserved paths `/health`, `/static`, `/static/...` are rejected;
 - no arbitrary HTML/JS in config;
-- `blocks` is required but only empty-list rendering is supported in Iteration 2.
+- `blocks` is required but only empty-list/empty-state rendering is supported in Iteration 3.
+- block registry and real block rendering are planned for the blocks iteration.
 
 ## Tabler shell policy
 
@@ -420,6 +425,11 @@ Policy:
 - no marketing/sponsor/demo blocks from Tabler preview;
 - static assets must be package-local or explicitly vendored;
 - CSS customization must go through controlled theme variables, not arbitrary user CSS.
+
+BeeUI currently ships a local Tabler-compatible subset under
+`src/beeui_module/web/static/vendor/tabler/`.
+It is not a full upstream Tabler demo bundle.
+No preview/demo/tracking assets are shipped.
 
 Forbidden in production templates:
 
@@ -445,14 +455,18 @@ Shared template primitives live in:
 src/beeui_module/web/templates/components/
 ```
 
-Current planned primitives:
+Current implemented primitives in Iteration 3:
 
-- `page_title_block`;
 - `sidebar`;
 - `navbar`;
+- `page_header`;
+- `footer`;
+- `empty_state`.
+
+Planned primitives for later iterations:
+
 - `breadcrumbs`;
 - `status_badge`;
-- `empty_state`;
 - `degraded_block`;
 - `source_link`;
 - `metric_card`;
@@ -520,12 +534,14 @@ JSON routes:
 
 Not all routes must exist in MVP.
 
-MVP route set (current MVP):
+MVP route set after Iteration 3:
 
 - `/`
 - `/runs`
 - `/health`
 - `/static/...`
+- `/static/vendor/tabler/css/tabler-compatible.min.css`
+- `/static/vendor/tabler/js/tabler-compatible.min.js`
 
 ## Read-only model
 
@@ -706,7 +722,7 @@ pages:
     blocks: []
 ```
 
-Layout/block example is planned for block/layout iterations (Iteration 3+).
+Layout shell primitives are implemented in Iteration 3. Real block layout/rendering is planned for the block registry iteration.
 
 Rules:
 
@@ -717,6 +733,9 @@ Rules:
 - block rendering is out of Iteration 2; blocks must be a list and may be empty.
 
 ## Blocks
+
+Block registry and real block rendering are planned and are not implemented in the current Iteration 3 foundation.
+The examples below describe the intended future contract.
 
 Block config:
 
@@ -731,7 +750,7 @@ blocks:
     empty: Profit unavailable
 ```
 
-MVP block types:
+Planned block types for MVP scope:
 
 - `metric_card`
 - `kpi_grid`
@@ -1118,6 +1137,9 @@ Rules:
 
 ## Theme
 
+Theme schema is planned for the theme/layout iteration and is not implemented in the current Iteration 3 foundation.
+Iteration 3 uses a deterministic dark layout default in the base template.
+
 Theme config:
 
 ```yaml
@@ -1252,14 +1274,15 @@ visual editor
 
 ## Typical operator scenarios
 
-Current Iteration 2 scenario:
+Current Iteration 3 scenario:
 
 ```text
 1. BeeUI loads config/settings.yml.
 2. BeeUI loads config/schema.yml.
 3. Operator opens / or /runs.
 4. BeeUI renders configured page title/subtitle/navigation.
-5. No adapter/data/block rendering is executed yet.
+5. BeeUI renders the Iteration 3 vertical layout foundation with sidebar/navbar/page header/footer and an empty state for pages without blocks.
+6. No adapter/data/block rendering is executed yet.
 ```
 
 ### 1. Open product dashboard
@@ -1312,12 +1335,14 @@ Planned/future (requires config apply and audit iterations).
 
 ## MVP route contract
 
-Iteration 2 MVP:
+Current Iteration 3 MVP:
 
 - `GET /`
 - `GET /runs`
 - `GET /health`
 - `GET /static/...`
+- `GET /static/vendor/tabler/css/tabler-compatible.min.css`
+- `GET /static/vendor/tabler/js/tabler-compatible.min.js`
 
 Iteration 5-10 MVP:
 

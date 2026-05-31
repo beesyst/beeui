@@ -111,6 +111,7 @@ def _validate_security(settings: dict[str, Any]) -> None:
         raise ValueError("security.assets_ext must be a boolean")
 
 
+# Валидация секции features с проверкой наличия ключей и типов значений
 def _validate_features(settings: dict[str, Any]) -> None:
     features_cfg = settings.get("features")
     if not isinstance(features_cfg, dict):

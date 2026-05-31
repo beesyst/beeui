@@ -2,9 +2,9 @@
 
 **BeeUI** — общий Python-based UI framework для Bee-продуктов: `beecap`, `beeagent` и будущих модулей Bee ecosystem.
 
-## Iteration 2
+## Iteration 3
 
-Текущий deliverable — declarative pages/navigation v0 на базе `config/schema.yml`.
+Текущий deliverable — local Tabler-compatible assets и production-safe vertical operator layout foundation поверх declarative pages/navigation из `config/schema.yml`.
 
 Уже работает:
 
@@ -16,12 +16,32 @@
 - `./start.sh web --host 127.0.0.1 --port 8780`
 - `import beeui_module`
 
-Минимальная web surface Iteration 2:
+Минимальная web surface Iteration 3:
 
 - `GET /`
 - `GET /runs`
 - `GET /health`
 - `GET /static/...`
+- `GET /static/vendor/tabler/css/tabler-compatible.min.css`
+- `GET /static/vendor/tabler/js/tabler-compatible.min.js`
+
+В Iteration 3 shell рендерится через component templates:
+
+- `components/sidebar.html`;
+- `components/navbar.html`;
+- `components/page_header.html`;
+- `components/footer.html`;
+- `components/empty_state.html`.
+
+Tabler-compatible vendor assets поставляются локально из package path:
+
+- `src/beeui_module/web/static/vendor/tabler/css/tabler-compatible.min.css`
+- `src/beeui_module/web/static/vendor/tabler/js/tabler-compatible.min.js`
+
+BeeUI currently ships a local Tabler-compatible subset under
+`src/beeui_module/web/static/vendor/tabler/`.
+It is not a full upstream Tabler demo bundle.
+No preview/demo/tracking assets are shipped.
 
 Navigation и page metadata (title/subtitle/paths) рендерятся из `config/schema.yml`.
 
@@ -354,7 +374,7 @@ app = create_beeui_app(
 
 Future scope.
 
-В Iteration 2 standalone mode не реализован. Запуск с отдельным config-файлом будет добавлен позже, когда появится HTTP product adapter и standalone deployment contract.
+В текущем MVP standalone mode не реализован. Запуск с отдельным config-файлом будет добавлен позже, когда появится HTTP product adapter и standalone deployment contract.
 
 ## Основные возможности
 
@@ -389,13 +409,13 @@ pages:
     blocks: []
 ```
 
-Iteration 2 rules:
+Current declarative page rules:
 
 - `page.id` must be unique;
 - `page.path` must be unique;
 - `navigation[].path` must reference declared page path;
 - reserved paths `/health`, `/static`, `/static/...` are rejected;
-- `blocks` exists only as placeholder list until Iteration 3.
+- `blocks` exists only as a placeholder list until the block registry iteration.
 
 ### Blocks
 
@@ -778,7 +798,7 @@ uv run --frozen --extra dev python config/start.py web
 
 ## Целевая структура проекта (planned)
 
-Актуальные ключевые файлы Iteration 2:
+Актуальные ключевые файлы Iteration 3:
 
 ```text
 config/
@@ -804,9 +824,19 @@ src/beeui_module/
     templates/
       base.html
       page.html
+      components/
+        sidebar.html
+        navbar.html
+        page_header.html
+        footer.html
+        empty_state.html
     static/
       css/beeui.css
       js/beeui.js
+      vendor/
+        tabler/
+          css/tabler-compatible.min.css
+          js/tabler-compatible.min.js
 ```
 
 Остальная структура ниже — целевая (planned) для следующих итераций.
@@ -1208,13 +1238,15 @@ BeeUI находится на trust boundary, потому что отображ
 Iteration 0 — Project skeleton and startup contract
 Iteration 1 — Tabler web shell v0
 Iteration 2 — Declarative pages and navigation v0
-Iteration 3 — Block registry and base blocks v0
-Iteration 4 — Data sources and resolver v0
-Iteration 5 — Product adapter contract v0
-Iteration 6 — BeeCap adapter MVP
-Iteration 7 — Embedded mount API v0
-Iteration 9 — BeeCap dashboard parity MVP
-Iteration 10 — Runs list and run overview MVP
+Iteration 3 — Local Tabler vendor/assets and layout parity v1
+Iteration 4 — Theme, layout and navigation schema v1
+Iteration 5 — Block registry and dashboard blocks v1
+Iteration 7 — Data sources and resolver v0
+Iteration 8 — Product adapter contract v0
+Iteration 9 — BeeCap adapter MVP
+Iteration 10 — Embedded mount API v0
+Iteration 12 — BeeCap dashboard parity MVP
+Iteration 13 — Runs list and run overview MVP
 ```
 
 MVP считается достигнутым, если:
@@ -1258,7 +1290,7 @@ Bee-продукты больше не должны дублировать:
 | Команда              | Что делает                                                  |
 | -------------------- | ----------------------------------------------------------- |
 | `./start.sh doctor`  | Проверка окружения, структуры, imports, config availability |
-| `./start.sh web`   | Запуск demo BeeUI web app                                   |
+| `./start.sh web`     | Запуск demo BeeUI web app                                   |
 | `./start.sh routes`  | Показ registered routes                                     |
 | `./start.sh version` | Показ версии BeeUI                                          |
 
@@ -1379,7 +1411,7 @@ Visual builder later.
 Текущий статус:
 
 ```text
-Iteration 2 — Declarative pages and navigation v0 — DONE
+Iteration 3 — Local Tabler vendor/assets and layout parity v1 — DONE
 ```
 
 Работает:
@@ -1389,10 +1421,4 @@ Iteration 2 — Declarative pages and navigation v0 — DONE
 ./start.sh routes
 uv run pytest -q
 ./start.sh web --host 127.0.0.1 --port 8780
-```
-
-Следующий шаг:
-
-```text
-Iteration 3 — Block registry and base blocks v0
 ```

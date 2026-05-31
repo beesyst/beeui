@@ -19,7 +19,7 @@ def _print_routes() -> int:
     route_prefix = settings["web"]["route_prefix"].strip().rstrip("/")
     prefix = route_prefix if route_prefix else ""
 
-    print("Iteration 2 route surface:")
+    print("Configured route surface:")
     for page in ui_config.pages:
         print(f"  GET {prefixed_path(prefix, page.path)}")
     print(f"  GET {prefix}/health")
