@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.0](https://github.com/beesyst/beeui/compare/beeui-v0.4.0...beeui-v0.5.0) (2026-05-31)
+
+
+### Features
+
+* **ui:** add local tabler-compatible layout foundation ([#11](https://github.com/beesyst/beeui/issues/11)) ([cc20bde](https://github.com/beesyst/beeui/commit/cc20bdeb5b6a147a50236f4228612479205d0cc8))
+
 ## [0.4.0](https://github.com/beesyst/beeui/compare/beeui-v0.3.0...beeui-v0.4.0) (2026-05-31)
 
 
