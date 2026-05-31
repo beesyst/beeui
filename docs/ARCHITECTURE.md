@@ -523,20 +523,20 @@ Rules:
 CLI entrypoints.
 
 - `main.py` — dispatch.
-- `serve.py` — start web server.
+- `web.py` — start web server.
 - `doctor.py` — diagnostics.
 
 Initial commands:
 
 ```bash
 ./start.sh doctor
-./start.sh serve --host 127.0.0.1 --port 8780
+./start.sh web --host 127.0.0.1 --port 8780
 ```
 
 Future commands:
 
 ```bash
-./start.sh validate-config --config config/demo.beeui.yml
+./start.sh validate-config --config config/schema.yml
 ```
 
 # Что такое “adapter” у нас
@@ -675,7 +675,7 @@ flowchart TD
   C --> D{command}
 
   D -->|doctor| E[cli/doctor.py]
-  D -->|serve| F[cli/serve.py]
+  D -->|serve| F[cli/web.py]
 
   F --> G[app.create_beeui_app]
   G --> H[Load beeui.yml]

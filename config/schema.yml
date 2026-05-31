@@ -1,0 +1,24 @@
+app:
+  title: BeeUI Demo
+  product: demo
+
+navigation:
+  - title: Dashboard
+    path: /
+    icon: dashboard
+  - title: Runs
+    path: /runs
+    icon: list
+
+pages:
+  - id: dashboard
+    path: /
+    title: Dashboard
+    subtitle: Demo operator dashboard
+    blocks: []
+
+  - id: runs
+    path: /runs
+    title: Runs
+    subtitle: Placeholder page for future run overview
+    blocks: []

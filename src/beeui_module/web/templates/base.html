@@ -9,9 +9,11 @@
   <body>
     <div class="app-shell">
       <aside class="sidebar" aria-label="Sidebar">
-        <div class="sidebar__brand">BeeUI</div>
+        <div class="sidebar__brand">{{ app_title }}</div>
         <nav class="sidebar__nav">
-          <a href="{{ route_prefix or '/' }}" class="sidebar__link">Dashboard</a>
+          {% for item in navigation %}
+          <a href="{{ item.href }}" class="sidebar__link{% if item.active %} is-active{% endif %}">{{ item.title }}</a>
+          {% endfor %}
         </nav>
       </aside>
 

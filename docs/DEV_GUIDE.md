@@ -355,7 +355,7 @@ uv run --frozen --extra docs mkdocs build --strict
 | --------------------------------- | ----------------------------------------------------------------------------------------------------------- |
 | Обычный запуск                    | `./start.sh`                                                                                                |
 | Doctor                            | `./start.sh doctor`                                                                                         |
-| Web demo                          | `./start.sh serve --host 127.0.0.1 --port 8780`                                                             |
+| Web demo                          | `./start.sh web --host 127.0.0.1 --port 8780`                                                             |
 | Тесты после запуска               | `uv run pytest -q`                                                                                          |
 | Добавить runtime-зависимость      | `uv add <package>` → `./start.sh` → `uv run pytest -q` → commit `pyproject.toml` + `uv.lock`                |
 | Добавить dev-зависимость          | `uv add --optional dev <package>` → `./start.sh` → `uv run pytest -q` → commit `pyproject.toml` + `uv.lock` |
@@ -392,7 +392,7 @@ uv sync --extra dev
 Главный config для demo/development:
 
 ```text
-config/demo.beeui.yml
+config/schema.yml
 ```
 
 Позже product-specific config:
@@ -476,7 +476,7 @@ uv run --frozen --extra dev python config/start.py
 
 ```bash
 uv run --frozen --extra dev python config/start.py doctor
-uv run --frozen --extra dev python config/start.py serve --host 127.0.0.1 --port 8780
+uv run --frozen --extra dev python config/start.py web --host 127.0.0.1 --port 8780
 ```
 
 В обычной разработке предпочтительный entrypoint — `./start.sh`.
@@ -487,14 +487,14 @@ uv run --frozen --extra dev python config/start.py serve --host 127.0.0.1 --port
 
 ```bash
 ./start.sh doctor
-./start.sh serve --config config/demo.beeui.yml --host 127.0.0.1 --port 8780
+./start.sh web --config config/schema.yml --host 127.0.0.1 --port 8780
 ```
 
 Будущие команды:
 
 ```bash
-./start.sh validate --config config/demo.beeui.yml
-./start.sh inspect-config --config config/demo.beeui.yml
+./start.sh validate --config config/schema.yml
+./start.sh inspect-config --config config/schema.yml
 ./start.sh build-static-assets
 ```
 
@@ -989,7 +989,7 @@ git status
 Если затронут web:
 
 ```bash
-./start.sh serve --config config/demo.beeui.yml --host 127.0.0.1 --port 8780
+./start.sh web --config config/schema.yml --host 127.0.0.1 --port 8780
 ```
 
 Проверить:
@@ -1373,7 +1373,7 @@ uv run pytest -q
 8. если затронут web:
 
 ```bash
-./start.sh serve --config config/demo.beeui.yml --host 127.0.0.1 --port 8780
+./start.sh web --config config/schema.yml --host 127.0.0.1 --port 8780
 ```
 
 9. проверить:

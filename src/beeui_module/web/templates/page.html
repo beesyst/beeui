@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+
+{% block title %}{{ page.title }} · {{ app_title }}{% endblock %}
+
+{% block content %}
+<section class="page-header">
+  <h1>{{ page.title }}</h1>
+  {% if page.subtitle %}
+  <p>{{ page.subtitle }}</p>
+  {% endif %}
+</section>
+
+<section class="card" aria-label="Page blocks">
+  {% if has_blocks %}
+  <h2>Blocks</h2>
+  <p>Block rendering is not available in this iteration.</p>
+  {% else %}
+  <h2>Empty state</h2>
+  <p>No blocks are configured for this page yet.</p>
+  {% endif %}
+</section>
+{% endblock %}

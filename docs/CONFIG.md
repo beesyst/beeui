@@ -49,13 +49,13 @@ beeui/
   config/
     settings.yml
     beeui.yml
-    demo.beeui.yml
+    schema.yml
 ```
 
 Для demo/MVP допускается:
 
 ```text
-config/demo.beeui.yml
+config/schema.yml
 ```
 
 Но для реального подключения к `beecap` / `beeagent` лучше использовать:
@@ -1787,7 +1787,7 @@ blocks:
 ```bash
 uv run pytest -q
 ./start.sh doctor
-./start.sh serve --config config/beeui.yml --settings config/settings.yml
+./start.sh web --config config/beeui.yml --settings config/settings.yml
 ```
 
 Проверить вручную:

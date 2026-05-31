@@ -769,7 +769,7 @@ Target structure:
 ```text
 beeui/
 ├── config/
-│   ├── demo.beeui.yml
+│   ├── schema.yml
 │   └── start.py
 │
 ├── docs/
@@ -848,13 +848,13 @@ Required commands v0:
 
 ```bash
 ./start.sh doctor
-./start.sh serve
+./start.sh web
 ```
 
 Later:
 
 ```bash
-./start.sh serve --config config/demo.beeui.yml --host 127.0.0.1 --port 8780
+./start.sh web --config config/schema.yml --host 127.0.0.1 --port 8780
 ./start.sh doctor
 ```
 
@@ -874,7 +874,7 @@ MVP считается достигнутым, если:
 
 - `beeui` имеет рабочий project skeleton;
 - `./start.sh doctor` работает;
-- `./start.sh serve` показывает Tabler shell;
+- `./start.sh web` показывает Tabler shell;
 - pages/navigation читаются из `beeui.yml`;
 - dashboard собирается из reusable blocks;
 - data resolver работает;

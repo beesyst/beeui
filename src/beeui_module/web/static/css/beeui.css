@@ -35,11 +35,24 @@ body {
   margin-bottom: 16px;
 }
 
+.sidebar__nav {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
 .sidebar__link {
   display: inline-block;
   text-decoration: none;
   color: var(--accent);
   font-weight: 600;
+  padding: 6px 8px;
+  border-radius: 8px;
+}
+
+.sidebar__link.is-active {
+  background: #dce7f8;
+  color: #17477d;
 }
 
 .main-layout {
