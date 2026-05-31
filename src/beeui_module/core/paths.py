@@ -34,6 +34,11 @@ def settings_path(root: Path | str | None = None) -> Path:
     return config_directory(root) / "settings.yml"
 
 
+# Получение пути к declarative schema BeeUI
+def schema_path(root: Path | str | None = None) -> Path:
+    return config_directory(root) / "schema.yml"
+
+
 # Получение путей к логам
 def logs_directory(root: Path | str | None = None) -> Path:
     return project_root(root) / "logs"

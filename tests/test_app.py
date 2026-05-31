@@ -16,7 +16,7 @@ def test_create_beeui_app_returns_fastapi_app() -> None:
     assert isinstance(app, FastAPI)
 
 
-# Тест: главная страница доступна, содержит BeeUI и безопасные заголовки
+# Тест: главная страница доступна и содержит безопасные заголовки
 def test_get_index_returns_html() -> None:
     app = create_beeui_app()
     client = TestClient(app)
@@ -24,9 +24,23 @@ def test_get_index_returns_html() -> None:
     response = client.get("/")
 
     assert response.status_code == 200
-    assert "BeeUI" in response.text
+    assert "Dashboard" in response.text
+    assert "Demo operator dashboard" in response.text
+    assert 'href="/runs"' in response.text
     assert response.headers["X-BeeUI-Read-Only"] == "true"
     assert response.headers["Cache-Control"] == "no-store"
+
+
+# Тест: страница runs доступна и возвращает HTML
+def test_get_runs_returns_html() -> None:
+    app = create_beeui_app()
+    client = TestClient(app)
+
+    response = client.get("/runs")
+
+    assert response.status_code == 200
+    assert "Runs" in response.text
+    assert "Placeholder page for future run overview" in response.text
 
 
 # Тест: health endpoint возвращает ожидаемый JSON и read-only заголовки
@@ -211,7 +225,9 @@ def test_load_settings_fails_on_missing_web_cache_static(tmp_path) -> None:
     except ValueError as exc:
         assert str(exc) == "Missing required key: web.cache_static"
     else:
-        raise AssertionError("load_settings must fail fast when web.cache_static is missing")
+        raise AssertionError(
+            "load_settings must fail fast when web.cache_static is missing"
+        )
 
 
 # Тест: invalid web.cache_static вызывает fail-fast ошибку
@@ -294,7 +310,9 @@ def test_load_settings_fails_on_missing_security_assets_ext(tmp_path) -> None:
     except ValueError as exc:
         assert str(exc) == "Missing required key: security.assets_ext"
     else:
-        raise AssertionError("load_settings must fail fast when security.assets_ext is missing")
+        raise AssertionError(
+            "load_settings must fail fast when security.assets_ext is missing"
+        )
 
 
 # Тест: invalid security.assets_ext вызывает fail-fast ошибку
@@ -336,7 +354,9 @@ def test_load_settings_fails_on_invalid_security_assets_ext(tmp_path) -> None:
     except ValueError as exc:
         assert str(exc) == "security.assets_ext must be a boolean"
     else:
-        raise AssertionError("load_settings must fail fast on invalid security.assets_ext")
+        raise AssertionError(
+            "load_settings must fail fast on invalid security.assets_ext"
+        )
 
 
 # Тест: missing features.browser_artifact вызывает fail-fast ошибку

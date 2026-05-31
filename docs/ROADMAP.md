@@ -203,7 +203,7 @@ Product decides.
 ```text
 beeui/
 ├── config/
-│   ├── demo.beeui.yml
+│   ├── schema.yml
 │   └── start.py
 │
 ├── docs/
@@ -276,7 +276,7 @@ beeui/
 │       ├── cli/
 │       │   ├── doctor.py
 │       │   ├── main.py
-│       │   └── serve.py
+│       │   └── web.py
 │       │
 │       ├── config_ui/
 │       │   ├── apply.py
@@ -373,7 +373,7 @@ beeui/
 - `uv.lock`;
 - `start.sh`;
 - `config/start.py`;
-- `config/demo.beeui.yml`;
+- `config/schema.yml`;
 - `.gitignore`;
 - `.env.example`;
 - `.github/release-please/*`;
@@ -384,7 +384,7 @@ beeui/
 - команда `doctor`;
 - команда `version`;
 - команда `routes`;
-- команда `serve` как safe placeholder/stub до Iteration 1;
+- команда `web` как safe placeholder/stub до Iteration 1;
 - базовый logger;
 - базовые paths helpers;
 - `.gitkeep` для `logs/` и нужных `storage/` директорий.
@@ -432,19 +432,19 @@ beeui/
 
 #### Goal
 
-Поднять минимальный runnable FastAPI + Jinja2 + local Tabler-compatible web shell для BeeUI demo mode, чтобы `./start.sh serve` запускал реальную web surface вместо placeholder.
+Поднять минимальный runnable FastAPI + Jinja2 + local Tabler-compatible web shell для BeeUI demo mode, чтобы `./start.sh web` запускал реальную web surface вместо placeholder.
 
 #### Scope
 
 Включено:
 
 - FastAPI app factory;
-- `serve` CLI command with `--host`, `--port`, optional `--reload=false` не нужен;
+- `web` CLI command with `--host`, `--port`, optional `--reload=false` не нужен;
 - чтение `web.host`, `web.port`, `web.route_prefix`, `web.cache_static` из `config/settings.yml`;
 - Jinja2 templates with autoescape;
 - package-local templates:
   - `base.html`;
-  - `index.html`;
+  - `page.html`;
 - package-local static assets:
   - `static/css/beeui.css`;
   - `static/js/beeui.js`;
@@ -479,13 +479,13 @@ beeui/
 
 #### Deliverable
 
-`./start.sh serve --host 127.0.0.1 --port 8780` starts a real BeeUI demo web shell with local static assets, renders `/`, returns `/health`, and passes route/static/security smoke tests.
+`./start.sh web --host 127.0.0.1 --port 8780` starts a real BeeUI demo web shell with local static assets, renders `/`, returns `/health`, and passes route/static/security smoke tests.
 
 #### Checks
 
 - `uv run pytest -q`
 - `./start.sh doctor`
-- `./start.sh serve --host 127.0.0.1 --port 8780`
+- `./start.sh web --host 127.0.0.1 --port 8780`
 - route smoke:
   - `GET /`
   - `GET /health`
@@ -498,7 +498,7 @@ beeui/
 
 #### DoD
 
-- `serve` is no longer a placeholder;
+- `web` is no longer a placeholder;
 - FastAPI app starts;
 - base layout renders;
 - static assets are served from package-local static directory only;
@@ -509,34 +509,47 @@ beeui/
 
 ### Итерация 2 — Declarative pages and navigation v0
 
-**Статус:** PLANNED
+**Статус:** DONE
 
 #### Goal
 
-Добавить YAML-driven pages/navigation, чтобы UI собирался из schema, а не из hardcoded routes/templates.
+Добавить минимальный YAML-driven слой pages/navigation, чтобы BeeUI web shell рендерил страницы и навигацию из declarative UI schema, а не из hardcoded template/routes.
 
 #### Scope
 
 Включено:
 
-- `config/demo.beeui.yml`;
-- `BeeUiConfig`;
-- schema validation;
+- `config/schema.yml` как demo UI schema;
+- `BeeUiConfig` model/parser для declarative UI config;
+- fail-fast schema validation;
 - navigation model;
 - pages model;
-- active nav item;
-- page title/subtitle;
+- page id/path/title/subtitle;
 - route generation from page config;
-- graceful invalid config failure.
+- active navigation item;
+- rendering generic page template from page config;
+- graceful startup failure on invalid UI config;
+- tests for valid/invalid config and route rendering.
 
 Не включено:
 
 - data sources;
 - block registry;
 - product adapters;
-- visual builder.
+- visual builder;
+- config apply;
+- artifact browser;
+- auth/session;
+- custom page templates;
+- arbitrary HTML/JS from config.
 
-#### Example config
+#### Config separation
+
+- `config/settings.yml` остаётся runtime/system config.
+- `config/schema.yml` становится declarative UI schema для demo mode.
+- BeeUI не должен смешивать runtime settings и page/navigation schema в один объект.
+
+#### Example `config/schema.yml`
 
 ```yaml
 app:
@@ -557,26 +570,50 @@ pages:
     title: Dashboard
     subtitle: Demo operator dashboard
     blocks: []
+
+  - id: runs
+    path: /runs
+    title: Runs
+    subtitle: Placeholder page for future run overview
+    blocks: []
 ```
 
 #### Deliverable
 
-Pages/navigation рендерятся из `beeui.yml`.
+`./start.sh web --host 127.0.0.1 --port 8780` запускает BeeUI, где navigation и pages рендерятся из `config/schema.yml`.
+
+#### Suggested routes
+
+- `GET /`
+- `GET /runs`
+- `GET /health`
+- `GET /static/...`
 
 #### Checks
 
-- valid config;
-- missing app title;
-- duplicate page path;
-- active nav render;
-- unknown nav page path warning/rejection;
-- `pytest -q`.
+- `uv run pytest -q`
+- `./start.sh doctor`
+- `./start.sh routes`
+- `./start.sh web --host 127.0.0.1 --port 8780`
+- valid UI config loads;
+- missing `app.title` fails fast;
+- duplicate page path fails fast;
+- duplicate page id fails fast;
+- navigation path without matching page fails fast;
+- unsafe page path rejected;
+- active nav item renders;
+- unknown page returns 404;
+- HTML contains no external tracking scripts.
 
 #### DoD
 
 - page/nav config работает;
-- invalid config fails fast;
-- navigation рендерится без hardcoded product assumptions.
+- invalid UI config fails fast;
+- navigation рендерится без hardcoded product assumptions;
+- page title/subtitle берутся из config;
+- routes создаются из config;
+- no arbitrary HTML/JS from config;
+- no product-specific domain logic introduced.
 
 ### Итерация 3 — Block registry and base blocks v0
 
@@ -1567,7 +1604,7 @@ BeeUI можно использовать как backend для future separate 
 
 Включено:
 
-- `beeui serve --config ...`;
+- `beeui web --config ...`;
 - HTTP product adapter;
 - product registry;
 - backend health checks;

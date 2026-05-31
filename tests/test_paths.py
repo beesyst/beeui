@@ -9,6 +9,7 @@ from beeui_module.core.paths import (
     STORAGE_DIR,
     log_file_path,
     project_root,
+    schema_path,
     settings_path,
 )
 
@@ -22,12 +23,13 @@ def test_project_root_is_resolved_from_pyproject() -> None:
     assert resolved_root == PROJECT_ROOT
 
 
-# Тест: чек разрешения путей к лог файлу и конфигу от корневой директории проекта
+# Тест: пути к логам и конфигам лежат внутри проекта
 def test_log_and_settings_paths_are_under_project_root() -> None:
     resolved_root = project_root(Path(__file__))
 
     assert log_file_path(resolved_root) == resolved_root / "logs" / "app.log"
     assert settings_path(resolved_root) == resolved_root / "config" / "settings.yml"
+    assert schema_path(resolved_root) == resolved_root / "config" / "schema.yml"
 
 
 # Тест: чек констант, указывающих на поддиректории проекта, относительно корневой директории

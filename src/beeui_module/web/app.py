@@ -4,13 +4,17 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from beeui_module.core.paths import settings_path
+from beeui_module.core.paths import schema_path
 from beeui_module.core.settings import load_settings
 from beeui_module.core.version import get_version
+from beeui_module.pages.config import load_beeui_config
+from beeui_module.pages.models import BeeUiConfig
+from beeui_module.pages.router import register_configured_pages
 
 
 # Нормализация route_prefix для корректного формирования маршрутов
@@ -37,9 +41,17 @@ def _resolve_static_dir() -> Path:
 
 
 # Создание экземпляра FastAPI с учетом настроек и маршрутов
-def create_beeui_app(settings: dict[str, Any] | None = None) -> FastAPI:
+def create_beeui_app(
+    settings: dict[str, Any] | None = None,
+    ui_config: BeeUiConfig | None = None,
+) -> FastAPI:
     resolved_settings = (
         settings if settings is not None else load_settings(settings_path())
+    )
+    resolved_ui_config = (
+        ui_config
+        if ui_config is not None
+        else load_beeui_config(schema_path())
     )
     web_cfg = resolved_settings["web"]
     security_cfg = resolved_settings["security"]
@@ -77,20 +89,16 @@ def create_beeui_app(settings: dict[str, Any] | None = None) -> FastAPI:
 
         return response
 
-    index_path = route_prefix or "/"
     health_path = f"{route_prefix}/health" if route_prefix else "/health"
 
-    @app.get(index_path, response_class=HTMLResponse)
-    async def index(request: Request) -> HTMLResponse:
-        return templates.TemplateResponse(
-            request=request,
-            name="index.html",
-            context={
-                "route_prefix": route_prefix,
-                "product_title": product_cfg["title"],
-                "product_id": product_cfg["id"],
-            },
-        )
+    register_configured_pages(
+        app=app,
+        templates=templates,
+        route_prefix=route_prefix,
+        ui_config=resolved_ui_config,
+        product_title=product_cfg["title"],
+        product_id=product_cfg["id"],
+    )
 
     @app.get(health_path, response_class=JSONResponse)
     async def health() -> JSONResponse:

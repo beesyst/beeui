@@ -2,9 +2,9 @@
 
 **BeeUI** — общий Python-based UI framework для Bee-продуктов: `beecap`, `beeagent` и будущих модулей Bee ecosystem.
 
-## Iteration 1
+## Iteration 2
 
-Текущий deliverable — minimal runnable FastAPI + Jinja2 + local static web shell.
+Текущий deliverable — declarative pages/navigation v0 на базе `config/schema.yml`.
 
 Уже работает:
 
@@ -13,14 +13,17 @@
 - `./start.sh doctor`
 - `./start.sh version`
 - `./start.sh routes`
-- `./start.sh serve --host 127.0.0.1 --port 8780`
+- `./start.sh web --host 127.0.0.1 --port 8780`
 - `import beeui_module`
 
-Минимальная web surface Iteration 1:
+Минимальная web surface Iteration 2:
 
 - `GET /`
+- `GET /runs`
 - `GET /health`
 - `GET /static/...`
+
+Navigation и page metadata (title/subtitle/paths) рендерятся из `config/schema.yml`.
 
 Пока не входит в scope:
 
@@ -312,21 +315,20 @@ BeeUI не должен получать прямую authority на tools/MCP/r
 Используется для разработки BeeUI без BeeCap/BeeAgent.
 
 ```bash
-./start.sh serve
+./start.sh web
 ```
 
 Вариант с явным host/port:
 
 ```bash
-./start.sh serve --host 127.0.0.1 --port 8780
+./start.sh web --host 127.0.0.1 --port 8780
 ```
 
 Что показывает:
 
-- demo dashboard;
-- demo navigation;
-- demo blocks;
-- static/fake data sources.
+- schema-driven demo pages;
+- schema-driven navigation;
+- placeholder empty state for future blocks.
 
 ### `embedded`
 
@@ -352,7 +354,7 @@ app = create_beeui_app(
 
 Future scope.
 
-В Iteration 1 standalone mode не реализован. Запуск с отдельным config-файлом будет добавлен позже, когда появится HTTP product adapter и standalone deployment contract.
+В Iteration 2 standalone mode не реализован. Запуск с отдельным config-файлом будет добавлен позже, когда появится HTTP product adapter и standalone deployment contract.
 
 ## Основные возможности
 
@@ -362,8 +364,8 @@ Future scope.
 
 ```yaml
 app:
-  title: BeeCap
-  product: beecap
+  title: BeeUI Demo
+  product: demo
 
 navigation:
   - title: Dashboard
@@ -372,26 +374,28 @@ navigation:
   - title: Runs
     path: /runs
     icon: list
-  - title: Config
-    path: /config
-    icon: settings
 
 pages:
   - id: dashboard
     path: /
     title: Dashboard
-    subtitle: Operator overview
-    layout:
-      - row:
-          - block: latest_run
-            width: 3
-          - block: runtime_status
-            width: 3
-          - block: active_orders
-            width: 3
-          - block: realized_profit
-            width: 3
+    subtitle: Demo operator dashboard
+    blocks: []
+
+  - id: runs
+    path: /runs
+    title: Runs
+    subtitle: Placeholder page for future run overview
+    blocks: []
 ```
+
+Iteration 2 rules:
+
+- `page.id` must be unique;
+- `page.path` must be unique;
+- `navigation[].path` must reference declared page path;
+- reserved paths `/health`, `/static`, `/static/...` are rejected;
+- `blocks` exists only as placeholder list until Iteration 3.
 
 ### Blocks
 
@@ -703,13 +707,13 @@ cd beeui
 - basic environment.
 
 ```bash
-./start.sh serve
+./start.sh web
 ```
 
 Запускает demo BeeUI web app.
 
 ```bash
-./start.sh serve --host 127.0.0.1 --port 8780
+./start.sh web --host 127.0.0.1 --port 8780
 ```
 
 Запускает demo web app на конкретном host/port.
@@ -745,7 +749,7 @@ uv run pytest -q
 ### Запуск demo UI
 
 ```bash
-./start.sh serve --host 127.0.0.1 --port 8780
+./start.sh web --host 127.0.0.1 --port 8780
 ```
 
 Открыть:
@@ -758,7 +762,7 @@ http://127.0.0.1:8780
 
 ```bash
 uv run --frozen --extra dev python config/start.py doctor
-uv run --frozen --extra dev python config/start.py serve
+uv run --frozen --extra dev python config/start.py web
 ```
 
 ## Документация
@@ -772,7 +776,40 @@ uv run --frozen --extra dev python config/start.py serve
 - `docs/SECURITY.md` — secure development rules;
 - `docs/WEB_UI.md` — HTML routes, layout, dashboard behavior;
 
-## Целевая структура проекта
+## Целевая структура проекта (planned)
+
+Актуальные ключевые файлы Iteration 2:
+
+```text
+config/
+  settings.yml
+  schema.yml
+
+src/beeui_module/
+  cli/
+    doctor.py
+    main.py
+    web.py
+  core/
+    paths.py
+    settings.py
+    log.py
+    version.py
+  pages/
+    config.py
+    models.py
+    router.py
+  web/
+    app.py
+    templates/
+      base.html
+      page.html
+    static/
+      css/beeui.css
+      js/beeui.js
+```
+
+Остальная структура ниже — целевая (planned) для следующих итераций.
 
 ```text
 beeui/
@@ -849,7 +886,7 @@ beeui/
 │       ├── cli/
 │       │   ├── doctor.py
 │       │   ├── main.py
-│       │   └── serve.py
+│       │   └── web.py
 │       │
 │       ├── config_ui/
 │       │   ├── apply.py
@@ -882,7 +919,7 @@ beeui/
 │       │   ├── app.py
 │       │   ├── templates/
 │       │   │   ├── base.html
-│       │   │   └── index.html
+│       │   │   └── page.html
 │       │   └── static/
 │       │       ├── css/
 │       │       │   └── beeui.css
@@ -931,7 +968,7 @@ src/beeui_module/web/templates/
 src/beeui_module/web/static/
 ```
 
-Planned после Iteration 1:
+Planned after Iteration 2:
 
 ```text
 src/beeui_module/server.py
@@ -1221,7 +1258,7 @@ Bee-продукты больше не должны дублировать:
 | Команда              | Что делает                                                  |
 | -------------------- | ----------------------------------------------------------- |
 | `./start.sh doctor`  | Проверка окружения, структуры, imports, config availability |
-| `./start.sh serve`   | Запуск demo BeeUI web app                                   |
+| `./start.sh web`   | Запуск demo BeeUI web app                                   |
 | `./start.sh routes`  | Показ registered routes                                     |
 | `./start.sh version` | Показ версии BeeUI                                          |
 
@@ -1234,7 +1271,7 @@ uv run pytest -q
 ### Web smoke
 
 ```bash
-./start.sh serve --host 127.0.0.1 --port 8780
+./start.sh web --host 127.0.0.1 --port 8780
 ```
 
 Проверить:
@@ -1342,19 +1379,20 @@ Visual builder later.
 Текущий статус:
 
 ```text
-Iteration 1 — Tabler web shell v0 — DONE
+Iteration 2 — Declarative pages and navigation v0 — DONE
 ```
 
 Работает:
 
 ```bash
 ./start.sh doctor
+./start.sh routes
 uv run pytest -q
-./start.sh serve --host 127.0.0.1 --port 8780
+./start.sh web --host 127.0.0.1 --port 8780
 ```
 
 Следующий шаг:
 
 ```text
-Iteration 2 — Declarative pages and navigation v0
+Iteration 3 — Block registry and base blocks v0
 ```

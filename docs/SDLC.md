@@ -292,8 +292,8 @@ These are the default checks unless the task clearly does not need some of them.
 
 If the change affects web behavior, also run the affected route or app entrypoint, for example:
 
-- `./start.sh serve --host 127.0.0.1 --port 8780`
-- `uv run python config/start.py serve --host 127.0.0.1 --port 8780`
+- `./start.sh web --host 127.0.0.1 --port 8780`
+- `uv run python config/start.py web --host 127.0.0.1 --port 8780`
 
 Verify:
 

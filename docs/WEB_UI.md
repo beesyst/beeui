@@ -45,14 +45,13 @@ Product decides.
 
 Source of truth для `beeui` web surface:
 
-- `config/settings.yml` в Iteration 1;
+- `config/settings.yml` как runtime/system config;
+- `config/schema.yml` как declarative pages/navigation schema в demo mode;
 - product adapter;
 - product-provided read-models;
 - product artifacts, если они явно allowlisted adapter-ом;
 - product-owned config validation callbacks;
 - product-owned bounded action callbacks.
-
-Будущий declarative UI config может использовать `config/beeui.yml` или product-specific BeeUI config после Iteration 2+.
 
 `beeui` не должен самостоятельно угадывать domain semantics из чужого `storage/`.
 
@@ -136,7 +135,7 @@ Later: standalone.
 
 ## Package layout
 
-Canonical web implementation в Iteration 1 живёт в `src/beeui_module/web/`.
+Canonical web implementation after Iteration 2 живёт в `src/beeui_module/web/`.
 Root-level `app.py` не является текущей точкой входа.
 Templates/static находятся внутри `web/`.
 
@@ -146,7 +145,7 @@ src/beeui_module/
     app.py
     templates/
       base.html
-      index.html
+      page.html
       components/        # planned
     static/
       css/beeui.css
@@ -155,7 +154,7 @@ src/beeui_module/
 
   cli/
     main.py
-    serve.py
+    web.py
     doctor.py
 
   core/
@@ -164,7 +163,7 @@ src/beeui_module/
     log.py
     version.py
 
-  pages/                 # planned/future module
+  pages/                 # current declarative schema/config/router module
   blocks/                # planned/future module
   adapters/              # planned/future module
   artifacts/             # planned/future module
@@ -187,13 +186,13 @@ Rules:
 Локальный demo start:
 
 ```bash
-./start.sh serve
+./start.sh web
 ```
 
 С явным host/port:
 
 ```bash
-./start.sh serve --host 127.0.0.1 --port 8780
+./start.sh web --host 127.0.0.1 --port 8780
 ```
 
 Doctor:
@@ -206,29 +205,38 @@ Doctor:
 
 ```bash
 ./start.sh doctor
-./start.sh serve
+./start.sh web
 ```
 
-В Iteration 1 `serve` читает `config/settings.yml`. Отдельный `--config` не является текущим CLI contract.
+В текущем MVP `web` читает `config/settings.yml` и `config/schema.yml`.
+
+- `settings.yml` — runtime/system config.
+- `schema.yml` — declarative pages/navigation schema.
+
+Отдельный `--config` не является текущим CLI contract.
 
 ---
 
 ## Product integration
 
-### Current Iteration 1 app factory
+### Current Iteration 2 app factory
 
-В Iteration 1 app factory принимает загруженные settings и создаёт минимальный FastAPI/Jinja2 shell.
+В Iteration 2 app factory принимает загруженные settings и declarative UI schema и создаёт FastAPI/Jinja2 shell.
 
 Пример:
 
 ```python
-from beeui_module.core.paths import settings_path
+from beeui_module.core.paths import settings_path, schema_path
 from beeui_module.core.settings import load_settings
+from beeui_module.pages.config import load_beeui_config
 from beeui_module.web.app import create_beeui_app
 
 settings = load_settings(settings_path())
-app = create_beeui_app(settings=settings)
+ui_config = load_beeui_config(schema_path())
+app = create_beeui_app(settings=settings, ui_config=ui_config)
 ```
+
+Product adapter injection остаётся planned/future scope.
 
 ### Future embedded app factory
 
@@ -314,7 +322,7 @@ Write/config/action methods may return explicit `unsupported`.
 
 ## BeeUI config
 
-Current Iteration 1 config file:
+Current runtime config file:
 
 ```text
 config/settings.yml
@@ -358,11 +366,13 @@ features:
   api: false
 ```
 
-Будущий declarative UI config может использовать `config/beeui.yml` или product-specific BeeUI config после Iteration 2+.
-
-Planned Iteration 2+ declarative UI schema example:
+Iteration 2 declarative UI schema example (`config/schema.yml`):
 
 ```yaml
+app:
+  title: BeeUI Demo
+  product: demo
+
 navigation:
   - title: Dashboard
     path: /
@@ -370,64 +380,31 @@ navigation:
   - title: Runs
     path: /runs
     icon: list
-  - title: Config
-    path: /config
-    icon: settings
-  - title: Admin
-    path: /admin
-    icon: shield
 
 pages:
   - id: dashboard
     path: /
     title: Dashboard
-    subtitle: Operator overview
-    layout:
-      - row:
-          - block: latest_run
-            width: 3
-          - block: runtime_status
-            width: 3
-          - block: attention
-            width: 6
+    subtitle: Demo operator dashboard
+    blocks: []
 
-blocks:
-  latest_run:
-    type: metric_card
-    title: Latest Run
-    source: dashboard.latest_run
-    value: run_id_short
-    href: run_url
-    empty: No run available
-
-  runtime_status:
-    type: status_card
-    title: Runtime Status
-    source: dashboard.runtime
-    status: status
-    message: message
-
-  attention:
-    type: table_card
-    title: Attention
-    source: dashboard.attention_items
-    columns:
-      - key: severity
-        label: Severity
-      - key: title
-        label: Title
-      - key: detail
-        label: Detail
+  - id: runs
+    path: /runs
+    title: Runs
+    subtitle: Placeholder page for future run overview
+    blocks: []
 ```
 
 Rules:
 
 - config schema must be validated fail-fast;
-- unknown block types must fail fast or render explicit unsupported block state;
+- `app.title` and `app.product` are required;
+- page `id` must be safe and unique;
 - page paths must be unique;
-- navigation paths must reference known routes or be explicitly external;
+- navigation paths must reference known page paths;
+- reserved paths `/health`, `/static`, `/static/...` are rejected;
 - no arbitrary HTML/JS in config;
-- future visual builder must edit this schema, not templates directly.
+- `blocks` is required but only empty-list rendering is supported in Iteration 2.
 
 ## Tabler shell policy
 
@@ -510,7 +487,7 @@ Contract boundary:
 
 ## Surface model
 
-Generic BeeUI surface ниже описывает planned route families. Iteration 1 route contract отдельно зафиксирован в разделе `MVP route contract`.
+Generic BeeUI surface ниже описывает planned route families. Current MVP route contract отдельно зафиксирован в разделе `MVP route contract`.
 
 HTML routes:
 
@@ -543,9 +520,10 @@ JSON routes:
 
 Not all routes must exist in MVP.
 
-MVP route set (Iteration 1):
+MVP route set (current MVP):
 
 - `/`
+- `/runs`
 - `/health`
 - `/static/...`
 
@@ -718,14 +696,17 @@ pages:
   - id: dashboard
     path: /
     title: Dashboard
-    subtitle: Operator overview
-    layout:
-      - row:
-          - block: latest_run
-            width: 3
-          - block: runtime_status
-            width: 3
+    subtitle: Demo operator dashboard
+    blocks: []
+
+  - id: runs
+    path: /runs
+    title: Runs
+    subtitle: Placeholder page for future run overview
+    blocks: []
 ```
+
+Layout/block example is planned for block/layout iterations (Iteration 3+).
 
 Rules:
 
@@ -733,8 +714,7 @@ Rules:
 - page `path` must be unique;
 - page path must be safe;
 - page cannot define arbitrary HTML;
-- layout width should fit a 12-column grid;
-- unknown blocks are rejected or rendered as explicit unsupported state.
+- block rendering is out of Iteration 2; blocks must be a list and may be empty.
 
 ## Blocks
 
@@ -1187,7 +1167,7 @@ BeeUI must follow these rules:
 
 ## Auth model
 
-Auth is not required for Iteration 1 MVP, but BeeUI must be designed for it.
+Auth is not required for the current MVP, but BeeUI must be designed for it.
 
 Planned auth modes:
 
@@ -1272,7 +1252,19 @@ visual editor
 
 ## Typical operator scenarios
 
+Current Iteration 2 scenario:
+
+```text
+1. BeeUI loads config/settings.yml.
+2. BeeUI loads config/schema.yml.
+3. Operator opens / or /runs.
+4. BeeUI renders configured page title/subtitle/navigation.
+5. No adapter/data/block rendering is executed yet.
+```
+
 ### 1. Open product dashboard
+
+Planned/future (requires adapter/block iterations).
 
 1. Product starts embedded BeeUI web app.
 2. Operator opens `/`.
@@ -1281,12 +1273,16 @@ visual editor
 
 ### 2. Inspect runs
 
+Planned/future (requires adapter iterations).
+
 1. Open `/runs`.
 2. BeeUI calls product adapter `list_runs()`.
 3. Operator opens `/runs/{run_id}`.
 4. BeeUI calls `get_run(run_id)`.
 
 ### 3. Inspect artifact
+
+Planned/future (requires artifact/adapters iterations).
 
 1. Open run detail.
 2. Click source artifact.
@@ -1295,6 +1291,8 @@ visual editor
 
 ### 4. Preview config change
 
+Planned/future (requires config UI iterations).
+
 1. Open `/config`.
 2. Select allowlisted key.
 3. Submit preview.
@@ -1302,6 +1300,8 @@ visual editor
 5. No file is written.
 
 ### 5. Apply bounded config change
+
+Planned/future (requires config apply and audit iterations).
 
 1. Product exposes writable config support.
 2. Operator submits allowlisted change.
@@ -1312,15 +1312,12 @@ visual editor
 
 ## MVP route contract
 
-Iteration 1 MVP:
+Iteration 2 MVP:
 
 - `GET /`
+- `GET /runs`
 - `GET /health`
 - `GET /static/...`
-
-Iteration 2-4 MVP (planned):
-
-- `GET /api/dashboard`
 
 Iteration 5-10 MVP:
 

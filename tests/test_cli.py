@@ -9,11 +9,12 @@ from beeui_module.cli.doctor import run_doctor
 from beeui_module.cli.main import main
 from beeui_module.core.log import configure_logging
 from beeui_module.core.settings import load_settings
+from beeui_module.core.version import get_version
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
-# Тест: проверка базовой маршрутизации CLI-команд и обработки неизвестных команд
+# Тест: команда doctor вызывается через main
 def test_main_dispatches_doctor(monkeypatch) -> None:
     calls: list[str] = []
 
@@ -27,13 +28,14 @@ def test_main_dispatches_doctor(monkeypatch) -> None:
     assert calls == ["doctor"]
 
 
-# Тест: чек вывода версии через CLI
+# Тест: чек вывода маршрутов через CLI
 def test_main_prints_routes(capsys) -> None:
     assert main(["routes"]) == 0
 
     captured = capsys.readouterr()
-    assert "Iteration 1 route surface" in captured.out
+    assert "Iteration 2 route surface" in captured.out
     assert "GET /" in captured.out
+    assert "GET /runs" in captured.out
     assert "GET /health" in captured.out
     assert "GET /static/..." in captured.out
 
@@ -46,7 +48,7 @@ def test_invalid_command_is_handled_safely(capsys) -> None:
     assert "Unknown command: bogus" in captured.err
 
 
-# Тест: чек базовой маршрутизации CLI-команд и обработки неизвестных команд
+# Тест: стартовый скрипт выводит версию
 def test_start_script_dispatches_version() -> None:
     result = subprocess.run(
         [sys.executable, "config/start.py", "version"],
@@ -57,7 +59,7 @@ def test_start_script_dispatches_version() -> None:
     )
 
     assert result.returncode == 0
-    assert result.stdout.strip() == "beeui 0.2.0"
+    assert result.stdout.strip() == f"beeui {get_version()}"
 
 
 # Тест: чек, что команда doctor пишет в stdout и создает лог-файл с ожидаемым содержимым
@@ -98,6 +100,24 @@ def test_doctor_writes_stdout_and_log(tmp_path, capsys) -> None:
         "  title: BeeUI Demo\n",
         encoding="utf-8",
     )
+    (root / "config" / "schema.yml").write_text(
+        "app:\n"
+        "  title: BeeUI Demo\n"
+        "  product: demo\n"
+        "\n"
+        "navigation:\n"
+        "  - title: Dashboard\n"
+        "    path: /\n"
+        "    icon: dashboard\n"
+        "\n"
+        "pages:\n"
+        "  - id: dashboard\n"
+        "    path: /\n"
+        "    title: Dashboard\n"
+        "    subtitle: Demo operator dashboard\n"
+        "    blocks: []\n",
+        encoding="utf-8",
+    )
 
     assert run_doctor(root=root) == 0
 
@@ -106,21 +126,29 @@ def test_doctor_writes_stdout_and_log(tmp_path, capsys) -> None:
     assert (root / "logs" / "app.log").is_file()
 
 
-# Тест: чек, что load_settings валидирует конфиг и выбрасывает исключения при проблемах с конфигом
-def test_main_dispatches_serve_args(monkeypatch) -> None:
+# Тест: web-команда передает аргументы в run_web
+def test_main_dispatches_web_args(monkeypatch) -> None:
     calls: list[list[str]] = []
 
-    def fake_run_serve(args) -> int:
+    def fake_run_web(args) -> int:
         calls.append(list(args))
         return 0
 
-    monkeypatch.setattr("beeui_module.cli.main.run_serve", fake_run_serve)
+    monkeypatch.setattr("beeui_module.cli.main.run_web", fake_run_web)
 
-    assert main(["serve", "--host", "127.0.0.1", "--port", "8780"]) == 0
+    assert main(["web", "--host", "127.0.0.1", "--port", "8780"]) == 0
     assert calls == [["--host", "127.0.0.1", "--port", "8780"]]
 
 
-# Тест: чек, что configure_logging создает лог-файл с ожидаемым содержимым
+# Тест: чек, что старая команда serve больше не поддерживается и вызывает ошибку
+def test_old_serve_command_is_not_supported(capsys) -> None:
+    assert main(["serve"]) == 2
+
+    captured = capsys.readouterr()
+    assert "Unknown command: serve" in captured.err
+
+
+# Тест: load_settings читает валидный конфиг
 def test_load_settings_reads_valid_config(tmp_path) -> None:
     config_path = tmp_path / "settings.yml"
     config_path.write_text(
@@ -161,7 +189,7 @@ def test_load_settings_reads_valid_config(tmp_path) -> None:
     assert settings["storage"]["root"] == "storage"
 
 
-# Тест: чек, что load_settings валидирует конфиг и выбрасывает исключения при проблемах с конфигом
+# Тест: отсутствие logging.level вызывает fail-fast ошибку
 def test_load_settings_fails_fast_on_missing_logging_level(tmp_path) -> None:
     config_path = tmp_path / "settings.yml"
     config_path.write_text(
