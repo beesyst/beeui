@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-bs-theme="dark">
+<html lang="en" data-bs-theme="{{ theme.mode }}">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -7,12 +7,14 @@
     <link rel="stylesheet" href="{{ route_prefix }}/static/vendor/tabler/css/tabler-compatible.min.css" />
     <link rel="stylesheet" href="{{ route_prefix }}/static/css/beeui.css" />
   </head>
-  <body class="layout-fluid">
-    <div class="page beeui-page">
+  <body class="{{ shell_classes }}">
+    <div class="page beeui-page {{ layout.type_class }} {{ layout.container_class }}">
       {% include "components/sidebar.html" %}
 
       <div class="page-wrapper">
+        {% if layout.navbar_enabled %}
         {% include "components/navbar.html" %}
+        {% endif %}
 
         <main class="page-body" aria-label="Main content">
           {% block content %}{% endblock %}

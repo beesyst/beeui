@@ -728,17 +728,23 @@ src/beeui_module/static/vendor/tabler/
 
 ### Итерация 4 — Theme, layout and navigation schema v1
 
-**Статус:** PLANNED
+**Статус:** DONE
 
 #### Goal
 
-Добавить controlled schema-driven customization для theme/layout/navigation, чтобы каждый Bee-продукт мог настраивать внешний вид и навигацию без копирования HTML/CSS.
+Добавить controlled schema-driven customization для theme/layout/navigation, чтобы BeeUI visual shell настраивался через `config/schema.yml`, а не через ручные правки HTML/CSS.
+
+#### Почему это нужно
+
+Iteration 3 зафиксировала локальный Tabler-compatible vertical layout foundation, но часть UI-поведения всё ещё зашита в templates/CSS: dark mode, branding/logo text, container size, sidebar/navbar variants and navigation shape.
+
+До blocks/product adapters нужно закрепить безопасный schema contract, чтобы Bee-продукты могли менять внешний вид и навигацию декларативно, без копирования BeeUI templates и без arbitrary CSS/JS.
 
 #### Scope
 
 Включено:
 
-- schema fields:
+- расширение `config/schema.yml`:
 
 ```yaml
 app:
@@ -760,46 +766,52 @@ app:
       collapsed: false
     navbar:
       enabled: true
+      variant: default
+      sticky: false
 ```
+
+- fail-fast schema validation for:
+  - `app.logo_text`;
+  - `app.theme`;
+  - `app.layout`;
+  - grouped navigation;
+  - disabled navigation items;
+  - internal-only navigation paths by default;
 
 - supported theme options:
   - `mode`: `light`, `dark`, `auto`;
-  - `primary`: controlled Tabler palette values only;
+  - `primary`: controlled palette enum only;
   - `base`: `slate`, `gray`, `zinc`, `neutral`, `stone`;
   - `font`: `sans-serif`, `serif`, `monospace`;
-  - `radius`: controlled numeric enum;
+  - `radius`: controlled numeric enum, for example `0`, `1`, `2`;
   - `density`: `default`, `compact`, `comfortable`;
 
 - supported layout options:
-  - `vertical`;
-  - `fluid`;
-  - `boxed`;
-  - `condensed`;
-  - `navbar_dark`;
-  - `navbar_sticky`;
-  - future placeholders for `horizontal`, `right_vertical`, `rtl`;
+  - `layout.type`: `vertical` only in this iteration;
+  - `layout.container`: `xl`, `fluid`;
+  - `layout.sidebar.variant`: `default`, `dark`;
+  - `layout.sidebar.collapsed`: boolean;
+  - `layout.navbar.enabled`: boolean;
+  - `layout.navbar.variant`: `default`, `dark`;
+  - `layout.navbar.sticky`: boolean;
 
 - grouped navigation schema:
   - section/group title;
-  - icon;
-  - children;
-  - active item;
+  - nested children;
   - disabled items;
-  - external links disabled by default;
+  - active nested item;
+  - duplicate nav path rejection;
+  - nav path must match a declared page path;
+  - external links rejected by default;
 
-- validation:
-  - invalid theme rejected;
-  - unsafe path rejected;
-  - duplicate nav path rejected;
-  - nav path must match page path unless explicitly external and allowlisted;
+- centralized safe theme rendering:
+  - `data-bs-theme` generated from validated schema;
+  - CSS classes/tokens generated from safe enum values only;
+  - no arbitrary CSS string from config;
+  - no arbitrary JS from config;
+  - no localStorage-driven persistent theme mutation;
 
-- CSS variable generation from safe enum values only;
-
-- no arbitrary CSS;
-
-- no arbitrary JS;
-
-- no localStorage-driven persistent theme mutation unless explicitly enabled later.
+- docs/tests update.
 
 Не включено:
 
@@ -807,33 +819,51 @@ app:
 - user-uploaded logos;
 - arbitrary color hex input;
 - arbitrary CSS editor;
+- arbitrary JS;
+- custom HTML blocks;
+- product adapters;
+- block registry/rendering;
 - no-code dashboard builder;
-- product adapters.
+- auth/session;
+- config apply.
 
 #### Deliverable
 
-BeeUI visual style, layout and navigation are controlled by validated schema, not by hand-editing templates.
+`./start.sh web --host 127.0.0.1 --port 8780` renders BeeUI where theme, layout shell options and grouped navigation are controlled by validated `config/schema.yml`.
 
 #### Checks
 
 - `uv run pytest -q`
-- valid theme loads;
-- invalid theme rejected;
+- `./start.sh doctor`
+- `./start.sh routes`
+- `./start.sh web --host 127.0.0.1 --port 8780`
+- valid theme/layout config loads;
+- invalid theme mode rejected;
+- invalid primary/base/font/radius/density rejected;
+- invalid layout type rejected;
+- unsafe/arbitrary CSS field rejected;
+- arbitrary JS field rejected;
 - dark mode renders;
 - light mode renders;
-- primary color enum renders;
-- unsafe custom CSS rejected;
-- external nav link rejected unless allowlisted;
+- primary color enum renders as controlled class/token;
+- grouped navigation renders;
+- disabled nav item renders but is not linked;
 - active nested navigation item renders;
-- no external assets introduced.
+- duplicate nav path rejected;
+- external nav link rejected unless explicitly supported later;
+- no external assets introduced;
+- no hidden runtime theme mutation.
 
 #### DoD
 
 - theme/layout/navigation are schema-driven;
-- products can customize BeeUI safely;
+- Iteration 3 hardcoded dark default is replaced by validated schema value;
+- products can customize BeeUI safely through schema;
 - no arbitrary CSS/JS injection;
-- no hidden runtime theme mutation;
-- Tabler customization is centralized.
+- no external assets/tracking introduced;
+- grouped navigation works without product-specific assumptions;
+- no product-specific domain logic introduced;
+- no new execution/write authority introduced.
 
 ---
 
@@ -2052,13 +2082,15 @@ BeeUI can work as separate service over BeeCap/BeeAgent APIs.
 Iteration 0 — Project skeleton and startup contract
 Iteration 1 — Tabler web shell v0
 Iteration 2 — Declarative pages and navigation v0
-Iteration 3 — Block registry and base blocks v0
-Iteration 4 — Data sources and resolver v0
-Iteration 5 — Product adapter contract v0
-Iteration 6 — BeeCap adapter MVP
-Iteration 7 — Embedded mount API v0
-Iteration 9 — BeeCap dashboard parity MVP
-Iteration 10 — Runs list and run overview MVP
+Iteration 3 — Local Tabler vendor/assets and layout parity v1
+Iteration 4 — Theme, layout and navigation schema v1
+Iteration 5 — Block registry and dashboard blocks v1
+Iteration 7 — Data sources and resolver v0
+Iteration 8 — Product adapter contract v0
+Iteration 9 — BeeCap adapter MVP
+Iteration 10 — Embedded mount API v0
+Iteration 12 — BeeCap dashboard parity MVP
+Iteration 13 — Runs list and run overview MVP
 ```
 
 Минимальный практический MVP считается достигнутым, когда:

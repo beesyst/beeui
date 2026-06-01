@@ -26,6 +26,7 @@ def test_get_index_returns_html() -> None:
     assert response.status_code == 200
     assert "Dashboard" in response.text
     assert "Demo operator dashboard" in response.text
+    assert "Workspace" in response.text
     assert 'href="/runs"' in response.text
     assert response.headers["X-BeeUI-Read-Only"] == "true"
     assert response.headers["Cache-Control"] == "no-store"
@@ -131,6 +132,8 @@ def test_html_uses_local_assets_only() -> None:
     assert "/static/css/beeui.css" in response.text
     assert "/static/js/beeui.js" in response.text
     assert 'data-bs-theme="dark"' in response.text
+    assert "beeui-theme-primary-blue" in response.text
+    assert "beeui-theme-base-gray" in response.text
 
 
 # Тест: Jinja autoescape предотвращает вставку сырого script из title

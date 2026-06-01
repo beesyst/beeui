@@ -5,7 +5,7 @@
 {% block content %}
 {% include "components/page_header.html" %}
 
-<div class="container-xl">
+<div class="{{ layout.container_class }}">
   <section class="card p-3" aria-label="Page blocks">
     {% if has_blocks %}
     <h3 class="beeui-card-title">Blocks</h3>

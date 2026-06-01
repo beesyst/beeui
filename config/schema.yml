@@ -1,14 +1,36 @@
 app:
   title: BeeUI Demo
   product: demo
+  logo_text: BeeUI
+  theme:
+    mode: dark
+    primary: blue
+    base: gray
+    font: sans-serif
+    radius: 1
+    density: default
+  layout:
+    type: vertical
+    container: xl
+    sidebar:
+      variant: dark
+      collapsed: false
+    navbar:
+      enabled: true
+      variant: default
+      sticky: false
 
 navigation:
-  - title: Dashboard
-    path: /
-    icon: dashboard
-  - title: Runs
-    path: /runs
-    icon: list
+  - title: Workspace
+    children:
+      - title: Dashboard
+        path: /
+        icon: dashboard
+      - title: Runs
+        path: /runs
+        icon: list
+      - title: Reports
+        disabled: true
 
 pages:
   - id: dashboard

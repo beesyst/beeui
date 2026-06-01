@@ -2,9 +2,9 @@
 
 **BeeUI** — общий Python-based UI framework для Bee-продуктов: `beecap`, `beeagent` и будущих модулей Bee ecosystem.
 
-## Iteration 3
+## Iteration 4
 
-Текущий deliverable — local Tabler-compatible assets и production-safe vertical operator layout foundation поверх declarative pages/navigation из `config/schema.yml`.
+Текущий deliverable — schema-driven theme, layout и grouped navigation поверх declarative pages/navigation из `config/schema.yml`.
 
 Уже работает:
 
@@ -15,6 +15,7 @@
 - `./start.sh routes`
 - `./start.sh web --host 127.0.0.1 --port 8780`
 - `import beeui_module`
+- schema-driven theme/layout/navigation in `config/schema.yml`
 
 Минимальная web surface Iteration 3:
 
@@ -43,7 +44,7 @@ BeeUI currently ships a local Tabler-compatible subset under
 It is not a full upstream Tabler demo bundle.
 No preview/demo/tracking assets are shipped.
 
-Navigation и page metadata (title/subtitle/paths) рендерятся из `config/schema.yml`.
+Navigation, theme и layout shell options (title/subtitle/paths/logo_text/theme/layout) рендерятся из `config/schema.yml`.
 
 Пока не входит в scope:
 
