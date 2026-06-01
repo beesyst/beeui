@@ -46,7 +46,7 @@ Product decides.
 Source of truth для `beeui` web surface:
 
 - `config/settings.yml` как runtime/system config;
-- `config/schema.yml` как declarative pages/navigation schema в demo mode;
+- `config/schema.yml` как declarative pages/navigation/theme/layout schema в demo mode;
 - product adapter;
 - product-provided read-models;
 - product artifacts, если они явно allowlisted adapter-ом;
@@ -211,7 +211,7 @@ Doctor:
 В текущем MVP `web` читает `config/settings.yml` и `config/schema.yml`.
 
 - `settings.yml` — runtime/system config.
-- `schema.yml` — declarative pages/navigation schema.
+- `schema.yml` — declarative pages/navigation/theme/layout schema.
 
 Отдельный `--config` не является текущим CLI contract.
 
@@ -219,9 +219,9 @@ Doctor:
 
 ## Product integration
 
-### Current Iteration 3 app factory
+### Current Iteration 4 app factory
 
-In the current Iteration 3 state, the app factory still accepts loaded settings and declarative UI schema and creates the FastAPI/Jinja2 shell.
+In the current Iteration 4 state, the app factory accepts loaded settings and declarative UI schema and creates the FastAPI/Jinja2 shell.
 
 Пример:
 
@@ -370,20 +370,42 @@ features:
   api: false
 ```
 
-Iteration 2 declarative UI schema example (`config/schema.yml`):
+Iteration 4 declarative UI schema example (`config/schema.yml`):
 
 ```yaml
 app:
   title: BeeUI Demo
   product: demo
+  logo_text: BeeUI
+  theme:
+    mode: dark
+    primary: blue
+    base: gray
+    font: sans-serif
+    radius: 1
+    density: default
+  layout:
+    type: vertical
+    container: xl
+    sidebar:
+      variant: dark
+      collapsed: false
+    navbar:
+      enabled: true
+      variant: default
+      sticky: false
 
 navigation:
-  - title: Dashboard
-    path: /
-    icon: dashboard
-  - title: Runs
-    path: /runs
-    icon: list
+  - title: Workspace
+    children:
+      - title: Dashboard
+        path: /
+        icon: dashboard
+      - title: Runs
+        path: /runs
+        icon: list
+      - title: Reports
+        disabled: true
 
 pages:
   - id: dashboard
@@ -408,7 +430,7 @@ Rules:
 - navigation paths must reference known page paths;
 - reserved paths `/health`, `/static`, `/static/...` are rejected;
 - no arbitrary HTML/JS in config;
-- `blocks` is required but only empty-list/empty-state rendering is supported in Iteration 3.
+- `blocks` is required as empty-list placeholder until block registry iteration.
 - block registry and real block rendering are planned for the blocks iteration.
 
 ## Tabler shell policy
@@ -534,7 +556,7 @@ JSON routes:
 
 Not all routes must exist in MVP.
 
-MVP route set after Iteration 3:
+MVP route set after Iteration 4:
 
 - `/`
 - `/runs`
@@ -722,7 +744,7 @@ pages:
     blocks: []
 ```
 
-Layout shell primitives are implemented in Iteration 3. Real block layout/rendering is planned for the block registry iteration.
+Current Iteration 4 layout shell primitives render schema-driven theme/layout/navigation. Real block layout/rendering is planned for the block registry iteration.
 
 Rules:
 
@@ -730,11 +752,11 @@ Rules:
 - page `path` must be unique;
 - page path must be safe;
 - page cannot define arbitrary HTML;
-- block rendering is out of Iteration 2; blocks must be a list and may be empty.
+- block rendering is out of current Iteration 4 scope; `blocks` must be a list and may be empty.
 
 ## Blocks
 
-Block registry and real block rendering are planned and are not implemented in the current Iteration 3 foundation.
+Block registry and real block rendering are planned and are not implemented in the current Iteration 4 runtime.
 The examples below describe the intended future contract.
 
 Block config:
@@ -1137,8 +1159,8 @@ Rules:
 
 ## Theme
 
-Theme schema is planned for the theme/layout iteration and is not implemented in the current Iteration 3 foundation.
-Iteration 3 uses a deterministic dark layout default in the base template.
+Theme schema is implemented in Iteration 4 as a controlled schema contract.
+The template renders the validated `mode` value into `data-bs-theme` and into a `beeui-theme-mode-*` shell class.
 
 Theme config:
 
@@ -1147,9 +1169,10 @@ app:
   theme:
     mode: dark
     primary: blue
-    font: Inter
-    radius: 2
-    density: compact
+    base: gray
+    font: sans-serif
+    radius: 1
+    density: default
 ```
 
 Supported fields:
@@ -1158,7 +1181,10 @@ Supported fields:
 - `primary`: controlled color token;
 - `font`: controlled font token;
 - `radius`: small integer scale;
-- `density`: `comfortable | compact`.
+- `density`: controlled density token.
+
+`mode: auto` is a controlled schema token for future runtime/browser preference integration.
+Current runtime keeps the KISS behavior: it renders safely as `data-bs-theme="auto"` and `beeui-theme-mode-auto`, without `localStorage` persistence or client-side theme mutation.
 
 Rules:
 
@@ -1274,14 +1300,14 @@ visual editor
 
 ## Typical operator scenarios
 
-Current Iteration 3 scenario:
+Current Iteration 4 scenario:
 
 ```text
 1. BeeUI loads config/settings.yml.
 2. BeeUI loads config/schema.yml.
 3. Operator opens / or /runs.
 4. BeeUI renders configured page title/subtitle/navigation.
-5. BeeUI renders the Iteration 3 vertical layout foundation with sidebar/navbar/page header/footer and an empty state for pages without blocks.
+5. BeeUI renders the Iteration 4 schema-driven theme/layout/navigation shell with sidebar/navbar/page header/footer and an empty state for pages without blocks.
 6. No adapter/data/block rendering is executed yet.
 ```
 
@@ -1335,7 +1361,7 @@ Planned/future (requires config apply and audit iterations).
 
 ## MVP route contract
 
-Current Iteration 3 MVP:
+Current Iteration 4 MVP:
 
 - `GET /`
 - `GET /runs`

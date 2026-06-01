@@ -4,6 +4,9 @@
   --beeui-surface: #ffffff;
   --beeui-accent: #206bc4;
   --beeui-accent-soft: rgba(var(--tblr-primary-rgb), 0.12);
+  --beeui-radius: 0.65rem;
+  --beeui-page-gap: 1rem;
+  --beeui-sidebar-width: 18rem;
 }
 
 :root[data-bs-theme="dark"] {
@@ -12,6 +15,121 @@
   --beeui-surface: #111827;
   --beeui-accent: #6ea8fe;
   --beeui-accent-soft: rgba(var(--tblr-primary-rgb), 0.18);
+}
+
+.beeui-theme-mode-light,
+.beeui-theme-mode-dark,
+.beeui-theme-mode-auto {
+  color-scheme: auto;
+}
+
+.beeui-theme-primary-blue {
+  --tblr-primary-rgb: 32, 107, 196;
+}
+
+.beeui-theme-primary-azure {
+  --tblr-primary-rgb: 26, 132, 255;
+}
+
+.beeui-theme-primary-cyan {
+  --tblr-primary-rgb: 34, 184, 207;
+}
+
+.beeui-theme-primary-teal {
+  --tblr-primary-rgb: 32, 201, 151;
+}
+
+.beeui-theme-primary-green {
+  --tblr-primary-rgb: 81, 207, 102;
+}
+
+.beeui-theme-primary-lime {
+  --tblr-primary-rgb: 130, 201, 30;
+}
+
+.beeui-theme-primary-yellow {
+  --tblr-primary-rgb: 255, 193, 7;
+}
+
+.beeui-theme-primary-orange {
+  --tblr-primary-rgb: 253, 126, 20;
+}
+
+.beeui-theme-primary-red {
+  --tblr-primary-rgb: 240, 62, 62;
+}
+
+.beeui-theme-primary-pink {
+  --tblr-primary-rgb: 214, 51, 132;
+}
+
+.beeui-theme-primary-indigo {
+  --tblr-primary-rgb: 92, 82, 162;
+}
+
+.beeui-theme-base-gray,
+.beeui-theme-base-slate,
+.beeui-theme-base-zinc,
+.beeui-theme-base-neutral,
+.beeui-theme-base-stone {
+  --beeui-surface: #ffffff;
+}
+
+.beeui-theme-font-serif {
+  font-family: Georgia, serif;
+}
+
+.beeui-theme-font-monospace {
+  font-family: SFMono-Regular, Consolas, monospace;
+}
+
+.beeui-radius-0 {
+  --beeui-radius: 0;
+}
+
+.beeui-radius-1 {
+  --beeui-radius: 0.5rem;
+}
+
+.beeui-radius-2 {
+  --beeui-radius: 0.9rem;
+}
+
+.beeui-density-compact {
+  --beeui-page-gap: 0.75rem;
+}
+
+.beeui-density-comfortable {
+  --beeui-page-gap: 1.25rem;
+}
+
+.beeui-layout-vertical {
+  grid-auto-flow: row;
+}
+
+.beeui-sidebar-variant-dark {
+  --beeui-sidebar-bg: #0f172a;
+  --beeui-sidebar-border: #243044;
+}
+
+.beeui-navbar-variant-dark {
+  background: linear-gradient(180deg, #111827, #0f172a);
+  color: #f8fafc;
+}
+
+.beeui-navbar-sticky {
+  position: sticky;
+  top: 0;
+  z-index: 1020;
+}
+
+.beeui-sidebar-collapsed {
+  width: 5rem;
+}
+
+.beeui-sidebar-collapsed .nav-link-title,
+.beeui-sidebar-collapsed .beeui-nav-group-title {
+  display: none;
 }
 
 body {
@@ -23,7 +141,7 @@ body {
 .beeui-page {
   display: grid;
   min-height: 100vh;
-  grid-template-columns: 18rem minmax(0, 1fr);
+  grid-template-columns: var(--beeui-sidebar-width) minmax(0, 1fr);
 }
 
 .beeui-sidebar {
@@ -47,7 +165,7 @@ body {
 }
 
 .sidebar__link {
-  border-radius: 0.6rem;
+  border-radius: var(--beeui-radius);
   padding: 0.55rem 0.7rem;
   color: var(--tblr-body-color);
   font-weight: 600;
@@ -60,6 +178,21 @@ body {
 .sidebar__link.is-active {
   background: var(--beeui-accent-soft);
   color: var(--beeui-accent);
+}
+
+.beeui-nav-group-title {
+  cursor: default;
+  opacity: 0.92;
+}
+
+.beeui-nav-disabled {
+  opacity: 0.48;
+  pointer-events: none;
+}
+
+.beeui-nav-children {
+  margin-left: 0.6rem;
+  margin-top: 0.25rem;
 }
 
 .page-wrapper {
@@ -90,7 +223,7 @@ body {
 
 .beeui-empty-state {
   border: 1px dashed var(--tblr-border-color);
-  border-radius: 0.65rem;
+  border-radius: var(--beeui-radius);
   background: color-mix(in srgb, var(--beeui-surface), #f1f5fb 10%);
 }
 

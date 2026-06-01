@@ -8,23 +8,24 @@
    - web host/port;
    - logging;
    - storage;
-   - auth;
    - security;
    - product adapter mode.
+   - future auth/session settings after auth iteration.
 
-2. `config/beeui.yml` — declarative UI schema:
+2. `config/schema.yml` — current demo/MVP declarative UI schema:
    - название приложения;
    - theme;
    - navigation;
-   - pages;
-   - blocks;
-   - data sources.
+   - layout;
+   - pages.
+
+`config/beeui.yml` — planned/future naming for product integration after adapter/block/data-source iterations. It is not the current CLI contract.
 
 Главное правило:
 
 ```text
 settings.yml отвечает за запуск и безопасность.
-beeui.yml отвечает за внешний вид, страницы и блоки.
+schema.yml отвечает за текущий demo/MVP внешний вид, навигацию, layout и страницы.
 ```
 
 `beeui` не должен хранить domain/runtime logic Bee-продуктов.
@@ -42,27 +43,33 @@ Bee-продукты остаются source of truth для:
 
 ## Файлы конфигурации
 
-Целевая структура:
+Current Iteration 4 demo/MVP structure:
 
 ```text
 beeui/
   config/
     settings.yml
-    beeui.yml
     schema.yml
 ```
 
-Для demo/MVP допускается:
-
-```text
-config/schema.yml
-```
-
-Но для реального подключения к `beecap` / `beeagent` лучше использовать:
+Future/product integration naming after adapter/block/data-source iterations:
 
 ```text
 config/settings.yml
 config/beeui.yml
+```
+
+Current web command:
+
+```bash
+./start.sh web --host 127.0.0.1 --port 8780
+```
+
+Current CLI supports `--host` and `--port` for `web`.
+It does not support:
+
+```bash
+./start.sh web --config config/beeui.yml --settings config/settings.yml
 ```
 
 
@@ -86,7 +93,7 @@ web:
   port: 8780
   open_browser: false
   route_prefix: ""
-  static_cache_seconds: 3600
+  cache_static: 3600
 
 logging:
   level: INFO # DEBUG | INFO | WARNING | ERROR | CRITICAL
@@ -100,40 +107,20 @@ storage:
 
 security:
   html_autoescape: true
-  allow_external_assets: false
-  allowed_static_roots:
-    - src/beeui_module/static
-
-auth:
-  enabled: false
-  session:
-    cookie_name: beeui_session
-    secret_env: BEEUI_SESSION_SECRET
-    secure_cookie: false
-    same_site: lax
-  users:
-    source: local_file
-    file: config/users.yml
+  assets_ext: false
 
 product:
-  mode: demo # demo | embedded | http
+  mode: demo
   id: demo
   title: BeeUI Demo
-  adapter: static # static | beecap | beeagent | http
-  config_path: config/beeui.yml
-
-http_adapter:
-  enabled: false
-  base_url: ""
-  timeout_seconds: 5
-  headers: {}
+  adapter: static
 
 features:
-  artifact_browser: true
+  browser_artifact: false
   config_preview: false
   config_apply: false
   operator_actions: false
-  api: true
+  api: false
 ```
 
 
@@ -146,9 +133,7 @@ features:
 | `logging.*`      | Логи `beeui`                                                           |
 | `storage.*`      | Локальный storage для audit/config/action artifacts, если они включены |
 | `security.*`     | Базовые security defaults                                              |
-| `auth.*`         | Local auth/session settings                                            |
 | `product.*`      | Какой product adapter используется                                     |
-| `http_adapter.*` | Настройки standalone HTTP adapter                                      |
 | `features.*`     | Feature flags для UI capabilities                                      |
 
 
@@ -173,7 +158,7 @@ app:
 - `app.environment=prod` должен использовать более строгие security defaults:
   - `auth.enabled=true`;
   - `auth.session.secure_cookie=true`;
-  - `security.allow_external_assets=false`.
+  - `security.assets_ext=false`.
 
 
 ## `web.*`
@@ -184,7 +169,7 @@ web:
   port: 8780
   open_browser: false
   route_prefix: ""
-  static_cache_seconds: 3600
+  cache_static: 3600
 ```
 
 ### Поля
@@ -195,7 +180,7 @@ web:
 | `web.port`                 | int    | да           | Port                             |
 | `web.open_browser`         | bool   | да           | Открывать браузер при запуске    |
 | `web.route_prefix`         | string | да           | Prefix для embedded/mounted mode |
-| `web.static_cache_seconds` | int    | да           | Cache для static assets          |
+| `web.cache_static`         | int    | да           | Cache для static assets          |
 
 ### Правила
 
@@ -279,23 +264,20 @@ beeagent/storage/runs/*
 ```yaml
 security:
   html_autoescape: true
-  allow_external_assets: false
-  allowed_static_roots:
-    - src/beeui_module/static
+  assets_ext: false
 ```
 
 ### Поля
 
 | Ключ                             | Тип          | Обязательный | Описание                      |
 | -------------------------------- | ------------ | ------------ | ----------------------------- |
-| `security.html_autoescape`       | bool         | да           | Jinja2 autoescape             |
-| `security.allow_external_assets` | bool         | да           | Разрешить CDN/external JS/CSS |
-| `security.allowed_static_roots`  | list[string] | да           | Разрешённые static roots      |
+| `security.html_autoescape` | bool | да | Jinja2 autoescape |
+| `security.assets_ext`      | bool | да | Разрешить external JS/CSS assets |
 
 ### Правила
 
 - `security.html_autoescape` должен быть `true`.
-- `security.allow_external_assets=false` по умолчанию.
+- `security.assets_ext=false` по умолчанию.
 - Production не должен зависеть от CDN.
 - Tabler assets должны быть vendored/local.
 - Нельзя копировать demo tracking scripts из external templates.
@@ -303,6 +285,9 @@ security:
 
 
 ## `auth.*`
+
+Planned/future schema after auth/product-adapter iterations.
+Not implemented in current Iteration 4 runtime.
 
 ```yaml
 auth:
@@ -352,7 +337,6 @@ product:
   id: demo
   title: BeeUI Demo
   adapter: static
-  config_path: config/beeui.yml
 ```
 
 ### Назначение
@@ -384,18 +368,19 @@ product:
 | `product.id`          | string | да           | Product id                 |
 | `product.title`       | string | да           | Display title              |
 | `product.adapter`     | string | да           | Adapter name               |
-| `product.config_path` | string | да           | Путь к `beeui.yml`         |
 
 ### Правила
 
 - `product.id` должен быть safe slug: `[a-zA-Z0-9_-]`.
-- `product.config_path` не должен выходить за root проекта.
 - `product.mode=http` требует `http_adapter.enabled=true`.
 - `product.mode=embedded` требует adapter injection из host product.
 - `beeui` не должен сам угадывать product internals без adapter.
 
 
 ## `http_adapter.*`
+
+Planned/future schema after product-adapter iterations.
+Not implemented in current Iteration 4 runtime.
 
 ```yaml
 http_adapter:
@@ -432,18 +417,18 @@ http_adapter:
 
 ```yaml
 features:
-  artifact_browser: true
+  browser_artifact: false
   config_preview: false
   config_apply: false
   operator_actions: false
-  api: true
+  api: false
 ```
 
 ### Поля
 
 | Ключ                        | Тип  | Обязательный | Описание                          |
 | --------------------------- | ---- | ------------ | --------------------------------- |
-| `features.artifact_browser` | bool | да           | Включить artifact browser         |
+| `features.browser_artifact` | bool | да           | Включить artifact browser         |
 | `features.config_preview`   | bool | да           | Включить config preview           |
 | `features.config_apply`     | bool | да           | Включить bounded config apply     |
 | `features.operator_actions` | bool | да           | Включить bounded operator actions |
@@ -455,158 +440,90 @@ features:
 - `operator_actions=true` требует product action callback.
 - `auth.enabled=true` рекомендуется для любых write/control features.
 - В MVP:
-  - `artifact_browser=true`;
-  - `api=true`;
+  - `browser_artifact=false`;
+  - `api=false`;
   - `config_preview=false`;
   - `config_apply=false`;
   - `operator_actions=false`.
 
 
-# 2. `config/beeui.yml`
+# 2. Current `config/schema.yml`
 
 ## Назначение
 
-`beeui.yml` описывает UI:
+`config/schema.yml` is the current demo/MVP UI schema file used by the Iteration 4 runtime and CLI.
+
+`config/beeui.yml` is future/product integration naming, not the current CLI contract.
+
+`schema.yml` описывает UI:
 
 - app display metadata;
 - theme;
 - navigation;
 - pages;
-- blocks;
-- data sources.
+- pages.
 
 Он не должен содержать secrets и product runtime logic.
 
-## Минимальный пример `beeui.yml` v0
+## Current Iteration 4 example
 
 ```yaml
 app:
   title: BeeUI Demo
   product: demo
-  version_label: MVP
+  logo_text: BeeUI
   theme:
     mode: dark
     primary: blue
-    font: system
-    radius: 2
-    density: comfortable
+    base: gray
+    font: sans-serif
+    radius: 1
+    density: default
+  layout:
+    type: vertical
+    container: xl
+    sidebar:
+      variant: dark
+      collapsed: false
+    navbar:
+      enabled: true
+      variant: default
+      sticky: false
 
 navigation:
-  - title: Dashboard
-    path: /
-    icon: dashboard
-  - title: Runs
-    path: /runs
-    icon: list
-  - title: Artifacts
-    path: /artifacts
-    icon: files
-
-data_sources:
-  demo:
-    type: static
-    data:
-      latest_run:
-        value: run_demo_001
-        href: /runs/run_demo_001
-      runtime_status:
-        value: ok
-        badge: success
-      active_orders:
-        value: 0
-      total_profit:
-        value: null
-        note: Profit unavailable in demo mode
-      runs:
-        - run_id: run_demo_001
-          mode: demo
-          venue: demo
-          status: ok
+  - title: Workspace
+    children:
+      - title: Dashboard
+        path: /
+        icon: dashboard
+      - title: Runs
+        path: /runs
+        icon: list
+      - title: Reports
+        disabled: true
 
 pages:
   - id: dashboard
     path: /
     title: Dashboard
     subtitle: Demo operator dashboard
-    layout:
-      - row:
-          - block: latest_run
-            width: 3
-          - block: runtime_status
-            width: 3
-          - block: active_orders
-            width: 3
-          - block: total_profit
-            width: 3
-      - row:
-          - block: recent_runs
-            width: 12
+    blocks: []
 
   - id: runs
     path: /runs
     title: Runs
-    subtitle: Recent runs
-    layout:
-      - row:
-          - block: recent_runs
-            width: 12
-
-blocks:
-  latest_run:
-    type: metric_card
-    title: Latest Run
-    source: demo
-    value: latest_run.value
-    href: latest_run.href
-
-  runtime_status:
-    type: status_card
-    title: Runtime Status
-    source: demo
-    value: runtime_status.value
-    badge: runtime_status.badge
-
-  active_orders:
-    type: metric_card
-    title: Active Orders
-    source: demo
-    value: active_orders.value
-
-  total_profit:
-    type: metric_card
-    title: Total Profit
-    source: demo
-    value: total_profit.value
-    empty: Profit unavailable
-    note: total_profit.note
-
-  recent_runs:
-    type: table_card
-    title: Recent Runs
-    source: demo
-    rows: runs
-    columns:
-      - key: run_id
-        label: Run ID
-        href_template: /runs/{run_id}
-      - key: mode
-        label: Mode
-      - key: venue
-        label: Venue
-      - key: status
-        label: Status
+    subtitle: Placeholder page for future run overview
+    blocks: []
 ```
 
 
-## Используемые секции `beeui.yml`
+## Используемые секции `schema.yml`
 
 | Секция           | Назначение                     |
 | ---------------- | ------------------------------ |
 | `app.*`          | Display metadata and theme     |
 | `navigation[]`   | Sidebar/global navigation      |
-| `data_sources.*` | Откуда брать данные для blocks |
-| `pages[]`        | Pages/routes/layout            |
-| `blocks.*`       | Reusable UI blocks             |
+| `pages[]`        | Pages/routes/empty block placeholders |
 
 
 ## `app.*`
@@ -615,38 +532,65 @@ blocks:
 app:
   title: BeeUI Demo
   product: demo
-  version_label: MVP
+  logo_text: BeeUI
   theme:
     mode: dark
     primary: blue
-    font: system
-    radius: 2
-    density: comfortable
+    base: gray
+    font: sans-serif
+    radius: 1
+    density: default
+  layout:
+    type: vertical
+    container: xl
+    sidebar:
+      variant: dark
+      collapsed: false
+    navbar:
+      enabled: true
+      variant: default
+      sticky: false
 ```
 
 ### Поля
 
-| Ключ                | Тип    | Обязательный | Описание               |
-| ------------------- | ------ | ------------ | ---------------------- |
-| `app.title`         | string | да           | Display title          |
-| `app.product`       | string | да           | Product key            |
-| `app.version_label` | string | нет          | UI version/build label |
-| `app.theme`         | dict   | да           | Theme settings         |
+| Ключ           | Тип    | Обязательный | Описание                    |
+| -------------- | ------ | ------------ | --------------------------- |
+| `app.title`    | string | да           | Display title               |
+| `app.product`  | string | да           | Product key                 |
+| `app.logo_text` | string | да           | Sidebar/header logo text    |
+| `app.theme`    | dict   | да           | Controlled theme settings   |
+| `app.layout`   | dict   | да           | Controlled layout settings  |
 
 ### Theme fields
 
-| Ключ                | Тип    | Обязательный | Значения                                         |
-| ------------------- | ------ | ------------ | ------------------------------------------------ |
-| `app.theme.mode`    | string | да           | `light`, `dark`, `auto`                          |
-| `app.theme.primary` | string | да           | `blue`, `green`, `red`, `orange`, `purple`, etc. |
-| `app.theme.font`    | string | да           | `system`, `inter`, custom safe key               |
-| `app.theme.radius`  | int    | да           | `0..4`                                           |
-| `app.theme.density` | string | да           | `compact`, `comfortable`, `spacious`             |
+| Ключ                 | Тип    | Обязательный | Значения                                                                                 |
+| -------------------- | ------ | ------------ | ---------------------------------------------------------------------------------------- |
+| `app.theme.mode`     | string | да           | `light`, `dark`, `auto`                                                                  |
+| `app.theme.primary`  | string | да           | `blue`, `azure`, `cyan`, `teal`, `green`, `lime`, `yellow`, `orange`, `red`, `pink`, `indigo` |
+| `app.theme.base`     | string | да           | `slate`, `gray`, `zinc`, `neutral`, `stone`                                              |
+| `app.theme.font`     | string | да           | `sans-serif`, `serif`, `monospace`                                                       |
+| `app.theme.radius`   | int    | да           | `0`, `1`, `2`                                                                            |
+| `app.theme.density`  | string | да           | `default`, `compact`, `comfortable`                                                      |
+
+### Layout fields
+
+| Ключ                           | Тип    | Обязательный | Значения              |
+| ------------------------------ | ------ | ------------ | --------------------- |
+| `app.layout.type`              | string | да           | `vertical`            |
+| `app.layout.container`         | string | да           | `xl`, `fluid`         |
+| `app.layout.sidebar.variant`   | string | да           | `default`, `dark`     |
+| `app.layout.sidebar.collapsed` | bool   | да           | true/false            |
+| `app.layout.navbar.enabled`    | bool   | да           | true/false            |
+| `app.layout.navbar.variant`    | string | да           | `default`, `dark`     |
+| `app.layout.navbar.sticky`     | bool   | да           | true/false            |
 
 ### Правила
 
 - Theme values must be allowlisted.
+- `theme.mode: auto` is a controlled schema token for future runtime/browser preference integration. In the current implementation it renders as `data-bs-theme="auto"` and `beeui-theme-mode-auto`; it does not persist or mutate theme client-side.
 - Нельзя принимать arbitrary CSS из config.
+- Layout values must be allowlisted.
 - Font key должен ссылаться на known safe font mode.
 - Local/static fonts не должны коммититься без проверки лицензии.
 
@@ -655,32 +599,43 @@ app:
 
 ```yaml
 navigation:
-  - title: Dashboard
-    path: /
-    icon: dashboard
-  - title: Runs
-    path: /runs
-    icon: list
+  - title: Workspace
+    children:
+      - title: Dashboard
+        path: /
+        icon: dashboard
+      - title: Runs
+        path: /runs
+        icon: list
+      - title: Reports
+        disabled: true
 ```
 
 ### Поля
 
-| Ключ       | Тип    | Обязательный | Описание         |
-| ---------- | ------ | ------------ | ---------------- |
-| `title`    | string | да           | Текст пункта     |
-| `path`     | string | да           | Route            |
-| `icon`     | string | нет          | Icon key         |
-| `children` | list   | нет          | Nested nav items |
+| Ключ       | Тип    | Обязательный | Описание                         |
+| ---------- | ------ | ------------ | -------------------------------- |
+| `title`    | string | да           | Текст пункта                     |
+| `path`     | string | да/нет       | Required for enabled leaf items  |
+| `icon`     | string | нет          | Icon key                         |
+| `disabled` | bool   | нет          | Disabled leaf item without link  |
+| `children` | list   | нет          | Grouped nested nav items         |
 
 ### Правила
 
 - `path` должен начинаться с `/`.
 - `path` должен соответствовать существующей page или registered route.
+- External nav links (`http://`, `https://`, `//`, `mailto:`, `javascript:`) rejected by default.
 - Duplicate paths запрещены.
-- Nested navigation допускается, но MVP может поддерживать только 1 уровень.
+- Grouped navigation uses `children`.
+- Group items omit `path`.
+- Disabled leaf items may omit `path` and render without a link.
 
 
 ## `data_sources.*`
+
+Planned/future schema after block/data-source/product-adapter iterations.
+Not implemented in current Iteration 4 runtime.
 
 ```yaml
 data_sources:
@@ -761,12 +716,7 @@ pages:
     path: /
     title: Dashboard
     subtitle: Demo operator dashboard
-    layout:
-      - row:
-          - block: latest_run
-            width: 3
-          - block: runtime_status
-            width: 3
+    blocks: []
 ```
 
 ### Поля
@@ -777,27 +727,14 @@ pages:
 | `path`     | string | да           | Route              |
 | `title`    | string | да           | Page title         |
 | `subtitle` | string | нет          | Page subtitle      |
-| `layout`   | list   | да           | Rows/blocks layout |
-
-### Layout row
-
-```yaml
-layout:
-  - row:
-      - block: latest_run
-        width: 3
-      - block: runtime_status
-        width: 3
-```
+| `blocks`   | list   | да           | Empty-list placeholder until block registry iteration |
 
 ### Правила
 
 - `id` должен быть safe slug.
 - `path` должен начинаться с `/`.
 - Duplicate page ids/paths запрещены.
-- `width` должен быть `1..12`.
-- Сумма widths в row не должна превышать `12`.
-- Unknown block reference должен fail fast.
+- `blocks` must be a list and is currently expected to be an empty-list placeholder until block registry iteration.
 
 
 ## `blocks.*`
@@ -1022,6 +959,9 @@ Expected data:
 
 # 3. Product adapter config examples
 
+Planned/future schema after block/data-source/product-adapter iterations.
+Not implemented in current Iteration 4 runtime.
+
 ## BeeCap embedded example
 
 `config/settings.yml`:
@@ -1036,7 +976,7 @@ web:
   port: 8780
   open_browser: true
   route_prefix: ""
-  static_cache_seconds: 3600
+  cache_static: 3600
 
 logging:
   level: INFO
@@ -1050,9 +990,7 @@ storage:
 
 security:
   html_autoescape: true
-  allow_external_assets: false
-  allowed_static_roots:
-    - src/beeui_module/static
+  assets_ext: false
 
 auth:
   enabled: false
@@ -1079,11 +1017,11 @@ http_adapter:
   headers: {}
 
 features:
-  artifact_browser: true
+  browser_artifact: false
   config_preview: false
   config_apply: false
   operator_actions: false
-  api: true
+  api: false
 ```
 
 `config/beeui.yml`:
@@ -1092,13 +1030,24 @@ features:
 app:
   title: BeeCap
   product: beecap
-  version_label: BeeUI MVP
+  logo_text: BeeCap
   theme:
     mode: dark
     primary: blue
-    font: system
-    radius: 2
-    density: comfortable
+    base: gray
+    font: sans-serif
+    radius: 1
+    density: default
+  layout:
+    type: vertical
+    container: xl
+    sidebar:
+      variant: dark
+      collapsed: false
+    navbar:
+      enabled: true
+      variant: default
+      sticky: false
 
 navigation:
   - title: Dashboard
@@ -1253,7 +1202,7 @@ web:
   port: 8781
   open_browser: true
   route_prefix: ""
-  static_cache_seconds: 3600
+  cache_static: 3600
 
 logging:
   level: INFO
@@ -1267,9 +1216,7 @@ storage:
 
 security:
   html_autoescape: true
-  allow_external_assets: false
-  allowed_static_roots:
-    - src/beeui_module/static
+  assets_ext: false
 
 auth:
   enabled: false
@@ -1296,11 +1243,11 @@ http_adapter:
   headers: {}
 
 features:
-  artifact_browser: true
+  browser_artifact: false
   config_preview: false
   config_apply: false
   operator_actions: false
-  api: true
+  api: false
 ```
 
 `config/beeui.yml`:
@@ -1309,13 +1256,24 @@ features:
 app:
   title: BeeAgent
   product: beeagent
-  version_label: BeeUI MVP
+  logo_text: BeeAgent
   theme:
     mode: dark
     primary: blue
-    font: system
-    radius: 2
-    density: comfortable
+    base: gray
+    font: sans-serif
+    radius: 1
+    density: default
+  layout:
+    type: vertical
+    container: xl
+    sidebar:
+      variant: dark
+      collapsed: false
+    navbar:
+      enabled: true
+      variant: default
+      sticky: false
 
 navigation:
   - title: Dashboard
@@ -1468,20 +1426,27 @@ BEEUI_HTTP_TOKEN=
 
 ## Fail-fast validation
 
-`beeui` должен падать до запуска web server, если:
+Current Iteration 4 fail-fast validation:
 
 - `settings.yml` отсутствует;
 - `settings.yml` не YAML dict;
 - обязательные секции отсутствуют;
 - `web.port` вне диапазона;
 - `security.html_autoescape=false`;
-- `product.config_path` небезопасен;
-- `product.mode=http`, но `http_adapter.enabled=false`;
 - `features.config_apply=true`, но `features.config_preview=false`;
-- `auth.enabled=true`, но env из `auth.session.secret_env` отсутствует;
-- `beeui.yml` отсутствует;
-- `beeui.yml` содержит duplicate page paths;
-- `beeui.yml` содержит unknown block references;
+- `schema.yml` отсутствует;
+- `schema.yml` не YAML dict;
+- invalid app/theme/layout/navigation/page fields;
+- duplicate page ids/paths;
+- duplicate nav paths;
+- external nav links rejected;
+- reserved paths rejected;
+- `pages[].blocks` must be a list.
+
+Planned/future fail-fast validation after block/data-source/adapter iterations:
+
+- `config/beeui.yml` as product integration schema;
+- unknown block references;
 - layout row width sum > 12;
 - block type unknown;
 - data source type unknown;
@@ -1583,7 +1548,7 @@ dependencies = [
 В продукте создаётся adapter:
 
 ```python
-from beeui_module.app import create_beeui_app
+from beeui_module.web.app import create_beeui_app
 from product_module.interfaces.ui.adapter import ProductUiAdapter
 
 app = create_beeui_app(
@@ -1635,7 +1600,7 @@ web:
   port: 8780
   open_browser: false
   route_prefix: ""
-  static_cache_seconds: 3600
+  cache_static: 3600
 
 logging:
   level: INFO
@@ -1649,134 +1614,71 @@ storage:
 
 security:
   html_autoescape: true
-  allow_external_assets: false
-  allowed_static_roots:
-    - src/beeui_module/static
-
-auth:
-  enabled: false
-  session:
-    cookie_name: beeui_session
-    secret_env: BEEUI_SESSION_SECRET
-    secure_cookie: false
-    same_site: lax
-  users:
-    source: local_file
-    file: config/users.yml
+  assets_ext: false
 
 product:
   mode: demo
   id: demo
   title: BeeUI Demo
   adapter: static
-  config_path: config/beeui.yml
-
-http_adapter:
-  enabled: false
-  base_url: ""
-  timeout_seconds: 5
-  headers: {}
 
 features:
-  artifact_browser: true
+  browser_artifact: false
   config_preview: false
   config_apply: false
   operator_actions: false
-  api: true
+  api: false
 ```
 
-`config/beeui.yml`:
+`config/schema.yml`:
 
 ```yaml
 app:
   title: BeeUI Demo
   product: demo
-  version_label: MVP
+  logo_text: BeeUI
   theme:
     mode: dark
     primary: blue
-    font: system
-    radius: 2
-    density: comfortable
+    base: gray
+    font: sans-serif
+    radius: 1
+    density: default
+  layout:
+    type: vertical
+    container: xl
+    sidebar:
+      variant: dark
+      collapsed: false
+    navbar:
+      enabled: true
+      variant: default
+      sticky: false
 
 navigation:
-  - title: Dashboard
-    path: /
-    icon: dashboard
-  - title: Runs
-    path: /runs
-    icon: list
-
-data_sources:
-  demo:
-    type: static
-    data:
-      latest_run:
-        value: run_demo_001
-        href: /runs/run_demo_001
-      runtime_status:
-        value: ok
-        badge: success
-      runs:
-        - run_id: run_demo_001
-          mode: demo
-          venue: demo
-          status: ok
+  - title: Workspace
+    children:
+      - title: Dashboard
+        path: /
+        icon: dashboard
+      - title: Runs
+        path: /runs
+        icon: list
+      - title: Reports
+        disabled: true
 
 pages:
   - id: dashboard
     path: /
     title: Dashboard
     subtitle: Demo operator dashboard
-    layout:
-      - row:
-          - block: latest_run
-            width: 4
-          - block: runtime_status
-            width: 4
-      - row:
-          - block: recent_runs
-            width: 12
+    blocks: []
 
   - id: runs
     path: /runs
     title: Runs
-    subtitle: Recent runs
-    layout:
-      - row:
-          - block: recent_runs
-            width: 12
-
-blocks:
-  latest_run:
-    type: metric_card
-    title: Latest Run
-    source: demo
-    value: latest_run.value
-    href: latest_run.href
-
-  runtime_status:
-    type: status_card
-    title: Runtime Status
-    source: demo
-    value: runtime_status.value
-    badge: runtime_status.badge
-
-  recent_runs:
-    type: table_card
-    title: Recent Runs
-    source: demo
-    rows: runs
-    columns:
-      - key: run_id
-        label: Run ID
-        href_template: /runs/{run_id}
-      - key: mode
-        label: Mode
-      - key: venue
-        label: Venue
-      - key: status
-        label: Status
+    subtitle: Placeholder page for future run overview
+    blocks: []
 ```
 
 
@@ -1787,7 +1689,8 @@ blocks:
 ```bash
 uv run pytest -q
 ./start.sh doctor
-./start.sh web --config config/beeui.yml --settings config/settings.yml
+./start.sh routes
+./start.sh web --host 127.0.0.1 --port 8780
 ```
 
 Проверить вручную:

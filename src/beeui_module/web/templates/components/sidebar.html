@@ -1,5 +1,5 @@
 <aside
-  class="navbar navbar-vertical navbar-expand-lg beeui-sidebar"
+  class="navbar navbar-vertical navbar-expand-lg beeui-sidebar {{ layout.sidebar_variant_class }} {{ layout.sidebar_collapsed_class }}"
   aria-label="Sidebar"
   id="beeui-sidebar"
 >
@@ -16,25 +16,42 @@
       <span class="navbar-toggler-icon" aria-hidden="true"></span>
     </button>
     <h1 class="navbar-brand navbar-brand-autodark">
-      <a href="{{ route_prefix }}/">{{ app_title }}</a>
+      <a href="{{ route_prefix }}/">{{ logo_text }}</a>
     </h1>
     <div class="collapse navbar-collapse" id="beeui-sidebar-menu">
+      {% macro render_items(items) %}
       <ul class="navbar-nav pt-lg-3" role="list">
-        {% for item in navigation %}
-        <li class="nav-item{% if item.active %} active{% endif %}">
+        {% for item in items %}
+        <li class="nav-item{% if item.active or item.descendant_active %} active{% endif %}{% if item.is_group %} beeui-nav-group{% endif %}">
+          {% if item.is_group %}
+          <div class="nav-link sidebar__link beeui-nav-group-title{% if item.descendant_active %} is-active{% endif %}" aria-label="{{ item.title }}">
+            <span class="nav-link-title">{{ item.title }}</span>
+          </div>
+          {% elif item.disabled %}
+          <span class="nav-link sidebar__link beeui-nav-disabled" aria-disabled="true" tabindex="-1">
+            <span class="nav-link-title">{{ item.title }}</span>
+          </span>
+          {% else %}
           <a
             class="nav-link sidebar__link{% if item.active %} is-active{% endif %}"
             href="{{ item.href }}"
           >
-            <span
-              class="nav-link-icon d-md-none d-lg-inline-block"
-              aria-hidden="true"
-            ></span>
+            <span class="nav-link-icon d-md-none d-lg-inline-block" aria-hidden="true"></span>
             <span class="nav-link-title">{{ item.title }}</span>
           </a>
+          {% endif %}
+
+          {% if item.children %}
+          <div class="beeui-nav-children{% if item.descendant_active %} is-open{% endif %}">
+            {{ render_items(item.children) }}
+          </div>
+          {% endif %}
         </li>
         {% endfor %}
       </ul>
+      {% endmacro %}
+
+      {{ render_items(navigation) }}
     </div>
   </div>
 </aside>
