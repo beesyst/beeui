@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.0](https://github.com/beesyst/beeui/compare/beeui-v0.7.0...beeui-v0.8.0) (2026-06-01)
+
+
+### Features
+
+* **components:** add Tabler component catalog primitives ([#20](https://github.com/beesyst/beeui/issues/20)) ([ce3eac1](https://github.com/beesyst/beeui/commit/ce3eac165c4e868f0fcf7ad19afdf4ca38957a01))
+
 ## [0.7.0](https://github.com/beesyst/beeui/compare/beeui-v0.6.0...beeui-v0.7.0) (2026-06-01)
 
 
