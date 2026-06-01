@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.0](https://github.com/beesyst/beeui/compare/beeui-v0.5.0...beeui-v0.6.0) (2026-06-01)
+
+
+### Features
+
+* **theme:** add schema-driven theme layout and navigation ([#14](https://github.com/beesyst/beeui/issues/14)) ([e5a4c4c](https://github.com/beesyst/beeui/commit/e5a4c4cd27a7a71fb18cbea72ec6918a1f271bf0))
+
 ## [0.5.0](https://github.com/beesyst/beeui/compare/beeui-v0.4.0...beeui-v0.5.0) (2026-05-31)
 
 
