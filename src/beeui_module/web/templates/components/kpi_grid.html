@@ -1,0 +1,26 @@
+<article class="card beeui-block">
+  <header class="card-header d-flex justify-content-between align-items-center">
+    <h3 class="card-title mb-0">{{ block.title }}</h3>
+    {% if block.state != "normal" %}
+    <span class="badge bg-secondary-lt text-uppercase">{{ block.state }}</span>
+    {% endif %}
+  </header>
+  <div class="card-body">
+    {% if block.state != "normal" %}
+    <div class="alert alert-secondary beeui-block-state beeui-block-state-{{ block.state }}" role="status">
+      Block state: {{ block.state }}
+    </div>
+    {% endif %}
+    <div class="beeui-kpi-grid">
+      {% for item in block.payload['items'] %}
+      <div class="beeui-kpi-item">
+        <div class="text-secondary">{{ item['label'] }}</div>
+        <div class="beeui-kpi-value">{{ item['value'] }}</div>
+        {% if item.get('status') %}
+        <div class="text-secondary text-uppercase small">{{ item['status'] }}</div>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</article>

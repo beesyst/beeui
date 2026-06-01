@@ -1,0 +1,39 @@
+<article class="card beeui-block">
+  <header class="card-header d-flex justify-content-between align-items-center">
+    <h3 class="card-title mb-0">{{ block.title }}</h3>
+    {% if block.state != "normal" %}
+    <span class="badge bg-secondary-lt text-uppercase">{{ block.state }}</span>
+    {% endif %}
+  </header>
+  <div class="card-body p-0">
+    {% if block.state != "normal" %}
+    <div class="alert alert-secondary m-3 beeui-block-state beeui-block-state-{{ block.state }}" role="status">
+      Block state: {{ block.state }}
+    </div>
+    {% endif %}
+    {% if block.payload['rows'] %}
+    <div class="table-responsive">
+      <table class="table card-table table-vcenter beeui-table-card">
+        <thead>
+          <tr>
+            {% for column in block.payload['columns'] %}
+            <th>{{ column['label'] }}</th>
+            {% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in block.payload['rows'] %}
+          <tr>
+            {% for column in block.payload['columns'] %}
+            <td>{{ row.get(column['key'], '') }}</td>
+            {% endfor %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="p-3 text-secondary">{{ block.payload.get('empty') or "No rows available." }}</div>
+    {% endif %}
+  </div>
+</article>

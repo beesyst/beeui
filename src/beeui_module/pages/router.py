@@ -6,10 +6,11 @@ from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
+from beeui_module.blocks.registry import resolve_page_blocks
 from beeui_module.pages.models import BeeUiConfig, BeeUiNavigationItem, BeeUiPage
 
 
-# Регистрация маршрутов для страниц BeeUI в FastAPI приложении
+# Регистрация HTML routes из declarative pages config
 def register_configured_pages(
     *,
     app: FastAPI,
@@ -30,6 +31,10 @@ def register_configured_pages(
         ) -> HTMLResponse:
             theme = build_theme_context(ui_config)
             layout = build_layout_context(ui_config)
+            rendered_blocks = resolve_page_blocks(
+                placements=_page.blocks,
+                registry=ui_config.blocks,
+            )
             return templates.TemplateResponse(
                 request=request,
                 name="page.html",
@@ -48,7 +53,8 @@ def register_configured_pages(
                         active_path=_page.path,
                     ),
                     "shell_classes": build_shell_classes(theme, layout),
-                    "has_blocks": bool(_page.blocks),
+                    "rendered_blocks": rendered_blocks,
+                    "has_blocks": bool(rendered_blocks),
                 },
             )
 
@@ -59,7 +65,7 @@ def register_configured_pages(
     return registered_routes
 
 
-# Билд навигационных элементов с учетом активного пути
+# Билд navigation context с active/descendant_active состояниями
 def build_navigation(
     *,
     route_prefix: str,
@@ -95,7 +101,7 @@ def build_navigation(
     return items
 
 
-# Билд контекста темы для шаблонов на основе конфигурации
+# Преобразование ThemeConfig в безопасные CSS class names для shell
 def build_theme_context(ui_config: BeeUiConfig) -> dict[str, Any]:
     return {
         "mode": ui_config.theme.mode,
@@ -113,7 +119,7 @@ def build_theme_context(ui_config: BeeUiConfig) -> dict[str, Any]:
     }
 
 
-# Билд контекста лэйаута для шаблонов на основе конфигурации
+# Преобразование LayoutConfig в template context для контейнера, sidebar и navbar
 def build_layout_context(ui_config: BeeUiConfig) -> dict[str, Any]:
     layout = ui_config.layout
     return {
@@ -137,7 +143,7 @@ def build_layout_context(ui_config: BeeUiConfig) -> dict[str, Any]:
     }
 
 
-# Билд класса оболочки на основе темы и лэйаута для применения глобальных стилей
+# Сбор итогового набора CSS classes для body/page shell
 def build_shell_classes(theme: dict[str, Any], layout: dict[str, Any]) -> str:
     classes = [
         "layout-vertical",
@@ -156,7 +162,7 @@ def build_shell_classes(theme: dict[str, Any], layout: dict[str, Any]) -> str:
     return " ".join(class_name for class_name in classes if class_name)
 
 
-# Корректное формирование пути с учетом префикса маршрута
+# Добавление route_prefix без изменения корневого пути
 def prefixed_path(route_prefix: str, path: str) -> str:
     if path == "/":
         return route_prefix or "/"
