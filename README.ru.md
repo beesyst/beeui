@@ -2,9 +2,9 @@
 
 **BeeUI** — общий Python-based UI framework для Bee-продуктов: `beecap`, `beeagent` и будущих модулей Bee ecosystem.
 
-## Iteration 5
+## Iteration 6
 
-Текущий deliverable — schema-driven block registry and static dashboard blocks поверх declarative pages/navigation/theme/layout из `config/schema.yml`.
+Текущий deliverable — internal component catalog и reusable controlled Tabler-compatible template primitives поверх declarative pages/navigation/theme/layout из `config/schema.yml`.
 
 Уже работает:
 
@@ -30,10 +30,16 @@ Supported static block types:
 - `text_card`;
 - `progress_card`.
 
-Минимальная web surface Iteration 5:
+Минимальная web surface Iteration 6:
 
 - `GET /`
 - `GET /runs`
+- `GET /components`
+- `GET /components/interface`
+- `GET /components/forms`
+- `GET /components/layout`
+- `GET /components/extra`
+- `GET /components/plugins`
 - `GET /health`
 - `GET /static/...`
 - `GET /static/vendor/tabler/css/tabler-compatible.min.css`
@@ -1461,7 +1467,7 @@ Visual builder later.
 Текущий статус:
 
 ```text
-Iteration 5 — Block registry and static dashboard blocks v1 — DONE
+Iteration 6 — Tabler component catalog and reusable primitives v0 — DONE
 ```
 
 Работает:
@@ -1475,3 +1481,4 @@ uv run pytest -q
 
 - `/` рендерит static dashboard blocks from schema;
 - `/runs` рендерит empty state для страницы без block placements.
+- `/components*` рендерит internal read-only catalog of controlled primitives.

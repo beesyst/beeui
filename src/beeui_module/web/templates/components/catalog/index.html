@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block title %}Component Catalog · {{ app_title }}{% endblock %}
+
+{% block content %}
+{% include "components/page_header.html" %}
+
+<div class="{{ layout.container_class }}">
+  <section class="card p-3" aria-label="Catalog sections">
+    <div class="row g-3">
+      {% for section in catalog_sections.values() %}
+      <div class="col-12 col-md-6 col-xl-4">
+        <article class="card beeui-catalog-card h-100">
+          <div class="card-body">
+            <h3 class="card-title h4 mb-2">{{ section.title }}</h3>
+            <p class="text-secondary mb-3">{{ section.description }}</p>
+            <a class="btn btn-outline-primary" href="{{ section.href }}">Open section</a>
+          </div>
+        </article>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+</div>
+{% endblock %}

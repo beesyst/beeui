@@ -289,6 +289,46 @@ def test_load_beeui_config_rejects_reserved_health_path(tmp_path: Path) -> None:
         raise AssertionError("load_beeui_config must reject reserved /health path")
 
 
+# Тест: /components зарезервирован для internal component catalog
+def test_load_beeui_config_rejects_reserved_components_path(tmp_path: Path) -> None:
+    config_path = _write_config(
+        tmp_path,
+        _base_config().replace(
+            "        path: /runs\n        icon: list\n",
+            "        path: /components\n        icon: list\n",
+            1,
+        ),
+    )
+
+    try:
+        load_beeui_config(config_path)
+    except ValueError as exc:
+        assert str(exc) == "navigation[0].children[1].path uses a reserved path"
+    else:
+        raise AssertionError("load_beeui_config must reject reserved /components path")
+
+
+# Тест: /components/... зарезервирован для internal component catalog
+def test_load_beeui_config_rejects_reserved_components_prefix(tmp_path: Path) -> None:
+    config_path = _write_config(
+        tmp_path,
+        _base_config().replace(
+            "        path: /runs\n        icon: list\n",
+            "        path: /components/forms\n        icon: list\n",
+            1,
+        ),
+    )
+
+    try:
+        load_beeui_config(config_path)
+    except ValueError as exc:
+        assert str(exc) == "navigation[0].children[1].path uses a reserved path"
+    else:
+        raise AssertionError(
+            "load_beeui_config must reject reserved /components/... path"
+        )
+
+
 # Тест: /static зарезервирован и не может быть page/navigation path
 def test_load_beeui_config_rejects_reserved_static_path(tmp_path: Path) -> None:
     config_path = _write_config(

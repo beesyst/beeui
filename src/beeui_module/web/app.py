@@ -12,6 +12,7 @@ from beeui_module.core.paths import settings_path
 from beeui_module.core.paths import schema_path
 from beeui_module.core.settings import load_settings
 from beeui_module.core.version import get_version
+from beeui_module.pages.component_catalog import register_component_catalog_routes
 from beeui_module.pages.config import load_beeui_config
 from beeui_module.pages.models import BeeUiConfig
 from beeui_module.pages.router import register_configured_pages
@@ -92,6 +93,15 @@ def create_beeui_app(
     health_path = f"{route_prefix}/health" if route_prefix else "/health"
 
     register_configured_pages(
+        app=app,
+        templates=templates,
+        route_prefix=route_prefix,
+        ui_config=resolved_ui_config,
+        product_title=product_cfg["title"],
+        product_id=product_cfg["id"],
+    )
+
+    register_component_catalog_routes(
         app=app,
         templates=templates,
         route_prefix=route_prefix,

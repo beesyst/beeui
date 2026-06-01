@@ -36,8 +36,25 @@ def test_main_prints_routes(capsys) -> None:
     assert "Configured route surface:" in captured.out
     assert "GET /" in captured.out
     assert "GET /runs" in captured.out
+    assert "GET /components" in captured.out
+    assert "GET /components/interface" in captured.out
+    assert "GET /components/forms" in captured.out
+    assert "GET /components/layout" in captured.out
+    assert "GET /components/extra" in captured.out
+    assert "GET /components/plugins" in captured.out
     assert "GET /health" in captured.out
     assert "GET /static/..." in captured.out
+
+
+# Тест: CLI route_prefix normalization совпадает с web route semantics.
+def test_cli_normalizes_route_prefix_for_routes_output() -> None:
+    from beeui_module.cli.main import _normalize_route_prefix
+
+    assert _normalize_route_prefix("") == ""
+    assert _normalize_route_prefix("   ") == ""
+    assert _normalize_route_prefix("/bee") == "/bee"
+    assert _normalize_route_prefix("/bee/") == "/bee"
+    assert _normalize_route_prefix("bee") == "/bee"
 
 
 # Тест: чек обработки неизвестной команды и вывода ошибки

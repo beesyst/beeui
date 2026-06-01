@@ -44,6 +44,58 @@ def test_get_runs_returns_html() -> None:
     assert "Placeholder page for future run overview" in response.text
 
 
+# Тест: component catalog routes доступны как read-only HTML pages
+def test_component_catalog_routes_render() -> None:
+    app = create_beeui_app()
+    client = TestClient(app)
+
+    routes = [
+        "/components",
+        "/components/interface",
+        "/components/forms",
+        "/components/layout",
+        "/components/extra",
+        "/components/plugins",
+    ]
+
+    for route in routes:
+        response = client.get(route)
+        assert response.status_code == 200
+        assert response.headers["X-BeeUI-Read-Only"] == "true"
+        assert response.headers["Cache-Control"] == "no-store"
+
+
+# Тест: component catalog routes учитывают web.route_prefix
+def test_component_catalog_routes_follow_route_prefix() -> None:
+    settings = load_settings(settings_path())
+    settings["web"]["route_prefix"] = "/bee"
+
+    app = create_beeui_app(settings=settings)
+    client = TestClient(app)
+
+    prefixed = client.get("/bee/components")
+    plain = client.get("/components")
+
+    assert prefixed.status_code == 200
+    assert plain.status_code == 404
+
+
+# Тест: catalog internal links учитывают web.route_prefix
+def test_component_catalog_internal_links_follow_route_prefix() -> None:
+    settings = load_settings(settings_path())
+    settings["web"]["route_prefix"] = "/bee"
+
+    app = create_beeui_app(settings=settings)
+    client = TestClient(app)
+
+    response = client.get("/bee/components/layout")
+
+    assert response.status_code == 200
+    assert 'href="/bee/"' in response.text
+    assert 'href="/bee/components"' in response.text
+    assert 'href="/components"' not in response.text
+
+
 # Тест: health endpoint возвращает ожидаемый JSON и read-only заголовки
 def test_get_health_returns_expected_payload() -> None:
     app = create_beeui_app()

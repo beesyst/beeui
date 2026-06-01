@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block title %}{{ page.title }} · {{ app_title }}{% endblock %}
+
+{% block content %}
+{% include "components/page_header.html" %}
+
+<div class="{{ layout.container_class }}">
+  <section class="card p-3" aria-label="Catalog primitives section">
+    <nav class="nav nav-pills mb-3 beeui-catalog-pills" aria-label="Catalog section navigation">
+      <a class="nav-link{% if catalog_section.id == 'interface' %} active{% endif %}" href="{{ catalog_sections.interface.href }}">Interface</a>
+      <a class="nav-link{% if catalog_section.id == 'forms' %} active{% endif %}" href="{{ catalog_sections.forms.href }}">Forms</a>
+      <a class="nav-link{% if catalog_section.id == 'layout' %} active{% endif %}" href="{{ catalog_sections.layout.href }}">Layout</a>
+      <a class="nav-link{% if catalog_section.id == 'extra' %} active{% endif %}" href="{{ catalog_sections.extra.href }}">Extra</a>
+      <a class="nav-link{% if catalog_section.id == 'plugins' %} active{% endif %}" href="{{ catalog_sections.plugins.href }}">Plugins</a>
+    </nav>
+
+    {% include catalog_section.template_name %}
+  </section>
+</div>
+{% endblock %}

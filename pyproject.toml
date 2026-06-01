@@ -32,6 +32,8 @@ where = ["src"]
 "beeui_module.web" = [
     "templates/*.html",
     "templates/components/*.html",
+    "templates/components/*/*.html",
+    "templates/components/*/*/*.html",
     "static/css/*.css",
     "static/js/*.js",
     "static/vendor/tabler/**/*",

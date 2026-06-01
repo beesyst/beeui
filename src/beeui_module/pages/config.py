@@ -22,8 +22,8 @@ from beeui_module.pages.models import (
 
 _SAFE_IDENTIFIER_RE = re.compile(r"^[a-z][a-z0-9_-]*$")
 _SAFE_SEGMENT_RE = re.compile(r"^[a-z0-9][a-z0-9._-]*$")
-_RESERVED_PATHS = {"/health", "/static"}
-_RESERVED_PREFIXES = ("/static/",)
+_RESERVED_PATHS = {"/health", "/static", "/components"}
+_RESERVED_PREFIXES = ("/static/", "/components/")
 _THEME_MODES = {"light", "dark", "auto"}
 _THEME_PRIMARYS = {
     "blue",
