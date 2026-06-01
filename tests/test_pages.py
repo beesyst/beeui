@@ -11,7 +11,7 @@ from beeui_module.pages.config import load_beeui_config
 from beeui_module.web.app import create_beeui_app
 
 
-# Тест: чек, что страницы, сконфигурированные в YAML, рендерятся и доступны по своим путям
+# Страницы из schema.yml должны рендериться как HTML routes
 def test_configured_pages_render_from_yaml() -> None:
     settings = load_settings(settings_path())
     ui_config = load_beeui_config(settings_path().parent / "schema.yml")
@@ -32,7 +32,7 @@ def test_configured_pages_render_from_yaml() -> None:
     assert "Placeholder page for future run overview" in runs.text
 
 
-# Тест: чек, что для навигационного элемента, соответствующего текущему пути, добавляется класс is-active
+# Тест: текущий route должен помечать соответствующий navigation item active-классом
 def test_active_navigation_item_is_rendered() -> None:
     settings = load_settings(settings_path())
     ui_config = load_beeui_config(settings_path().parent / "schema.yml")
@@ -49,7 +49,7 @@ def test_active_navigation_item_is_rendered() -> None:
     assert "beeui-nav-children" in response.text
 
 
-# Тест: disabled navigation item рендерится безопасно без ссылки
+# Тест: disabled navigation item рендерится без href и с aria-disabled
 def test_disabled_navigation_item_is_rendered_safely() -> None:
     settings = load_settings(settings_path())
     ui_config = load_beeui_config(settings_path().parent / "schema.yml")
@@ -63,7 +63,7 @@ def test_disabled_navigation_item_is_rendered_safely() -> None:
     assert "beeui-nav-disabled" in response.text
 
 
-# Тест: чек, что запрос к несуществующей странице возвращает 404
+# Тест: необъявленные страницы должны оставаться 404
 def test_unknown_page_returns_404() -> None:
     settings = load_settings(settings_path())
     ui_config = load_beeui_config(settings_path().parent / "schema.yml")
@@ -75,7 +75,7 @@ def test_unknown_page_returns_404() -> None:
     assert response.status_code == 404
 
 
-# Тест: чек, что строки, предоставленные в конфиге, экранируются для предотвращения XSS
+# Тест: schema-provided строки должны экранироваться Jinja autoescape
 def test_config_provided_page_strings_are_escaped(tmp_path: Path) -> None:
     settings = load_settings(settings_path())
 
@@ -113,12 +113,20 @@ def test_config_provided_page_strings_are_escaped(tmp_path: Path) -> None:
         "        path: /runs\n"
         "        icon: list\n"
         "\n"
+        "blocks:\n"
+        "  latest_run:\n"
+        "    type: metric_card\n"
+        "    title: Latest\n"
+        '    value: "<script>alert(9)</script>"\n'
+        "\n"
         "pages:\n"
         "  - id: dashboard\n"
         "    path: /\n"
         '    title: "<script>alert(1)</script>"\n'
         '    subtitle: "<script>alert(2)</script>"\n'
-        "    blocks: []\n"
+        "    blocks:\n"
+        "      - block: latest_run\n"
+        "        width: 6\n"
         "  - id: runs\n"
         "    path: /runs\n"
         "    title: Runs\n"
@@ -136,12 +144,31 @@ def test_config_provided_page_strings_are_escaped(tmp_path: Path) -> None:
     assert response.status_code == 200
     assert "<script>alert(1)</script>" not in response.text
     assert "<script>alert(2)</script>" not in response.text
+    assert "<script>alert(9)</script>" not in response.text
     assert "&lt;script&gt;alert(1)&lt;/script&gt;" in response.text
     assert "&lt;script&gt;alert(2)&lt;/script&gt;" in response.text
+    assert "&lt;script&gt;alert(9)&lt;/script&gt;" in response.text
 
 
-# Тест: empty state рендерится через component template
+# Тест: страница без placements показывает общий empty state component
 def test_empty_state_component_is_rendered() -> None:
+    settings = load_settings(settings_path())
+    ui_config = load_beeui_config(settings_path().parent / "schema.yml")
+    app = create_beeui_app(settings=settings, ui_config=ui_config)
+    client = TestClient(app)
+
+    response = client.get("/runs")
+
+    assert response.status_code == 200
+    assert "No blocks configured" in response.text
+    assert (
+        "Add block placements in config/schema.yml to render dashboard cards."
+        in response.text
+    )
+
+
+# Тест: dashboard собирается из всех block types, объявленных в demo schema
+def test_dashboard_blocks_are_rendered_from_schema() -> None:
     settings = load_settings(settings_path())
     ui_config = load_beeui_config(settings_path().parent / "schema.yml")
     app = create_beeui_app(settings=settings, ui_config=ui_config)
@@ -150,11 +177,52 @@ def test_empty_state_component_is_rendered() -> None:
     response = client.get("/")
 
     assert response.status_code == 200
-    assert "No blocks configured" in response.text
-    assert "No blocks are configured for this page yet." in response.text
+    assert "Latest Run" in response.text
+    assert "Runtime" in response.text
+    assert "Session KPIs" in response.text
+    assert "Recent runs" in response.text
+    assert "Quick links" in response.text
+    assert "Demo mode" in response.text
+    assert "Summary" in response.text
+    assert "Bootstrap progress" in response.text
+    assert "<progress" in response.text
+    assert 'style="' not in response.text
 
 
-# Тест: theme/layout schema values прокидываются в HTML как safe classes and attributes
+# Тест: non-normal block states должны быть видимы в HTML без runtime resolver
+def test_block_non_normal_states_are_rendered(tmp_path: Path) -> None:
+    settings = load_settings(settings_path())
+
+    ui_cfg_path = tmp_path / "schema.yml"
+    ui_cfg_path.write_text(
+        (settings_path().parent / "schema.yml")
+        .read_text(encoding="utf-8")
+        .replace(
+            "title: Runtime\n    status: ok",
+            "title: Runtime\n    state: degraded\n    status: ok",
+            1,
+        )
+        .replace(
+            "title: Demo mode\n    message:",
+            "title: Demo mode\n    state: error\n    message:",
+            1,
+        ),
+        encoding="utf-8",
+    )
+
+    ui_config = load_beeui_config(ui_cfg_path)
+    app = create_beeui_app(settings=settings, ui_config=ui_config)
+    client = TestClient(app)
+
+    response = client.get("/")
+
+    assert response.status_code == 200
+    assert "beeui-block-state-degraded" in response.text
+    assert "Block state: degraded" in response.text
+    assert ">error</span>" in response.text
+
+
+# Тест: theme/layout schema values должны попадать только в валидированные classes
 def test_theme_and_layout_schema_are_rendered() -> None:
     settings = load_settings(settings_path())
     ui_config = load_beeui_config(settings_path().parent / "schema.yml")
@@ -172,7 +240,7 @@ def test_theme_and_layout_schema_are_rendered() -> None:
     assert "container-xl" in response.text
 
 
-# Тест: чек, что при смене темы на light в конфиге, в HTML добавляются соответствующие атрибуты и классы для light темы
+# Тест: light mode должен менять только theme attribute/classes
 def test_light_theme_fixture_renders_from_schema() -> None:
     settings = load_settings(settings_path())
     ui_config = load_beeui_config(settings_path().parent / "schema.yml")
@@ -187,7 +255,7 @@ def test_light_theme_fixture_renders_from_schema() -> None:
     assert "beeui-theme-mode-light" in response.text
 
 
-# Тест: theme.mode auto рендерится безопасно без client-side persistence/mutation
+# Тест: auto theme не должен включать client-side persistence через localStorage
 def test_auto_theme_fixture_renders_without_localstorage_mutation() -> None:
     settings = load_settings(settings_path())
     ui_config = load_beeui_config(settings_path().parent / "schema.yml")
@@ -203,7 +271,7 @@ def test_auto_theme_fixture_renders_without_localstorage_mutation() -> None:
     assert "localStorage" not in response.text
 
 
-# Тест: чек, что при отключении навбара в конфиге, HTML не содержит классы для навбара и рендерит только сайдбар
+# Тест: navbar можно отключить schema-флагом без влияния на sidebar
 def test_navbar_disabled_fixture_does_not_render_top_navbar() -> None:
     settings = load_settings(settings_path())
     ui_config = load_beeui_config(settings_path().parent / "schema.yml")
@@ -222,7 +290,7 @@ def test_navbar_disabled_fixture_does_not_render_top_navbar() -> None:
     assert "beeui-sidebar beeui-sidebar-variant-dark" in response.text
 
 
-# Тест: logo_text из schema экранируется в HTML
+# Тест: logo_text из schema остаётся plain text и экранируется
 def test_logo_text_from_schema_is_escaped(tmp_path: Path) -> None:
     settings = load_settings(settings_path())
 

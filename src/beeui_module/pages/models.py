@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any
+
+from beeui_module.blocks.models import BlockDefinition, BlockPlacement
 
 
-# Модель конфигурации темы BeeUI
+# Настройки темы, прошедшие schema validation
 @dataclass(frozen=True)
 class ThemeConfig:
     mode: str
@@ -15,14 +16,14 @@ class ThemeConfig:
     density: str
 
 
-# Модель конфигурации сайдбара, включающая вариант и состояние свернутости
+# Настройки боковой навигации
 @dataclass(frozen=True)
 class SidebarConfig:
     variant: str
     collapsed: bool
 
 
-# Модель конфигурации верхнего navbar
+# Настройки верхнего navbar
 @dataclass(frozen=True)
 class NavbarConfig:
     enabled: bool
@@ -30,7 +31,7 @@ class NavbarConfig:
     sticky: bool
 
 
-# Модель конфигурации layout shell
+# Общая конфигурация layout shell
 @dataclass(frozen=True)
 class LayoutConfig:
     type: str
@@ -39,7 +40,7 @@ class LayoutConfig:
     navbar: NavbarConfig
 
 
-# Модель навигационного элемента, включающая заголовок, путь, иконку, состояние отключения и вложенные элементы
+# Элемент навигации: либо ссылка на страницу, либо группа children
 @dataclass(frozen=True)
 class BeeUiNavigationItem:
     title: str
@@ -49,17 +50,17 @@ class BeeUiNavigationItem:
     children: list["BeeUiNavigationItem"] = field(default_factory=list)
 
 
-# Модель страницы BeeUI, содержащая идентификатор, путь, заголовок, необязательный подзаголовок и блоки контента
+# Страница BeeUI с валидированными block placements
 @dataclass(frozen=True)
 class BeeUiPage:
     page_id: str
     path: str
     title: str
     subtitle: str | None
-    blocks: list[Any]
+    blocks: list[BlockPlacement]
 
 
-# Модель конфигурации BeeUI, включающая приложение, тему, layout, навигацию и страницы
+# Полная read-only конфигурация BeeUI, собранная из schema.yml
 @dataclass(frozen=True)
 class BeeUiConfig:
     app_title: str
@@ -68,4 +69,5 @@ class BeeUiConfig:
     theme: ThemeConfig
     layout: LayoutConfig
     navigation: list[BeeUiNavigationItem]
+    blocks: dict[str, BlockDefinition]
     pages: list[BeeUiPage]

@@ -1,0 +1,21 @@
+<article class="card beeui-block">
+  <header class="card-header d-flex justify-content-between align-items-center">
+    <h3 class="card-title mb-0">{{ block.title }}</h3>
+    {% if block.state != "normal" %}
+    <span class="badge bg-secondary-lt text-uppercase">{{ block.state }}</span>
+    {% endif %}
+  </header>
+  <div class="card-body">
+    {% if block.state != "normal" %}
+    <div class="alert alert-secondary beeui-block-state beeui-block-state-{{ block.state }}" role="status">
+      Block state: {{ block.state }}
+    </div>
+    {% endif %}
+    <p class="beeui-metric-value mb-2">
+      {{ block.payload['value'] }}{% if block.payload.get('suffix') %} {{ block.payload['suffix'] }}{% endif %}
+    </p>
+    {% if block.payload.get('subtitle') %}
+    <p class="text-secondary mb-0">{{ block.payload['subtitle'] }}</p>
+    {% endif %}
+  </div>
+</article>

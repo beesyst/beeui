@@ -17,7 +17,9 @@
    - theme;
    - navigation;
    - layout;
-   - pages.
+
+- pages;
+- reusable blocks registry.
 
 `config/beeui.yml` — planned/future naming for product integration after adapter/block/data-source iterations. It is not the current CLI contract.
 
@@ -25,7 +27,7 @@
 
 ```text
 settings.yml отвечает за запуск и безопасность.
-schema.yml отвечает за текущий demo/MVP внешний вид, навигацию, layout и страницы.
+schema.yml отвечает за текущий demo/MVP внешний вид, навигацию, layout, страницы и reusable blocks.
 ```
 
 `beeui` не должен хранить domain/runtime logic Bee-продуктов.
@@ -40,10 +42,9 @@ Bee-продукты остаются source of truth для:
 
 `beeui` только читает product read-model через adapter/API и рендерит UI.
 
-
 ## Файлы конфигурации
 
-Current Iteration 4 demo/MVP structure:
+Current Iteration 5 demo/MVP structure:
 
 ```text
 beeui/
@@ -71,7 +72,6 @@ It does not support:
 ```bash
 ./start.sh web --config config/beeui.yml --settings config/settings.yml
 ```
-
 
 # 1. `config/settings.yml`
 
@@ -123,19 +123,17 @@ features:
   api: false
 ```
 
-
 ## Используемые секции `settings.yml`
 
-| Секция           | Назначение                                                             |
-| ---------------- | ---------------------------------------------------------------------- |
-| `app.*`          | Идентичность runtime-приложения `beeui`                                |
-| `web.*`          | Host, port, route prefix, browser open behavior                        |
-| `logging.*`      | Логи `beeui`                                                           |
-| `storage.*`      | Локальный storage для audit/config/action artifacts, если они включены |
-| `security.*`     | Базовые security defaults                                              |
-| `product.*`      | Какой product adapter используется                                     |
-| `features.*`     | Feature flags для UI capabilities                                      |
-
+| Секция       | Назначение                                                             |
+| ------------ | ---------------------------------------------------------------------- |
+| `app.*`      | Идентичность runtime-приложения `beeui`                                |
+| `web.*`      | Host, port, route prefix, browser open behavior                        |
+| `logging.*`  | Логи `beeui`                                                           |
+| `storage.*`  | Локальный storage для audit/config/action artifacts, если они включены |
+| `security.*` | Базовые security defaults                                              |
+| `product.*`  | Какой product adapter используется                                     |
+| `features.*` | Feature flags для UI capabilities                                      |
 
 ## `app.*`
 
@@ -160,7 +158,6 @@ app:
   - `auth.session.secure_cookie=true`;
   - `security.assets_ext=false`.
 
-
 ## `web.*`
 
 ```yaml
@@ -174,13 +171,13 @@ web:
 
 ### Поля
 
-| Ключ                       | Тип    | Обязательный | Описание                         |
-| -------------------------- | ------ | ------------ | -------------------------------- |
-| `web.host`                 | string | да           | Host для uvicorn/FastAPI         |
-| `web.port`                 | int    | да           | Port                             |
-| `web.open_browser`         | bool   | да           | Открывать браузер при запуске    |
-| `web.route_prefix`         | string | да           | Prefix для embedded/mounted mode |
-| `web.cache_static`         | int    | да           | Cache для static assets          |
+| Ключ               | Тип    | Обязательный | Описание                         |
+| ------------------ | ------ | ------------ | -------------------------------- |
+| `web.host`         | string | да           | Host для uvicorn/FastAPI         |
+| `web.port`         | int    | да           | Port                             |
+| `web.open_browser` | bool   | да           | Открывать браузер при запуске    |
+| `web.route_prefix` | string | да           | Prefix для embedded/mounted mode |
+| `web.cache_static` | int    | да           | Cache для static assets          |
 
 ### Правила
 
@@ -188,7 +185,6 @@ web:
 - `web.route_prefix` должен быть пустым или начинаться с `/`.
 - `web.route_prefix` не должен заканчиваться `/`, кроме самого `/`.
 - `web.open_browser=true` не должен ломать запуск, если браузер открыть не удалось.
-
 
 ## `logging.*`
 
@@ -218,7 +214,6 @@ logging:
   - product API keys;
   - raw sensitive headers;
   - full config with secrets.
-
 
 ## `storage.*`
 
@@ -258,7 +253,6 @@ beeagent/storage/runs/*
 - Product artifacts не копируются в `beeui/storage`.
 - `beeui` может хранить только свои audit/support artifacts.
 
-
 ## `security.*`
 
 ```yaml
@@ -269,10 +263,10 @@ security:
 
 ### Поля
 
-| Ключ                             | Тип          | Обязательный | Описание                      |
-| -------------------------------- | ------------ | ------------ | ----------------------------- |
-| `security.html_autoescape` | bool | да | Jinja2 autoescape |
-| `security.assets_ext`      | bool | да | Разрешить external JS/CSS assets |
+| Ключ                       | Тип  | Обязательный | Описание                         |
+| -------------------------- | ---- | ------------ | -------------------------------- |
+| `security.html_autoescape` | bool | да           | Jinja2 autoescape                |
+| `security.assets_ext`      | bool | да           | Разрешить external JS/CSS assets |
 
 ### Правила
 
@@ -282,7 +276,6 @@ security:
 - Tabler assets должны быть vendored/local.
 - Нельзя копировать demo tracking scripts из external templates.
 - Static roots должны быть path-safe.
-
 
 ## `auth.*`
 
@@ -328,7 +321,6 @@ Auth нужен для internal operator/admin UI.
 - В `prod` auth должен быть включён.
 - `secure_cookie=true` обязателен для HTTPS/prod.
 
-
 ## `product.*`
 
 ```yaml
@@ -362,12 +354,12 @@ product:
 
 ### Поля
 
-| Ключ                  | Тип    | Обязательный | Описание                   |
-| --------------------- | ------ | ------------ | -------------------------- |
-| `product.mode`        | string | да           | `demo`, `embedded`, `http` |
-| `product.id`          | string | да           | Product id                 |
-| `product.title`       | string | да           | Display title              |
-| `product.adapter`     | string | да           | Adapter name               |
+| Ключ              | Тип    | Обязательный | Описание                   |
+| ----------------- | ------ | ------------ | -------------------------- |
+| `product.mode`    | string | да           | `demo`, `embedded`, `http` |
+| `product.id`      | string | да           | Product id                 |
+| `product.title`   | string | да           | Display title              |
+| `product.adapter` | string | да           | Adapter name               |
 
 ### Правила
 
@@ -375,7 +367,6 @@ product:
 - `product.mode=http` требует `http_adapter.enabled=true`.
 - `product.mode=embedded` требует adapter injection из host product.
 - `beeui` не должен сам угадывать product internals без adapter.
-
 
 ## `http_adapter.*`
 
@@ -412,7 +403,6 @@ http_adapter:
 - Auth headers должны подставляться через env references в future iteration.
 - Backend unavailable должен отображаться как degraded UI state, а не ронять весь app.
 
-
 ## `features.*`
 
 ```yaml
@@ -446,12 +436,11 @@ features:
   - `config_apply=false`;
   - `operator_actions=false`.
 
-
 # 2. Current `config/schema.yml`
 
 ## Назначение
 
-`config/schema.yml` is the current demo/MVP UI schema file used by the Iteration 4 runtime and CLI.
+`config/schema.yml` is the current demo/MVP UI schema file used by the Iteration 5 runtime and CLI.
 
 `config/beeui.yml` is future/product integration naming, not the current CLI contract.
 
@@ -460,12 +449,12 @@ features:
 - app display metadata;
 - theme;
 - navigation;
+- blocks;
 - pages;
-- pages.
 
 Он не должен содержать secrets и product runtime logic.
 
-## Current Iteration 4 example
+## Current Iteration 5 example
 
 ```yaml
 app:
@@ -502,12 +491,29 @@ navigation:
       - title: Reports
         disabled: true
 
+blocks:
+  latest_run:
+    type: metric_card
+    title: Latest Run
+    value: run_demo_001
+    subtitle: Static demo value
+
+  runtime_status:
+    type: status_card
+    title: Runtime
+    status: ok
+    value: Ready
+
 pages:
   - id: dashboard
     path: /
     title: Dashboard
     subtitle: Demo operator dashboard
-    blocks: []
+    blocks:
+      - block: latest_run
+        width: 6
+      - block: runtime_status
+        width: 6
 
   - id: runs
     path: /runs
@@ -516,15 +522,14 @@ pages:
     blocks: []
 ```
 
-
 ## Используемые секции `schema.yml`
 
-| Секция           | Назначение                     |
-| ---------------- | ------------------------------ |
-| `app.*`          | Display metadata and theme     |
-| `navigation[]`   | Sidebar/global navigation      |
-| `pages[]`        | Pages/routes/empty block placeholders |
-
+| Секция         | Назначение                                |
+| -------------- | ----------------------------------------- |
+| `app.*`        | Display metadata and theme                |
+| `navigation[]` | Sidebar/global navigation                 |
+| `blocks.*`     | Reusable static/literal block definitions |
+| `pages[]`      | Pages/routes and block placement          |
 
 ## `app.*`
 
@@ -554,36 +559,36 @@ app:
 
 ### Поля
 
-| Ключ           | Тип    | Обязательный | Описание                    |
-| -------------- | ------ | ------------ | --------------------------- |
-| `app.title`    | string | да           | Display title               |
-| `app.product`  | string | да           | Product key                 |
-| `app.logo_text` | string | да           | Sidebar/header logo text    |
-| `app.theme`    | dict   | да           | Controlled theme settings   |
-| `app.layout`   | dict   | да           | Controlled layout settings  |
+| Ключ            | Тип    | Обязательный | Описание                   |
+| --------------- | ------ | ------------ | -------------------------- |
+| `app.title`     | string | да           | Display title              |
+| `app.product`   | string | да           | Product key                |
+| `app.logo_text` | string | да           | Sidebar/header logo text   |
+| `app.theme`     | dict   | да           | Controlled theme settings  |
+| `app.layout`    | dict   | да           | Controlled layout settings |
 
 ### Theme fields
 
-| Ключ                 | Тип    | Обязательный | Значения                                                                                 |
-| -------------------- | ------ | ------------ | ---------------------------------------------------------------------------------------- |
-| `app.theme.mode`     | string | да           | `light`, `dark`, `auto`                                                                  |
-| `app.theme.primary`  | string | да           | `blue`, `azure`, `cyan`, `teal`, `green`, `lime`, `yellow`, `orange`, `red`, `pink`, `indigo` |
-| `app.theme.base`     | string | да           | `slate`, `gray`, `zinc`, `neutral`, `stone`                                              |
-| `app.theme.font`     | string | да           | `sans-serif`, `serif`, `monospace`                                                       |
-| `app.theme.radius`   | int    | да           | `0`, `1`, `2`                                                                            |
-| `app.theme.density`  | string | да           | `default`, `compact`, `comfortable`                                                      |
+| Ключ                | Тип    | Обязательный | Значения                                                                                      |
+| ------------------- | ------ | ------------ | --------------------------------------------------------------------------------------------- |
+| `app.theme.mode`    | string | да           | `light`, `dark`, `auto`                                                                       |
+| `app.theme.primary` | string | да           | `blue`, `azure`, `cyan`, `teal`, `green`, `lime`, `yellow`, `orange`, `red`, `pink`, `indigo` |
+| `app.theme.base`    | string | да           | `slate`, `gray`, `zinc`, `neutral`, `stone`                                                   |
+| `app.theme.font`    | string | да           | `sans-serif`, `serif`, `monospace`                                                            |
+| `app.theme.radius`  | int    | да           | `0`, `1`, `2`                                                                                 |
+| `app.theme.density` | string | да           | `default`, `compact`, `comfortable`                                                           |
 
 ### Layout fields
 
-| Ключ                           | Тип    | Обязательный | Значения              |
-| ------------------------------ | ------ | ------------ | --------------------- |
-| `app.layout.type`              | string | да           | `vertical`            |
-| `app.layout.container`         | string | да           | `xl`, `fluid`         |
-| `app.layout.sidebar.variant`   | string | да           | `default`, `dark`     |
-| `app.layout.sidebar.collapsed` | bool   | да           | true/false            |
-| `app.layout.navbar.enabled`    | bool   | да           | true/false            |
-| `app.layout.navbar.variant`    | string | да           | `default`, `dark`     |
-| `app.layout.navbar.sticky`     | bool   | да           | true/false            |
+| Ключ                           | Тип    | Обязательный | Значения          |
+| ------------------------------ | ------ | ------------ | ----------------- |
+| `app.layout.type`              | string | да           | `vertical`        |
+| `app.layout.container`         | string | да           | `xl`, `fluid`     |
+| `app.layout.sidebar.variant`   | string | да           | `default`, `dark` |
+| `app.layout.sidebar.collapsed` | bool   | да           | true/false        |
+| `app.layout.navbar.enabled`    | bool   | да           | true/false        |
+| `app.layout.navbar.variant`    | string | да           | `default`, `dark` |
+| `app.layout.navbar.sticky`     | bool   | да           | true/false        |
 
 ### Правила
 
@@ -593,7 +598,6 @@ app:
 - Layout values must be allowlisted.
 - Font key должен ссылаться на known safe font mode.
 - Local/static fonts не должны коммититься без проверки лицензии.
-
 
 ## `navigation[]`
 
@@ -613,13 +617,13 @@ navigation:
 
 ### Поля
 
-| Ключ       | Тип    | Обязательный | Описание                         |
-| ---------- | ------ | ------------ | -------------------------------- |
-| `title`    | string | да           | Текст пункта                     |
-| `path`     | string | да/нет       | Required for enabled leaf items  |
-| `icon`     | string | нет          | Icon key                         |
-| `disabled` | bool   | нет          | Disabled leaf item without link  |
-| `children` | list   | нет          | Grouped nested nav items         |
+| Ключ       | Тип    | Обязательный | Описание                        |
+| ---------- | ------ | ------------ | ------------------------------- |
+| `title`    | string | да           | Текст пункта                    |
+| `path`     | string | да/нет       | Required for enabled leaf items |
+| `icon`     | string | нет          | Icon key                        |
+| `disabled` | bool   | нет          | Disabled leaf item without link |
+| `children` | list   | нет          | Grouped nested nav items        |
 
 ### Правила
 
@@ -630,7 +634,6 @@ navigation:
 - Grouped navigation uses `children`.
 - Group items omit `path`.
 - Disabled leaf items may omit `path` and render without a link.
-
 
 ## `data_sources.*`
 
@@ -707,7 +710,6 @@ data_sources:
   - `warnings`;
   - `source`.
 
-
 ## `pages[]`
 
 ```yaml
@@ -721,21 +723,23 @@ pages:
 
 ### Поля
 
-| Ключ       | Тип    | Обязательный | Описание           |
-| ---------- | ------ | ------------ | ------------------ |
-| `id`       | string | да           | Page ID            |
-| `path`     | string | да           | Route              |
-| `title`    | string | да           | Page title         |
-| `subtitle` | string | нет          | Page subtitle      |
-| `blocks`   | list   | да           | Empty-list placeholder until block registry iteration |
+| Ключ       | Тип    | Обязательный | Описание                                 |
+| ---------- | ------ | ------------ | ---------------------------------------- |
+| `id`       | string | да           | Page ID                                  |
+| `path`     | string | да           | Route                                    |
+| `title`    | string | да           | Page title                               |
+| `subtitle` | string | нет          | Page subtitle                            |
+| `blocks`   | list   | да           | Block placement list (`block` + `width`) |
 
 ### Правила
 
 - `id` должен быть safe slug.
 - `path` должен начинаться с `/`.
 - Duplicate page ids/paths запрещены.
-- `blocks` must be a list and is currently expected to be an empty-list placeholder until block registry iteration.
-
+- `blocks` must be a list.
+- Каждый placement обязан иметь `block` и `width`.
+- `block` должен ссылаться на существующий top-level block id.
+- `width` должен быть integer `1..12`.
 
 ## `blocks.*`
 
@@ -752,28 +756,30 @@ blocks:
 
 ### Common block fields
 
-| Ключ     | Тип    | Обязательный | Описание                                |
-| -------- | ------ | ------------ | --------------------------------------- |
-| `type`   | string | да           | Block type                              |
-| `title`  | string | да           | Block title                             |
-| `source` | string | нет          | Data source key                         |
-| `empty`  | string | нет          | Empty state text                        |
-| `note`   | string | нет          | Note/subtitle selector or literal       |
-| `class`  | string | нет          | Safe style class key, not arbitrary CSS |
+Current Iteration 5 contract is static/literal only:
+
+- `source`, selectors and adapter-bound fields are not supported in this iteration;
+- arbitrary keys like `html`, `script`, `javascript`, `style`, `css`, `custom_css`, `custom_js` are rejected fail-fast;
+- `links_card.links[].href` allows only safe internal paths.
+
+| Ключ    | Тип    | Обязательный | Описание                               |
+| ------- | ------ | ------------ | -------------------------------------- |
+| `type`  | string | да           | Block type                             |
+| `title` | string | да           | Block title                            |
+| `state` | string | нет          | `normal`, `empty`, `degraded`, `error` |
 
 ### MVP block types
 
-| Type             | Назначение                           |
-| ---------------- | ------------------------------------ |
-| `metric_card`    | Один KPI/value                       |
-| `kpi_grid`       | Несколько label/value полей          |
-| `status_card`    | Status + badge                       |
-| `table_card`     | Таблица                              |
-| `links_card`     | Список ссылок                        |
-| `artifact_table` | Artifact list                        |
-| `json_viewer`    | Safe JSON preview                    |
-| `chart_card`     | Chart placeholder / later ApexCharts |
-
+| Type            | Назначение                  |
+| --------------- | --------------------------- |
+| `metric_card`   | Один KPI/value              |
+| `kpi_grid`      | Несколько label/value полей |
+| `status_card`   | Status + badge              |
+| `table_card`    | Таблица                     |
+| `links_card`    | Список ссылок               |
+| `alert_card`    | Alert with severity         |
+| `text_card`     | Plain escaped text          |
+| `progress_card` | Progress 0..100             |
 
 ## `metric_card`
 
@@ -797,7 +803,6 @@ blocks:
 | `suffix` | string | нет          | Unit                     |
 | `href`   | string | нет          | Selector или literal URL |
 | `empty`  | string | нет          | Empty state              |
-
 
 ## `kpi_grid`
 
@@ -826,7 +831,6 @@ blocks:
 | `fields[].href`  | string | нет          | Selector/literal URL |
 | `fields[].badge` | string | нет          | Badge selector       |
 
-
 ## `status_card`
 
 ```yaml
@@ -852,7 +856,6 @@ MVP badge classes should be mapped internally:
 | `secondary` | unknown/empty |
 
 Config не должен принимать arbitrary CSS class.
-
 
 ## `table_card`
 
@@ -892,7 +895,6 @@ blocks:
 - `href_template` должен использовать only row fields.
 - HTML escaping обязательный.
 
-
 ## `links_card`
 
 ```yaml
@@ -922,7 +924,6 @@ Expected data:
 - Links должны быть internal или allowlisted.
 - External links should be marked explicitly.
 - `javascript:` URLs запрещены.
-
 
 ## `artifact_table`
 
@@ -955,7 +956,6 @@ Expected data:
 - Artifact access only by safe `artifact_id`.
 - No arbitrary path from browser.
 - Product adapter owns artifact allowlist.
-
 
 # 3. Product adapter config examples
 
@@ -1187,7 +1187,6 @@ blocks:
         label: Status
 ```
 
-
 ## BeeAgent embedded example
 
 `config/settings.yml`:
@@ -1387,7 +1386,6 @@ blocks:
         label: Status
 ```
 
-
 # 4. `.env`
 
 ## Назначение
@@ -1420,7 +1418,6 @@ BEEUI_HTTP_TOKEN=
 - Secrets не попадают в HTML/API/logs/artifacts.
 - При `auth.enabled=true` `BEEUI_SESSION_SECRET` обязателен.
 - При `product.mode=http` future auth headers должны ссылаться на env, а не хранить raw token в YAML.
-
 
 # 5. Validation rules
 
@@ -1469,7 +1466,6 @@ Planned/future fail-fast validation after block/data-source/adapter iterations:
 - degraded state;
 - warnings;
 - source artifact link, если доступен.
-
 
 # 6. Security rules
 
@@ -1532,7 +1528,6 @@ private_key
 - no hidden fallback;
 - no direct broker/runtime authority in BeeUI.
 
-
 # 7. Integration rules
 
 ## Embedded mode
@@ -1582,7 +1577,6 @@ BeeUI обязан:
 - redacted sensitive fields;
 - не мутировать product state без explicit product callback;
 - не исполнять domain logic.
-
 
 # 8. MVP defaults
 
@@ -1681,7 +1675,6 @@ pages:
     blocks: []
 ```
 
-
 # 9. Checks
 
 Минимальные проверки для config changes:
@@ -1702,7 +1695,6 @@ uv run pytest -q
 - secrets are redacted;
 - no external scripts are loaded;
 - no product artifacts are mutated.
-
 
 # 10. Версионирование config contract
 

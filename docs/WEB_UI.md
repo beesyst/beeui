@@ -164,7 +164,7 @@ src/beeui_module/
     version.py
 
   pages/                 # current declarative schema/config/router module
-  blocks/                # planned/future module
+  blocks/                # current static/literal block registry and renderers
   adapters/              # planned/future module
   artifacts/             # planned/future module
   api/                   # planned/future module
@@ -219,9 +219,9 @@ Doctor:
 
 ## Product integration
 
-### Current Iteration 4 app factory
+### Current app factory after Iteration 5
 
-In the current Iteration 4 state, the app factory accepts loaded settings and declarative UI schema and creates the FastAPI/Jinja2 shell.
+In the current Iteration 5 state, the app factory accepts loaded settings and declarative UI schema, then creates the FastAPI/Jinja2 shell with schema-driven pages, navigation, theme/layout and static/literal blocks.
 
 Пример:
 
@@ -242,7 +242,7 @@ Product adapter injection остаётся planned/future scope.
 
 Фаза product integration должна использовать небольшой app factory или mount helper.
 
-Planned для Iteration 5-7 или embedded integration phase:
+Planned for the product integration phase:
 
 ```python
 from beeui_module.web.app import create_beeui_app
@@ -370,7 +370,7 @@ features:
   api: false
 ```
 
-Iteration 4 declarative UI schema example (`config/schema.yml`):
+Iteration 5 declarative UI schema example (`config/schema.yml`):
 
 ```yaml
 app:
@@ -407,12 +407,29 @@ navigation:
       - title: Reports
         disabled: true
 
+blocks:
+  latest_run:
+    type: metric_card
+    title: Latest Run
+    value: run_demo_001
+    subtitle: Static demo value
+
+  runtime_status:
+    type: status_card
+    title: Runtime
+    status: ok
+    value: Ready
+
 pages:
   - id: dashboard
     path: /
     title: Dashboard
     subtitle: Demo operator dashboard
-    blocks: []
+    blocks:
+      - block: latest_run
+        width: 6
+      - block: runtime_status
+        width: 6
 
   - id: runs
     path: /runs
@@ -420,6 +437,8 @@ pages:
     subtitle: Placeholder page for future run overview
     blocks: []
 ```
+
+Iteration 5 block values are static/literal only. They are rendered from `config/schema.yml` and do not use adapter data sources or selector resolution yet. Dynamic adapter-backed values are planned for the data resolver and product adapter iterations.
 
 Rules:
 
@@ -430,8 +449,10 @@ Rules:
 - navigation paths must reference known page paths;
 - reserved paths `/health`, `/static`, `/static/...` are rejected;
 - no arbitrary HTML/JS in config;
-- `blocks` is required as empty-list placeholder until block registry iteration.
-- block registry and real block rendering are planned for the blocks iteration.
+- top-level `blocks` is required and validated as mapping;
+- pages place blocks with `pages[].blocks[].block` and `pages[].blocks[].width` (`1..12`);
+- unknown block references/types and invalid renderer fields fail fast;
+- no arbitrary HTML/JS/CSS-like fields are accepted in blocks.
 
 ## Tabler shell policy
 
@@ -477,7 +498,7 @@ Shared template primitives live in:
 src/beeui_module/web/templates/components/
 ```
 
-Current implemented primitives in Iteration 3:
+Current implemented shell primitives:
 
 - `sidebar`;
 - `navbar`;
@@ -485,17 +506,23 @@ Current implemented primitives in Iteration 3:
 - `footer`;
 - `empty_state`.
 
+Current implemented block templates after Iteration 5:
+
+- `metric_card`;
+- `kpi_grid`;
+- `status_card`;
+- `table_card`;
+- `links_card`;
+- `alert_card`;
+- `text_card`;
+- `progress_card`.
+
 Planned primitives for later iterations:
 
 - `breadcrumbs`;
 - `status_badge`;
 - `degraded_block`;
 - `source_link`;
-- `metric_card`;
-- `kpi_card`;
-- `status_card`;
-- `data_table`;
-- `links_card`;
 - `artifact_links`;
 - `json_viewer`;
 - `chart_card`.
@@ -556,7 +583,7 @@ JSON routes:
 
 Not all routes must exist in MVP.
 
-MVP route set after Iteration 4:
+MVP route set after Iteration 5:
 
 - `/`
 - `/runs`
@@ -564,6 +591,8 @@ MVP route set after Iteration 4:
 - `/static/...`
 - `/static/vendor/tabler/css/tabler-compatible.min.css`
 - `/static/vendor/tabler/js/tabler-compatible.min.js`
+
+Iteration 5 changes page body rendering, not the public route set.
 
 ## Read-only model
 
@@ -727,7 +756,7 @@ Allowed severity:
 
 Pages are declarative.
 
-Page config:
+Page config after Iteration 5:
 
 ```yaml
 pages:
@@ -735,7 +764,11 @@ pages:
     path: /
     title: Dashboard
     subtitle: Demo operator dashboard
-    blocks: []
+    blocks:
+      - block: latest_run
+        width: 6
+      - block: runtime_status
+        width: 6
 
   - id: runs
     path: /runs
@@ -744,67 +777,109 @@ pages:
     blocks: []
 ```
 
-Current Iteration 4 layout shell primitives render schema-driven theme/layout/navigation. Real block layout/rendering is planned for the block registry iteration.
-
 Rules:
 
-- page `id` must be unique;
-- page `path` must be unique;
-- page path must be safe;
-- page cannot define arbitrary HTML;
-- block rendering is out of current Iteration 4 scope; `blocks` must be a list and may be empty.
+* page `id` must be unique;
+* page `path` must be unique;
+* page path must be safe;
+* page cannot define arbitrary HTML;
+* `pages[].blocks` is a list of placements;
+* each placement must reference an existing top-level `blocks` entry;
+* each placement width must be an integer from `1` to `12`;
+* pages with an empty `blocks` list render the shared empty state.
 
 ## Blocks
 
-Block registry and real block rendering are planned and are not implemented in the current Iteration 4 runtime.
-The examples below describe the intended future contract.
+Block registry and static/literal block rendering are implemented after Iteration 5.
 
-Block config:
+Top-level block config:
 
 ```yaml
 blocks:
-  total_profit:
+  latest_run:
     type: metric_card
-    title: Total Profit
-    source: dashboard.profit
-    value: total_profit
-    suffix: USDT
-    empty: Profit unavailable
+    title: Latest Run
+    value: run_demo_001
+    subtitle: Static demo value
+
+  runtime_status:
+    type: status_card
+    title: Runtime
+    status: ok
+    value: Ready
 ```
 
-Planned block types for MVP scope:
+Page placement config:
 
-- `metric_card`
-- `kpi_grid`
-- `status_card`
-- `table_card`
-- `links_card`
+```yaml
+pages:
+  - id: dashboard
+    path: /
+    title: Dashboard
+    subtitle: Demo operator dashboard
+    blocks:
+      - block: latest_run
+        width: 6
+      - block: runtime_status
+        width: 6
+```
 
-Planned block types:
+Implemented block types after Iteration 5:
 
-- `artifact_table`
-- `json_viewer`
-- `chart_card`
-- `action_card`
-- `config_form`
-- `tabs`
-- `markdown_card`
+* `metric_card`
+* `kpi_grid`
+* `status_card`
+* `table_card`
+* `links_card`
+* `alert_card`
+* `text_card`
+* `progress_card`
+
+Current limitations:
+
+* values are static/literal values from `config/schema.yml`;
+* selectors are not resolved yet;
+* adapter-backed data is not available yet;
+* blocks do not call product APIs;
+* blocks do not read product storage;
+* blocks do not render arbitrary HTML, CSS or JS.
 
 Rules:
 
-- block renderer is domain-neutral;
-- block source must resolve through data resolver/adapter;
-- block must handle missing/partial data;
-- block must not call product APIs directly;
-- block must not read filesystem directly unless it is an artifact browser block using allowlisted artifact adapter.
+* block renderer is domain-neutral;
+* block ids must be safe identifiers;
+* block type must be one of the registered renderer types;
+* unknown block references fail fast;
+* unknown block types fail fast;
+* renderer-specific fields fail fast when invalid;
+* display values accept scalar literals only;
+* nested objects/lists are rejected for scalar display values;
+* `links_card` accepts internal safe paths only;
+* block text is rendered through Jinja autoescape;
+* no Jinja expressions from config are evaluated;
+* no arbitrary HTML/JS/CSS-like fields are accepted.
+
+Planned later block families:
+
+* `artifact_table`
+* `json_viewer`
+* `chart_card`
+* `action_card`
+* `config_form`
+* `tabs`
+
+These require later resolver, adapter, artifact, config or action iterations and are intentionally excluded from Iteration 5.
 
 ---
 
 ## Data resolver
 
-Block data is resolved from adapter/source payloads.
+Data resolver is planned for Iteration 7 and is not part of the current Iteration 5 runtime.
 
-Selector example:
+Current Iteration 5 blocks render static/literal values from `config/schema.yml`.
+Later resolver-backed blocks will resolve data from adapter/source payloads.
+
+Planned selector example:
 
 ```yaml
 value: dashboard.profit.total_profit
@@ -1300,20 +1375,23 @@ visual editor
 
 ## Typical operator scenarios
 
-Current Iteration 4 scenario:
+Current Iteration 5 scenario:
 
 ```text
 1. BeeUI loads config/settings.yml.
 2. BeeUI loads config/schema.yml.
-3. Operator opens / or /runs.
-4. BeeUI renders configured page title/subtitle/navigation.
-5. BeeUI renders the Iteration 4 schema-driven theme/layout/navigation shell with sidebar/navbar/page header/footer and an empty state for pages without blocks.
-6. No adapter/data/block rendering is executed yet.
+3. BeeUI validates pages, navigation, theme/layout and blocks fail-fast.
+4. Operator opens / or /runs.
+5. BeeUI renders configured page title/subtitle/navigation.
+6. BeeUI renders the schema-driven theme/layout/navigation shell.
+7. BeeUI renders static/literal blocks for pages with configured block placements.
+8. Pages without block placements render the shared empty state.
+9. No adapter/data resolver/product artifact rendering is executed yet.
 ```
 
 ### 1. Open product dashboard
 
-Planned/future (requires adapter/block iterations).
+Planned/future dynamic dashboard scenario (requires data resolver and product adapter iterations).
 
 1. Product starts embedded BeeUI web app.
 2. Operator opens `/`.
@@ -1361,7 +1439,7 @@ Planned/future (requires config apply and audit iterations).
 
 ## MVP route contract
 
-Current Iteration 4 MVP:
+Current Iteration 5 MVP:
 
 - `GET /`
 - `GET /runs`
@@ -1370,7 +1448,9 @@ Current Iteration 4 MVP:
 - `GET /static/vendor/tabler/css/tabler-compatible.min.css`
 - `GET /static/vendor/tabler/js/tabler-compatible.min.js`
 
-Iteration 5-10 MVP:
+Iteration 5 does not add new public routes. It changes the page body from empty placeholders to schema-driven static/literal block rendering.
+
+Planned Iteration 10+ / product integration route families:
 
 - `GET /runs`
 - `GET /runs/{run_id}`

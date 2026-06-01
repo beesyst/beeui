@@ -869,29 +869,48 @@ app:
 
 ## Этап 3 — Blocks and component system
 
-### Итерация 5 — Block registry and dashboard blocks v1
+### Итерация 5 — Block registry and static dashboard blocks v1
 
-**Статус:** PLANNED
+**Статус:** DONE
 
 #### Goal
 
-Добавить reusable block registry и первые production-safe dashboard blocks, чтобы страницы собирались из declarative schema, а не из hardcoded HTML.
+Добавить reusable block registry и первые production-safe dashboard blocks, чтобы страницы BeeUI собирались из declarative schema, а не из hardcoded HTML или empty placeholder.
+
+#### Почему это нужно
+
+После Iteration 4 BeeUI умеет рендерить schema-driven shell: theme, layout, navigation и pages. Но страницы всё ещё не имеют reusable content layer: `pages[].blocks` существует только как placeholder.
+
+До data sources, selector resolver, adapters и BeeCap integration нужно зафиксировать безопасный block contract:
+
+- какие block types поддерживаются;
+- как blocks объявляются в schema;
+- как blocks размещаются на странице;
+- как renderer registry выбирает renderer;
+- как invalid block config fails fast;
+- как HTML escaping сохраняется для всех text values.
 
 #### Scope
 
 Включено:
 
+- top-level `blocks` section in `config/schema.yml`;
+- page-level block placement through existing `pages[].blocks`;
 - block model;
+- block placement model;
 - block registry;
 - renderer registry;
-- layout rows/columns;
-- responsive widths;
+- layout rows/columns through simple responsive width values;
 - block ids;
 - block titles/subtitles;
+- static/literal block values only, без resolver expressions и adapter-backed lookups;
 - empty state;
 - degraded state;
 - error state;
-- unknown block rejection;
+- unknown block type rejection;
+- unknown block reference rejection;
+- duplicate block id rejection;
+- invalid block width rejection;
 - safe value rendering with Jinja autoescape;
 
 Renderers:
@@ -912,63 +931,81 @@ pages:
   - id: dashboard
     path: /
     title: Dashboard
-    layout:
-      - row:
-          - block: latest_run
-            width: 3
-          - block: runtime_status
-            width: 3
+    subtitle: Demo operator dashboard
+    blocks:
+      - block: latest_run
+        width: 3
+      - block: runtime_status
+        width: 3
 
 blocks:
   latest_run:
     type: metric_card
     title: Latest Run
-    value: demo.latest_run.id
-    subtitle: demo.latest_run.status
+    value: run_demo_001
+    subtitle: Demo static value
 
   runtime_status:
     type: status_card
     title: Runtime
-    status: demo.runtime.status
+    status: ok
+    value: Ready
 ```
 
 Не включено:
 
+- data sources;
+- selector resolver;
+- adapter-backed values;
+- product adapters;
 - charts;
 - maps;
 - artifact browser;
-- product adapters;
 - arbitrary HTML block;
 - arbitrary JS block;
-- drag-and-drop editor.
+- Markdown rendering from untrusted input;
+- drag-and-drop editor;
+- config apply/write.
 
 #### Deliverable
 
-Dashboard pages can be assembled from reusable BeeUI blocks.
+`./start.sh web --host 127.0.0.1 --port 8780` renders BeeUI pages assembled from validated reusable blocks declared in `config/schema.yml`.
 
 #### Checks
 
-- metric card render;
-- KPI grid render;
-- status card render;
-- table render;
-- links render;
-- alert render;
-- progress render;
-- empty state render;
-- error state render;
-- unknown block type rejection;
+- valid blocks schema loads;
+- missing top-level `blocks` behavior is explicit and tested;
+- metric card renders;
+- KPI grid renders;
+- status card renders;
+- table card renders;
+- links card renders;
+- alert card renders;
+- text card renders;
+- progress card renders;
+- empty block state renders;
+- degraded/error state renders from static schema state;
+- unknown block type rejected;
+- unknown block reference rejected;
+- invalid width rejected;
 - unsafe text escaped;
-- `pytest -q`.
+- no arbitrary HTML/JS accepted from config;
+- no product-specific semantics introduced;
+- `uv run pytest -q`;
+- `./start.sh doctor`;
+- `./start.sh routes`;
+- `./start.sh web --host 127.0.0.1 --port 8780`.
 
 #### DoD
 
 - blocks render from schema;
-- renderer does not contain BeeCap/BeeAgent semantics;
-- layout rows/columns work;
-- invalid block config fails safely;
-- missing data does not crash the page;
-- no arbitrary HTML/JS from config.
+- renderer registry is domain-neutral;
+- layout widths work;
+- invalid block config fails fast;
+- missing optional static fields do not crash the page;
+- no arbitrary HTML/JS from config;
+- no data resolver/adapter/product logic introduced;
+- Jinja autoescape remains enabled.
 
 ### Итерация 6 — Tabler component catalog and reusable primitives v0
 
@@ -2084,7 +2121,7 @@ Iteration 1 — Tabler web shell v0
 Iteration 2 — Declarative pages and navigation v0
 Iteration 3 — Local Tabler vendor/assets and layout parity v1
 Iteration 4 — Theme, layout and navigation schema v1
-Iteration 5 — Block registry and dashboard blocks v1
+Iteration 5 — Block registry and static dashboard blocks v1
 Iteration 7 — Data sources and resolver v0
 Iteration 8 — Product adapter contract v0
 Iteration 9 — BeeCap adapter MVP

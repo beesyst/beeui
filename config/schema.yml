@@ -32,12 +32,90 @@ navigation:
       - title: Reports
         disabled: true
 
+blocks:
+  latest_run:
+    type: metric_card
+    title: Latest Run
+    value: run_demo_001
+    subtitle: Static demo value
+
+  runtime_status:
+    type: status_card
+    title: Runtime
+    status: ok
+    value: Ready
+
+  run_kpis:
+    type: kpi_grid
+    title: Session KPIs
+    items:
+      - label: Total runs
+        value: "24"
+        status: ok
+      - label: Failed
+        value: "1"
+        status: warning
+
+  quick_links:
+    type: links_card
+    title: Quick links
+    links:
+      - label: Open runs
+        href: /runs
+
+  notice:
+    type: alert_card
+    title: Demo mode
+    message: Values are static and intended for UI contract validation.
+    severity: info
+
+  summary_text:
+    type: text_card
+    title: Summary
+    text: BeeUI renders reusable schema blocks with safe escaping.
+
+  completion:
+    type: progress_card
+    title: Bootstrap progress
+    value: 68
+    label: Iteration 5 in progress
+
+  recent_runs:
+    type: table_card
+    title: Recent runs
+    columns:
+      - key: id
+        label: Run ID
+      - key: status
+        label: Status
+    rows:
+      - id: run_demo_001
+        status: ok
+      - id: run_demo_002
+        status: partial
+
 pages:
   - id: dashboard
     path: /
     title: Dashboard
     subtitle: Demo operator dashboard
-    blocks: []
+    blocks:
+      - block: latest_run
+        width: 3
+      - block: runtime_status
+        width: 3
+      - block: completion
+        width: 3
+      - block: quick_links
+        width: 3
+      - block: run_kpis
+        width: 6
+      - block: notice
+        width: 6
+      - block: recent_runs
+        width: 8
+      - block: summary_text
+        width: 4
 
   - id: runs
     path: /runs

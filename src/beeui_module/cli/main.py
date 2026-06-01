@@ -3,17 +3,28 @@ from __future__ import annotations
 import sys
 from typing import Iterable
 
-from beeui_module.cli.doctor import run_doctor
-from beeui_module.cli.web import run_web
-from beeui_module.core.paths import schema_path, settings_path
-from beeui_module.core.settings import load_settings
-from beeui_module.core.version import get_version
-from beeui_module.pages.config import load_beeui_config
-from beeui_module.pages.router import prefixed_path
+
+# Ленивый import doctor-команды, чтобы version не тянул runtime stack.
+def run_doctor() -> int:
+    from beeui_module.cli.doctor import run_doctor as _run_doctor
+
+    return _run_doctor()
+
+
+# Ленивый import web-команды, потому что она подключает FastAPI/runtime stack.
+def run_web(args: list[str]) -> int:
+    from beeui_module.cli.web import run_web as _run_web
+
+    return _run_web(args)
 
 
 # Вывод маршрутов, доступных в текущей конфигурации приложения
 def _print_routes() -> int:
+    from beeui_module.core.paths import schema_path, settings_path
+    from beeui_module.core.settings import load_settings
+    from beeui_module.pages.config import load_beeui_config
+    from beeui_module.pages.router import prefixed_path
+
     settings = load_settings(settings_path())
     ui_config = load_beeui_config(schema_path())
     route_prefix = settings["web"]["route_prefix"].strip().rstrip("/")
@@ -37,6 +48,8 @@ def main(argv: Iterable[str] | None = None) -> int:
     if command == "doctor":
         return run_doctor()
     if command == "version":
+        from beeui_module.core.version import get_version
+
         print(f"beeui {get_version()}")
         return 0
     if command == "routes":

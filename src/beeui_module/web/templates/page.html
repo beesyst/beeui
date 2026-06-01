@@ -8,8 +8,13 @@
 <div class="{{ layout.container_class }}">
   <section class="card p-3" aria-label="Page blocks">
     {% if has_blocks %}
-    <h3 class="beeui-card-title">Blocks</h3>
-    <p class="text-secondary">Block rendering is not available in this iteration.</p>
+    <div class="row g-3 beeui-block-grid">
+      {% for block in rendered_blocks %}
+      <div class="col-12 col-md-{{ block.width }}">
+        {% include block.template_name %}
+      </div>
+      {% endfor %}
+    </div>
     {% else %}
     {% include "components/empty_state.html" %}
     {% endif %}

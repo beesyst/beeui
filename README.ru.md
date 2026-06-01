@@ -2,9 +2,9 @@
 
 **BeeUI** — общий Python-based UI framework для Bee-продуктов: `beecap`, `beeagent` и будущих модулей Bee ecosystem.
 
-## Iteration 4
+## Iteration 5
 
-Текущий deliverable — schema-driven theme, layout и grouped navigation поверх declarative pages/navigation из `config/schema.yml`.
+Текущий deliverable — schema-driven block registry and static dashboard blocks поверх declarative pages/navigation/theme/layout из `config/schema.yml`.
 
 Уже работает:
 
@@ -16,8 +16,21 @@
 - `./start.sh web --host 127.0.0.1 --port 8780`
 - `import beeui_module`
 - schema-driven theme/layout/navigation in `config/schema.yml`
+- schema-driven static blocks in `config/schema.yml`
+- dashboard blocks render from top-level `blocks` and `pages[].blocks[]`
 
-Минимальная web surface Iteration 3:
+Supported static block types:
+
+- `metric_card`;
+- `kpi_grid`;
+- `status_card`;
+- `table_card`;
+- `links_card`;
+- `alert_card`;
+- `text_card`;
+- `progress_card`.
+
+Минимальная web surface Iteration 5:
 
 - `GET /`
 - `GET /runs`
@@ -26,13 +39,14 @@
 - `GET /static/vendor/tabler/css/tabler-compatible.min.css`
 - `GET /static/vendor/tabler/js/tabler-compatible.min.js`
 
-В Iteration 3 shell рендерится через component templates:
+Shell and dashboard render through component templates:
 
 - `components/sidebar.html`;
 - `components/navbar.html`;
 - `components/page_header.html`;
 - `components/footer.html`;
 - `components/empty_state.html`.
+- block component templates for static dashboard blocks.
 
 Tabler-compatible vendor assets поставляются локально из package path:
 
@@ -124,7 +138,7 @@ beeagent
 
 MVP не пытается сразу стать полноценным Retool/Webflow/Admin SaaS.
 
-MVP делает controlled declarative console:
+Target MVP делает controlled declarative console:
 
 - pages описываются через schema/config;
 - blocks описываются через schema/config;
@@ -134,7 +148,7 @@ MVP делает controlled declarative console:
 
 ## Что BeeUI делает
 
-BeeUI отвечает за:
+В текущем Iteration 5 runtime BeeUI отвечает за:
 
 - FastAPI app factory;
 - Jinja2 templates;
@@ -142,6 +156,11 @@ BeeUI отвечает за:
 - global navigation;
 - reusable blocks;
 - dashboard rendering;
+- declarative pages/navigation/theme/layout;
+- static/literal dashboard blocks from `config/schema.yml`.
+
+Planned/future responsibilities:
+
 - runs list / run detail pages;
 - artifact browser;
 - JSON/JSONL preview;
@@ -349,7 +368,9 @@ BeeUI не должен получать прямую authority на tools/MCP/r
 
 - schema-driven demo pages;
 - schema-driven navigation;
-- placeholder empty state for future blocks.
+- schema-driven theme/layout;
+- static/literal dashboard blocks from `config/schema.yml`;
+- empty state for pages without block placements.
 
 ### `embedded`
 
@@ -384,30 +405,21 @@ Future scope.
 Страницы задаются через config/schema.
 
 ```yaml
-app:
-  title: BeeUI Demo
-  product: demo
-
-navigation:
-  - title: Dashboard
-    path: /
-    icon: dashboard
-  - title: Runs
-    path: /runs
-    icon: list
+blocks:
+  latest_run:
+    type: metric_card
+    title: Latest Run
+    value: run_demo_001
+    subtitle: Static demo value
 
 pages:
   - id: dashboard
     path: /
     title: Dashboard
     subtitle: Demo operator dashboard
-    blocks: []
-
-  - id: runs
-    path: /runs
-    title: Runs
-    subtitle: Placeholder page for future run overview
-    blocks: []
+    blocks:
+      - block: latest_run
+        width: 3
 ```
 
 Current declarative page rules:
@@ -416,22 +428,28 @@ Current declarative page rules:
 - `page.path` must be unique;
 - `navigation[].path` must reference declared page path;
 - reserved paths `/health`, `/static`, `/static/...` are rejected;
-- `blocks` exists only as a placeholder list until the block registry iteration.
+- `blocks` in page config is a list of block placements;
+- each placement references a top-level block id;
+- `width` must be an integer from `1` to `12`;
+- unknown block references are rejected fail-fast.
 
 ### Blocks
 
-BeeUI block registry должен поддерживать reusable block types:
+Current Iteration 5 block contract is static/literal-only.
+
+Top-level `blocks` defines reusable block definitions.
+`pages[].blocks[]` defines where these blocks appear on a page.
+
+Supported block types now:
 
 - `metric_card`;
 - `kpi_grid`;
 - `status_card`;
 - `table_card`;
 - `links_card`;
-- `artifact_table`;
-- `json_viewer`;
-- `chart_card`;
-- `config_form`;
-- `action_card`.
+- `alert_card`;
+- `text_card`;
+- `progress_card`.
 
 Пример:
 
@@ -440,43 +458,61 @@ blocks:
   latest_run:
     type: metric_card
     title: Latest Run
-    source: dashboard.latest_run
-    value: run_id
-    subtitle: started_at_utc
+    value: run_demo_001
+    subtitle: Static demo value
 
   runtime_status:
     type: status_card
-    title: Runtime Status
-    source: dashboard.runtime
-    status: status
-    reason: reason
+    title: Runtime
+    status: ok
+    value: Ready
+
+pages:
+  - id: dashboard
+    path: /
+    title: Dashboard
+    subtitle: Demo operator dashboard
+    blocks:
+      - block: latest_run
+        width: 3
+      - block: runtime_status
+        width: 3
 ```
+
+Current rules:
+
+- block ids must be safe identifiers;
+- unknown block types are rejected;
+- unknown block references are rejected;
+- renderer-specific fields are validated fail-fast;
+- text values are rendered through Jinja autoescape;
+- no arbitrary HTML/JS/CSS from config;
+- `links_card.href` accepts internal safe paths only;
+- display values are static scalar literals;
+- missing/empty page placements render an empty state.
+
+Not implemented yet:
+
+- data resolver;
+- selectors;
+- adapter-backed block values;
+- product adapters;
+- charts/maps;
+- artifact/config/action blocks;
+- arbitrary HTML/JS blocks.
 
 ### Data sources
 
-MVP sources:
+Data sources are planned for Iteration 7 and are not part of the current Iteration 5 runtime.
+Current blocks use static/literal values from `config/schema.yml`.
 
-- `static`;
-- `adapter`;
-- `filesystem` через product adapter;
-- позже `http`.
-
-Пример:
-
-```yaml
-data_sources:
-  dashboard:
-    type: adapter
-    method: get_dashboard
-
-  runs:
-    type: adapter
-    method: list_runs
-```
+Planned source types include static/demo data, adapter-backed data, filesystem access through product adapters, and later HTTP sources.
 
 ### Product adapters
 
-Единый adapter contract:
+Product adapter contract is planned for Iteration 8 and is not implemented in the current Iteration 5 runtime.
+
+Planned future adapter contract:
 
 ```python
 class ProductUiAdapter:
@@ -492,7 +528,7 @@ class ProductUiAdapter:
     def execute_action(self, action_id: str, payload: dict) -> dict: ...
 ```
 
-BeeUI вызывает adapter.
+В будущей интеграции BeeUI вызывает adapter.
 
 Product adapter решает, что можно читать/делать.
 
@@ -799,7 +835,7 @@ uv run --frozen --extra dev python config/start.py web
 
 ## Целевая структура проекта (planned)
 
-Актуальные ключевые файлы Iteration 3:
+Актуальные ключевые файлы after Iteration 5:
 
 ```text
 config/
@@ -807,6 +843,11 @@ config/
   schema.yml
 
 src/beeui_module/
+  blocks/
+    __init__.py
+    models.py
+    registry.py
+    renderers.py
   cli/
     doctor.py
     main.py
@@ -826,10 +867,18 @@ src/beeui_module/
       base.html
       page.html
       components/
-        sidebar.html
+        alert_card.html
+        footer.html
+        kpi_grid.html
+        links_card.html
+        metric_card.html
         navbar.html
         page_header.html
-        footer.html
+        progress_card.html
+        sidebar.html
+        status_card.html
+        table_card.html
+        text_card.html
         empty_state.html
     static/
       css/beeui.css
@@ -1241,7 +1290,7 @@ Iteration 1 — Tabler web shell v0
 Iteration 2 — Declarative pages and navigation v0
 Iteration 3 — Local Tabler vendor/assets and layout parity v1
 Iteration 4 — Theme, layout and navigation schema v1
-Iteration 5 — Block registry and dashboard blocks v1
+Iteration 5 — Block registry and static dashboard blocks v1
 Iteration 7 — Data sources and resolver v0
 Iteration 8 — Product adapter contract v0
 Iteration 9 — BeeCap adapter MVP
@@ -1412,7 +1461,7 @@ Visual builder later.
 Текущий статус:
 
 ```text
-Iteration 3 — Local Tabler vendor/assets and layout parity v1 — DONE
+Iteration 5 — Block registry and static dashboard blocks v1 — DONE
 ```
 
 Работает:
@@ -1423,3 +1472,6 @@ Iteration 3 — Local Tabler vendor/assets and layout parity v1 — DONE
 uv run pytest -q
 ./start.sh web --host 127.0.0.1 --port 8780
 ```
+
+- `/` рендерит static dashboard blocks from schema;
+- `/runs` рендерит empty state для страницы без block placements.

@@ -6,6 +6,10 @@ from typing import Any
 
 import yaml
 
+from beeui_module.blocks.registry import (
+    parse_blocks_registry,
+    parse_page_block_placements,
+)
 from beeui_module.pages.models import (
     BeeUiConfig,
     BeeUiNavigationItem,
@@ -44,7 +48,7 @@ _LAYOUT_SIDEBAR_VARIANTS = {"default", "dark"}
 _LAYOUT_NAVBAR_VARIANTS = {"default", "dark"}
 
 
-# Загрузка и валидация конфигурации BeeUI из YAML файла
+# Загрузка schema.yml и сбор валидированной BeeUiConfig
 def load_beeui_config(config_path: Path) -> BeeUiConfig:
     if not config_path.is_file():
         raise FileNotFoundError(f"BeeUI schema config is missing: {config_path}")
@@ -53,7 +57,7 @@ def load_beeui_config(config_path: Path) -> BeeUiConfig:
     if not isinstance(payload, dict):
         raise ValueError("schema.yml root must be a YAML mapping")
 
-    _validate_exact_keys(payload, {"app", "navigation", "pages"}, "root")
+    _validate_exact_keys(payload, {"app", "navigation", "blocks", "pages"}, "root")
 
     app_cfg = payload.get("app")
     if not isinstance(app_cfg, dict):
@@ -145,6 +149,8 @@ def load_beeui_config(config_path: Path) -> BeeUiConfig:
     if not isinstance(navigation_cfg, list):
         raise ValueError("navigation must be a list")
 
+    blocks = parse_blocks_registry(payload.get("blocks"))
+
     navigation: list[BeeUiNavigationItem] = []
     seen_nav_paths: set[str] = set()
     for index, item in enumerate(navigation_cfg):
@@ -198,9 +204,11 @@ def load_beeui_config(config_path: Path) -> BeeUiConfig:
         ):
             raise ValueError(f"pages[{index}].subtitle must be a non-empty string")
 
-        blocks = item.get("blocks")
-        if not isinstance(blocks, list):
-            raise ValueError(f"pages[{index}].blocks must be a list")
+        placements = parse_page_block_placements(
+            page_blocks=item.get("blocks"),
+            page_index=index,
+            available_block_ids=set(blocks),
+        )
 
         pages.append(
             BeeUiPage(
@@ -208,7 +216,7 @@ def load_beeui_config(config_path: Path) -> BeeUiConfig:
                 path=page_path,
                 title=page_title,
                 subtitle=subtitle,
-                blocks=blocks,
+                blocks=placements,
             )
         )
 
@@ -222,11 +230,12 @@ def load_beeui_config(config_path: Path) -> BeeUiConfig:
         theme=theme,
         layout=layout,
         navigation=navigation,
+        blocks=blocks,
         pages=pages,
     )
 
 
-# Регистрация маршрутов для страниц BeeUI на основе конфигурации и префикса маршрута
+# Чек, что mapping содержит только поля текущего schema contract
 def _validate_exact_keys(
     payload: dict[str, Any],
     allowed_keys: set[str],
@@ -237,7 +246,7 @@ def _validate_exact_keys(
         raise ValueError(f"{prefix} contains unsupported keys: {', '.join(unknown)}")
 
 
-# Чек, что значение по ключу является булевым
+# Чтение обязательных boolean-полей
 def _required_bool(payload: dict[str, Any], key: str, prefix: str) -> bool:
     value = payload.get(key)
     if not isinstance(value, bool):
@@ -245,7 +254,7 @@ def _required_bool(payload: dict[str, Any], key: str, prefix: str) -> bool:
     return value
 
 
-# Чек, что значение по ключу является строкой и входит в набор разрешенных значений
+# Чтение обязательной строки из заранее разрешенного набора
 def _required_enum(
     payload: dict[str, Any],
     key: str,
@@ -258,7 +267,7 @@ def _required_enum(
     return value
 
 
-# Чек, что значение по ключу является целым числом и входит в набор разрешенных значений
+# Чтение обязательного integer-поля из заранее разрешенного набора
 def _required_int_enum(
     payload: dict[str, Any],
     key: str,
@@ -271,7 +280,7 @@ def _required_int_enum(
     return value
 
 
-# Чек, что строка является безопасным путем без запрещенных символов и зарезервированных префиксов
+# Чтение обязательной непустой строки и обрезка внешних пробелов
 def _required_non_empty_string(
     payload: dict[str, Any],
     key: str,
@@ -283,7 +292,7 @@ def _required_non_empty_string(
     return value.strip()
 
 
-# Чек, что строка является безопасным путем без запрещенных символов и зарезервированных префиксов
+# Валидация внутренней route path без traversal, query/hash и reserved paths
 def _safe_path(value: Any, field_name: str) -> str:
     if not isinstance(value, str) or not value.strip():
         raise ValueError(f"{field_name} must be a non-empty string")
@@ -314,7 +323,7 @@ def _safe_path(value: Any, field_name: str) -> str:
     return path
 
 
-# Чек, что строка является безопасным идентификатором без запрещенных символов
+# Валидация одного navigation item и рекурсивный сбор children
 def _parse_navigation_item(
     item: Any,
     *,
@@ -389,7 +398,7 @@ def _parse_navigation_item(
     )
 
 
-# Тест: загрузка конфига с навигационным путем, совпадающим с зарезервированными путями, вызывает ошибку
+# Чек, что navigation links указывает на объявленные страницы
 def _validate_navigation_pages(
     item: Any,
     prefix: str,
