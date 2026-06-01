@@ -1,0 +1,296 @@
+from __future__ import annotations
+
+from typing import Any
+
+from fastapi import FastAPI, Request
+from fastapi.responses import HTMLResponse
+from fastapi.templating import Jinja2Templates
+
+from beeui_module.pages.models import BeeUiConfig
+from beeui_module.pages.router import (
+    build_layout_context,
+    build_navigation,
+    build_shell_classes,
+    build_theme_context,
+    prefixed_path,
+)
+
+_CATALOG_SECTION_ORDER = ["interface", "forms", "layout", "extra", "plugins"]
+
+
+# Регистрация маршрутов для компонентного каталога и их рендеринг
+def register_component_catalog_routes(
+    *,
+    app: FastAPI,
+    templates: Jinja2Templates,
+    route_prefix: str,
+    ui_config: BeeUiConfig,
+    product_title: str,
+    product_id: str,
+) -> list[str]:
+    registered_routes: list[str] = []
+
+    theme = build_theme_context(ui_config)
+    layout = build_layout_context(ui_config)
+    shell_classes = build_shell_classes(theme, layout)
+    sections = _catalog_sections(route_prefix)
+
+    index_route = prefixed_path(route_prefix, "/components")
+    registered_routes.append(index_route)
+
+    async def render_catalog_index(request: Request) -> HTMLResponse:
+        return templates.TemplateResponse(
+            request=request,
+            name="components/catalog/index.html",
+            context={
+                "route_prefix": route_prefix,
+                "product_title": product_title,
+                "product_id": product_id,
+                "app_title": ui_config.app_title,
+                "logo_text": ui_config.logo_text,
+                "theme": theme,
+                "layout": layout,
+                "page": {
+                    "title": "Component Catalog",
+                    "subtitle": "Internal read-only Tabler-compatible primitives",
+                },
+                "navigation": _catalog_navigation(
+                    route_prefix=route_prefix,
+                    ui_config=ui_config,
+                    active_path="/components",
+                ),
+                "shell_classes": shell_classes,
+                "catalog_sections": sections,
+                "samples": _catalog_samples(route_prefix),
+            },
+        )
+
+    app.add_api_route(
+        index_route,
+        render_catalog_index,
+        methods=["GET"],
+        response_class=HTMLResponse,
+    )
+
+    for section_key in _CATALOG_SECTION_ORDER:
+        section = sections[section_key]
+        route_path = prefixed_path(route_prefix, section["path"])
+        registered_routes.append(route_path)
+
+        async def render_catalog_section(
+            request: Request, _section: dict[str, str] = section
+        ) -> HTMLResponse:
+            return templates.TemplateResponse(
+                request=request,
+                name="components/catalog/page.html",
+                context={
+                    "route_prefix": route_prefix,
+                    "product_title": product_title,
+                    "product_id": product_id,
+                    "app_title": ui_config.app_title,
+                    "logo_text": ui_config.logo_text,
+                    "theme": theme,
+                    "layout": layout,
+                    "page": {
+                        "title": _section["title"],
+                        "subtitle": _section["description"],
+                    },
+                    "navigation": _catalog_navigation(
+                        route_prefix=route_prefix,
+                        ui_config=ui_config,
+                        active_path=_section["path"],
+                    ),
+                    "shell_classes": shell_classes,
+                    "catalog_sections": sections,
+                    "catalog_section": _section,
+                    "samples": _catalog_samples(route_prefix),
+                },
+            )
+
+        app.add_api_route(
+            route_path,
+            render_catalog_section,
+            methods=["GET"],
+            response_class=HTMLResponse,
+        )
+
+    return registered_routes
+
+
+# Определение структуры разделов каталога компонентов и их метаданных
+def _catalog_sections(route_prefix: str) -> dict[str, dict[str, str]]:
+    return {
+        "interface": {
+            "id": "interface",
+            "title": "Interface Primitives",
+            "path": "/components/interface",
+            "href": prefixed_path(route_prefix, "/components/interface"),
+            "description": "Alerts, badges, buttons, tabs and basic component shell.",
+            "template_name": "components/catalog/sections/interface.html",
+        },
+        "forms": {
+            "id": "forms",
+            "title": "Forms Primitives",
+            "path": "/components/forms",
+            "href": prefixed_path(route_prefix, "/components/forms"),
+            "description": "Controlled read-only form primitives for future form surfaces.",
+            "template_name": "components/catalog/sections/forms.html",
+        },
+        "layout": {
+            "id": "layout",
+            "title": "Layout Primitives",
+            "path": "/components/layout",
+            "href": prefixed_path(route_prefix, "/components/layout"),
+            "description": "Cards, headers, breadcrumb and pagination in a shared style.",
+            "template_name": "components/catalog/sections/layout.html",
+        },
+        "extra": {
+            "id": "extra",
+            "title": "Extra Primitives",
+            "path": "/components/extra",
+            "href": prefixed_path(route_prefix, "/components/extra"),
+            "description": "Modal, offcanvas, toast and avatar placeholders.",
+            "template_name": "components/catalog/sections/extra.html",
+        },
+        "plugins": {
+            "id": "plugins",
+            "title": "Plugin Placeholders",
+            "path": "/components/plugins",
+            "href": prefixed_path(route_prefix, "/components/plugins"),
+            "description": "Inert containers for charts, maps and datatables integrations.",
+            "template_name": "components/catalog/sections/plugins.html",
+        },
+    }
+
+
+# Билд навигационного дерева для каталога компонентов, включая активные состояния
+def _catalog_navigation(
+    *,
+    route_prefix: str,
+    ui_config: BeeUiConfig,
+    active_path: str,
+) -> list[dict[str, Any]]:
+    navigation = build_navigation(
+        route_prefix=route_prefix,
+        navigation=ui_config.navigation,
+        active_path=active_path,
+    )
+    sections = _catalog_sections(route_prefix)
+    navigation.append(
+        {
+            "title": "Components",
+            "path": None,
+            "href": None,
+            "icon": "components",
+            "active": False,
+            "descendant_active": active_path.startswith("/components"),
+            "disabled": False,
+            "children": [
+                {
+                    "title": "Catalog index",
+                    "path": "/components",
+                    "href": prefixed_path(route_prefix, "/components"),
+                    "icon": None,
+                    "active": active_path == "/components",
+                    "descendant_active": False,
+                    "disabled": False,
+                    "children": [],
+                    "is_group": False,
+                },
+                {
+                    "title": sections["interface"]["title"],
+                    "path": sections["interface"]["path"],
+                    "href": sections["interface"]["href"],
+                    "icon": None,
+                    "active": active_path == sections["interface"]["path"],
+                    "descendant_active": False,
+                    "disabled": False,
+                    "children": [],
+                    "is_group": False,
+                },
+                {
+                    "title": sections["forms"]["title"],
+                    "path": sections["forms"]["path"],
+                    "href": sections["forms"]["href"],
+                    "icon": None,
+                    "active": active_path == sections["forms"]["path"],
+                    "descendant_active": False,
+                    "disabled": False,
+                    "children": [],
+                    "is_group": False,
+                },
+                {
+                    "title": sections["layout"]["title"],
+                    "path": sections["layout"]["path"],
+                    "href": sections["layout"]["href"],
+                    "icon": None,
+                    "active": active_path == sections["layout"]["path"],
+                    "descendant_active": False,
+                    "disabled": False,
+                    "children": [],
+                    "is_group": False,
+                },
+                {
+                    "title": sections["extra"]["title"],
+                    "path": sections["extra"]["path"],
+                    "href": sections["extra"]["href"],
+                    "icon": None,
+                    "active": active_path == sections["extra"]["path"],
+                    "descendant_active": False,
+                    "disabled": False,
+                    "children": [],
+                    "is_group": False,
+                },
+                {
+                    "title": sections["plugins"]["title"],
+                    "path": sections["plugins"]["path"],
+                    "href": sections["plugins"]["href"],
+                    "icon": None,
+                    "active": active_path == sections["plugins"]["path"],
+                    "descendant_active": False,
+                    "disabled": False,
+                    "children": [],
+                    "is_group": False,
+                },
+            ],
+            "is_group": True,
+        }
+    )
+    return navigation
+
+
+# Пример данных для демонстрации различных компонентов в каталоге, включая небезопасные строки для проверки экранирования
+def _catalog_samples(route_prefix: str) -> dict[str, Any]:
+    return {
+        "unsafe_text": "<script>alert(6)</script>",
+        "unsafe_input": '<img src=x onerror="alert(2)">',
+        "status": "degraded",
+        "status_label": "Read-only preview",
+        "alert_title": "Escaping sample",
+        "alert_message": 'Unsafe sample string: <svg onload="alert(1)"></svg>',
+        "table_columns": ["Name", "Value", "Status"],
+        "table_rows": [
+            ["alpha", "42", "ok"],
+            ["beta", "17", "warning"],
+            ["gamma", "5", "error"],
+        ],
+        "grid_columns": ["ID", "Owner", "Stage"],
+        "grid_rows": [
+            {"ID": "run_001", "Owner": "demo", "Stage": "queued"},
+            {"ID": "run_002", "Owner": "demo", "Stage": "ready"},
+        ],
+        "select_options": ["Alpha", "Beta", "Gamma"],
+        "tabs": [
+            {"id": "overview", "title": "Overview"},
+            {"id": "details", "title": "Details"},
+            {"id": "history", "title": "History"},
+        ],
+        "breadcrumbs": [
+            {"title": "Home", "href": prefixed_path(route_prefix, "/")},
+            {
+                "title": "Components",
+                "href": prefixed_path(route_prefix, "/components"),
+            },
+            {"title": "Catalog", "href": None},
+        ],
+    }

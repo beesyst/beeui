@@ -340,6 +340,50 @@ body {
   background: color-mix(in srgb, var(--beeui-surface), #f5f8fd 10%);
 }
 
+.beeui-catalog-card {
+  border: 1px solid var(--tblr-border-color);
+  border-radius: var(--beeui-radius);
+}
+
+.beeui-catalog-pills .nav-link {
+  border-radius: 999px;
+}
+
+.beeui-catalog-dropdown {
+  position: static;
+  display: block;
+  float: none;
+  margin-top: 0.5rem;
+}
+
+.beeui-catalog-modal-shell {
+  position: static;
+  display: block;
+  background: color-mix(in srgb, var(--tblr-body-bg), transparent 20%);
+}
+
+.beeui-catalog-offcanvas {
+  position: static;
+  visibility: visible;
+  transform: none;
+  width: 100%;
+  border: 1px solid var(--tblr-border-color);
+  border-radius: var(--beeui-radius);
+}
+
+.beeui-catalog-toast {
+  max-width: 100%;
+}
+
+.beeui-plugin-placeholder {
+  height: 100%;
+  min-height: 10rem;
+  border: 1px dashed var(--tblr-border-color);
+  border-radius: var(--beeui-radius);
+  padding: 1rem;
+  background: color-mix(in srgb, var(--beeui-surface), #f0f5fc 10%);
+}
+
 @media (max-width: 991px) {
   .beeui-page {
     grid-template-columns: minmax(0, 1fr);

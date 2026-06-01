@@ -18,6 +18,16 @@ def run_web(args: list[str]) -> int:
     return _run_web(args)
 
 
+# Нормализация route_prefix для CLI routes output без импорта web stack.
+def _normalize_route_prefix(route_prefix: str) -> str:
+    cleaned = route_prefix.strip()
+    if not cleaned:
+        return ""
+    if not cleaned.startswith("/"):
+        cleaned = f"/{cleaned}"
+    return cleaned.rstrip("/")
+
+
 # Вывод маршрутов, доступных в текущей конфигурации приложения
 def _print_routes() -> int:
     from beeui_module.core.paths import schema_path, settings_path
@@ -27,12 +37,17 @@ def _print_routes() -> int:
 
     settings = load_settings(settings_path())
     ui_config = load_beeui_config(schema_path())
-    route_prefix = settings["web"]["route_prefix"].strip().rstrip("/")
-    prefix = route_prefix if route_prefix else ""
+    prefix = _normalize_route_prefix(settings["web"]["route_prefix"])
 
     print("Configured route surface:")
     for page in ui_config.pages:
         print(f"  GET {prefixed_path(prefix, page.path)}")
+    print(f"  GET {prefixed_path(prefix, '/components')}")
+    print(f"  GET {prefixed_path(prefix, '/components/interface')}")
+    print(f"  GET {prefixed_path(prefix, '/components/forms')}")
+    print(f"  GET {prefixed_path(prefix, '/components/layout')}")
+    print(f"  GET {prefixed_path(prefix, '/components/extra')}")
+    print(f"  GET {prefixed_path(prefix, '/components/plugins')}")
     print(f"  GET {prefix}/health")
     print(f"  GET {prefix}/static/...")
     return 0

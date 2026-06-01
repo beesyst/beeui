@@ -1009,21 +1009,30 @@ blocks:
 
 ### Итерация 6 — Tabler component catalog and reusable primitives v0
 
-**Статус:** PLANNED
+**Статус:** DONE
 
 #### Goal
 
-Создать BeeUI component catalog, покрывающий основной полезный спектр Tabler Interface / Forms / Layout / Extra / Plugins как controlled reusable primitives.
+Создать internal component catalog и минимальный набор reusable Tabler-compatible template primitives, чтобы будущие pages/blocks/admin/operator screens собирались из controlled components, а не через копирование HTML из Tabler examples.
 
 #### Почему это нужно
 
-BeeUI должен стать платформой, где новые Bee-продукты могут быстро собирать dashboard/admin/operator UI без повторного копирования Tabler examples.
+Iteration 5 добавила schema-driven blocks, но сами block templates всё ещё могут начать дублировать card/table/badge/form/progress HTML.
+
+До data resolver, adapters, artifact browser и config/operator UI нужно централизовать безопасные UI primitives:
+
+- common markup;
+- naming rules;
+- escaping expectations;
+- allowed/forbidden component patterns;
+- plugin placeholders without external JS/CDN;
+- visible catalog routes for review and visual smoke.
 
 #### Scope
 
 Включено:
 
-- internal component catalog pages:
+- internal read-only component catalog routes:
   - `/components`;
   - `/components/interface`;
   - `/components/forms`;
@@ -1031,47 +1040,61 @@ BeeUI должен стать платформой, где новые Bee-про
   - `/components/extra`;
   - `/components/plugins`;
 
-- reusable template components:
-  - `alert`;
-  - `badge`;
-  - `breadcrumb`;
-  - `button`;
-  - `button_group`;
-  - `card`;
-  - `card_header`;
-  - `dropdown`;
-  - `empty_state`;
-  - `modal_shell`;
-  - `tabs`;
-  - `table`;
-  - `data_grid`;
-  - `form_input`;
-  - `form_select`;
-  - `form_checkbox`;
-  - `form_radio`;
-  - `form_textarea`;
-  - `form_selectgroup`;
-  - `pagination`;
-  - `progress`;
-  - `status_dot`;
-  - `avatar_placeholder`;
-  - `toast_placeholder`;
-  - `offcanvas_shell`;
+- route registration under existing `route_prefix`;
+- navigation link to component catalog in demo schema, if consistent with current schema rules;
+- reusable template primitives under `src/beeui_module/web/templates/components/primitives/` or equivalent controlled location;
+- safe sample data defined in Python or static template context, not user-controlled HTML;
+- catalog templates that render examples through reusable primitives;
+- no external CDN/scripts/assets;
+- no `|safe` for sample text values;
+- tests for route render and escaping.
 
-- plugin placeholders:
-  - `chart_container`;
-  - `map_container`;
-  - `datatable_container`;
+Reusable primitives v0:
 
-- docs:
-  - `docs/COMPONENTS.md`;
-  - component naming rules;
-  - allowed/forbidden components;
-  - safe usage examples.
+- `alert`;
+- `badge`;
+- `breadcrumb`;
+- `button`;
+- `button_group`;
+- `card`;
+- `card_header`;
+- `dropdown`;
+- `empty_state`;
+- `tabs`;
+- `table`;
+- `data_grid`;
+- `form_input`;
+- `form_select`;
+- `form_checkbox`;
+- `form_radio`;
+- `form_textarea`;
+- `form_selectgroup`;
+- `pagination`;
+- `progress`;
+- `status_dot`;
+- `avatar_placeholder`;
+- `modal_shell`;
+- `toast_placeholder`;
+- `offcanvas_shell`;
+
+Plugin placeholders:
+
+- `chart_container`;
+- `map_container`;
+- `datatable_container`;
+
+Docs:
+
+- `docs/COMPONENTS.md`;
+- component naming rules;
+- allowed/forbidden components;
+- safe usage examples;
+- relationship between primitives and block renderers.
 
 Не включено:
 
-- full copy of every Tabler demo page;
+- full Tabler demo copy;
+- redesign of existing Iteration 5 block renderers unless a tiny reuse cleanup is necessary;
 - WYSIWYG editor;
 - Dropzone/upload;
 - Fullcalendar runtime integration;
@@ -1079,28 +1102,40 @@ BeeUI должен стать платформой, где новые Bee-про
 - external charts CDN;
 - arbitrary JS plugin config;
 - user-supplied HTML;
-- sponsor/marketing/demo pages.
+- sponsor/marketing/demo pages;
+- data resolver;
+- product adapters;
+- artifact browser;
+- config apply;
+- auth/session;
+- operator actions.
 
 #### Deliverable
 
-BeeUI has a reusable component catalog and can show which Tabler-compatible primitives are available to pages/blocks.
+BeeUI exposes a visible read-only component catalog and centralizes common Tabler-compatible primitives for future pages/blocks.
 
 #### Checks
 
+- `uv run pytest -q`;
+- `./start.sh doctor`;
+- `./start.sh routes`;
+- `./start.sh web --host 127.0.0.1 --port 8780`;
 - component catalog routes render;
-- each component template renders with safe sample data;
-- HTML escaping test for text-bearing components;
-- no external scripts;
-- no tracking scripts;
+- each primitive renders with safe sample data;
+- text-bearing primitives escape unsafe strings;
+- no external scripts/styles/tracking references;
+- no unsafe Jinja `|safe`;
 - no broken static references;
-- `pytest -q`.
+- no product-specific semantics introduced.
 
 #### DoD
 
-- BeeUI has a visible component catalog;
-- common Tabler primitives are centralized;
-- future product pages reuse components instead of copying HTML;
-- unsafe/demo-only Tabler features are explicitly excluded.
+- BeeUI has visible component catalog pages;
+- common Tabler-compatible primitives are centralized;
+- future product pages/blocks can reuse primitives instead of copying HTML;
+- plugin placeholders are inert and do not load external JS;
+- unsafe/demo-only Tabler features are explicitly excluded;
+- no new write/action/auth/adapter authority introduced.
 
 ### Итерация 7 — Data sources and resolver v0
 

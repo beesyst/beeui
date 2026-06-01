@@ -1439,16 +1439,22 @@ Planned/future (requires config apply and audit iterations).
 
 ## MVP route contract
 
-Current Iteration 5 MVP:
+Current Iteration 6 MVP:
 
 - `GET /`
 - `GET /runs`
+- `GET /components`
+- `GET /components/interface`
+- `GET /components/forms`
+- `GET /components/layout`
+- `GET /components/extra`
+- `GET /components/plugins`
 - `GET /health`
 - `GET /static/...`
 - `GET /static/vendor/tabler/css/tabler-compatible.min.css`
 - `GET /static/vendor/tabler/js/tabler-compatible.min.js`
 
-Iteration 5 does not add new public routes. It changes the page body from empty placeholders to schema-driven static/literal block rendering.
+Iteration 6 adds internal read-only component catalog routes and reusable controlled template primitives while preserving the existing shell and static asset contract.
 
 Planned Iteration 10+ / product integration route families:
 

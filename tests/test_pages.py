@@ -315,3 +315,60 @@ def test_logo_text_from_schema_is_escaped(tmp_path: Path) -> None:
     assert response.status_code == 200
     assert "<script>alert(3)</script>" not in response.text
     assert "&lt;script&gt;alert(3)&lt;/script&gt;" in response.text
+
+
+# Тест: catalog section экранирует unsafe sample strings
+def test_component_catalog_escapes_unsafe_sample_strings() -> None:
+    settings = load_settings(settings_path())
+    ui_config = load_beeui_config(settings_path().parent / "schema.yml")
+    app = create_beeui_app(settings=settings, ui_config=ui_config)
+    client = TestClient(app)
+
+    response = client.get("/components/interface")
+
+    assert response.status_code == 200
+    assert "<script>alert(6)</script>" not in response.text
+    assert "&lt;script&gt;alert(6)&lt;/script&gt;" in response.text
+    assert '<svg onload="alert(1)"></svg>' not in response.text
+    assert "&lt;svg onload=&#34;alert(1)&#34;&gt;&lt;/svg&gt;" in response.text
+
+
+# Тест: plugin placeholders остаются инертными и не тянут внешние assets
+def test_component_catalog_plugin_placeholders_are_inert() -> None:
+    settings = load_settings(settings_path())
+    ui_config = load_beeui_config(settings_path().parent / "schema.yml")
+    app = create_beeui_app(settings=settings, ui_config=ui_config)
+    client = TestClient(app)
+
+    response = client.get("/components/plugins")
+
+    assert response.status_code == 200
+    assert 'data-plugin="chart"' in response.text
+    assert 'data-plugin="map"' in response.text
+    assert 'data-plugin="datatable"' in response.text
+    assert "cdn" not in response.text.lower()
+    assert "http://" not in response.text.lower()
+    assert "https://" not in response.text.lower()
+
+
+# Тест: catalog progress primitive не использует inline style
+def test_component_catalog_progress_uses_native_element_without_inline_style() -> None:
+    settings = load_settings(settings_path())
+    ui_config = load_beeui_config(settings_path().parent / "schema.yml")
+    app = create_beeui_app(settings=settings, ui_config=ui_config)
+    client = TestClient(app)
+
+    response = client.get("/components/layout")
+
+    assert response.status_code == 200
+    assert "<progress" in response.text
+    assert 'style="' not in response.text
+
+
+# Тест: primitives catalog template не использует unsafe Jinja filter
+def test_component_primitives_template_avoids_safe_filter() -> None:
+    template_text = Path(
+        "src/beeui_module/web/templates/components/primitives/catalog_primitives.html"
+    ).read_text(encoding="utf-8")
+
+    assert "|safe" not in template_text

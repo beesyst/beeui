@@ -1,0 +1,344 @@
+{% macro alert(title, message, tone='info') %}
+<div class="alert alert-{{ tone }}" role="alert">
+  <h4 class="alert-title">{{ title }}</h4>
+  <div class="text-secondary">{{ message }}</div>
+</div>
+{% endmacro %}
+
+{% macro badge(text, tone='secondary') %}
+<span class="badge bg-{{ tone }} text-{{ 'white' if tone in ['danger', 'primary', 'dark'] else 'dark' }}">
+  {{ text }}
+</span>
+{% endmacro %}
+
+{% macro breadcrumb(items) %}
+<nav aria-label="Breadcrumb">
+  <ol class="breadcrumb">
+    {% for item in items %}
+    <li
+      class="breadcrumb-item{% if not item.href %} active{% endif %}"
+      {% if not item.href %}aria-current="page"{% endif %}
+    >
+      {% if item.href %}
+      <a href="{{ item.href }}">{{ item.title }}</a>
+      {% else %}
+      {{ item.title }}
+      {% endif %}
+    </li>
+    {% endfor %}
+  </ol>
+</nav>
+{% endmacro %}
+
+{% macro button(label, tone='primary', button_type='button') %}
+<button type="{{ button_type }}" class="btn btn-{{ tone }}">{{ label }}</button>
+{% endmacro %}
+
+{% macro button_group(labels) %}
+<div class="btn-group" role="group" aria-label="Button group">
+  {% for label in labels %}
+  {{ button(label=label, tone='outline-primary') }}
+  {% endfor %}
+</div>
+{% endmacro %}
+
+{% macro card(body) %}
+<div class="card">
+  <div class="card-body">{{ body }}</div>
+</div>
+{% endmacro %}
+
+{% macro card_header(title, subtitle='') %}
+<div class="card-header">
+  <div>
+    <h3 class="card-title mb-0">{{ title }}</h3>
+    {% if subtitle %}
+    <p class="text-secondary mb-0">{{ subtitle }}</p>
+    {% endif %}
+  </div>
+</div>
+{% endmacro %}
+
+{% macro dropdown(label, items) %}
+<div class="dropdown">
+  <button
+    class="btn btn-outline-secondary dropdown-toggle"
+    type="button"
+    data-bs-toggle="dropdown"
+    aria-expanded="false"
+  >
+    {{ label }}
+  </button>
+  <div
+    class="dropdown-menu show beeui-catalog-dropdown"
+    role="menu"
+    aria-label="Dropdown preview"
+  >
+    {% for item in items %}
+    <span class="dropdown-item">{{ item }}</span>
+    {% endfor %}
+  </div>
+</div>
+{% endmacro %}
+
+{% macro empty_state(title, subtitle) %}
+<div class="empty beeui-empty-state" role="status" aria-live="polite">
+  <div class="empty-header">{{ title }}</div>
+  <p class="empty-subtitle text-secondary">{{ subtitle }}</p>
+</div>
+{% endmacro %}
+
+{% macro modal_shell(title, body) %}
+<div
+  class="modal beeui-catalog-modal-shell"
+  role="dialog"
+  aria-modal="true"
+  aria-label="{{ title }}"
+>
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">{{ title }}</h5>
+      </div>
+      <div class="modal-body">{{ body }}</div>
+      <div class="modal-footer">
+        {{ button(label='Close', tone='secondary') }}
+      </div>
+    </div>
+  </div>
+</div>
+{% endmacro %}
+
+{% macro tabs(items, active_id) %}
+<ul class="nav nav-tabs" role="tablist">
+  {% for tab in items %}
+  <li class="nav-item" role="presentation">
+    <span
+      class="nav-link{% if tab.id == active_id %} active{% endif %}"
+      role="tab"
+      aria-selected="{{ 'true' if tab.id == active_id else 'false' }}"
+    >
+      {{ tab.title }}
+    </span>
+  </li>
+  {% endfor %}
+</ul>
+{% endmacro %}
+
+{% macro table(columns, rows) %}
+<div class="table-responsive">
+  <table class="table table-vcenter card-table">
+    <thead>
+      <tr>
+        {% for column in columns %}
+        <th>{{ column }}</th>
+        {% endfor %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+      <tr>
+        {% for value in row %}
+        <td>{{ value }}</td>
+        {% endfor %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endmacro %}
+
+{% macro data_grid(columns, rows) %}
+<div class="table-responsive">
+  <table class="table table-striped table-hover" aria-label="Data grid">
+    <thead>
+      <tr>
+        {% for column in columns %}
+        <th>{{ column }}</th>
+        {% endfor %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+      <tr>
+        {% for column in columns %}
+        <td>{{ row[column] }}</td>
+        {% endfor %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endmacro %}
+
+{% macro form_input(label, value='', input_type='text', placeholder='') %}
+<div class="mb-3">
+  <label class="form-label">{{ label }}</label>
+  <input
+    class="form-control"
+    type="{{ input_type }}"
+    value="{{ value }}"
+    placeholder="{{ placeholder }}"
+    readonly
+  />
+</div>
+{% endmacro %}
+
+{% macro form_select(label, options) %}
+<div class="mb-3">
+  <label class="form-label">{{ label }}</label>
+  <select class="form-select" aria-label="{{ label }}" disabled>
+    {% for option in options %}
+    <option>{{ option }}</option>
+    {% endfor %}
+  </select>
+</div>
+{% endmacro %}
+
+{% macro form_checkbox(label, checked=False) %}
+<label class="form-check mb-2">
+  <input
+    class="form-check-input"
+    type="checkbox"
+    {% if checked %}checked{% endif %}
+    disabled
+  />
+  <span class="form-check-label">{{ label }}</span>
+</label>
+{% endmacro %}
+
+{% macro form_radio(name, label, checked=False) %}
+<label class="form-check mb-2">
+  <input
+    class="form-check-input"
+    type="radio"
+    name="{{ name }}"
+    {% if checked %}checked{% endif %}
+    disabled
+  />
+  <span class="form-check-label">{{ label }}</span>
+</label>
+{% endmacro %}
+
+{% macro form_textarea(label, value='') %}
+<div class="mb-3">
+  <label class="form-label">{{ label }}</label>
+  <textarea class="form-control" rows="3" readonly>{{ value }}</textarea>
+</div>
+{% endmacro %}
+
+{% macro form_selectgroup(options) %}
+<div class="form-selectgroup">
+  {% for option in options %}
+  <label class="form-selectgroup-item">
+    <input type="checkbox" class="form-selectgroup-input" disabled />
+    <span class="form-selectgroup-label">{{ option }}</span>
+  </label>
+  {% endfor %}
+</div>
+{% endmacro %}
+
+{% macro pagination(page, total_pages) %}
+<ul class="pagination">
+  <li class="page-item{% if page <= 1 %} disabled{% endif %}">
+    <span class="page-link">Prev</span>
+  </li>
+  <li class="page-item active">
+    <span class="page-link">{{ page }}</span>
+  </li>
+  <li class="page-item disabled">
+    <span class="page-link">/{{ total_pages }}</span>
+  </li>
+  <li class="page-item{% if page >= total_pages %} disabled{% endif %}">
+    <span class="page-link">Next</span>
+  </li>
+</ul>
+{% endmacro %}
+
+{% macro progress(value, label='') %}
+<div class="mb-2">
+  {% if label %}
+  <div class="text-secondary small mb-1">{{ label }}</div>
+  {% endif %}
+  <progress class="beeui-progress-native mb-2" value="{{ value }}" max="100">
+    {{ value }}%
+  </progress>
+  <div class="beeui-progress-value">{{ value }}%</div>
+</div>
+{% endmacro %}
+
+{% macro status_dot(status, label='') %}
+<span
+  class="status-dot status-dot-animated{% if status in ['ok', 'success'] %} bg-success{% elif status in ['warning', 'degraded', 'partial'] %} bg-yellow{% else %} bg-red{% endif %}"
+></span>
+{% if label %}
+<span class="ms-1">{{ label }}</span>
+{% endif %}
+{% endmacro %}
+
+{% macro avatar_placeholder(text) %}
+<span class="avatar bg-azure-lt">{{ text }}</span>
+{% endmacro %}
+
+{% macro toast_placeholder(title, message) %}
+<div class="toast show beeui-catalog-toast" role="status" aria-live="polite">
+  <div class="toast-header">
+    <strong class="me-auto">{{ title }}</strong>
+  </div>
+  <div class="toast-body">{{ message }}</div>
+</div>
+{% endmacro %}
+
+{% macro offcanvas_shell(title, body) %}
+<div
+  class="offcanvas offcanvas-end show beeui-catalog-offcanvas"
+  tabindex="-1"
+  aria-modal="true"
+  role="dialog"
+  aria-label="{{ title }}"
+>
+  <div class="offcanvas-header">
+    <h5 class="offcanvas-title">{{ title }}</h5>
+  </div>
+  <div class="offcanvas-body">{{ body }}</div>
+</div>
+{% endmacro %}
+
+{% macro chart_container(title) %}
+<div
+  class="beeui-plugin-placeholder"
+  data-plugin="chart"
+  aria-label="Chart placeholder"
+>
+  <h4 class="mb-1">{{ title }}</h4>
+  <p class="text-secondary mb-0">
+    Inert placeholder. No runtime chart library is loaded.
+  </p>
+</div>
+{% endmacro %}
+
+{% macro map_container(title) %}
+<div
+  class="beeui-plugin-placeholder"
+  data-plugin="map"
+  aria-label="Map placeholder"
+>
+  <h4 class="mb-1">{{ title }}</h4>
+  <p class="text-secondary mb-0">
+    Inert placeholder. No external maps provider is loaded.
+  </p>
+</div>
+{% endmacro %}
+
+{% macro datatable_container(title) %}
+<div
+  class="beeui-plugin-placeholder"
+  data-plugin="datatable"
+  aria-label="Datatable placeholder"
+>
+  <h4 class="mb-1">{{ title }}</h4>
+  <p class="text-secondary mb-0">
+    Inert placeholder. No external datatable plugin is loaded.
+  </p>
+</div>
+{% endmacro %}

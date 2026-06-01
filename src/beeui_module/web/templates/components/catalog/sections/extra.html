@@ -1,0 +1,26 @@
+{% from "components/primitives/catalog_primitives.html" import avatar_placeholder, modal_shell, toast_placeholder, offcanvas_shell %}
+
+<div class="row g-3">
+  <div class="col-12 col-lg-4">
+    <div class="card">
+      <div class="card-body d-flex align-items-center gap-2">
+        {{ avatar_placeholder('AD') }}
+        {{ avatar_placeholder('U') }}
+        <span class="text-secondary">Avatar placeholders only</span>
+      </div>
+    </div>
+  </div>
+  <div class="col-12 col-lg-4">
+    {{ toast_placeholder('Toast placeholder', samples.unsafe_text) }}
+  </div>
+  <div class="col-12 col-lg-4">
+    <div class="card">
+      <div class="card-body">
+        {{ modal_shell('Modal shell', samples.alert_message) }}
+      </div>
+    </div>
+  </div>
+  <div class="col-12">
+    {{ offcanvas_shell('Offcanvas shell', samples.unsafe_input) }}
+  </div>
+</div>

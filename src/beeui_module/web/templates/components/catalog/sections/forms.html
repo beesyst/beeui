@@ -1,0 +1,25 @@
+{% from "components/primitives/catalog_primitives.html" import form_input, form_select, form_checkbox, form_radio, form_textarea, form_selectgroup %}
+
+<div class="row g-3">
+  <div class="col-12 col-lg-6">
+    <div class="card">
+      <div class="card-body">
+        {{ form_input('Text input', samples.unsafe_input, 'text', 'Placeholder') }}
+        {{ form_input('Numeric input', '42', 'number') }}
+        {{ form_select('Select input', samples.select_options) }}
+      </div>
+    </div>
+  </div>
+  <div class="col-12 col-lg-6">
+    <div class="card">
+      <div class="card-body">
+        {{ form_checkbox('Receive updates', checked=True) }}
+        {{ form_checkbox(samples.unsafe_text) }}
+        {{ form_radio('mode', 'Option A', checked=True) }}
+        {{ form_radio('mode', 'Option B') }}
+        {{ form_textarea('Textarea', samples.alert_message) }}
+        {{ form_selectgroup(['A', 'B', samples.unsafe_text]) }}
+      </div>
+    </div>
+  </div>
+</div>

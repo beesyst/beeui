@@ -1,0 +1,36 @@
+{% from "components/primitives/catalog_primitives.html" import breadcrumb, card, card_header, empty_state, pagination, progress, table, data_grid %}
+
+<div class="row g-3">
+  <div class="col-12">
+    {{ breadcrumb(samples.breadcrumbs) }}
+  </div>
+  <div class="col-12 col-lg-6">
+    <div class="card">
+      {{ card_header('Card header', 'Reusable heading block') }}
+      <div class="card-body">
+        {{ card('Reusable card body with escaped sample: ' ~ samples.unsafe_text) }}
+        {{ progress(68, 'Bootstrap progress') }}
+        {{ pagination(2, 7) }}
+      </div>
+    </div>
+  </div>
+  <div class="col-12 col-lg-6">
+    <div class="card mb-3">
+      <div class="card-body">
+        {{ empty_state('Empty section', samples.unsafe_text) }}
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-body">
+        {{ table(samples.table_columns, samples.table_rows) }}
+      </div>
+    </div>
+  </div>
+  <div class="col-12">
+    <div class="card">
+      <div class="card-body">
+        {{ data_grid(samples.grid_columns, samples.grid_rows) }}
+      </div>
+    </div>
+  </div>
+</div>
