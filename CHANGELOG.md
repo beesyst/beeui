@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.0](https://github.com/beesyst/beeui/compare/beeui-v0.6.0...beeui-v0.7.0) (2026-06-01)
+
+
+### Features
+
+* **blocks:** add schema-driven static dashboard blocks ([#17](https://github.com/beesyst/beeui/issues/17)) ([f26941e](https://github.com/beesyst/beeui/commit/f26941eee601f03b770d150d17c574c1612c6349))
+
 ## [0.6.0](https://github.com/beesyst/beeui/compare/beeui-v0.5.0...beeui-v0.6.0) (2026-06-01)
 
 
