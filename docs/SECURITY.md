@@ -332,6 +332,7 @@ Adapters must:
 - avoid returning full raw config unless sanitized;
 - avoid exposing arbitrary file paths;
 - return explicit partial/error states;
+- keep optional write/action methods unavailable by default unless explicitly implemented by product-owned bounded callbacks/API;
 - never execute product runtime logic unless called through a bounded action path.
 
 Adapters must not:

@@ -1301,45 +1301,62 @@ BeeUI has a read-only data resolver layer and at least a representative set of e
 
 ### Итерация 8 — Product adapter contract v0
 
-**Статус:** PLANNED
+**Статус:** DONE
 
 #### Goal
 
-Зафиксировать общий `ProductUiAdapter` contract для подключения Bee-продуктов к BeeUI.
+Зафиксировать generic `ProductUiAdapter` contract как единственную точку подключения Bee-продуктов к BeeUI, чтобы BeeCap/BeeAgent могли отдавать dashboard/runs/artifacts/config/actions через стабильный read-model boundary без попадания product-specific логики в BeeUI core.
+
+#### Почему это нужно
+
+После Iteration 7 BeeUI умеет рендерить schema-driven UI и resolver-backed demo/static data. Следующий блокер для подключения BeeCap/BeeAgent — отсутствие стабильного adapter contract.
+
+Без этого BeeUI начнёт читать product storage, config или domain internals напрямую, что создаст второй source of truth и нарушит правило:
+
+```text
+BeeUI renders.
+Product decides.
+```
+
+Iteration 8 фиксирует только contract-level integration point. Concrete BeeCap/BeeAgent adapters, routes, artifact browser and embedded mount API остаются следующими итерациями.
 
 #### Scope
 
 Включено:
 
+- новый пакет `src/beeui_module/adapters/`;
+
 - `ProductUiAdapter` protocol/base class;
 
-- adapter metadata:
-  - product id;
-  - title;
-  - version;
-  - capabilities;
-  - supported pages;
+- adapter metadata model:
+  - `product_id`;
+  - `title`;
+  - `version`;
+  - `capabilities`;
+  - `supported_pages`;
 
-- methods:
+- stable adapter result/envelope model:
+  - `status: ok|partial|error`;
+  - `data`;
+  - `warnings`;
+  - `meta`;
+  - error shape with stable code/message;
 
-```python
-get_dashboard()
-list_runs()
-get_run(run_id)
-list_artifacts(run_id)
-read_artifact(run_id, artifact_id)
-get_config_read_model()
-validate_config_candidate(candidate)
-list_actions()
-preview_action(action_id, payload)
-execute_action(action_id, payload)
-```
+- required read-only methods:
+  - `get_dashboard()`;
+  - `list_runs()`;
+  - `get_run(run_id)`;
+  - `list_artifacts(run_id)`;
+  - `read_artifact(run_id, artifact_id)`;
+  - `get_config_read_model()`;
 
-- read-only methods required;
+- optional write/action/config methods disabled by default:
+  - `validate_config_candidate(candidate)`;
+  - `list_actions()`;
+  - `preview_action(action_id, payload)`;
+  - `execute_action(action_id, payload)`;
 
-- write/action methods optional and disabled by default;
-
-- stable error types:
+- stable adapter errors:
   - `InvalidIdError`;
   - `NotFoundError`;
   - `PermissionDeniedError`;
@@ -1347,41 +1364,71 @@ execute_action(action_id, payload)
   - `ValidationError`;
   - `AdapterError`;
 
-- safe ID validation helpers;
+- safe ID validation helpers:
+  - product id;
+  - run id;
+  - artifact id;
+  - action id;
 
-- response envelope consistency;
+- fake adapter for tests only;
 
-- fake adapter tests.
+- tests for:
+  - metadata;
+  - dashboard;
+  - runs;
+  - run detail;
+  - artifacts list;
+  - artifact read;
+  - config read-model;
+  - invalid run id rejection;
+  - invalid artifact id rejection;
+  - unavailable optional methods;
+  - error envelope shape;
+  - read-only methods do not mutate returned state;
+  - no product-specific imports/logic.
 
 Не включено:
 
 - concrete BeeCap adapter;
 - concrete BeeAgent adapter;
 - direct product filesystem crawling;
+- artifact browser routes;
+- `/api/*` route contract;
+- embedded mount API;
 - direct execution authority;
-- auth/session.
+- auth/session;
+- config apply/write;
+- operator action execution;
+- standalone HTTP adapter.
 
 #### Deliverable
 
-BeeUI has a stable integration point that BeeCap/BeeAgent can implement without BeeUI learning product internals.
+BeeUI has a stable product integration contract and fake adapter tests. BeeCap/BeeAgent can implement this contract later without BeeUI learning product internals.
 
 #### Checks
 
 - fake adapter dashboard;
 - fake adapter runs;
+- fake adapter run detail;
+- fake adapter artifact list/read;
+- fake adapter config read-model;
 - invalid run id rejection;
 - invalid artifact id rejection;
-- unavailable method behavior;
-- error envelope shape;
+- unavailable optional method behavior;
+- adapter error envelope shape;
 - no mutation in read-only methods;
-- `pytest -q`.
+- no product-specific domain logic introduced;
+- `uv run pytest -q`.
 
 #### DoD
 
 - product integration point is stable;
 - BeeUI does not read product internals without adapter;
-- invalid IDs handled safely;
-- write/action methods are unavailable unless product explicitly implements them.
+- adapter errors are explicit and normalized;
+- invalid IDs are handled safely;
+- write/action/config mutation methods are unavailable unless a product explicitly implements them;
+- fake adapter proves the contract without adding BeeCap/BeeAgent dependencies;
+- docs explain adapter boundary and non-goals.
 
 ### Итерация 9 — BeeCap adapter MVP
 
