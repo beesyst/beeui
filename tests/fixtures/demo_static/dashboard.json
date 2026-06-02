@@ -1,0 +1,25 @@
+{
+  "dashboard": {
+    "latest_run": {
+      "id": "run_json_001",
+      "status": "ok"
+    },
+    "runtime": {
+      "status": "ok",
+      "value": "Ready"
+    },
+    "summary": {
+      "text": "JSON fixture summary"
+    }
+  },
+  "runs": [
+    {
+      "id": "run_json_001",
+      "status": "ok"
+    },
+    {
+      "id": "run_json_002",
+      "status": "partial"
+    }
+  ]
+}

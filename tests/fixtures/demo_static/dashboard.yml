@@ -1,0 +1,14 @@
+dashboard:
+  latest_run:
+    id: run_yaml_001
+    status: warning
+  runtime:
+    status: partial
+    value: Waiting
+  summary:
+    text: YAML fixture summary
+runs:
+  - id: run_yaml_001
+    status: warning
+  - id: run_yaml_002
+    status: ok

@@ -34,6 +34,7 @@ def register_configured_pages(
             rendered_blocks = resolve_page_blocks(
                 placements=_page.blocks,
                 registry=ui_config.blocks,
+                data_sources=ui_config.data_sources,
             )
             return templates.TemplateResponse(
                 request=request,

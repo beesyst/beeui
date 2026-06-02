@@ -32,29 +32,30 @@ navigation:
       - title: Reports
         disabled: true
 
+data_sources:
+  demo_dashboard:
+    type: demo
+
 blocks:
   latest_run:
     type: metric_card
     title: Latest Run
-    value: run_demo_001
-    subtitle: Static demo value
+    source: demo_dashboard
+    value_selector: dashboard.latest_run.id
+    subtitle_selector: dashboard.latest_run.status
 
   runtime_status:
     type: status_card
     title: Runtime
-    status: ok
-    value: Ready
+    source: demo_dashboard
+    status_selector: dashboard.runtime.status
+    value_selector: dashboard.runtime.value
 
   run_kpis:
     type: kpi_grid
     title: Session KPIs
-    items:
-      - label: Total runs
-        value: "24"
-        status: ok
-      - label: Failed
-        value: "1"
-        status: warning
+    source: demo_dashboard
+    items_selector: dashboard.kpi_items
 
   quick_links:
     type: links_card
@@ -66,33 +67,31 @@ blocks:
   notice:
     type: alert_card
     title: Demo mode
-    message: Values are static and intended for UI contract validation.
+    message: Values are resolved from controlled demo data sources for UI contract validation.
     severity: info
 
   summary_text:
     type: text_card
     title: Summary
-    text: BeeUI renders reusable schema blocks with safe escaping.
+    source: demo_dashboard
+    text_selector: dashboard.summary.text
 
   completion:
     type: progress_card
     title: Bootstrap progress
-    value: 68
-    label: Iteration 5 in progress
+    value: 72
+    label: Iteration 7 in progress
 
   recent_runs:
     type: table_card
     title: Recent runs
+    source: demo_dashboard
+    rows_selector: runs
     columns:
       - key: id
         label: Run ID
       - key: status
         label: Status
-    rows:
-      - id: run_demo_001
-        status: ok
-      - id: run_demo_002
-        status: partial
 
 pages:
   - id: dashboard

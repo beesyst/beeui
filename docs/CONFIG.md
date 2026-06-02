@@ -44,7 +44,7 @@ Bee-продукты остаются source of truth для:
 
 ## Файлы конфигурации
 
-Current Iteration 5 demo/MVP structure:
+Current Iteration 7 demo/MVP structure:
 
 ```text
 beeui/
@@ -440,7 +440,7 @@ features:
 
 ## Назначение
 
-`config/schema.yml` is the current demo/MVP UI schema file used by the Iteration 5 runtime and CLI.
+`config/schema.yml` is the current demo/MVP UI schema file used by the Iteration 7 runtime and CLI.
 
 `config/beeui.yml` is future/product integration naming, not the current CLI contract.
 
@@ -454,7 +454,7 @@ features:
 
 Он не должен содержать secrets и product runtime logic.
 
-## Current Iteration 5 example
+## Current Iteration 7 example
 
 ```yaml
 app:
@@ -491,18 +491,24 @@ navigation:
       - title: Reports
         disabled: true
 
+data_sources:
+  demo_dashboard:
+    type: demo
+
 blocks:
   latest_run:
     type: metric_card
     title: Latest Run
-    value: run_demo_001
-    subtitle: Static demo value
+    source: demo_dashboard
+    value_selector: dashboard.latest_run.id
+    subtitle_selector: dashboard.latest_run.status
 
   runtime_status:
     type: status_card
     title: Runtime
-    status: ok
-    value: Ready
+    source: demo_dashboard
+    status_selector: dashboard.runtime.status
+    value_selector: dashboard.runtime.value
 
 pages:
   - id: dashboard
@@ -524,12 +530,13 @@ pages:
 
 ## Используемые секции `schema.yml`
 
-| Секция         | Назначение                                |
-| -------------- | ----------------------------------------- |
-| `app.*`        | Display metadata and theme                |
-| `navigation[]` | Sidebar/global navigation                 |
-| `blocks.*`     | Reusable static/literal block definitions |
-| `pages[]`      | Pages/routes and block placement          |
+| Секция           | Назначение                                            |
+| ---------------- | ----------------------------------------------------- |
+| `app.*`          | Display metadata and theme                            |
+| `navigation[]`   | Sidebar/global navigation                             |
+| `data_sources.*` | Controlled read-only demo/static data sources         |
+| `blocks.*`       | Reusable literal or resolver-backed block definitions |
+| `pages[]`        | Pages/routes and block placement                      |
 
 ## `app.*`
 
@@ -637,78 +644,74 @@ navigation:
 
 ## `data_sources.*`
 
-Planned/future schema after block/data-source/product-adapter iterations.
-Not implemented in current Iteration 4 runtime.
+Current Iteration 7 contract.
 
 ```yaml
 data_sources:
-  demo:
+  demo_dashboard:
+    type: demo
+
+  static_dashboard:
     type: static
-    data: {}
-
-  dashboard:
-    type: adapter
-    method: get_dashboard
-
-  runs:
-    type: adapter
-    method: list_runs
-
-  external:
-    type: http
-    url: http://127.0.0.1:8765/api/ui/dashboard
-    timeout_seconds: 5
+    format: yaml
+    path: tests/fixtures/demo_static/dashboard.yml
 ```
 
 ### Supported source types
 
-| Type      | Назначение             | MVP                |
-| --------- | ---------------------- | ------------------ |
-| `static`  | Inline/demo data       | да                 |
-| `adapter` | Product adapter method | да                 |
-| `http`    | HTTP JSON source       | позже/MVP optional |
-| `file`    | Safe local JSON file   | optional           |
+| Type      | Назначение                                | MVP   |
+| --------- | ----------------------------------------- | ----- |
+| `demo`    | Controlled built-in demo payload          | да    |
+| `static`  | Controlled YAML/JSON fixture-like payload | да    |
+| `adapter` | Product adapter method                    | позже |
+
+### Demo source
+
+```yaml
+data_sources:
+  demo_dashboard:
+    type: demo
+```
 
 ### Static source
 
 ```yaml
 data_sources:
-  demo:
+  static_dashboard:
     type: static
-    data:
-      status: ok
+    format: json
+    path: tests/fixtures/demo_static/dashboard.json
 ```
 
-### Adapter source
+### Resolver envelope
 
-```yaml
-data_sources:
-  dashboard:
-    type: adapter
-    method: get_dashboard
-```
-
-### HTTP source
-
-```yaml
-data_sources:
-  dashboard:
-    type: http
-    url: http://127.0.0.1:8765/api/ui/dashboard
-    timeout_seconds: 5
+```json
+{
+  "status": "ok|partial|error",
+  "data": {},
+  "warnings": [
+    {
+      "code": "selector_missing",
+      "message": "Selector not found: dashboard.latest_run.id"
+    }
+  ],
+  "source": {
+    "type": "demo|static|unknown",
+    "id": "demo_dashboard"
+  }
+}
 ```
 
 ### Правила
 
-- `static.data` должен быть dict/list/scalar JSON-compatible.
-- `adapter.method` должен быть allowlisted.
-- `http.url` не должен содержать secrets.
-- HTTP errors должны давать degraded/partial state.
-- Source result нормализуется в envelope:
-  - `status`;
-  - `data`;
-  - `warnings`;
-  - `source`.
+- `data_sources` lives in `config/schema.yml` because it configures BeeUI-owned read-only UI data wiring for the current demo/MVP surface.
+- `data_sources` is not a second source of truth: product truth still belongs to product config/artifacts/API, while BeeUI only reads controlled demo/static payloads in Iteration 7.
+- `type: demo` has no extra keys.
+- `type: static` requires `format` (`yaml` or `json`) and a safe relative `path`.
+- Static source paths must stay under the BeeUI project root and may not use absolute paths or `..`.
+- Source results are normalized to a stable envelope with `status`, `data`, `warnings` and `source`.
+- Missing selectors return `partial` and should degrade block rendering instead of crashing the page.
+- Invalid selectors and invalid sources return explicit `error` envelopes.
 
 ## `pages[]`
 
@@ -748,25 +751,36 @@ blocks:
   total_profit:
     type: metric_card
     title: Total Profit
-    source: dashboard
-    value: profit.total
+    source: demo_dashboard
+    value_selector: dashboard.kpis.total_runs
     suffix: USDT
-    empty: Profit unavailable
+    subtitle: Demo-backed metric
 ```
 
 ### Common block fields
 
-Current Iteration 5 contract is static/literal only:
+Current Iteration 7 contract supports both existing literal fields and optional resolver-backed fields:
 
-- `source`, selectors and adapter-bound fields are not supported in this iteration;
+- `source` is optional and references `data_sources.*`;
+- selector fields are optional and block-type-specific;
+- existing literal fields remain supported for backward compatibility;
 - arbitrary keys like `html`, `script`, `javascript`, `style`, `css`, `custom_css`, `custom_js` are rejected fail-fast;
 - `links_card.links[].href` allows only safe internal paths.
 
-| Ключ    | Тип    | Обязательный | Описание                               |
-| ------- | ------ | ------------ | -------------------------------------- |
-| `type`  | string | да           | Block type                             |
-| `title` | string | да           | Block title                            |
-| `state` | string | нет          | `normal`, `empty`, `degraded`, `error` |
+| Ключ     | Тип    | Обязательный | Описание                                  |
+| -------- | ------ | ------------ | ----------------------------------------- |
+| `type`   | string | да           | Block type                                |
+| `title`  | string | да           | Block title                               |
+| `state`  | string | нет          | `normal`, `empty`, `degraded`, `error`    |
+| `source` | string | нет          | Data source id for resolver-backed fields |
+
+### Resolver-backed field examples
+
+- `metric_card`: `value_selector`, `subtitle_selector`
+- `status_card`: `status_selector`, `value_selector`, `subtitle_selector`
+- `text_card`: `text_selector`
+- `table_card`: `rows_selector`
+- `kpi_grid`: `items_selector`
 
 ### MVP block types
 

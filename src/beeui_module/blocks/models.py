@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 ALLOWED_BLOCK_TYPES = {
@@ -32,6 +32,8 @@ class BlockDefinition:
     title: str
     state: str
     payload: dict[str, Any]
+    source_id: str | None = None
+    bindings: dict[str, str] = field(default_factory=dict)
 
 
 # Данные, подготовленные registry для конкретного Jinja template

@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from beeui_module.blocks.models import BlockDefinition, BlockPlacement
+from beeui_module.data.models import DataSourceDefinition
 
 
 # Настройки темы, прошедшие schema validation
@@ -69,5 +70,6 @@ class BeeUiConfig:
     theme: ThemeConfig
     layout: LayoutConfig
     navigation: list[BeeUiNavigationItem]
+    data_sources: dict[str, DataSourceDefinition]
     blocks: dict[str, BlockDefinition]
     pages: list[BeeUiPage]
