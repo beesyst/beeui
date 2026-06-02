@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.0](https://github.com/beesyst/beeui/compare/beeui-v0.9.0...beeui-v0.10.0) (2026-06-02)
+
+
+### Features
+
+* **adapters:** add product ui adapter contract v0 ([#26](https://github.com/beesyst/beeui/issues/26)) ([8cd7b0d](https://github.com/beesyst/beeui/commit/8cd7b0d4f5f1ba5897fe42ab4275765fec2b6cbd))
+
 ## [0.9.0](https://github.com/beesyst/beeui/compare/beeui-v0.8.0...beeui-v0.9.0) (2026-06-02)
 
 
