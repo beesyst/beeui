@@ -10,7 +10,7 @@
 - `beeagent`;
 - будущие Bee-продукты.
 
-Current implemented foundation includes:
+Текущая реализованная foundation после Iteration 9 включает:
 
 - FastAPI web app;
 - Jinja2 templates;
@@ -18,7 +18,8 @@ Current implemented foundation includes:
 - declarative pages/navigation;
 - reusable dashboard blocks;
 - controlled demo/static data resolver;
-- generic ProductUiAdapter contract v0.
+- generic `ProductUiAdapter` contract v0;
+- BeeCap-compatible fixture/reference adapter для проверки BeeCap-shaped payloads.
 
 Planned responsibilities include:
 
@@ -175,7 +176,7 @@ src/beeui_module/
   pages/                 # current declarative schema/config/router module
   blocks/                # current block registry, literal and resolver-backed renderers
   data/                  # current read-only demo/static data sources and selector resolver
-  adapters/              # current Iteration 8 generic adapter contract v0
+  adapters/              # generic adapter contract v0 + BeeCap fixture/reference adapter
   artifacts/             # planned/future module
   api/                   # planned/future module
   auth/                  # planned/future module
@@ -229,9 +230,9 @@ Doctor:
 
 ## Product integration
 
-### Current app factory after Iteration 8
+### Текущая app factory после Iteration 9
 
-In the current Iteration 8 state, the app factory accepts loaded settings and declarative UI schema, then creates the FastAPI/Jinja2 shell with schema-driven pages, navigation, theme/layout and literal or resolver-backed blocks from controlled demo/static sources.
+App factory всё ещё принимает только `settings` и `ui_config`. Generic `ProductUiAdapter` contract существует, `BeeCapFixtureAdapter` добавлен как fixture/reference adapter. Route-level adapter injection ещё не реализован. Real BeeCap adapter должен жить в BeeCap repo.
 
 Пример:
 
@@ -246,9 +247,24 @@ ui_config = load_beeui_config(schema_path())
 app = create_beeui_app(settings=settings, ui_config=ui_config)
 ```
 
-Generic `ProductUiAdapter` contract exists in `src/beeui_module/adapters/`, but route-level adapter injection remains planned/future scope.
-The current `create_beeui_app(...)` signature does not accept an adapter yet.
-Adapter injection into the app factory is planned for the embedded mount/API iteration.
+Generic `ProductUiAdapter` contract существует в `src/beeui_module/adapters/`, но route-level adapter injection остаётся planned/future scope.
+Текущая сигнатура `create_beeui_app(...)` не принимает adapter.
+Adapter injection в app factory запланирован на Iteration 10.
+
+### BeeCap fixture adapter after Iteration 9
+
+Iteration 9 добавляет `BeeCapFixtureAdapter` как тестовую/reference реализацию.
+
+Он используется для проверки BeeCap-shaped dashboard/runs/artifact-reference payloads на соответствие generic `ProductUiAdapter` contract.
+
+Это не production BeeCap integration и не читает BeeCap storage. Real `BeeCapUiAdapter` должен жить в BeeCap repository по пути `src/beecap_module/interfaces/ui/`.
+
+Текущие ограничения остаются:
+
+- `create_beeui_app(...)` не принимает adapter;
+- BeeUI не вызывает adapter методы из routes;
+- adapter-backed data sources остаются planned/future scope;
+- никакие `/api/*` adapter routes не добавлены Iteration 9.
 
 ### Future embedded app factory
 
@@ -284,7 +300,7 @@ mount_beeui(
 
 ### Product adapter contract
 
-Current Iteration 8 adapter contract:
+Текущий adapter contract после Iteration 9:
 
 ```python
 class ProductUiAdapter:
@@ -305,8 +321,9 @@ class ProductUiAdapter:
     def execute_action(self, action_id: str, payload: dict) -> AdapterResult | AdapterErrorResult: ...
 ```
 
-Iteration 8 includes only the generic contract and fake adapter tests.
-Route-level adapter injection, config apply/write, action execution and concrete BeeCap/BeeAgent adapters are planned/future scope.
+Iteration 8 добавила generic contract и fake adapter tests.
+Iteration 9 добавляет BeeCap fixture/reference adapter и BeeCap-shaped fixture tests.
+Route-level adapter injection, config apply/write, action execution и production BeeCap/BeeAgent adapters остаются planned/future scope.
 
 Required read-only methods:
 
@@ -443,7 +460,7 @@ pages:
     blocks: []
 ```
 
-Iteration 7 block values may still be static/literal, but representative blocks can now resolve read-only values from controlled `demo` and `static` sources through a stable resolver envelope. The generic `ProductUiAdapter` contract exists after Iteration 8, but adapter-backed data sources and route-level adapter usage remain future scope.
+Iteration 7 block values may still be static/literal, but representative blocks can now resolve read-only values from controlled `demo` and `static` sources through a stable resolver envelope. После Iteration 9 generic `ProductUiAdapter` contract и BeeCap fixture/reference adapter существуют, но adapter-backed data sources и route-level adapter usage остаются future scope.
 
 Rules:
 
@@ -571,7 +588,7 @@ Contract boundary:
 ## Surface model
 
 Generic BeeUI surface ниже описывает planned route families. Current MVP route contract отдельно зафиксирован в разделе `MVP route contract`.
-The route families below are planned route families, not the current Iteration 8 route surface.
+The route families below are planned route families, not the current Iteration 9 route surface.
 
 HTML routes:
 
@@ -604,7 +621,7 @@ JSON routes:
 
 Not all routes must exist in MVP.
 
-Current MVP route set after Iteration 8:
+Current MVP route set after Iteration 9:
 
 - `/`
 - `/runs`
@@ -613,7 +630,7 @@ Current MVP route set after Iteration 8:
 - `/static/vendor/tabler/css/tabler-compatible.min.css`
 - `/static/vendor/tabler/js/tabler-compatible.min.js`
 
-Iteration 8 adds the generic adapter contract, but does not change the public route set.
+Iteration 9 adds only BeeCap fixture/reference adapter coverage and does not change the public route set.
 
 ## Read-only model
 
@@ -863,38 +880,38 @@ pages:
 
 Implemented block types after Iteration 7:
 
-* `metric_card`
-* `kpi_grid`
-* `status_card`
-* `table_card`
-* `links_card`
-* `alert_card`
-* `text_card`
-* `progress_card`
+- `metric_card`
+- `kpi_grid`
+- `status_card`
+- `table_card`
+- `links_card`
+- `alert_card`
+- `text_card`
+- `progress_card`
 
 Current limitations:
 
-* product adapter-backed data is not available yet;
-* production HTTP sources are not available yet;
-* blocks do not call product APIs;
-* blocks do not read product storage directly;
-* blocks do not render arbitrary HTML, CSS or JS.
+- product adapter-backed data is not available yet;
+- production HTTP sources are not available yet;
+- blocks do not call product APIs;
+- blocks do not read product storage directly;
+- blocks do not render arbitrary HTML, CSS or JS.
 
 Rules:
 
-* block renderer is domain-neutral;
-* block ids must be safe identifiers;
-* block type must be one of the registered renderer types;
-* unknown block references fail fast;
-* unknown block types fail fast;
-* unknown data source references fail fast;
-* selector-backed block fields require `source`;
-* display values accept scalar literals or resolved scalar/list payloads accepted by the target block type;
-* invalid resolved payload degrades or errors the block without crashing page rendering;
-* `links_card` accepts internal safe paths only;
-* block text is rendered through Jinja autoescape;
-* no Jinja expressions from config are evaluated;
-* no arbitrary HTML/JS/CSS-like fields are accepted.
+- block renderer is domain-neutral;
+- block ids must be safe identifiers;
+- block type must be one of the registered renderer types;
+- unknown block references fail fast;
+- unknown block types fail fast;
+- unknown data source references fail fast;
+- selector-backed block fields require `source`;
+- display values accept scalar literals or resolved scalar/list payloads accepted by the target block type;
+- invalid resolved payload degrades or errors the block without crashing page rendering;
+- `links_card` accepts internal safe paths only;
+- block text is rendered through Jinja autoescape;
+- no Jinja expressions from config are evaluated;
+- no arbitrary HTML/JS/CSS-like fields are accepted.
 
 Planned later block families:
 
@@ -931,7 +948,7 @@ Rules:
 
 ## Runs
 
-Current Iteration 8 does not render adapter-backed runs yet. The behavior below is planned for the runs/product integration iterations.
+Current Iteration 9 does not render adapter-backed runs yet. The behavior below is planned for the runs/product integration iterations.
 
 Generic `/runs` page shows product runs if product adapter supports run listing.
 
@@ -982,7 +999,7 @@ Product adapter may ignore unsupported filters but must report this in `warnings
 
 ## Run detail
 
-Run detail routes are planned and are not part of the current Iteration 8 route surface.
+Run detail routes are planned and are not part of the current Iteration 9 route surface.
 
 ### `GET /runs/{run_id}`
 
@@ -1123,7 +1140,7 @@ Rules:
 
 ## Config read-model
 
-Config read-model UI/API routes are planned for later config iterations. Iteration 8 only defines the optional adapter method contract.
+Config read-model UI/API routes are planned for later config iterations. The optional adapter method contract exists, но Iteration 9 не реализует config/action routes.
 
 BeeUI can provide generic config read-model UI if product adapter supports it.
 
@@ -1244,7 +1261,7 @@ Planned routes:
 
 ## Actions
 
-Action rendering/execution is planned for later bounded action iterations. Iteration 8 only defines optional adapter methods that are unavailable by default in `ProductUiAdapterBase`.
+Action rendering/execution is planned for later bounded action iterations. The optional adapter method contract exists, но Iteration 9 не реализует config/action routes.
 
 BeeUI can render bounded actions only if product adapter exposes them.
 
@@ -1420,7 +1437,7 @@ visual editor
 
 ## Typical operator scenarios
 
-Current Iteration 8 scenario:
+Current Iteration 9 scenario:
 
 ```text
 1. BeeUI loads config/settings.yml.
@@ -1432,7 +1449,8 @@ Current Iteration 8 scenario:
 7. BeeUI renders literal and resolver-backed blocks for pages with configured block placements.
 8. Pages without block placements render the shared empty state.
 9. Generic adapter contract exists, but no adapter-backed routes are called yet.
-10. No route-level adapter/product artifact rendering is executed yet.
+10. BeeCapFixtureAdapter exists for fixture/reference validation only.
+11. No route-level adapter/product artifact rendering is executed yet.
 ```
 
 ### 1. Open product dashboard
@@ -1485,7 +1503,7 @@ Planned/future (requires config apply and audit iterations).
 
 ## MVP route contract
 
-Current Iteration 8 MVP route contract:
+Current Iteration 9 MVP route contract:
 
 - `GET /`
 - `GET /runs`
@@ -1500,7 +1518,7 @@ Current Iteration 8 MVP route contract:
 - `GET /static/vendor/tabler/css/tabler-compatible.min.css`
 - `GET /static/vendor/tabler/js/tabler-compatible.min.js`
 
-Iteration 8 keeps the current read-only route set while adding only the generic adapter contract.
+Iteration 9 keeps the current read-only route set while adding only BeeCap fixture/reference adapter coverage.
 
 Planned Iteration 10+ / product integration route families:
 
@@ -1530,9 +1548,9 @@ Current docs:
 - `docs/SECURITY.md`
 - `docs/COMPONENTS.md`
 - `docs/WEB_UI.md`
+- `docs/INTEGRATION.md`
 
 Planned docs:
 
-- `docs/INTEGRATION.md`
 - `docs/API_CONTRACT.md`
 - `docs/THEME.md`

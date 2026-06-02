@@ -1,0 +1,21 @@
+latest_run:
+  id: beecap_run_042
+  status: completed
+  started_at: "2026-06-01T10:00:00Z"
+  completed_at: "2026-06-01T10:15:00Z"
+
+summary:
+  mrkt:
+    cycles_completed: 12
+    trades_executed: 48
+  binance:
+    cycles_completed: 5
+    trades_executed: 22
+
+kpi_items:
+  - label: Total runs
+    value: "156"
+  - label: Success rate
+    value: "94%"
+  - label: Active cycles
+    value: "3"
