@@ -1,0 +1,15 @@
+latest_run: null
+
+summary:
+  mrkt:
+    cycles_completed: 0
+    trades_executed: 0
+  binance:
+    cycles_completed: 0
+    trades_executed: 0
+
+kpi_items:
+  - label: Total runs
+    value: "0"
+  - label: Success rate
+    value: "N/A"

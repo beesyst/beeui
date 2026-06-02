@@ -1,0 +1,34 @@
+artifacts:
+  run_log:
+    content_type: text/plain
+    content: "Run 042 completed successfully.\nAll cycles finished.\nNo errors reported."
+
+  summary_report:
+    content_type: application/json
+    content:
+      status: completed
+      cycle_count: 12
+      event_count: 48
+      source: fixture
+
+  trade_log:
+    content_type: application/json
+    content:
+      - id: event_001
+        kind: lifecycle_event
+        status: completed
+      - id: event_002
+        kind: lifecycle_event
+        status: completed
+      - id: event_003
+        kind: lifecycle_event
+        status: pending
+
+  partial_log:
+    content_type: text/plain
+    content: "Run 040 in progress...\nCycle 7 of 12..."
+
+  corrupted_file:
+    content_type: application/json
+    content: null
+    _corrupted: true

@@ -1,0 +1,97 @@
+app:
+  title: BeeCap Dashboard
+  product: beecap
+  logo_text: BeeCap
+  theme:
+    mode: dark
+    primary: green
+    base: gray
+    font: sans-serif
+    radius: 1
+    density: default
+  layout:
+    type: vertical
+    container: xl
+    sidebar:
+      variant: dark
+      collapsed: false
+    navbar:
+      enabled: true
+      variant: default
+      sticky: false
+
+navigation:
+  - title: Trading
+    children:
+      - title: Dashboard
+        path: /
+        icon: dashboard
+      - title: Runs
+        path: /runs
+        icon: list
+      - title: Artifacts
+        path: /artifacts
+        icon: file
+
+  - title: Venues
+    children:
+      - title: MRKT
+        path: /mrkt
+        icon: currency
+        disabled: true
+      - title: Binance
+        path: /binance
+        icon: currency
+        disabled: true
+
+data_sources:
+  beecap_dashboard:
+    type: adapter
+    adapter: beecap
+
+blocks:
+  latest_run:
+    type: metric_card
+    title: Latest Run
+    source: beecap_dashboard
+    value_selector: dashboard.latest_run.id
+    subtitle_selector: dashboard.latest_run.status
+
+  mrkt_kpis:
+    type: kpi_grid
+    title: MRKT Overview
+    source: beecap_dashboard
+    items_selector: dashboard.summary.mrkt
+
+  binance_kpis:
+    type: kpi_grid
+    title: Binance Overview
+    source: beecap_dashboard
+    items_selector: dashboard.summary.binance
+
+  run_history:
+    type: table_card
+    title: Recent Runs
+    source: beecap_dashboard
+    rows_selector: runs
+
+pages:
+  - id: dashboard
+    path: /
+    title: Dashboard
+    subtitle: BeeCap operator dashboard
+    blocks:
+      - block: latest_run
+        width: 4
+      - block: mrkt_kpis
+        width: 4
+      - block: binance_kpis
+        width: 4
+      - block: run_history
+        width: 12
+
+  - id: runs
+    path: /runs
+    title: Runs
+    subtitle: Run history
+    blocks: []

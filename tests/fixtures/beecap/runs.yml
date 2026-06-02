@@ -1,0 +1,28 @@
+runs:
+  - id: beecap_run_042
+    status: completed
+    started_at: "2026-06-01T10:00:00Z"
+    completed_at: "2026-06-01T10:15:00Z"
+    artifacts:
+      - artifact_id: run_log
+        content_type: text/plain
+      - artifact_id: summary_report
+        content_type: application/json
+      - artifact_id: trade_log
+        content_type: application/json
+      - artifact_id: corrupted_file
+        content_type: application/json
+
+  - id: beecap_run_041
+    status: failed
+    started_at: "2026-05-31T14:00:00Z"
+    completed_at: "2026-05-31T14:05:00Z"
+    artifacts: []
+
+  - id: beecap_run_040
+    status: running
+    started_at: "2026-05-31T12:00:00Z"
+    completed_at: null
+    artifacts:
+      - artifact_id: partial_log
+        content_type: text/plain

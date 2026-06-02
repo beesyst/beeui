@@ -1430,42 +1430,56 @@ BeeUI has a stable product integration contract and fake adapter tests. BeeCap/B
 - fake adapter proves the contract without adding BeeCap/BeeAgent dependencies;
 - docs explain adapter boundary and non-goals.
 
-### Итерация 9 — BeeCap adapter MVP
+### Итерация 9 — BeeCap adapter fixtures MVP
 
-**Статус:** PLANNED
+**Статус:** DONE
 
 #### Goal
 
-Подключить BeeCap к BeeUI через embedded adapter без переноса BeeCap domain logic в BeeUI.
+Добавить BeeCap-compatible adapter/read-model MVP на fixture-based данных, чтобы проверить, что generic `ProductUiAdapter` contract подходит для BeeCap dashboard/runs/artifacts без переноса BeeCap trading/domain logic в BeeUI.
+
+#### Почему это нужно
+
+После Iteration 8 BeeUI имеет generic adapter contract, но контракт ещё не проверен на реалистичных BeeCap-like данных: latest run, runs, artifact references, MRKT/Binance/paper partial states, corrupted/missing artifacts.
+
+До embedded mount API и BeeCap dashboard parity нужно доказать, что BeeUI может принимать BeeCap-shaped read-model через adapter boundary, не читая BeeCap internals напрямую и не превращаясь во второй source of truth.
 
 #### Scope
 
 Включено:
 
-- `BeeCapUiAdapter` skeleton;
-- dashboard read-model;
-- latest run;
-- run list;
-- run detail;
-- artifact references;
-- MRKT summary where artifacts exist;
-- Binance/paper summary where artifacts exist;
-- partial artifact handling;
+- `BeeCapUiAdapter` fixture/reference skeleton inside BeeUI test/support area or controlled adapter module, без dependency на реальный BeeCap package;
+- BeeCap-like dashboard read-model from fixtures;
+- latest run discovery from fixture/read-model data;
+- run list from fixtures;
+- run detail from fixtures;
+- artifact references from fixtures;
+- MRKT summary fields only when provided by fixture/read-model;
+- Binance/paper summary fields only when provided by fixture/read-model;
+- partial/missing/corrupted artifact scenarios;
+- no latest run scenario;
+- fixture-based tests under `tests/fixtures/beecap/`;
 - `examples/beecap_embedded/beeui.yml`;
-- integration notes in `docs/INTEGRATION.md`.
+- `docs/INTEGRATION.md` with BeeCap integration boundary notes;
+- docs update for current/future status.
 
 Не включено:
 
+- dependency/import on real `beecap_module`;
 - full replacement of BeeCap current web;
+- route-level adapter injection into `create_beeui_app(...)`;
+- embedded mount helper;
+- generic artifact browser routes;
+- direct product filesystem crawling;
+- trading/profit/order calculations inside BeeUI;
 - config apply;
 - operator actions;
-- auth;
-- no-code builder;
-- trading calculations inside BeeUI.
+- auth/session;
+- no-code builder.
 
 #### Expected BeeCap side
 
-BeeCap should provide a thin integration module:
+Real BeeCap integration should later live in BeeCap, for example:
 
 ```text
 src/beecap_module/interfaces/ui/
@@ -1474,30 +1488,42 @@ src/beecap_module/interfaces/ui/
   artifacts.py
 ```
 
+BeeUI may contain only a fixture/reference adapter proving the contract.
+
 #### Deliverable
 
-BeeUI can render BeeCap dashboard/run overview from BeeCap adapter/read-model fixtures.
+BeeUI has a BeeCap-compatible fixture adapter and tests proving that dashboard/runs/artifact-reference read-models can be produced through `ProductUiAdapter` without BeeUI reading BeeCap internals or implementing trading logic.
 
 #### Checks
 
 - BeeCap-like fixture dashboard;
-- runs list render;
-- run detail render;
-- MRKT partial artifact scenario;
-- Binance partial artifact scenario;
+- latest run fixture;
+- runs list fixture;
+- run detail fixture;
+- artifact references fixture;
+- MRKT partial fixture scenario;
+- Binance/paper partial fixture scenario;
 - no latest run scenario;
-- corrupted artifact scenario;
+- corrupted artifact metadata scenario;
+- invalid run id rejection;
+- invalid artifact id rejection;
 - no secret leakage;
-- path traversal rejection;
-- source artifacts not mutated;
-- `pytest -q`.
+- no path traversal;
+- source fixtures not mutated;
+- no `beecap_module` dependency/import;
+- `uv run pytest -q`;
+- `./start.sh doctor`;
+- `./start.sh routes`.
 
 #### DoD
 
-- BeeUI contains no trading logic;
-- BeeCap domain semantics remain in BeeCap adapter/read-model;
-- dashboard works on fixture artifacts;
-- source artifacts remain canonical and read-only.
+- BeeCap-like adapter/read-model works only through `ProductUiAdapter`;
+- BeeUI contains no trading calculations;
+- BeeUI does not read arbitrary BeeCap storage;
+- BeeCap domain semantics stay in adapter/read-model fixtures and later real BeeCap-side implementation;
+- partial/corrupted/missing states are explicit;
+- source fixtures remain canonical and read-only;
+- docs explain that real BeeCap adapter belongs to BeeCap-side integration.
 
 ### Итерация 10 — Embedded mount API v0
 

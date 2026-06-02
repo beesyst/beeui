@@ -2,9 +2,9 @@
 
 **BeeUI** — общий Python-based UI framework для Bee-продуктов: `beecap`, `beeagent` и будущих модулей Bee ecosystem.
 
-## Iteration 8
+## Iteration 9
 
-Текущий deliverable — generic `ProductUiAdapter` contract v0 поверх Iteration 7 (read-only data source abstraction и selector resolver v0 для declarative pages/navigation/theme/layout и block registry из `config/schema.yml`).
+Текущий deliverable — BeeCap-compatible fixture/reference adapter MVP поверх generic `ProductUiAdapter` contract v0.
 
 Уже работает:
 
@@ -24,6 +24,11 @@
 - generic adapter contract package `src/beeui_module/adapters/`
 - stable adapter envelopes (`ok|partial|error`) and stable adapter errors
 - safe adapter ID helpers for `product_id`, `run_id`, `artifact_id`, `action_id`
+- BeeCap-compatible fixture adapter `BeeCapFixtureAdapter`;
+- controlled BeeCap-like fixtures under `tests/fixtures/beecap/`;
+- BeeCap adapter fixture tests in `tests/test_beecap_adapter.py`;
+- integration boundary docs in `docs/INTEGRATION.md`;
+- future embedded BeeCap example in `examples/beecap_embedded/beeui.yml`.
 
 Supported block types:
 
@@ -36,7 +41,7 @@ Supported block types:
 - `text_card`;
 - `progress_card`.
 
-Минимальная web surface after Iteration 8:
+Минимальная web surface after Iteration 9:
 
 - `GET /`
 - `GET /runs`
@@ -50,6 +55,8 @@ Supported block types:
 - `GET /static/...`
 - `GET /static/vendor/tabler/css/tabler-compatible.min.css`
 - `GET /static/vendor/tabler/js/tabler-compatible.min.js`
+
+Iteration 9 does not change the public route surface.
 
 Shell and dashboard render through component templates:
 
@@ -74,7 +81,8 @@ Navigation, theme и layout shell options (title/subtitle/paths/logo_text/theme/
 
 Пока не входит в scope:
 
-- concrete BeeCap/BeeAgent adapters;
+- production BeeCap/BeeAgent adapters;
+- route-level adapter injection;
 - auth/session;
 - config UI;
 - artifact browser;
@@ -160,7 +168,7 @@ Target MVP делает controlled declarative console:
 
 ## Что BeeUI делает
 
-В текущем состоянии after Iteration 8 BeeUI отвечает за:
+В текущем состоянии after Iteration 9 BeeUI отвечает за:
 
 - FastAPI app factory;
 - Jinja2 templates;
@@ -170,7 +178,8 @@ Target MVP делает controlled declarative console:
 - dashboard rendering;
 - declarative pages/navigation/theme/layout;
 - static/literal and resolver-backed dashboard blocks from `config/schema.yml`;
-- generic product adapter contract v0 in `src/beeui_module/adapters/`.
+- generic product adapter contract v0 in `src/beeui_module/adapters/`;
+- BeeCap-compatible fixture/reference adapter for contract validation.
 
 Planned/future responsibilities:
 
@@ -393,10 +402,11 @@ BeeUI не должен получать прямую authority на tools/MCP/r
 
 Продукт будет импортировать BeeUI и монтировать его в своём web process.
 
-Current Iteration 8 status:
+Current Iteration 9 status:
 
 - generic adapter contract exists;
-- concrete product adapters are not implemented yet;
+- BeeCap fixture/reference adapter exists for contract validation;
+- production BeeCap adapter is still BeeCap-side responsibility;
 - `create_beeui_app(...)` adapter injection is not implemented yet;
 - embedded mount helper is planned for Iteration 10.
 
@@ -524,7 +534,7 @@ Implemented in Iteration 7:
 
 Still not implemented:
 
-- concrete BeeCap/BeeAgent adapters;
+- production BeeCap/BeeAgent adapters;
 - adapter-backed block data in runtime;
 - charts/maps;
 - artifact/config/action blocks;
@@ -594,11 +604,19 @@ Current Iteration 8 scope:
 
 Current Iteration 8 non-goals:
 
-- no concrete BeeCap adapter;
+- no production BeeCap adapter;
 - no concrete BeeAgent adapter;
 - no direct product filesystem crawling;
 - no new `/api/*` routes;
 - no direct execution authority.
+
+Iteration 9 adds BeeCap fixture/reference adapter support:
+
+- `BeeCapFixtureAdapter` validates BeeCap-shaped dashboard/runs/artifact-reference payloads;
+- fixtures live under `tests/fixtures/beecap/`;
+- this adapter is not a production BeeCap integration;
+- real BeeCap adapter must live on the BeeCap side under `src/beecap_module/interfaces/ui/`;
+- route-level adapter injection remains planned for Iteration 10.
 
 Current Iteration 8 contract v0:
 
@@ -926,12 +944,23 @@ uv run --frozen --extra dev python config/start.py web
 
 ## Целевая структура проекта (planned)
 
-Актуальные ключевые файлы after Iteration 8:
+Актуальные ключевые файлы after Iteration 9:
 
 ```text
 config/
   settings.yml
   schema.yml
+
+docs/
+  INTEGRATION.md
+
+examples/
+  beecap_embedded/
+    beeui.yml
+
+tests/
+  fixtures/
+    beecap/
 
 src/beeui_module/
   blocks/
@@ -960,6 +989,7 @@ src/beeui_module/
     envelopes.py
     errors.py
     ids.py
+    beecap.py
   pages/
     config.py
     models.py
@@ -1567,7 +1597,7 @@ Visual builder later.
 Текущий статус:
 
 ```text
-Iteration 8 — Product adapter contract v0 — DONE
+Iteration 9 — BeeCap adapter fixtures MVP — DONE
 ```
 
 Работает:
@@ -1585,4 +1615,7 @@ uv run pytest -q
 - resolver-backed blocks read values from controlled read-only `demo` / `static` sources;
 - missing selector data renders degraded/error block state instead of crashing the page;
 - generic ProductUiAdapter contract is available in `src/beeui_module/adapters/`;
-- optional adapter write/action methods are unavailable by default.
+- optional adapter write/action methods are unavailable by default;
+- BeeCapFixtureAdapter validates BeeCap-shaped fixture payloads;
+- BeeCap-like fixtures cover dashboard, runs, artifact references, partial and corrupted artifact states;
+- integration boundary is documented in `docs/INTEGRATION.md`.
