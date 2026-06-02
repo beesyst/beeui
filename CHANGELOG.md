@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.0](https://github.com/beesyst/beeui/compare/beeui-v0.8.0...beeui-v0.9.0) (2026-06-02)
+
+
+### Features
+
+* **data:** add source resolver v0 ([#23](https://github.com/beesyst/beeui/issues/23)) ([7fb8565](https://github.com/beesyst/beeui/commit/7fb8565bcfc9f8374d0f3105a64b06f5fb0aedd7))
+
 ## [0.8.0](https://github.com/beesyst/beeui/compare/beeui-v0.7.0...beeui-v0.8.0) (2026-06-01)
 
 
