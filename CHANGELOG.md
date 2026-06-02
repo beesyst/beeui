@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.0](https://github.com/beesyst/beeui/compare/beeui-v0.10.0...beeui-v0.11.0) (2026-06-02)
+
+
+### Features
+
+* **adapters:** add BeeCap fixture adapter MVP ([#29](https://github.com/beesyst/beeui/issues/29)) ([fbb68ce](https://github.com/beesyst/beeui/commit/fbb68ce6c9b1934b5735983097d9b3ca554f58b5))
+
 ## [0.10.0](https://github.com/beesyst/beeui/compare/beeui-v0.9.0...beeui-v0.10.0) (2026-06-02)
 
 
