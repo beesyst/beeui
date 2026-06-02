@@ -10,17 +10,22 @@
 - `beeagent`;
 - будущие Bee-продукты.
 
-`beeui` отвечает за:
+Current implemented foundation includes:
 
 - FastAPI web app;
 - Jinja2 templates;
 - Tabler-based product shell;
 - declarative pages/navigation;
 - reusable dashboard blocks;
+- controlled demo/static data resolver;
+- generic ProductUiAdapter contract v0.
+
+Planned responsibilities include:
+
 - artifact browser;
 - read-only JSON API contracts;
 - bounded config/admin/operator controls;
-- theme/customization layer;
+- auth/session layer;
 - future no-code dashboard builder foundation.
 
 `beeui` не является runtime engine.
@@ -43,11 +48,15 @@ Product decides.
 
 ## Source of truth
 
-Source of truth для `beeui` web surface:
+Current demo-mode source of truth:
 
 - `config/settings.yml` как runtime/system config;
-- `config/schema.yml` как declarative pages/navigation/theme/layout schema в demo mode;
-- product adapter;
+- `config/schema.yml` как declarative pages/navigation/theme/layout/blocks/data_sources schema;
+- controlled `demo` / `static` data sources.
+
+Product integration source of truth after adapter wiring:
+
+- product adapter contract;
 - product-provided read-models;
 - product artifacts, если они явно allowlisted adapter-ом;
 - product-owned config validation callbacks;
@@ -166,7 +175,7 @@ src/beeui_module/
   pages/                 # current declarative schema/config/router module
   blocks/                # current block registry, literal and resolver-backed renderers
   data/                  # current read-only demo/static data sources and selector resolver
-  adapters/              # planned/future module
+  adapters/              # current Iteration 8 generic adapter contract v0
   artifacts/             # planned/future module
   api/                   # planned/future module
   auth/                  # planned/future module
@@ -220,9 +229,9 @@ Doctor:
 
 ## Product integration
 
-### Current app factory after Iteration 7
+### Current app factory after Iteration 8
 
-In the current Iteration 7 state, the app factory accepts loaded settings and declarative UI schema, then creates the FastAPI/Jinja2 shell with schema-driven pages, navigation, theme/layout and literal or resolver-backed blocks from controlled demo/static sources.
+In the current Iteration 8 state, the app factory accepts loaded settings and declarative UI schema, then creates the FastAPI/Jinja2 shell with schema-driven pages, navigation, theme/layout and literal or resolver-backed blocks from controlled demo/static sources.
 
 Пример:
 
@@ -237,7 +246,9 @@ ui_config = load_beeui_config(schema_path())
 app = create_beeui_app(settings=settings, ui_config=ui_config)
 ```
 
-Product adapter injection остаётся planned/future scope.
+Generic `ProductUiAdapter` contract exists in `src/beeui_module/adapters/`, but route-level adapter injection remains planned/future scope.
+The current `create_beeui_app(...)` signature does not accept an adapter yet.
+Adapter injection into the app factory is planned for the embedded mount/API iteration.
 
 ### Future embedded app factory
 
@@ -273,53 +284,40 @@ mount_beeui(
 
 ### Product adapter contract
 
-Minimum product adapter methods:
+Current Iteration 8 adapter contract:
 
 ```python
 class ProductUiAdapter:
-    product_id: str
-    product_title: str
+    metadata: AdapterMetadata
 
-    def get_dashboard(self) -> dict:
-        ...
+    # required read-only methods
+    def get_dashboard(self) -> AdapterResult | AdapterErrorResult: ...
+    def list_runs(self) -> AdapterResult | AdapterErrorResult: ...
+    def get_run(self, run_id: str) -> AdapterResult | AdapterErrorResult: ...
+    def list_artifacts(self, run_id: str) -> AdapterResult | AdapterErrorResult: ...
+    def read_artifact(self, run_id: str, artifact_id: str) -> AdapterResult | AdapterErrorResult: ...
+    def get_config_read_model(self) -> AdapterResult | AdapterErrorResult: ...
 
-    def list_runs(self, filters: dict | None = None) -> list[dict]:
-        ...
-
-    def get_run(self, run_id: str) -> dict:
-        ...
-
-    def list_artifacts(self, run_id: str) -> list[dict]:
-        ...
-
-    def read_artifact(self, run_id: str, artifact_id: str) -> dict:
-        ...
-
-    def get_config_read_model(self) -> dict:
-        ...
-
-    def preview_config_change(self, changes: list[dict]) -> dict:
-        ...
-
-    def apply_config_change(self, changes: list[dict]) -> dict:
-        ...
-
-    def list_actions(self) -> list[dict]:
-        ...
-
-    def execute_action(self, action_id: str, payload: dict) -> dict:
-        ...
+    # optional methods, unavailable by default in ProductUiAdapterBase
+    def validate_config_candidate(self, candidate: dict) -> AdapterResult | AdapterErrorResult: ...
+    def list_actions(self) -> AdapterResult | AdapterErrorResult: ...
+    def preview_action(self, action_id: str, payload: dict) -> AdapterResult | AdapterErrorResult: ...
+    def execute_action(self, action_id: str, payload: dict) -> AdapterResult | AdapterErrorResult: ...
 ```
 
-MVP adapter may implement only:
+Iteration 8 includes only the generic contract and fake adapter tests.
+Route-level adapter injection, config apply/write, action execution and concrete BeeCap/BeeAgent adapters are planned/future scope.
+
+Required read-only methods:
 
 - `get_dashboard`;
 - `list_runs`;
 - `get_run`;
 - `list_artifacts`;
-- `read_artifact`.
+- `read_artifact`;
+- `get_config_read_model`.
 
-Write/config/action methods may return explicit `unsupported`.
+Optional write/config/action methods are unavailable by default unless a product explicitly implements them later.
 
 ## BeeUI config
 
@@ -445,7 +443,7 @@ pages:
     blocks: []
 ```
 
-Iteration 7 block values may still be static/literal, but representative blocks can now resolve read-only values from controlled `demo` and `static` sources through a stable resolver envelope. Product adapters remain future scope.
+Iteration 7 block values may still be static/literal, but representative blocks can now resolve read-only values from controlled `demo` and `static` sources through a stable resolver envelope. The generic `ProductUiAdapter` contract exists after Iteration 8, but adapter-backed data sources and route-level adapter usage remain future scope.
 
 Rules:
 
@@ -546,7 +544,7 @@ Resolver behavior for the current block/runtime contract:
 - missing selector data degrades the block instead of crashing page rendering;
 - Jinja autoescape remains enabled for resolved values.
 
-Status badge values:
+Current block/status-card values include:
 
 - `ok`
 - `warning`
@@ -556,6 +554,9 @@ Status badge values:
 - `degraded`
 - `unavailable`
 - `disabled`
+
+Planned action-specific statuses include:
+
 - `blocked`
 - `allowed`
 - `denied`
@@ -570,6 +571,7 @@ Contract boundary:
 ## Surface model
 
 Generic BeeUI surface ниже описывает planned route families. Current MVP route contract отдельно зафиксирован в разделе `MVP route contract`.
+The route families below are planned route families, not the current Iteration 8 route surface.
 
 HTML routes:
 
@@ -602,7 +604,7 @@ JSON routes:
 
 Not all routes must exist in MVP.
 
-MVP route set after Iteration 7:
+Current MVP route set after Iteration 8:
 
 - `/`
 - `/runs`
@@ -611,7 +613,7 @@ MVP route set after Iteration 7:
 - `/static/vendor/tabler/css/tabler-compatible.min.css`
 - `/static/vendor/tabler/js/tabler-compatible.min.js`
 
-Iteration 7 changes block data resolution, not the public route set.
+Iteration 8 adds the generic adapter contract, but does not change the public route set.
 
 ## Read-only model
 
@@ -929,6 +931,8 @@ Rules:
 
 ## Runs
 
+Current Iteration 8 does not render adapter-backed runs yet. The behavior below is planned for the runs/product integration iterations.
+
 Generic `/runs` page shows product runs if product adapter supports run listing.
 
 ### `GET /runs`
@@ -978,6 +982,8 @@ Product adapter may ignore unsupported filters but must report this in `warnings
 
 ## Run detail
 
+Run detail routes are planned and are not part of the current Iteration 8 route surface.
+
 ### `GET /runs/{run_id}`
 
 Displays product run detail.
@@ -1019,6 +1025,8 @@ Response:
 ```
 
 ## Artifact browser
+
+Artifact browser behavior is planned for the artifact browser iteration. Product adapter owns the allowlist when this route family is implemented.
 
 Artifact browser is generic, but product adapter owns allowlist.
 
@@ -1114,6 +1122,8 @@ Rules:
 - secrets must be redacted if product marks artifact as sensitive.
 
 ## Config read-model
+
+Config read-model UI/API routes are planned for later config iterations. Iteration 8 only defines the optional adapter method contract.
 
 BeeUI can provide generic config read-model UI if product adapter supports it.
 
@@ -1233,6 +1243,8 @@ Planned routes:
 - `GET /api/admin/diagnostics`
 
 ## Actions
+
+Action rendering/execution is planned for later bounded action iterations. Iteration 8 only defines optional adapter methods that are unavailable by default in `ProductUiAdapterBase`.
 
 BeeUI can render bounded actions only if product adapter exposes them.
 
@@ -1408,7 +1420,7 @@ visual editor
 
 ## Typical operator scenarios
 
-Current Iteration 7 scenario:
+Current Iteration 8 scenario:
 
 ```text
 1. BeeUI loads config/settings.yml.
@@ -1419,7 +1431,8 @@ Current Iteration 7 scenario:
 6. BeeUI renders the schema-driven theme/layout/navigation shell.
 7. BeeUI renders literal and resolver-backed blocks for pages with configured block placements.
 8. Pages without block placements render the shared empty state.
-9. No adapter/product artifact rendering is executed yet.
+9. Generic adapter contract exists, but no adapter-backed routes are called yet.
+10. No route-level adapter/product artifact rendering is executed yet.
 ```
 
 ### 1. Open product dashboard
@@ -1472,7 +1485,7 @@ Planned/future (requires config apply and audit iterations).
 
 ## MVP route contract
 
-Current Iteration 7 MVP:
+Current Iteration 8 MVP route contract:
 
 - `GET /`
 - `GET /runs`
@@ -1487,7 +1500,7 @@ Current Iteration 7 MVP:
 - `GET /static/vendor/tabler/css/tabler-compatible.min.css`
 - `GET /static/vendor/tabler/js/tabler-compatible.min.js`
 
-Iteration 7 keeps the current read-only route set while adding controlled block data resolution for existing page rendering.
+Iteration 8 keeps the current read-only route set while adding only the generic adapter contract.
 
 Planned Iteration 10+ / product integration route families:
 
@@ -1509,11 +1522,17 @@ Later:
 
 ## Related docs
 
+Current docs:
+
 - `README.ru.md`
 - `docs/ROADMAP.md`
 - `docs/SDLC.md`
 - `docs/SECURITY.md`
-- `docs/INTEGRATION.md`
 - `docs/COMPONENTS.md`
+- `docs/WEB_UI.md`
+
+Planned docs:
+
+- `docs/INTEGRATION.md`
 - `docs/API_CONTRACT.md`
 - `docs/THEME.md`

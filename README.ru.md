@@ -2,9 +2,9 @@
 
 **BeeUI** — общий Python-based UI framework для Bee-продуктов: `beecap`, `beeagent` и будущих модулей Bee ecosystem.
 
-## Iteration 7
+## Iteration 8
 
-Текущий deliverable — read-only data source abstraction и selector resolver v0 поверх declarative pages/navigation/theme/layout и block registry из `config/schema.yml`.
+Текущий deliverable — generic `ProductUiAdapter` contract v0 поверх Iteration 7 (read-only data source abstraction и selector resolver v0 для declarative pages/navigation/theme/layout и block registry из `config/schema.yml`).
 
 Уже работает:
 
@@ -21,6 +21,9 @@
 - read-only `static` YAML/JSON data source
 - stable resolver envelope for controlled block value resolution
 - dashboard blocks render from top-level `blocks` and `pages[].blocks[]`
+- generic adapter contract package `src/beeui_module/adapters/`
+- stable adapter envelopes (`ok|partial|error`) and stable adapter errors
+- safe adapter ID helpers for `product_id`, `run_id`, `artifact_id`, `action_id`
 
 Supported block types:
 
@@ -33,7 +36,7 @@ Supported block types:
 - `text_card`;
 - `progress_card`.
 
-Минимальная web surface Iteration 7:
+Минимальная web surface after Iteration 8:
 
 - `GET /`
 - `GET /runs`
@@ -71,7 +74,7 @@ Navigation, theme и layout shell options (title/subtitle/paths/logo_text/theme/
 
 Пока не входит в scope:
 
-- product adapters;
+- concrete BeeCap/BeeAgent adapters;
 - auth/session;
 - config UI;
 - artifact browser;
@@ -157,7 +160,7 @@ Target MVP делает controlled declarative console:
 
 ## Что BeeUI делает
 
-В текущем Iteration 7 runtime BeeUI отвечает за:
+В текущем состоянии after Iteration 8 BeeUI отвечает за:
 
 - FastAPI app factory;
 - Jinja2 templates;
@@ -166,7 +169,8 @@ Target MVP делает controlled declarative console:
 - reusable blocks;
 - dashboard rendering;
 - declarative pages/navigation/theme/layout;
-- static/literal and resolver-backed dashboard blocks from `config/schema.yml`.
+- static/literal and resolver-backed dashboard blocks from `config/schema.yml`;
+- generic product adapter contract v0 in `src/beeui_module/adapters/`.
 
 Planned/future responsibilities:
 
@@ -385,11 +389,18 @@ BeeUI не должен получать прямую authority на tools/MCP/r
 
 ### `embedded`
 
-Основной MVP mode.
+Основной MVP integration direction.
 
-Продукт импортирует BeeUI и монтирует его в своём web process.
+Продукт будет импортировать BeeUI и монтировать его в своём web process.
 
-Пример:
+Current Iteration 8 status:
+
+- generic adapter contract exists;
+- concrete product adapters are not implemented yet;
+- `create_beeui_app(...)` adapter injection is not implemented yet;
+- embedded mount helper is planned for Iteration 10.
+
+Planned example:
 
 ```python
 from beeui_module.web.app import create_beeui_app
@@ -513,7 +524,8 @@ Implemented in Iteration 7:
 
 Still not implemented:
 
-- product adapters;
+- concrete BeeCap/BeeAgent adapters;
+- adapter-backed block data in runtime;
 - charts/maps;
 - artifact/config/action blocks;
 - arbitrary HTML/JS blocks.
@@ -570,25 +582,44 @@ Public BeeUI JSON API remains planned for later iterations.
 
 ### Product adapters
 
-Product adapter contract is planned for Iteration 8 and is not implemented in the current Iteration 7 runtime.
+Product adapter contract is implemented in Iteration 8 as a generic boundary in `src/beeui_module/adapters/`.
 
-Planned future adapter contract:
+Current Iteration 8 scope:
+
+- generic `ProductUiAdapter` protocol/base contract;
+- stable adapter envelopes for `ok|partial|error`;
+- stable adapter error classes and error envelope helper;
+- safe id validation helpers;
+- optional write/action methods are disabled by default.
+
+Current Iteration 8 non-goals:
+
+- no concrete BeeCap adapter;
+- no concrete BeeAgent adapter;
+- no direct product filesystem crawling;
+- no new `/api/*` routes;
+- no direct execution authority.
+
+Current Iteration 8 contract v0:
 
 ```python
 class ProductUiAdapter:
-    def get_dashboard(self) -> dict: ...
-    def list_runs(self, filters: dict | None = None) -> dict: ...
-    def get_run(self, run_id: str) -> dict: ...
-    def list_artifacts(self, run_id: str) -> dict: ...
-    def read_artifact(self, run_id: str, artifact_id: str) -> dict: ...
-    def get_config_read_model(self) -> dict: ...
-    def preview_config_change(self, payload: dict) -> dict: ...
-    def apply_config_change(self, payload: dict) -> dict: ...
-    def list_actions(self) -> dict: ...
-    def execute_action(self, action_id: str, payload: dict) -> dict: ...
+  # required read-only
+  def get_dashboard(self) -> dict: ...
+  def list_runs(self) -> dict: ...
+  def get_run(self, run_id: str) -> dict: ...
+  def list_artifacts(self, run_id: str) -> dict: ...
+  def read_artifact(self, run_id: str, artifact_id: str) -> dict: ...
+  def get_config_read_model(self) -> dict: ...
+
+  # optional, unavailable by default
+  def validate_config_candidate(self, candidate: dict) -> dict: ...
+  def list_actions(self) -> dict: ...
+  def preview_action(self, action_id: str, payload: dict) -> dict: ...
+  def execute_action(self, action_id: str, payload: dict) -> dict: ...
 ```
 
-В будущей интеграции BeeUI вызывает adapter.
+В будущей runtime integration BeeUI будет вызывать adapter через embedded mount/app factory layer.
 
 Product adapter решает, что можно читать/делать.
 
@@ -895,7 +926,7 @@ uv run --frozen --extra dev python config/start.py web
 
 ## Целевая структура проекта (planned)
 
-Актуальные ключевые файлы after Iteration 7:
+Актуальные ключевые файлы after Iteration 8:
 
 ```text
 config/
@@ -923,6 +954,12 @@ src/beeui_module/
     resolver.py
     selectors.py
     sources.py
+  adapters/
+    __init__.py
+    base.py
+    envelopes.py
+    errors.py
+    ids.py
   pages/
     config.py
     models.py
@@ -1530,7 +1567,7 @@ Visual builder later.
 Текущий статус:
 
 ```text
-Iteration 7 — Data sources and resolver v0 — DONE
+Iteration 8 — Product adapter contract v0 — DONE
 ```
 
 Работает:
@@ -1546,4 +1583,6 @@ uv run pytest -q
 - `/runs` рендерит empty state для страницы без block placements;
 - `/components*` рендерит internal read-only catalog of controlled primitives;
 - resolver-backed blocks read values from controlled read-only `demo` / `static` sources;
-- missing selector data renders degraded/error block state instead of crashing the page.
+- missing selector data renders degraded/error block state instead of crashing the page;
+- generic ProductUiAdapter contract is available in `src/beeui_module/adapters/`;
+- optional adapter write/action methods are unavailable by default.
