@@ -2,9 +2,9 @@
 
 **BeeUI** — общий Python-based UI framework для Bee-продуктов: `beecap`, `beeagent` и будущих модулей Bee ecosystem.
 
-## Iteration 6
+## Iteration 7
 
-Текущий deliverable — internal component catalog и reusable controlled Tabler-compatible template primitives поверх declarative pages/navigation/theme/layout из `config/schema.yml`.
+Текущий deliverable — read-only data source abstraction и selector resolver v0 поверх declarative pages/navigation/theme/layout и block registry из `config/schema.yml`.
 
 Уже работает:
 
@@ -16,10 +16,13 @@
 - `./start.sh web --host 127.0.0.1 --port 8780`
 - `import beeui_module`
 - schema-driven theme/layout/navigation in `config/schema.yml`
-- schema-driven static blocks in `config/schema.yml`
+- schema-driven literal and resolver-backed blocks in `config/schema.yml`
+- read-only `demo` data source
+- read-only `static` YAML/JSON data source
+- stable resolver envelope for controlled block value resolution
 - dashboard blocks render from top-level `blocks` and `pages[].blocks[]`
 
-Supported static block types:
+Supported block types:
 
 - `metric_card`;
 - `kpi_grid`;
@@ -30,7 +33,7 @@ Supported static block types:
 - `text_card`;
 - `progress_card`.
 
-Минимальная web surface Iteration 6:
+Минимальная web surface Iteration 7:
 
 - `GET /`
 - `GET /runs`
@@ -52,7 +55,7 @@ Shell and dashboard render through component templates:
 - `components/page_header.html`;
 - `components/footer.html`;
 - `components/empty_state.html`.
-- block component templates for static dashboard blocks.
+- block component templates for literal and resolver-backed dashboard blocks.
 
 Tabler-compatible vendor assets поставляются локально из package path:
 
@@ -154,7 +157,7 @@ Target MVP делает controlled declarative console:
 
 ## Что BeeUI делает
 
-В текущем Iteration 5 runtime BeeUI отвечает за:
+В текущем Iteration 7 runtime BeeUI отвечает за:
 
 - FastAPI app factory;
 - Jinja2 templates;
@@ -163,7 +166,7 @@ Target MVP делает controlled declarative console:
 - reusable blocks;
 - dashboard rendering;
 - declarative pages/navigation/theme/layout;
-- static/literal dashboard blocks from `config/schema.yml`.
+- static/literal and resolver-backed dashboard blocks from `config/schema.yml`.
 
 Planned/future responsibilities:
 
@@ -375,7 +378,9 @@ BeeUI не должен получать прямую authority на tools/MCP/r
 - schema-driven demo pages;
 - schema-driven navigation;
 - schema-driven theme/layout;
-- static/literal dashboard blocks from `config/schema.yml`;
+- static/literal and resolver-backed dashboard blocks from `config/schema.yml`;
+- controlled read-only `demo` data source;
+- controlled read-only `static` YAML/JSON data source;
 - empty state for pages without block placements.
 
 ### `embedded`
@@ -441,7 +446,7 @@ Current declarative page rules:
 
 ### Blocks
 
-Current Iteration 5 block contract is static/literal-only.
+Current Iteration 7 block contract supports both literal fields and resolver-backed fields from controlled read-only `demo` / `static` data sources.
 
 Top-level `blocks` defines reusable block definitions.
 `pages[].blocks[]` defines where these blocks appear on a page.
@@ -494,14 +499,20 @@ Current rules:
 - text values are rendered through Jinja autoescape;
 - no arbitrary HTML/JS/CSS from config;
 - `links_card.href` accepts internal safe paths only;
-- display values are static scalar literals;
+- display values may be literal scalars or resolver-backed values from controlled demo/static sources;
 - missing/empty page placements render an empty state.
 
-Not implemented yet:
+Implemented in Iteration 7:
 
-- data resolver;
-- selectors;
-- adapter-backed block values;
+- read-only data resolver;
+- selector syntax with dot path and optional `[index]` lookup;
+- `demo` source;
+- `static` YAML/JSON source;
+- stable resolver envelope;
+- degraded block rendering on missing selector data.
+
+Still not implemented:
+
 - product adapters;
 - charts/maps;
 - artifact/config/action blocks;
@@ -509,14 +520,57 @@ Not implemented yet:
 
 ### Data sources
 
-Data sources are planned for Iteration 7 and are not part of the current Iteration 5 runtime.
-Current blocks use static/literal values from `config/schema.yml`.
+Iteration 7 supports controlled read-only data sources in `config/schema.yml`.
+Current supported source types are:
 
-Planned source types include static/demo data, adapter-backed data, filesystem access through product adapters, and later HTTP sources.
+- `demo`
+- `static` with `format: yaml|json` and a safe relative `path`
+
+Resolver envelope:
+
+```json
+{
+  "status": "ok|partial|error",
+  "data": {},
+  "warnings": [
+    {
+      "code": "selector_missing",
+      "message": "Selector not found: dashboard.latest_run.id"
+    }
+  ],
+  "source": {
+    "type": "demo|static|unknown",
+    "id": "demo_dashboard"
+  }
+}
+```
+
+Current block schema stays backward-compatible: literal fields still work, resolver-backed fields are optional.
+Adapter-backed data sources are future scope and are not part of the current Iteration 7 runtime source types.
+
+Resolver-backed block example:
+
+```yaml
+data_sources:
+  demo_dashboard:
+    type: demo
+
+blocks:
+  latest_run:
+    type: metric_card
+    title: Latest Run
+    source: demo_dashboard
+    value_selector: dashboard.latest_run.id
+    subtitle_selector: dashboard.latest_run.status
+```
+
+Resolver envelope is an internal block data-resolution contract in Iteration 7.
+It is not yet a public `/api/*` route contract.
+Public BeeUI JSON API remains planned for later iterations.
 
 ### Product adapters
 
-Product adapter contract is planned for Iteration 8 and is not implemented in the current Iteration 5 runtime.
+Product adapter contract is planned for Iteration 8 and is not implemented in the current Iteration 7 runtime.
 
 Planned future adapter contract:
 
@@ -841,7 +895,7 @@ uv run --frozen --extra dev python config/start.py web
 
 ## Целевая структура проекта (planned)
 
-Актуальные ключевые файлы after Iteration 5:
+Актуальные ключевые файлы after Iteration 7:
 
 ```text
 config/
@@ -863,6 +917,12 @@ src/beeui_module/
     settings.py
     log.py
     version.py
+  data/
+    __init__.py
+    models.py
+    resolver.py
+    selectors.py
+    sources.py
   pages/
     config.py
     models.py
@@ -1157,6 +1217,9 @@ src/beeui_module/auth/
 ## JSON API contract
 
 BeeUI API должен использовать единый envelope.
+Resolver envelope is an internal block data-resolution contract in Iteration 7.
+It is not yet a public `/api/*` route contract.
+Public BeeUI JSON API remains planned for later iterations.
 
 ### Success
 
@@ -1467,7 +1530,7 @@ Visual builder later.
 Текущий статус:
 
 ```text
-Iteration 6 — Tabler component catalog and reusable primitives v0 — DONE
+Iteration 7 — Data sources and resolver v0 — DONE
 ```
 
 Работает:
@@ -1479,6 +1542,8 @@ uv run pytest -q
 ./start.sh web --host 127.0.0.1 --port 8780
 ```
 
-- `/` рендерит static dashboard blocks from schema;
-- `/runs` рендерит empty state для страницы без block placements.
-- `/components*` рендерит internal read-only catalog of controlled primitives.
+- `/` рендерит literal and resolver-backed dashboard blocks from schema;
+- `/runs` рендерит empty state для страницы без block placements;
+- `/components*` рендерит internal read-only catalog of controlled primitives;
+- resolver-backed blocks read values from controlled read-only `demo` / `static` sources;
+- missing selector data renders degraded/error block state instead of crashing the page.

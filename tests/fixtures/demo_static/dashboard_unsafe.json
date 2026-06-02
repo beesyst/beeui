@@ -1,0 +1,28 @@
+{
+  "dashboard": {
+    "latest_run": {
+      "id": "<script>alert(7)</script>",
+      "status": "warning"
+    },
+    "runtime": {
+      "status": "ok",
+      "value": "<script>alert(7)</script>"
+    },
+    "summary": {
+      "text": "<script>alert(7)</script>"
+    },
+    "kpi_items": [
+      {
+        "label": "Unsafe",
+        "value": "<script>alert(7)</script>",
+        "status": "warning"
+      }
+    ]
+  },
+  "runs": [
+    {
+      "id": "<script>alert(7)</script>",
+      "status": "ok"
+    }
+  ]
+}

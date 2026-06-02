@@ -10,6 +10,12 @@ from beeui_module.blocks.registry import (
     parse_blocks_registry,
     parse_page_block_placements,
 )
+from beeui_module.core.paths import project_root
+from beeui_module.data.models import (
+    ALLOWED_STATIC_SOURCE_FORMATS,
+    SUPPORTED_DATA_SOURCE_TYPES,
+    DataSourceDefinition,
+)
 from beeui_module.pages.models import (
     BeeUiConfig,
     BeeUiNavigationItem,
@@ -57,7 +63,11 @@ def load_beeui_config(config_path: Path) -> BeeUiConfig:
     if not isinstance(payload, dict):
         raise ValueError("schema.yml root must be a YAML mapping")
 
-    _validate_exact_keys(payload, {"app", "navigation", "blocks", "pages"}, "root")
+    _validate_exact_keys(
+        payload,
+        {"app", "navigation", "data_sources", "blocks", "pages"},
+        "root",
+    )
 
     app_cfg = payload.get("app")
     if not isinstance(app_cfg, dict):
@@ -149,7 +159,15 @@ def load_beeui_config(config_path: Path) -> BeeUiConfig:
     if not isinstance(navigation_cfg, list):
         raise ValueError("navigation must be a list")
 
-    blocks = parse_blocks_registry(payload.get("blocks"))
+    data_sources = parse_data_sources(
+        payload.get("data_sources"),
+        root_dir=_resolve_schema_root(config_path),
+    )
+
+    blocks = parse_blocks_registry(
+        payload.get("blocks"),
+        available_source_ids=set(data_sources),
+    )
 
     navigation: list[BeeUiNavigationItem] = []
     seen_nav_paths: set[str] = set()
@@ -230,9 +248,113 @@ def load_beeui_config(config_path: Path) -> BeeUiConfig:
         theme=theme,
         layout=layout,
         navigation=navigation,
+        data_sources=data_sources,
         blocks=blocks,
         pages=pages,
     )
+
+
+# Парсинг одного block placement и чек ссылки на объявленный block id
+def parse_data_sources(
+    data_sources_payload: Any,
+    *,
+    root_dir: Path,
+) -> dict[str, DataSourceDefinition]:
+    if data_sources_payload is None:
+        return {}
+    if not isinstance(data_sources_payload, dict):
+        raise ValueError("data_sources must be a mapping")
+
+    data_sources: dict[str, DataSourceDefinition] = {}
+    for source_id, source_payload in data_sources_payload.items():
+        if not isinstance(source_id, str) or not source_id.strip():
+            raise ValueError("data_sources keys must be non-empty strings")
+        if not _SAFE_IDENTIFIER_RE.fullmatch(source_id):
+            raise ValueError(f"data_sources.{source_id} must be a safe identifier")
+        if not isinstance(source_payload, dict):
+            raise ValueError(f"data_sources.{source_id} must be a mapping")
+
+        source_type = _required_non_empty_string(
+            source_payload,
+            "type",
+            f"data_sources.{source_id}",
+        )
+        if source_type not in SUPPORTED_DATA_SOURCE_TYPES:
+            raise ValueError(
+                f"data_sources.{source_id}.type must be one of {sorted(SUPPORTED_DATA_SOURCE_TYPES)}"
+            )
+
+        if source_type == "demo":
+            _validate_exact_keys(source_payload, {"type"}, f"data_sources.{source_id}")
+            data_sources[source_id] = DataSourceDefinition(
+                source_id=source_id,
+                source_type=source_type,
+                root_dir=root_dir,
+            )
+            continue
+
+        _validate_exact_keys(
+            source_payload,
+            {"type", "format", "path"},
+            f"data_sources.{source_id}",
+        )
+        source_format = _required_non_empty_string(
+            source_payload,
+            "format",
+            f"data_sources.{source_id}",
+        )
+        if source_format not in ALLOWED_STATIC_SOURCE_FORMATS:
+            raise ValueError(
+                f"data_sources.{source_id}.format must be one of {sorted(ALLOWED_STATIC_SOURCE_FORMATS)}"
+            )
+        source_path = _required_non_empty_string(
+            source_payload,
+            "path",
+            f"data_sources.{source_id}",
+        )
+        _validate_static_source_path(
+            source_path,
+            source_format=source_format,
+            field_name=f"data_sources.{source_id}.path",
+        )
+        data_sources[source_id] = DataSourceDefinition(
+            source_id=source_id,
+            source_type=source_type,
+            format=source_format,
+            path=source_path,
+            root_dir=root_dir,
+        )
+
+    return data_sources
+
+
+# Разрешение блока из реестра по его id и сбор модели для передачи в template, включая разрешение селекторов данных
+def _resolve_schema_root(config_path: Path) -> Path:
+    if config_path.parent.name == "config":
+        return config_path.parent.parent.resolve()
+
+    try:
+        return project_root(config_path).resolve()
+    except FileNotFoundError:
+        return project_root().resolve()
+
+
+# Валидация и безопасное разрешение пути для static источников
+def _validate_static_source_path(
+    value: str,
+    *,
+    source_format: str,
+    field_name: str,
+) -> None:
+    raw_path = Path(value)
+    if raw_path.is_absolute() or ".." in raw_path.parts:
+        raise ValueError(f"{field_name} must be a safe relative path")
+
+    suffixes = [suffix.lower() for suffix in raw_path.suffixes]
+    if source_format == "yaml" and suffixes[-1:] not in [[".yaml"], [".yml"]]:
+        raise ValueError(f"{field_name} must match format yaml")
+    if source_format == "json" and suffixes[-1:] != [".json"]:
+        raise ValueError(f"{field_name} must match format json")
 
 
 # Чек, что mapping содержит только поля текущего schema contract

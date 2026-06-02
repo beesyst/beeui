@@ -17,6 +17,38 @@ def _base_schema() -> str:
     return Path("config/schema.yml").read_text(encoding="utf-8")
 
 
+# Возврат базовой demo schema с literal значениями для display fields вместо селекторов
+def _literal_schema() -> str:
+    return (
+        _base_schema()
+        .replace(
+            "    source: demo_dashboard\n    value_selector: dashboard.latest_run.id\n    subtitle_selector: dashboard.latest_run.status\n",
+            "    value: run_demo_001\n    subtitle: Static demo value\n",
+            1,
+        )
+        .replace(
+            "    source: demo_dashboard\n    status_selector: dashboard.runtime.status\n    value_selector: dashboard.runtime.value\n",
+            "    status: ok\n    value: Ready\n",
+            1,
+        )
+        .replace(
+            "    source: demo_dashboard\n    items_selector: dashboard.kpi_items\n",
+            '    items:\n      - label: Total runs\n        value: "24"\n        status: ok\n      - label: Failed\n        value: "1"\n        status: warning\n',
+            1,
+        )
+        .replace(
+            "    source: demo_dashboard\n    text_selector: dashboard.summary.text\n",
+            "    text: BeeUI renders reusable schema blocks with safe escaping.\n",
+            1,
+        )
+        .replace(
+            "    source: demo_dashboard\n    rows_selector: runs\n",
+            "    rows:\n      - id: run_demo_001\n        status: ok\n      - id: run_demo_002\n        status: partial\n",
+            1,
+        )
+    )
+
+
 # Тест: block id должен быть безопасным schema identifier
 def test_schema_rejects_invalid_block_id(tmp_path: Path) -> None:
     base = _base_schema()
@@ -32,7 +64,7 @@ def test_schema_rejects_invalid_block_id(tmp_path: Path) -> None:
 
 # Тест: renderer-specific поля должны валидироваться внутри renderer contract
 def test_schema_rejects_invalid_renderer_specific_field(tmp_path: Path) -> None:
-    base = _base_schema()
+    base = _literal_schema()
     invalid = base.replace(
         "  runtime_status:\n    type: status_card\n    title: Runtime\n    status: ok\n    value: Ready\n",
         "  runtime_status:\n    type: status_card\n    title: Runtime\n    status: critical\n    value: Ready\n",
@@ -54,7 +86,7 @@ def test_schema_rejects_invalid_renderer_specific_field(tmp_path: Path) -> None:
 
 # Тест: display values принимают scalar literals и нормализуются в строки
 def test_schema_accepts_scalar_display_values(tmp_path: Path) -> None:
-    schema = _base_schema()
+    schema = _literal_schema()
     schema = schema.replace("    value: run_demo_001\n", "    value: 42\n", 1)
     schema = schema.replace('        value: "24"\n', "        value: 24\n", 1)
     schema = schema.replace('        value: "1"\n', "        value: 1.5\n", 1)
@@ -89,7 +121,7 @@ def test_schema_rejects_nested_display_values(tmp_path: Path) -> None:
     ]
 
     for old, new, expected_error in invalid_values:
-        schema = _base_schema().replace(old, new, 1)
+        schema = _literal_schema().replace(old, new, 1)
 
         try:
             load_beeui_config(_write_schema(tmp_path, schema))
@@ -101,7 +133,7 @@ def test_schema_rejects_nested_display_values(tmp_path: Path) -> None:
 
 # Тест: HTML/CSS/JS-подобные keys запрещены во всех block definitions
 def test_schema_rejects_forbidden_block_keys(tmp_path: Path) -> None:
-    base = _base_schema()
+    base = _literal_schema()
     forbidden_keys = [
         "html",
         "script",
@@ -188,7 +220,7 @@ def test_schema_rejects_non_mapping_blocks_root(tmp_path: Path) -> None:
 
 # Тест: table_card rows принимают только scalar values для безопасного вывода
 def test_schema_rejects_invalid_table_rows_value(tmp_path: Path) -> None:
-    base = _base_schema()
+    base = _literal_schema()
     invalid = base.replace(
         "      - id: run_demo_001\n        status: ok\n",
         "      - id: run_demo_001\n        status:\n          nested: bad\n",

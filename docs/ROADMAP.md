@@ -1137,26 +1137,58 @@ BeeUI exposes a visible read-only component catalog and centralizes common Table
 - unsafe/demo-only Tabler features are explicitly excluded;
 - no new write/action/auth/adapter authority introduced.
 
-### Итерация 7 — Data sources and resolver v0
+### Итерация 7 — Data sources and selector resolver v0
 
-**Статус:** PLANNED
+**Статус:** DONE
 
 #### Goal
 
-Добавить data source abstraction и selector resolver для передачи данных в blocks без hardcoded demo variables.
+Добавить read-only data source abstraction и selector resolver, чтобы BeeUI blocks могли получать значения из controlled demo/static payloads через стабильный resolver envelope, а не только из hardcoded literal fields в block schema.
+
+#### Почему это нужно
+
+После Iteration 5 BeeUI умеет рендерить static/literal blocks из `config/schema.yml`, а после Iteration 6 имеет reusable component primitives. Но до product adapters нужно отделить:
+
+- block layout/config;
+- источник данных;
+- selector resolution;
+- partial/missing/error state.
+
+Без этого BeeCap/BeeAgent integration начнёт протаскивать product-specific поля напрямую в generic block renderers.
+
+Iteration 7 фиксирует безопасный read-only data layer v0, который позже сможет принимать adapter-backed payloads, но сейчас работает только с controlled demo/static data.
 
 #### Scope
 
 Включено:
 
-- data source model;
-- static YAML/JSON source;
+- новый пакет `src/beeui_module/data/`:
+  - `models.py`;
+  - `sources.py`;
+  - `selectors.py`;
+  - `resolver.py`;
+  - `envelopes.py` или equivalent minimal structure;
+
+- data source model:
+  - `demo`;
+  - `static`;
+
+- static source loading from controlled config/example path only;
 - in-memory demo source;
-- selector syntax для nested fields;
-- list selectors;
-- scalar selectors;
-- missing selector behavior;
-- response envelope:
+- selector syntax for nested fields:
+  - `dashboard.latest_run.id`;
+  - `dashboard.kpis.total_runs`;
+  - `runs[0].id` if list index support is implemented;
+  - list selection where needed for tables/KPI grids;
+
+- selector validation:
+  - no Python eval;
+  - no Jinja expression execution;
+  - no method calls;
+  - no arbitrary filesystem paths;
+  - clear invalid selector errors;
+
+- resolver envelope:
 
 ```json
 {
@@ -1164,49 +1196,104 @@ BeeUI exposes a visible read-only component catalog and centralizes common Table
   "data": {},
   "warnings": [],
   "source": {
-    "type": "demo|static|adapter",
+    "type": "demo|static|unknown",
     "id": "..."
   }
 }
 ```
 
-- degraded/partial data state;
-- timeout/error model placeholder for future HTTP source;
-- tests for missing/invalid data.
+- missing selector behavior:
+  - scalar missing values become unavailable/degraded;
+  - list/table missing values become empty/degraded;
+  - page does not crash;
+
+- block schema extension for resolver-backed values, using a controlled shape, for example:
+
+```yaml
+data_sources:
+  demo_dashboard:
+    type: demo
+
+blocks:
+  latest_run:
+    type: metric_card
+    title: Latest Run
+    source: demo_dashboard
+    value_selector: dashboard.latest_run.id
+    subtitle_selector: dashboard.latest_run.status
+```
+
+или equivalent minimal naming, если текущий block model лучше поддерживает другой формат;
+
+- backward compatibility:
+  - existing literal block configs continue to work;
+  - resolver-backed fields are optional;
+  - no required config/settings keys unless necessary;
+
+- tests for:
+  - demo source load;
+  - static YAML/JSON source load;
+  - selector success;
+  - selector missing;
+  - selector invalid;
+  - list selector;
+  - scalar selector;
+  - invalid source;
+  - partial envelope;
+  - stable envelope shape;
+  - block degraded/empty render on missing data;
+  - no secret-looking test values leaked unexpectedly;
+  - no arbitrary HTML/JS accepted through data payload.
 
 Не включено:
 
 - BeeCap adapter;
 - BeeAgent adapter;
 - production HTTP adapter;
+- direct product storage crawling;
 - artifact browser;
+- API routes;
 - write sources;
-- direct product storage crawling.
+- config apply;
+- auth/session;
+- operator actions;
+- arbitrary YAML editor;
+- Jinja/Python expression evaluation;
+- full migration of every block renderer if a minimal resolver-backed subset is enough.
 
 #### Deliverable
 
-Blocks receive values through resolver envelopes, not through hardcoded page variables.
+BeeUI has a read-only data resolver layer and at least a representative set of existing dashboard blocks can render values from resolver envelopes while existing literal blocks remain supported.
 
 #### Checks
 
-- static source load;
+- `uv run pytest -q`;
+- `./start.sh doctor`;
+- `./start.sh routes`;
+- `./start.sh web --host 127.0.0.1 --port 8780`;
 - demo source load;
+- static source load;
 - selector success;
 - selector missing;
 - selector invalid;
-- partial data;
+- list selector;
+- scalar selector;
 - invalid source;
-- envelope shape stable;
-- block missing data renders degraded/empty state;
-- `pytest -q`.
+- partial/error envelope shape;
+- missing data renders degraded/empty state;
+- existing Iteration 5/6 pages still render;
+- no external scripts/assets introduced;
+- no product-specific semantics introduced.
 
 #### DoD
 
-- block renderer does not know source details;
-- missing data does not crash pages;
-- envelope shape is stable;
+- resolver envelope shape is stable;
 - data resolver is read-only;
-- no product-specific assumptions.
+- block renderers do not know source internals;
+- missing/partial data does not crash page rendering;
+- existing literal block schema remains backward compatible;
+- no product adapter or product-specific assumptions introduced;
+- docs explain selector syntax, source types, envelope shape and safe usage.
 
 ---
 

@@ -27,6 +27,7 @@ def test_load_beeui_config_valid_payload() -> None:
     assert config.theme.mode == "dark"
     assert config.layout.container == "xl"
     assert [page.path for page in config.pages] == ["/", "/runs"]
+    assert config.data_sources["demo_dashboard"].source_type == "demo"
     assert "latest_run" in config.blocks
     assert "runtime_status" in config.blocks
 
@@ -185,15 +186,12 @@ def test_load_beeui_config_fails_on_missing_page_blocks(tmp_path: Path) -> None:
         )
 
 
+# Тест: корневой ключ blocks обязателен и должен быть mapping
 def test_load_beeui_config_fails_on_missing_top_level_blocks(tmp_path: Path) -> None:
-    config_path = _write_config(
-        tmp_path,
-        _base_config().replace(
-            'blocks:\n  latest_run:\n    type: metric_card\n    title: Latest Run\n    value: run_demo_001\n    subtitle: Static demo value\n\n  runtime_status:\n    type: status_card\n    title: Runtime\n    status: ok\n    value: Ready\n\n  run_kpis:\n    type: kpi_grid\n    title: Session KPIs\n    items:\n      - label: Total runs\n        value: "24"\n        status: ok\n      - label: Failed\n        value: "1"\n        status: warning\n\n  quick_links:\n    type: links_card\n    title: Quick links\n    links:\n      - label: Open runs\n        href: /runs\n\n  notice:\n    type: alert_card\n    title: Demo mode\n    message: Values are static and intended for UI contract validation.\n    severity: info\n\n  summary_text:\n    type: text_card\n    title: Summary\n    text: BeeUI renders reusable schema blocks with safe escaping.\n\n  completion:\n    type: progress_card\n    title: Bootstrap progress\n    value: 68\n    label: Iteration 5 in progress\n\n  recent_runs:\n    type: table_card\n    title: Recent runs\n    columns:\n      - key: id\n        label: Run ID\n      - key: status\n        label: Status\n    rows:\n      - id: run_demo_001\n        status: ok\n      - id: run_demo_002\n        status: partial\n\n',
-            "",
-            1,
-        ),
-    )
+    base = _base_config()
+    start = base.index("blocks:\n")
+    end = base.index("\npages:\n")
+    config_path = _write_config(tmp_path, f"{base[:start]}{base[end + 1 :]}")
 
     try:
         load_beeui_config(config_path)
@@ -203,6 +201,114 @@ def test_load_beeui_config_fails_on_missing_top_level_blocks(tmp_path: Path) -> 
         raise AssertionError(
             "load_beeui_config must fail when root blocks key is missing"
         )
+
+
+# Тест: корневой ключ blocks должен быть mapping, а не list или scalar
+def test_load_beeui_config_accepts_optional_data_sources_section(
+    tmp_path: Path,
+) -> None:
+    config_path = _write_config(
+        tmp_path,
+        _base_config()
+        .replace(
+            "data_sources:\n  demo_dashboard:\n    type: demo\n\n",
+            "",
+            1,
+        )
+        .replace(
+            "    source: demo_dashboard\n    value_selector: dashboard.latest_run.id\n    subtitle_selector: dashboard.latest_run.status\n",
+            "    value: run_demo_001\n    subtitle: Static demo value\n",
+            1,
+        )
+        .replace(
+            "    source: demo_dashboard\n    status_selector: dashboard.runtime.status\n    value_selector: dashboard.runtime.value\n",
+            "    status: ok\n    value: Ready\n",
+            1,
+        )
+        .replace(
+            "    source: demo_dashboard\n    items_selector: dashboard.kpi_items\n",
+            '    items:\n      - label: Total runs\n        value: "24"\n        status: ok\n      - label: Failed\n        value: "1"\n        status: warning\n',
+            1,
+        )
+        .replace(
+            "    source: demo_dashboard\n    text_selector: dashboard.summary.text\n",
+            "    text: BeeUI renders reusable schema blocks with safe escaping.\n",
+            1,
+        )
+        .replace(
+            "    source: demo_dashboard\n    rows_selector: runs\n",
+            "    rows:\n      - id: run_demo_001\n        status: ok\n      - id: run_demo_002\n        status: partial\n",
+            1,
+        ),
+    )
+
+    config = load_beeui_config(config_path)
+
+    assert config.data_sources == {}
+    assert config.blocks["latest_run"].payload["value"] == "run_demo_001"
+
+
+# Тест: block source ссылается на несуществующий data source, load_beeui_config должен отклонить конфигурацию с ошибкой
+def test_load_beeui_config_rejects_unknown_block_source(tmp_path: Path) -> None:
+    config_path = _write_config(
+        tmp_path,
+        _base_config().replace(
+            "source: demo_dashboard",
+            "source: missing_dashboard",
+            1,
+        ),
+    )
+
+    try:
+        load_beeui_config(config_path)
+    except ValueError as exc:
+        assert (
+            str(exc)
+            == "blocks.latest_run.source references an unknown data source: missing_dashboard"
+        )
+    else:
+        raise AssertionError("load_beeui_config must reject unknown block source")
+
+
+# Тест: invalid data source type должен быть отклонён с ошибкой валидации
+def test_load_beeui_config_rejects_invalid_data_source_type(tmp_path: Path) -> None:
+    config_path = _write_config(
+        tmp_path,
+        _base_config().replace("    type: demo\n", "    type: invalid\n", 1),
+    )
+
+    try:
+        load_beeui_config(config_path)
+    except ValueError as exc:
+        assert (
+            str(exc)
+            == "data_sources.demo_dashboard.type must be one of ['demo', 'static']"
+        )
+    else:
+        raise AssertionError("load_beeui_config must reject invalid data source type")
+
+
+def test_load_beeui_config_rejects_unsafe_static_source_path(tmp_path: Path) -> None:
+    config_path = _write_config(
+        tmp_path,
+        _base_config()
+        .replace(
+            "data_sources:\n  demo_dashboard:\n    type: demo\n\n",
+            "data_sources:\n  static_dashboard:\n    type: static\n    format: yaml\n    path: ../secrets.yml\n\n",
+            1,
+        )
+        .replace("source: demo_dashboard", "source: static_dashboard"),
+    )
+
+    try:
+        load_beeui_config(config_path)
+    except ValueError as exc:
+        assert (
+            str(exc)
+            == "data_sources.static_dashboard.path must be a safe relative path"
+        )
+    else:
+        raise AssertionError("load_beeui_config must reject unsafe static source path")
 
 
 def test_load_beeui_config_fails_on_unknown_block_reference(tmp_path: Path) -> None:

@@ -198,13 +198,13 @@ def test_block_non_normal_states_are_rendered(tmp_path: Path) -> None:
         (settings_path().parent / "schema.yml")
         .read_text(encoding="utf-8")
         .replace(
-            "title: Runtime\n    status: ok",
-            "title: Runtime\n    state: degraded\n    status: ok",
+            "  runtime_status:\n    type: status_card\n    title: Runtime\n",
+            "  runtime_status:\n    type: status_card\n    title: Runtime\n    state: degraded\n",
             1,
         )
         .replace(
-            "title: Demo mode\n    message:",
-            "title: Demo mode\n    state: error\n    message:",
+            "  notice:\n    type: alert_card\n    title: Demo mode\n",
+            "  notice:\n    type: alert_card\n    title: Demo mode\n    state: error\n",
             1,
         ),
         encoding="utf-8",
@@ -220,6 +220,92 @@ def test_block_non_normal_states_are_rendered(tmp_path: Path) -> None:
     assert "beeui-block-state-degraded" in response.text
     assert "Block state: degraded" in response.text
     assert ">error</span>" in response.text
+
+
+# Тест: invalid selector syntax в резолвере должен возвращать envelope с ошибкой и предупреждением
+def test_resolver_missing_selector_renders_degraded_block_state(tmp_path: Path) -> None:
+    settings = load_settings(settings_path())
+
+    ui_cfg_path = tmp_path / "schema.yml"
+    ui_cfg_path.write_text(
+        (settings_path().parent / "schema.yml")
+        .read_text(encoding="utf-8")
+        .replace(
+            "    value_selector: dashboard.latest_run.id\n",
+            "    value_selector: dashboard.latest_run.missing\n",
+            1,
+        ),
+        encoding="utf-8",
+    )
+
+    ui_config = load_beeui_config(ui_cfg_path)
+    app = create_beeui_app(settings=settings, ui_config=ui_config)
+    client = TestClient(app)
+
+    response = client.get("/")
+
+    assert response.status_code == 200
+    assert "beeui-block-state-degraded" in response.text
+    assert "Unavailable" in response.text
+
+
+# Тест: invalid selector syntax в резолвере должен возвращать envelope с ошибкой и предупреждением
+def test_resolver_invalid_table_rows_render_error_state(tmp_path: Path) -> None:
+    settings = load_settings(settings_path())
+
+    ui_cfg_path = tmp_path / "schema.yml"
+    ui_cfg_path.write_text(
+        (settings_path().parent / "schema.yml")
+        .read_text(encoding="utf-8")
+        .replace(
+            "    rows_selector: runs\n",
+            "    rows_selector: dashboard.latest_run.id\n",
+            1,
+        ),
+        encoding="utf-8",
+    )
+
+    ui_config = load_beeui_config(ui_cfg_path)
+    app = create_beeui_app(settings=settings, ui_config=ui_config)
+    client = TestClient(app)
+
+    response = client.get("/")
+
+    assert response.status_code == 200
+    assert "Recent runs" in response.text
+    assert "beeui-block-state-error" in response.text
+    assert "Resolved data is unavailable." in response.text
+
+
+# Тест: invalid selector syntax в резолвере должен возвращать envelope с ошибкой и предупреждением
+def test_resolved_static_values_are_escaped(tmp_path: Path) -> None:
+    settings = load_settings(settings_path())
+    fixture_path = Path("tests/fixtures/demo_static/dashboard_unsafe.json")
+
+    ui_cfg_path = tmp_path / "schema.yml"
+    ui_cfg_path.write_text(
+        (settings_path().parent / "schema.yml")
+        .read_text(encoding="utf-8")
+        .replace(
+            "data_sources:\n  demo_dashboard:\n    type: demo\n\n",
+            "data_sources:\n  unsafe_dashboard:\n    type: static\n    format: json\n    path: tests/fixtures/demo_static/dashboard_unsafe.json\n\n",
+            1,
+        )
+        .replace("source: demo_dashboard", "source: unsafe_dashboard"),
+        encoding="utf-8",
+    )
+
+    assert fixture_path.is_file()
+
+    ui_config = load_beeui_config(ui_cfg_path)
+    app = create_beeui_app(settings=settings, ui_config=ui_config)
+    client = TestClient(app)
+
+    response = client.get("/")
+
+    assert response.status_code == 200
+    assert "<script>alert(7)</script>" not in response.text
+    assert "&lt;script&gt;alert(7)&lt;/script&gt;" in response.text
 
 
 # Тест: theme/layout schema values должны попадать только в валидированные classes

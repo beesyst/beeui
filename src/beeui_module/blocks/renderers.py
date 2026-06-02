@@ -10,6 +10,7 @@ from beeui_module.blocks.models import (
     BlockDefinition,
     RenderedBlock,
 )
+from beeui_module.data.selectors import validate_selector
 
 _SAFE_SEGMENT_RE = re.compile(r"^[a-z0-9][a-z0-9._-]*$")
 _FORBIDDEN_SCHEMA_KEYS = {
@@ -43,7 +44,11 @@ class BlockRenderer:
 
 
 # Валидация schema block и нормализация payload для дальнейшего рендера
-def validate_block_definition(block_id: str, payload: Any) -> BlockDefinition:
+def validate_block_definition(
+    block_id: str,
+    payload: Any,
+    available_source_ids: set[str] | None = None,
+) -> BlockDefinition:
     if not isinstance(payload, dict):
         raise ValueError(f"blocks.{block_id} must be a mapping")
 
@@ -56,6 +61,12 @@ def validate_block_definition(block_id: str, payload: Any) -> BlockDefinition:
         )
 
     renderer = get_renderer_registry()[block_type]
+    source_id, bindings = _validate_selector_bindings(
+        block_id,
+        block_type,
+        payload,
+        available_source_ids or set(),
+    )
     normalized_payload = renderer.validator(block_id, payload)
 
     title = normalized_payload["title"]
@@ -71,6 +82,8 @@ def validate_block_definition(block_id: str, payload: Any) -> BlockDefinition:
         title=title,
         state=state,
         payload=normalized_payload,
+        source_id=source_id,
+        bindings=bindings,
     )
 
 
@@ -86,6 +99,51 @@ def render_block(block: BlockDefinition, width: int) -> RenderedBlock:
         template_name=renderer.template_name,
         payload=block.payload,
     )
+
+
+# Принятие разрешенного блока и данных из резолвера, их объединение и повторная валидация для рендера, с учётом возможных ошибок разрешения данных
+def coerce_resolved_block(
+    block: BlockDefinition,
+    resolved_values: dict[str, Any],
+    resolution_status: str,
+    message: str | None,
+) -> BlockDefinition:
+    base_payload = {
+        key: value
+        for key, value in block.payload.items()
+        if key not in block.bindings and key != "state"
+    }
+    merged_payload = {**base_payload, **resolved_values}
+    state = _resolved_state(block.state, resolution_status)
+    merged_payload = _apply_resolution_defaults(
+        block.block_type, merged_payload, message
+    )
+
+    raw_payload = {
+        "type": block.block_type,
+        "title": block.title,
+        **merged_payload,
+        "state": state,
+    }
+
+    try:
+        return validate_block_definition(block.block_id, raw_payload)
+    except ValueError:
+        fallback_message = message or "Resolved data is unavailable."
+        fallback_payload = _apply_resolution_defaults(
+            block.block_type,
+            base_payload,
+            fallback_message,
+        )
+        return validate_block_definition(
+            block.block_id,
+            {
+                "type": block.block_type,
+                "title": block.title,
+                "state": "error",
+                **fallback_payload,
+            },
+        )
 
 
 # Единый список поддерживаемых block types
@@ -130,13 +188,36 @@ def get_renderer_registry() -> dict[str, BlockRenderer]:
 def _validate_metric_card(block_id: str, payload: dict[str, Any]) -> dict[str, Any]:
     _validate_exact_keys(
         payload,
-        {"type", "title", "value", "subtitle", "suffix", "state"},
+        {
+            "type",
+            "title",
+            "value",
+            "subtitle",
+            "suffix",
+            "state",
+            "source",
+            "value_selector",
+            "subtitle_selector",
+        },
         f"blocks.{block_id}",
     )
     normalized = {
         "title": _required_non_empty_string(payload, "title", f"blocks.{block_id}"),
-        "value": _required_display_scalar(payload, "value", f"blocks.{block_id}"),
     }
+    if "value_selector" in payload:
+        value = payload.get("value")
+        if value is not None:
+            normalized["value"] = _required_display_scalar(
+                payload,
+                "value",
+                f"blocks.{block_id}",
+            )
+    else:
+        normalized["value"] = _required_display_scalar(
+            payload,
+            "value",
+            f"blocks.{block_id}",
+        )
     subtitle = payload.get("subtitle")
     if subtitle is not None:
         normalized["subtitle"] = _required_non_empty_string(
@@ -161,42 +242,18 @@ def _validate_metric_card(block_id: str, payload: dict[str, Any]) -> dict[str, A
 def _validate_kpi_grid(block_id: str, payload: dict[str, Any]) -> dict[str, Any]:
     _validate_exact_keys(
         payload,
-        {"type", "title", "items", "state"},
+        {"type", "title", "items", "state", "source", "items_selector"},
         f"blocks.{block_id}",
     )
     items = payload.get("items")
-    if not isinstance(items, list):
-        raise ValueError(f"blocks.{block_id}.items must be a list")
-
     normalized_items: list[dict[str, str]] = []
-    for index, item in enumerate(items):
-        if not isinstance(item, dict):
-            raise ValueError(f"blocks.{block_id}.items[{index}] must be a mapping")
-        _validate_exact_keys(
-            item,
-            {"label", "value", "status"},
-            f"blocks.{block_id}.items[{index}]",
-        )
-        normalized_item = {
-            "label": _required_non_empty_string(
-                item,
-                "label",
-                f"blocks.{block_id}.items[{index}]",
-            ),
-            "value": _required_display_scalar(
-                item,
-                "value",
-                f"blocks.{block_id}.items[{index}]",
-            ),
-        }
-        status = item.get("status")
-        if status is not None:
-            if not isinstance(status, str) or status not in _ALLOWED_KPI_STATUSES:
-                raise ValueError(
-                    f"blocks.{block_id}.items[{index}].status must be one of {sorted(_ALLOWED_KPI_STATUSES)}"
-                )
-            normalized_item["status"] = status
-        normalized_items.append(normalized_item)
+    if "items_selector" in payload:
+        if items is not None:
+            normalized_items = _normalize_kpi_items(block_id, items)
+    else:
+        if not isinstance(items, list):
+            raise ValueError(f"blocks.{block_id}.items must be a list")
+        normalized_items = _normalize_kpi_items(block_id, items)
 
     normalized = {
         "title": _required_non_empty_string(payload, "title", f"blocks.{block_id}"),
@@ -212,19 +269,32 @@ def _validate_kpi_grid(block_id: str, payload: dict[str, Any]) -> dict[str, Any]
 def _validate_status_card(block_id: str, payload: dict[str, Any]) -> dict[str, Any]:
     _validate_exact_keys(
         payload,
-        {"type", "title", "status", "value", "subtitle", "state"},
+        {
+            "type",
+            "title",
+            "status",
+            "value",
+            "subtitle",
+            "state",
+            "source",
+            "status_selector",
+            "value_selector",
+            "subtitle_selector",
+        },
         f"blocks.{block_id}",
     )
-    status = _required_non_empty_string(payload, "status", f"blocks.{block_id}")
-    if status not in _ALLOWED_STATUS_VALUES:
-        raise ValueError(
-            f"blocks.{block_id}.status must be one of {sorted(_ALLOWED_STATUS_VALUES)}"
-        )
-
     normalized = {
         "title": _required_non_empty_string(payload, "title", f"blocks.{block_id}"),
-        "status": status,
     }
+    if "status_selector" in payload:
+        status = payload.get("status")
+        if status is not None:
+            normalized["status"] = _validate_status_value(status, block_id)
+    else:
+        normalized["status"] = _validate_status_value(
+            _required_non_empty_string(payload, "status", f"blocks.{block_id}"),
+            block_id,
+        )
     value = payload.get("value")
     if value is not None:
         normalized["value"] = _required_display_scalar(
@@ -249,7 +319,16 @@ def _validate_status_card(block_id: str, payload: dict[str, Any]) -> dict[str, A
 def _validate_table_card(block_id: str, payload: dict[str, Any]) -> dict[str, Any]:
     _validate_exact_keys(
         payload,
-        {"type", "title", "columns", "rows", "empty", "state"},
+        {
+            "type",
+            "title",
+            "columns",
+            "rows",
+            "empty",
+            "state",
+            "source",
+            "rows_selector",
+        },
         f"blocks.{block_id}",
     )
 
@@ -282,25 +361,14 @@ def _validate_table_card(block_id: str, payload: dict[str, Any]) -> dict[str, An
         )
 
     rows = payload.get("rows")
-    if not isinstance(rows, list):
-        raise ValueError(f"blocks.{block_id}.rows must be a list")
-
     normalized_rows: list[dict[str, str]] = []
-    for index, row in enumerate(rows):
-        if not isinstance(row, dict):
-            raise ValueError(f"blocks.{block_id}.rows[{index}] must be a mapping")
-        normalized_row: dict[str, str] = {}
-        for key, value in row.items():
-            if not isinstance(key, str) or not key.strip():
-                raise ValueError(
-                    f"blocks.{block_id}.rows[{index}] contains invalid key"
-                )
-            if not isinstance(value, (str, int, float, bool)):
-                raise ValueError(
-                    f"blocks.{block_id}.rows[{index}].{key} must be a scalar value"
-                )
-            normalized_row[key] = str(value)
-        normalized_rows.append(normalized_row)
+    if "rows_selector" in payload:
+        if rows is not None:
+            normalized_rows = _normalize_table_rows(block_id, rows)
+    else:
+        if not isinstance(rows, list):
+            raise ValueError(f"blocks.{block_id}.rows must be a list")
+        normalized_rows = _normalize_table_rows(block_id, rows)
 
     normalized = {
         "title": _required_non_empty_string(payload, "title", f"blocks.{block_id}"),
@@ -399,13 +467,26 @@ def _validate_alert_card(block_id: str, payload: dict[str, Any]) -> dict[str, An
 def _validate_text_card(block_id: str, payload: dict[str, Any]) -> dict[str, Any]:
     _validate_exact_keys(
         payload,
-        {"type", "title", "text", "state"},
+        {"type", "title", "text", "state", "source", "text_selector"},
         f"blocks.{block_id}",
     )
     normalized = {
         "title": _required_non_empty_string(payload, "title", f"blocks.{block_id}"),
-        "text": _required_non_empty_string(payload, "text", f"blocks.{block_id}"),
     }
+    if "text_selector" in payload:
+        text = payload.get("text")
+        if text is not None:
+            normalized["text"] = _required_non_empty_string(
+                payload,
+                "text",
+                f"blocks.{block_id}",
+            )
+    else:
+        normalized["text"] = _required_non_empty_string(
+            payload,
+            "text",
+            f"blocks.{block_id}",
+        )
     state = payload.get("state", "normal")
     _validate_state(state, f"blocks.{block_id}")
     normalized["state"] = state
@@ -515,3 +596,183 @@ def _safe_internal_href(value: str, field_name: str) -> str:
             raise ValueError(f"{field_name} must be a safe path")
 
     return value
+
+
+# Нормализация items для kpi_grid, включая валидацию статусов и чек на отсутствие HTML/JS в label/value
+def _normalize_kpi_items(block_id: str, items: Any) -> list[dict[str, str]]:
+    if not isinstance(items, list):
+        raise ValueError(f"blocks.{block_id}.items must be a list")
+
+    normalized_items: list[dict[str, str]] = []
+    for index, item in enumerate(items):
+        if not isinstance(item, dict):
+            raise ValueError(f"blocks.{block_id}.items[{index}] must be a mapping")
+        _validate_exact_keys(
+            item,
+            {"label", "value", "status"},
+            f"blocks.{block_id}.items[{index}]",
+        )
+        normalized_item = {
+            "label": _required_non_empty_string(
+                item,
+                "label",
+                f"blocks.{block_id}.items[{index}]",
+            ),
+            "value": _required_display_scalar(
+                item,
+                "value",
+                f"blocks.{block_id}.items[{index}]",
+            ),
+        }
+        status = item.get("status")
+        if status is not None:
+            if not isinstance(status, str) or status not in _ALLOWED_KPI_STATUSES:
+                raise ValueError(
+                    f"blocks.{block_id}.items[{index}].status must be one of {sorted(_ALLOWED_KPI_STATUSES)}"
+                )
+            normalized_item["status"] = status
+        normalized_items.append(normalized_item)
+
+    return normalized_items
+
+
+# Нормализация rows для table_card, включая чек на отсутствие HTML/JS в ячейках и требование scalar values для безопасного отображения
+def _normalize_table_rows(block_id: str, rows: Any) -> list[dict[str, str]]:
+    if not isinstance(rows, list):
+        raise ValueError(f"blocks.{block_id}.rows must be a list")
+
+    normalized_rows: list[dict[str, str]] = []
+    for index, row in enumerate(rows):
+        if not isinstance(row, dict):
+            raise ValueError(f"blocks.{block_id}.rows[{index}] must be a mapping")
+        normalized_row: dict[str, str] = {}
+        for key, value in row.items():
+            if not isinstance(key, str) or not key.strip():
+                raise ValueError(
+                    f"blocks.{block_id}.rows[{index}] contains invalid key"
+                )
+            if not isinstance(value, (str, int, float, bool)):
+                raise ValueError(
+                    f"blocks.{block_id}.rows[{index}].{key} must be a scalar value"
+                )
+            normalized_row[key] = str(value)
+        normalized_rows.append(normalized_row)
+
+    return normalized_rows
+
+
+# Валидация статуса для status_card, ограниченного безопасным набором значений, с учётом возможного получения из резолвера
+def _validate_status_value(status: Any, block_id: str) -> str:
+    if not isinstance(status, str) or status not in _ALLOWED_STATUS_VALUES:
+        raise ValueError(
+            f"blocks.{block_id}.status must be one of {sorted(_ALLOWED_STATUS_VALUES)}"
+        )
+    return status
+
+
+# Валидация селекторных полей и их связка с source, включая чек на существование source_id в доступных источниках данных
+def _validate_selector_bindings(
+    block_id: str,
+    block_type: str,
+    payload: dict[str, Any],
+    available_source_ids: set[str],
+) -> tuple[str | None, dict[str, str]]:
+    selector_fields = _selector_fields_for_block(block_type)
+    bindings: dict[str, str] = {}
+
+    for selector_key, target_field in selector_fields.items():
+        selector_value = payload.get(selector_key)
+        if selector_value is None:
+            continue
+        if not isinstance(selector_value, str) or not selector_value.strip():
+            raise ValueError(
+                f"blocks.{block_id}.{selector_key} must be a non-empty string"
+            )
+        try:
+            validate_selector(selector_value)
+        except ValueError:
+            raise ValueError(
+                f"blocks.{block_id}.{selector_key} must be a valid selector"
+            ) from None
+        bindings[target_field] = selector_value.strip()
+
+    source_id = payload.get("source")
+    if source_id is None:
+        if bindings:
+            raise ValueError(
+                f"blocks.{block_id}.source must be provided when selector fields are used"
+            )
+        return None, {}
+
+    if not isinstance(source_id, str) or not source_id.strip():
+        raise ValueError(f"blocks.{block_id}.source must be a non-empty string")
+    if not bindings:
+        raise ValueError(
+            f"blocks.{block_id}.source requires at least one selector field"
+        )
+    if source_id not in available_source_ids:
+        raise ValueError(
+            f"blocks.{block_id}.source references an unknown data source: {source_id}"
+        )
+
+    return source_id.strip(), bindings
+
+
+# Валидация блока страницы: чек наличия block, width и их правильного типа, а также ссылки на объявленный block id в реестре
+def _selector_fields_for_block(block_type: str) -> dict[str, str]:
+    return {
+        "metric_card": {
+            "value_selector": "value",
+            "subtitle_selector": "subtitle",
+        },
+        "kpi_grid": {"items_selector": "items"},
+        "status_card": {
+            "status_selector": "status",
+            "value_selector": "value",
+            "subtitle_selector": "subtitle",
+        },
+        "table_card": {"rows_selector": "rows"},
+        "text_card": {"text_selector": "text"},
+    }.get(block_type, {})
+
+
+# Чек наличия block, width и их правильного типа, а также ссылки на объявленный block id в реестре
+def _resolved_state(existing_state: str, resolution_status: str) -> str:
+    if resolution_status == "error":
+        return "error"
+    if resolution_status == "partial" and existing_state == "normal":
+        return "degraded"
+    return existing_state
+
+
+# Чек наличия block, width и их правильного типа, а также ссылки на объявленный block id в реестре
+def _apply_resolution_defaults(
+    block_type: str,
+    payload: dict[str, Any],
+    message: str | None,
+) -> dict[str, Any]:
+    normalized = dict(payload)
+    fallback_message = message or "Resolved data is unavailable."
+
+    if block_type == "metric_card":
+        normalized.setdefault("value", "Unavailable")
+        normalized.setdefault("subtitle", fallback_message)
+        return normalized
+    if block_type == "status_card":
+        normalized.setdefault("status", "degraded")
+        normalized.setdefault("value", "Unavailable")
+        normalized.setdefault("subtitle", fallback_message)
+        return normalized
+    if block_type == "text_card":
+        normalized.setdefault("text", fallback_message)
+        return normalized
+    if block_type == "table_card":
+        normalized.setdefault("columns", [])
+        normalized.setdefault("rows", [])
+        normalized.setdefault("empty", fallback_message)
+        return normalized
+    if block_type == "kpi_grid":
+        normalized.setdefault("items", [])
+        return normalized
+
+    return normalized
