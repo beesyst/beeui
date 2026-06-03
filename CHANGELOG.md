@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.13.0](https://github.com/beesyst/beeui/compare/beeui-v0.12.0...beeui-v0.13.0) (2026-06-03)
+
+
+### Features
+
+* **artifacts:** add generic artifact browser ([#35](https://github.com/beesyst/beeui/issues/35)) ([053037e](https://github.com/beesyst/beeui/commit/053037e954518b5224f48a28826b1899110f7867))
+
 ## [0.12.0](https://github.com/beesyst/beeui/compare/beeui-v0.11.0...beeui-v0.12.0) (2026-06-03)
 
 
