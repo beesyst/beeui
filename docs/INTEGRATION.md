@@ -6,13 +6,15 @@ This document describes how Bee-продукты (`beecap`, `beeagent` и буд
 
 ## Current status
 
-**Iteration 9** — BeeCap fixture adapter MVP.
+**Iteration 10** — Embedded mount API v0.
 
 - Generic `ProductUiAdapter` contract exists in `src/beeui_module/adapters/`.
 - `BeeCapFixtureAdapter` in `src/beeui_module/adapters/beecap.py` is a fixture/reference implementation only.
 - Real BeeCap adapter must live on the BeeCap side (see below).
-- Embedded mount API (`create_beeui_app(adapter=...)`) is **not yet implemented** — planned for Iteration 10.
-- This is **not** a production integration path yet.
+- Embedded mount API (`create_beeui_app(adapter=...)`) is **implemented**.
+- Mount helper `mount_beeui(...)` is **implemented**.
+- Adapter is accepted, validated and stored in `app.state`, but **not yet used** for adapter-backed dashboard/runs/artifact rendering (planned for Iteration 12+).
+- This is an MVP integration path — production-ready after adapter-backed rendering.
 
 ## Architecture boundary
 
@@ -101,19 +103,57 @@ examples/beecap_embedded/beeui.yml
 
 This file is **not loaded at runtime**. It is documentation only.
 
-## Future integration flow (Iteration 10+)
+## Current integration flow (Iteration 10)
+
+### Using `create_beeui_app()`
 
 ```python
 from beeui_module.web.app import create_beeui_app
 from beecap_module.interfaces.ui.adapter import BeeCapUiAdapter
 
 app = create_beeui_app(
+    product_id="beecap",
+    product_title="BeeCap",
     adapter=BeeCapUiAdapter(...),
     config_path="config/beeui.yml",
 )
 ```
 
-This will be the MVP integration mode after Iteration 10.
+### Using `mount_beeui()`
+
+```python
+from fastapi import FastAPI
+from beeui_module.web.app import mount_beeui
+from beecap_module.interfaces.ui.adapter import BeeCapUiAdapter
+
+app = FastAPI()
+
+mount_beeui(
+    app,
+    path="/ui",
+    product_id="beecap",
+    product_title="BeeCap",
+    adapter=BeeCapUiAdapter(...),
+    config_path="config/beeui.yml",
+)
+```
+
+After mounting, BeeUI routes are available under `/ui/`:
+
+```
+/ui/
+/ui/health
+/ui/static/...
+/ui/components
+```
+
+### Important limitations
+
+- Adapter is accepted, validated and stored in `app.state.beeui_adapter`, but **not yet used** for adapter-backed dashboard/runs/artifact rendering.
+- Product metadata is stored in `app.state.beeui_product`.
+- Current demo mode (`create_beeui_app()` without arguments) remains fully backward-compatible.
+- Adapter-backed rendering is planned for Iteration 12+.
+- BeeAgent adapter implementation is future scope.
 
 ## Security notes
 

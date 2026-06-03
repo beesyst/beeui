@@ -1527,37 +1527,64 @@ BeeUI has a BeeCap-compatible fixture adapter and tests proving that dashboard/r
 
 ### Итерация 10 — Embedded mount API v0
 
-**Статус:** PLANNED
+**Статус:** DONE
 
 #### Goal
 
-Сделать простой способ подключить BeeUI внутрь BeeCap/BeeAgent как embedded package.
+Сделать минимальный стабильный embedded API, через который BeeCap сначала, а позже BeeAgent, смогут подключать BeeUI как package dependency: загружать BeeUI UI config из product-side файла, передавать product metadata и adapter instance, а также монтировать BeeUI под безопасным route prefix без ручной склейки FastAPI/Jinja/static setup.
+
+#### Почему это нужно
+
+После Iteration 8 BeeUI имеет generic `ProductUiAdapter` contract, а после Iteration 9 контракт проверен на BeeCap-shaped fixture payloads. Но BeeUI ещё нельзя удобно подключить в BeeCap runtime: `create_beeui_app(...)` не принимает adapter/config path/product metadata, а `mount_beeui(...)` отсутствует.
+
+Без Iteration 10 каждый продукт начнёт писать собственную glue-логику вокруг BeeUI, что снова приведёт к дублированию web setup и нарушит цель BeeUI как reusable UI framework.
 
 #### Scope
 
 Включено:
 
-- public app factory:
+- расширение public app factory `create_beeui_app(...)`;
+- новый helper `mount_beeui(...)`;
+- загрузка UI schema/config по `config_path`;
+- поддержка уже загруженного `ui_config`;
+- поддержка уже загруженных `settings`;
+- product metadata injection:
+  - `product_id`;
+  - `product_title`;
+- adapter injection:
+  - adapter instance accepted;
+  - adapter shape validated against `ProductUiAdapter` minimum contract;
+  - adapter stored in `app.state.beeui_adapter`;
+  - adapter metadata stored in `app.state.beeui_product`;
+- route prefix support для embedded mount;
+- static/templates registration remains package-local;
+- startup validation with clear errors;
+- route collision guard/notes for mount helper;
+- tests for app factory, mount helper, route prefix, static route, invalid adapter, config path validation;
+- docs update in `docs/WEB_UI.md`, `docs/INTEGRATION.md`, `README.ru.md`, `docs/ROADMAP.md`.
 
-```python
-create_beeui_app(...)
-```
+Не включено:
 
-- mount helper:
+- production BeeCap adapter;
+- BeeAgent adapter implementation;
+- adapter-backed block data source;
+- adapter-backed dashboard rendering;
+- `/api/*` routes;
+- run detail routes;
+- artifact browser routes;
+- config apply;
+- operator actions;
+- auth/session;
+- CORS;
+- standalone multi-product service;
+- distributed deployment;
+- product runtime control.
 
-```python
-mount_beeui(...)
-```
+#### Deliverable
 
-- config path loading;
-- adapter injection;
-- static/templates registration;
-- route prefix support;
-- product metadata injection;
-- startup validation;
-- route collision notes.
+BeeCap can create or mount a BeeUI FastAPI app through one stable embedded API, passing product metadata, a BeeCap-side adapter instance, and a BeeCap-side `beeui.yml` config path, while current demo routes/static/templates continue to work.
 
-Example:
+#### Example
 
 ```python
 from beeui_module.web.app import create_beeui_app
@@ -1571,34 +1598,52 @@ app = create_beeui_app(
 )
 ```
 
-Не включено:
+```python
+from fastapi import FastAPI
+from beeui_module.web.app import mount_beeui
+from beecap_module.interfaces.ui.adapter import BeeCapUiAdapter
 
-- standalone multi-product service;
-- auth;
-- CORS;
-- distributed deployment;
-- product runtime control.
+app = FastAPI()
 
-#### Deliverable
-
-BeeCap/BeeAgent can connect BeeUI through one stable app factory/mount function.
+mount_beeui(
+    app,
+    path="/ui",
+    product_id="beecap",
+    product_title="BeeCap",
+    adapter=BeeCapUiAdapter(...),
+    config_path="config/beeui.yml",
+)
+```
 
 #### Checks
 
-- embedded app factory test;
-- route prefix test;
-- static path test;
-- adapter injection test;
+- embedded app factory with loaded `settings` / `ui_config`;
+- embedded app factory with `config_path`;
+- product metadata injection;
+- adapter injection into `app.state`;
 - invalid adapter rejection;
-- config path validation;
-- `pytest -q`.
+- missing/invalid config path rejection;
+- route prefix test;
+- static path test under prefix;
+- mount helper test;
+- route collision rejection or explicit safe error;
+- existing demo mode remains compatible;
+- no new `/api/*` route surface;
+- no product-specific logic introduced;
+- `uv run pytest -q`;
+- `./start.sh doctor`;
+- `./start.sh routes`.
 
 #### DoD
 
-- integration API is simple;
+- BeeCap can connect BeeUI through minimal public app factory or mount helper;
+- embedded mode remains MVP integration path;
 - product-specific glue is minimal;
+- adapter is accepted and validated, but not used for product rendering yet;
+- current demo behavior remains backward-compatible;
 - no hidden product assumptions;
-- embedded mode remains the MVP integration mode.
+- no new execution/write authority;
+- docs clearly state that adapter-backed dashboard/runs/artifact rendering is later scope.
 
 ### Итерация 11 — Generic artifact browser v1
 
