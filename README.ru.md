@@ -2,9 +2,9 @@
 
 **BeeUI** — общий Python-based UI framework для Bee-продуктов: `beecap`, `beeagent` и будущих модулей Bee ecosystem.
 
-## Iteration 9
+## Iteration 10
 
-Текущий deliverable — BeeCap-compatible fixture/reference adapter MVP поверх generic `ProductUiAdapter` contract v0.
+Текущий deliverable — Embedded mount API v0: расширенный `create_beeui_app(...)` и новый `mount_beeui(...)` для подключения BeeUI к Bee-продуктам.
 
 Уже работает:
 
@@ -28,9 +28,17 @@
 - controlled BeeCap-like fixtures under `tests/fixtures/beecap/`;
 - BeeCap adapter fixture tests in `tests/test_beecap_adapter.py`;
 - integration boundary docs in `docs/INTEGRATION.md`;
-- future embedded BeeCap example in `examples/beecap_embedded/beeui.yml`.
+- embedded BeeCap example in `examples/beecap_embedded/beeui.yml`;
+- `create_beeui_app(settings, ui_config, *, config_path, product_id, product_title, adapter)`;
+- `mount_beeui(parent_app, *, path, ...)` для встраивания BeeUI в родительское FastAPI приложение;
+- `app.state.beeui_adapter` — сохранение adapter instance;
+- `app.state.beeui_product` — сохранение product metadata;
+- runtime-валидация adapter на соответствие минимальному протоколу `ProductUiAdapter`;
+- валидация mount path (безопасный путь, без path traversal);
+- проверка коллизии маршрутов при mount;
+- 37 embedded API тестов в `tests/test_embedded.py`.
 
-Supported block types:
+Поддерживаемые типы блоков:
 
 - `metric_card`;
 - `kpi_grid`;
@@ -41,7 +49,7 @@ Supported block types:
 - `text_card`;
 - `progress_card`.
 
-Минимальная web surface after Iteration 9:
+Минимальная web surface после Iteration 10:
 
 - `GET /`
 - `GET /runs`
@@ -56,33 +64,39 @@ Supported block types:
 - `GET /static/vendor/tabler/css/tabler-compatible.min.css`
 - `GET /static/vendor/tabler/js/tabler-compatible.min.js`
 
-Iteration 9 does not change the public route surface.
+При использовании `mount_beeui(parent, path="/ui")` маршруты доступны под `/ui/`:
 
-Shell and dashboard render through component templates:
+- `GET /ui/`
+- `GET /ui/health`
+- `GET /ui/static/...`
+
+Iteration 10 не добавляет новых `/api/*` маршрутов.
+
+Shell и dashboard рендерятся через component templates:
 
 - `components/sidebar.html`;
 - `components/navbar.html`;
 - `components/page_header.html`;
 - `components/footer.html`;
 - `components/empty_state.html`.
-- block component templates for literal and resolver-backed dashboard blocks.
+- block component templates для literal и resolver-backed dashboard blocks.
 
 Tabler-compatible vendor assets поставляются локально из package path:
 
 - `src/beeui_module/web/static/vendor/tabler/css/tabler-compatible.min.css`
 - `src/beeui_module/web/static/vendor/tabler/js/tabler-compatible.min.js`
 
-BeeUI currently ships a local Tabler-compatible subset under
+BeeUI поставляет локальный Tabler-compatible subset в
 `src/beeui_module/web/static/vendor/tabler/`.
-It is not a full upstream Tabler demo bundle.
-No preview/demo/tracking assets are shipped.
+Это не полный upstream Tabler demo bundle.
+Preview/demo/tracking assets не поставляются.
 
 Navigation, theme и layout shell options (title/subtitle/paths/logo_text/theme/layout) рендерятся из `config/schema.yml`.
 
 Пока не входит в scope:
 
 - production BeeCap/BeeAgent adapters;
-- route-level adapter injection;
+- adapter-backed dashboard/runs/artifact rendering (Iteration 12+);
 - auth/session;
 - config UI;
 - artifact browser;
@@ -142,7 +156,7 @@ beecap
 
 beeagent
   -> exposes modules / runs / capabilities / artifacts
-  -> BeeUI renders operator console and future frontend shell
+  -> BeeUI renders operator console and будущий frontend shell
 ```
 
 ## Текущий фокус проекта
@@ -158,7 +172,7 @@ beeagent
 
 MVP не пытается сразу стать полноценным Retool/Webflow/Admin SaaS.
 
-Target MVP делает controlled declarative console:
+Целевой MVP делает controlled declarative console:
 
 - pages описываются через schema/config;
 - blocks описываются через schema/config;
@@ -168,7 +182,7 @@ Target MVP делает controlled declarative console:
 
 ## Что BeeUI делает
 
-В текущем состоянии after Iteration 9 BeeUI отвечает за:
+В текущем состоянии после Iteration 10 BeeUI отвечает за:
 
 - FastAPI app factory;
 - Jinja2 templates;
@@ -179,9 +193,16 @@ Target MVP делает controlled declarative console:
 - declarative pages/navigation/theme/layout;
 - static/literal and resolver-backed dashboard blocks from `config/schema.yml`;
 - generic product adapter contract v0 in `src/beeui_module/adapters/`;
-- BeeCap-compatible fixture/reference adapter for contract validation.
+- BeeCap-compatible fixture/reference adapter for contract validation;
+- embedded app factory `create_beeui_app(...)`;
+- mount helper `mount_beeui(...)`;
+- загрузку product-specific UI config через `config_path`;
+- product metadata injection;
+- adapter injection, validation и сохранение в `app.state.beeui_adapter`;
+- сохранение product metadata в `app.state.beeui_product`;
+- проверку mount path и route collision guard.
 
-Planned/future responsibilities:
+Запланированные обязанности:
 
 - runs list / run detail pages;
 - artifact browser;
@@ -192,8 +213,8 @@ Planned/future responsibilities:
 - bounded operator actions;
 - auth/session layer;
 - theme customization;
-- stable JSON API for future frontend;
-- embedded and future standalone modes.
+- stable JSON API для будущего frontend;
+- standalone mode.
 
 ## Чего BeeUI не делает
 
@@ -226,7 +247,7 @@ beecap process
   mounts BeeUI FastAPI app
 ```
 
-То же для BeeAgent:
+Для BeeAgent это пока будущий scope. Целевая структура может быть похожей:
 
 ```text
 beeagent process
@@ -250,7 +271,7 @@ beeagent process
 - каждый продукт запускает свой BeeUI instance;
 - обновление BeeUI идёт через dependency update.
 
-### Future: standalone mode
+### Будущий `standalone` mode
 
 Позже BeeUI сможет работать отдельным сервисом:
 
@@ -280,7 +301,7 @@ beeui service
 
 ```text
 MVP: embedded.
-Later: standalone.
+Позже: standalone.
 ```
 
 ## Как подключать к BeeCap
@@ -342,7 +363,7 @@ BeeUI не должен напрямую знать внутреннюю trading
 
 ## Как подключать к BeeAgent
 
-Аналогично BeeCap.
+BeeAgent integration — будущий scope. Ниже оставлена только минимальная целевая структура, чтобы не создавать впечатление готовой реализации.
 
 Целевой integration point:
 
@@ -391,26 +412,30 @@ BeeUI не должен получать прямую authority на tools/MCP/r
 - schema-driven demo pages;
 - schema-driven navigation;
 - schema-driven theme/layout;
-- static/literal and resolver-backed dashboard blocks from `config/schema.yml`;
+- static/literal и resolver-backed dashboard blocks из `config/schema.yml`;
 - controlled read-only `demo` data source;
 - controlled read-only `static` YAML/JSON data source;
-- empty state for pages without block placements.
+- empty state для pages без block placements.
 
 ### `embedded`
 
-Основной MVP integration direction.
+Основное направление MVP integration.
 
-Продукт будет импортировать BeeUI и монтировать его в своём web process.
+Продукт импортирует BeeUI и монтирует его в своём web process.
 
-Current Iteration 9 status:
+Текущий статус Iteration 10:
 
-- generic adapter contract exists;
-- BeeCap fixture/reference adapter exists for contract validation;
-- production BeeCap adapter is still BeeCap-side responsibility;
-- `create_beeui_app(...)` adapter injection is not implemented yet;
-- embedded mount helper is planned for Iteration 10.
+- generic adapter contract существует;
+- BeeCap fixture/reference adapter существует для contract validation;
+- production BeeCap adapter остаётся ответственностью BeeCap-side;
+- `create_beeui_app(...)` accepts `config_path`, product metadata and adapter;
+- `mount_beeui(...)` mounts BeeUI into parent FastAPI app;
+- adapter is validated and stored in `app.state.beeui_adapter`;
+- product metadata is stored in `app.state.beeui_product`;
+- no new `/api/*` routes;
+- adapter-backed rendering остаётся будущим scope.
 
-Planned example:
+Embedded example:
 
 ```python
 from beeui_module.web.app import create_beeui_app
@@ -426,7 +451,7 @@ app = create_beeui_app(
 
 ### `standalone`
 
-Future scope.
+Будущий scope.
 
 В текущем MVP standalone mode не реализован. Запуск с отдельным config-файлом будет добавлен позже, когда появится HTTP product adapter и standalone deployment contract.
 
@@ -454,7 +479,7 @@ pages:
         width: 3
 ```
 
-Current declarative page rules:
+Текущие declarative page rules:
 
 - `page.id` must be unique;
 - `page.path` must be unique;
@@ -467,12 +492,12 @@ Current declarative page rules:
 
 ### Blocks
 
-Current Iteration 7 block contract supports both literal fields and resolver-backed fields from controlled read-only `demo` / `static` data sources.
+Текущий block contract после Iteration 7 поддерживает literal fields и resolver-backed fields из controlled read-only `demo` / `static` data sources.
 
 Top-level `blocks` defines reusable block definitions.
 `pages[].blocks[]` defines where these blocks appear on a page.
 
-Supported block types now:
+Сейчас поддерживаются типы блоков:
 
 - `metric_card`;
 - `kpi_grid`;
@@ -511,7 +536,7 @@ pages:
         width: 3
 ```
 
-Current rules:
+Текущие правила:
 
 - block ids must be safe identifiers;
 - unknown block types are rejected;
@@ -523,7 +548,7 @@ Current rules:
 - display values may be literal scalars or resolver-backed values from controlled demo/static sources;
 - missing/empty page placements render an empty state.
 
-Implemented in Iteration 7:
+Реализовано в Iteration 7:
 
 - read-only data resolver;
 - selector syntax with dot path and optional `[index]` lookup;
@@ -532,7 +557,7 @@ Implemented in Iteration 7:
 - stable resolver envelope;
 - degraded block rendering on missing selector data.
 
-Still not implemented:
+Пока не реализовано:
 
 - production BeeCap/BeeAgent adapters;
 - adapter-backed block data in runtime;
@@ -542,8 +567,8 @@ Still not implemented:
 
 ### Data sources
 
-Iteration 7 supports controlled read-only data sources in `config/schema.yml`.
-Current supported source types are:
+Iteration 7 поддерживает controlled read-only data sources в `config/schema.yml`.
+Текущие supported source types:
 
 - `demo`
 - `static` with `format: yaml|json` and a safe relative `path`
@@ -567,8 +592,8 @@ Resolver envelope:
 }
 ```
 
-Current block schema stays backward-compatible: literal fields still work, resolver-backed fields are optional.
-Adapter-backed data sources are future scope and are not part of the current Iteration 7 runtime source types.
+Текущая block schema остаётся backward-compatible: literal fields продолжают работать, resolver-backed fields опциональны.
+Adapter-backed data sources остаются будущим scope и не входят в текущие runtime source types Iteration 7.
 
 Resolver-backed block example:
 
@@ -586,15 +611,15 @@ blocks:
     subtitle_selector: dashboard.latest_run.status
 ```
 
-Resolver envelope is an internal block data-resolution contract in Iteration 7.
-It is not yet a public `/api/*` route contract.
-Public BeeUI JSON API remains planned for later iterations.
+Resolver envelope — внутренний block data-resolution contract в Iteration 7.
+Это ещё не public `/api/*` route contract.
+Public BeeUI JSON API запланирован для следующих итераций.
 
 ### Product adapters
 
-Product adapter contract is implemented in Iteration 8 as a generic boundary in `src/beeui_module/adapters/`.
+Product adapter contract реализован в Iteration 8 как generic boundary в `src/beeui_module/adapters/`.
 
-Current Iteration 8 scope:
+Scope Iteration 8:
 
 - generic `ProductUiAdapter` protocol/base contract;
 - stable adapter envelopes for `ok|partial|error`;
@@ -602,7 +627,7 @@ Current Iteration 8 scope:
 - safe id validation helpers;
 - optional write/action methods are disabled by default.
 
-Current Iteration 8 non-goals:
+Non-goals Iteration 8:
 
 - no production BeeCap adapter;
 - no concrete BeeAgent adapter;
@@ -610,15 +635,15 @@ Current Iteration 8 non-goals:
 - no new `/api/*` routes;
 - no direct execution authority.
 
-Iteration 9 adds BeeCap fixture/reference adapter support:
+Iteration 9 добавляет BeeCap fixture/reference adapter support:
 
 - `BeeCapFixtureAdapter` validates BeeCap-shaped dashboard/runs/artifact-reference payloads;
 - fixtures live under `tests/fixtures/beecap/`;
 - this adapter is not a production BeeCap integration;
 - real BeeCap adapter must live on the BeeCap side under `src/beecap_module/interfaces/ui/`;
-- route-level adapter injection remains planned for Iteration 10.
+- Iteration 10 добавляет app factory adapter injection и `mount_beeui(...)`, а adapter-backed route rendering остаётся будущим scope.
 
-Current Iteration 8 contract v0:
+Текущий contract v0 после Iteration 8:
 
 ```python
 class ProductUiAdapter:
@@ -769,7 +794,7 @@ storage/interfaces/operator_actions/<action_id>.json
 
 ## Auth and roles
 
-BeeUI auth layer is planned after MVP dashboard integration.
+BeeUI auth layer запланирован после MVP dashboard integration.
 
 Initial roles:
 
@@ -803,7 +828,7 @@ app:
     density: compact
 ```
 
-Supported customization:
+Поддерживаемая кастомизация:
 
 - dark/light;
 - primary color;
@@ -942,9 +967,9 @@ uv run --frozen --extra dev python config/start.py web
 - `docs/SECURITY.md` — secure development rules;
 - `docs/WEB_UI.md` — HTML routes, layout, dashboard behavior;
 
-## Целевая структура проекта (planned)
+## Целевая структура проекта
 
-Актуальные ключевые файлы after Iteration 9:
+Актуальные ключевые файлы после Iteration 10:
 
 ```text
 config/
@@ -1022,7 +1047,7 @@ src/beeui_module/
           js/tabler-compatible.min.js
 ```
 
-Остальная структура ниже — целевая (planned) для следующих итераций.
+Остальная структура ниже — целевая для следующих итераций.
 
 ```text
 beeui/
@@ -1201,7 +1226,7 @@ src/beeui_module/adapters/
 - `ProductUiAdapter` — base contract;
 - `BeeCapUiAdapter` — BeeCap-specific read-model adapter;
 - `BeeAgentUiAdapter` — BeeAgent-specific read-model adapter;
-- `HttpProductAdapter` — future standalone mode;
+- `HttpProductAdapter` — будущий standalone mode;
 - `FilesystemAdapter` — demo/local artifact reading.
 
 ### 3. Data resolver layer
@@ -1286,7 +1311,7 @@ src/beeui_module/auth/
 BeeUI API должен использовать единый envelope.
 Resolver envelope is an internal block data-resolution contract in Iteration 7.
 It is not yet a public `/api/*` route contract.
-Public BeeUI JSON API remains planned for later iterations.
+Public BeeUI JSON API запланирован для следующих итераций.
 
 ### Success
 
@@ -1533,7 +1558,7 @@ container: beeagent
 - быстрее MVP;
 - меньше auth/CORS проблем.
 
-### Future deployment
+### Будущий deployment
 
 Standalone BeeUI.
 
@@ -1568,8 +1593,8 @@ BeeUI is a reusable UI/runtime framework for Bee products.
 4. stable JSON API;
 5. auth/RBAC;
 6. bounded operator controls;
-7. future no-code dashboard builder;
-8. future standalone frontend backend.
+7. будущий no-code dashboard builder;
+8. будущий standalone frontend backend.
 
 Неправильное направление:
 
@@ -1597,7 +1622,7 @@ Visual builder later.
 Текущий статус:
 
 ```text
-Iteration 9 — BeeCap adapter fixtures MVP — DONE
+Iteration 10 — Embedded mount API v0 — DONE
 ```
 
 Работает:
@@ -1609,13 +1634,19 @@ uv run pytest -q
 ./start.sh web --host 127.0.0.1 --port 8780
 ```
 
-- `/` рендерит literal and resolver-backed dashboard blocks from schema;
+- `/` рендерит literal и resolver-backed dashboard blocks from schema;
 - `/runs` рендерит empty state для страницы без block placements;
 - `/components*` рендерит internal read-only catalog of controlled primitives;
-- resolver-backed blocks read values from controlled read-only `demo` / `static` sources;
-- missing selector data renders degraded/error block state instead of crashing the page;
-- generic ProductUiAdapter contract is available in `src/beeui_module/adapters/`;
-- optional adapter write/action methods are unavailable by default;
-- BeeCapFixtureAdapter validates BeeCap-shaped fixture payloads;
-- BeeCap-like fixtures cover dashboard, runs, artifact references, partial and corrupted artifact states;
-- integration boundary is documented in `docs/INTEGRATION.md`.
+- resolver-backed blocks читают значения из controlled read-only `demo` / `static` sources;
+- missing selector data рендерит degraded/error block state вместо падения страницы;
+- generic `ProductUiAdapter` contract доступен в `src/beeui_module/adapters/`;
+- optional adapter write/action methods недоступны по умолчанию;
+- `BeeCapFixtureAdapter` валидирует BeeCap-shaped fixture payloads;
+- BeeCap-like fixtures покрывают dashboard, runs, artifact references, partial и corrupted artifact states;
+- integration boundary задокументирован в `docs/INTEGRATION.md`;
+- `create_beeui_app(...)` accepts `config_path`, product metadata and adapter;
+- `mount_beeui(...)` mounts BeeUI into parent FastAPI app;
+- adapter is validated and stored in `app.state.beeui_adapter`;
+- product metadata is stored in `app.state.beeui_product`;
+- no new `/api/*` routes;
+- adapter-backed rendering остаётся будущим scope.
