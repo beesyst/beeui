@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.12.0](https://github.com/beesyst/beeui/compare/beeui-v0.11.0...beeui-v0.12.0) (2026-06-03)
+
+
+### Features
+
+* **web:** add embedded mount API ([#32](https://github.com/beesyst/beeui/issues/32)) ([79d439f](https://github.com/beesyst/beeui/commit/79d439f86d113fce3bef510c04b5da3ff27a59ea))
+
 ## [0.11.0](https://github.com/beesyst/beeui/compare/beeui-v0.10.0...beeui-v0.11.0) (2026-06-02)
 
 
