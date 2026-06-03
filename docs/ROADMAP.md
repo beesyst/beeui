@@ -1647,67 +1647,134 @@ mount_beeui(
 
 ### Итерация 11 — Generic artifact browser v1
 
-**Статус:** PLANNED
+**Статус:** DONE
 
 #### Goal
 
-Сделать reusable artifact browser для Bee-продуктов.
+Добавить минимальный reusable read-only artifact browser для Bee-продуктов, чтобы BeeUI мог показывать allowlisted product artifacts через `ProductUiAdapter`, без прямого чтения product storage и без превращения BeeUI в filesystem browser.
+
+#### Почему это нужно
+
+После Iteration 10 BeeUI можно embedded-подключить к BeeCap и передать adapter, но UI всё ещё не умеет показывать product artifacts через этот adapter.
+
+Для BeeCap это blocker: dashboard и run overview без artifact links/viewer будут почти бесполезны, потому что BeeCap operator должен быстро открывать evidence/source artifacts: JSON, JSONL, summaries, reports, health/runtime outputs.
+
+Iteration 11 должна дать минимальный общий artifact layer, который Iteration 12 сможет использовать для BeeCap dashboard parity.
 
 #### Scope
 
 Включено:
 
-- artifact list block;
+- новый package layer `src/beeui_module/artifacts/`;
 - artifact metadata model;
-- safe artifact IDs;
-- allowlisted artifact access through adapter;
-- JSON viewer;
-- JSONL preview;
+- artifact preview model;
+- JSON preview;
+- JSONL bounded preview;
 - text preview;
-- source links;
-- malformed artifact handling;
+- unsupported/binary metadata-only preview;
+- malformed JSON/JSONL handling as partial/error state;
 - large artifact preview limits;
-- path traversal guard;
-- redaction hook placeholder.
+- safe `run_id` and `artifact_id` validation through existing adapter ID helpers;
+- artifact access only through `ProductUiAdapter.list_artifacts(...)` and `ProductUiAdapter.read_artifact(...)`;
+- no direct product storage traversal from BeeUI;
+- no raw filesystem path route params;
+- read-only HTML artifact list/view routes;
+- minimal read-only JSON routes for artifact list/read preview;
+- route prefix compatibility;
+- embedded adapter compatibility;
+- graceful unavailable state when adapter is missing;
+- redaction hook placeholder with no complex policy engine;
+- tests for JSON, JSONL, text, malformed, large, unsupported, invalid IDs, non-allowlisted artifacts, no mutation, no secret leakage;
+- docs update.
 
 Suggested routes:
 
 ```text
 GET /runs/{run_id}/artifacts
+GET /runs/{run_id}/artifacts/{artifact_id}
 GET /api/runs/{run_id}/artifacts
 GET /api/runs/{run_id}/artifacts/{artifact_id}
 ```
 
+Допустимо реализовать `GET /runs/{run_id}/artifacts/{artifact_id}` в Iteration 11, потому что иначе HTML artifact browser будет неполным.
+
 Не включено:
 
 - arbitrary filesystem browser;
+- direct storage traversal from BeeUI;
 - artifact mutation;
 - upload/edit/delete;
-- binary viewers beyond safe metadata;
-- direct storage traversal from BeeUI.
+- binary viewers beyond metadata-only;
+- syntax highlighting dependency;
+- full stable frontend API contract from Iteration 14;
+- run detail page from Iteration 13;
+- BeeCap production adapter;
+- BeeAgent adapter;
+- config UI;
+- operator actions;
+- auth/session;
+- standalone service.
 
 #### Deliverable
 
-BeeCap/BeeAgent can show artifacts through a common BeeUI artifact browser.
+BeeUI can list and preview allowlisted product artifacts through `ProductUiAdapter` in embedded mode, with safe HTML/API read-only routes and bounded previews for JSON, JSONL and text artifacts.
 
 #### Checks
 
-- JSON artifact view;
-- JSONL artifact view;
-- malformed row handling;
-- large file preview limit;
-- forbidden path rejection;
+- JSON artifact preview;
+- JSONL artifact preview;
+- malformed JSON handling;
+- malformed JSONL row handling;
+- text artifact preview;
+- unsupported/binary metadata-only preview;
+- large artifact preview limit;
+- invalid `run_id` rejection;
+- invalid `artifact_id` rejection;
 - non-allowlisted artifact rejection;
+- adapter missing/unavailable state;
+- route prefix compatibility;
+- no direct product filesystem read;
 - no mutation;
 - no secrets leakage;
-- `pytest -q`.
+- no `beecap_module` / `beeagent_module` import;
+- `uv run pytest -q`;
+- `./start.sh doctor`;
+- `./start.sh routes`.
+
+#### Deliverable summary
+
+Реализовано:
+
+- новый пакет `src/beeui_module/artifacts/` с моделями, preview-логикой, redaction и routes;
+- `ArtifactRef` и `ArtifactPreview` модели;
+- JSON preview через `build_preview()` с парсингом из dict/list/str;
+- JSONL preview с ограничением строк (500) и row-level warnings для malformed строк;
+- text preview с ограничением символов (100K);
+- unsupported/binary -> metadata-only preview;
+- malformed JSON -> error state, не crash;
+- malformed JSONL rows -> row-level warnings, не crash;
+- large artifact limits (512KB для JSON/JSONL, 100K chars для text);
+- safe ID validation через `validate_run_id()` и `validate_artifact_id()` в route handlers;
+- read-only HTML artifact list + preview routes;
+- read-only JSON API artifact list + preview routes;
+- route prefix compatibility;
+- embedded adapter compatibility через `request.app.state.beeui_adapter`;
+- graceful unavailable state (503 HTML / JSON error) при отсутствии adapter;
+- redaction placeholder (`redact_value`, `redact_text`) для `secret`/`token`/`password`/`api_key`/`api_secret` и аналогичных ключей;
+- 46 тестов в `tests/test_artifacts.py`: redaction, preview (JSON/JSONL/text/malformed/large/unsupported), HTML routes, JSON API routes, invalid IDs, missing adapter, route prefix, security (escaping, no mutation, no write routes, no beecap import);
+- обновлены тесты embedded (ожидаемые /api/* routes);
+- обновлены docs: ROADMAP, WEB_UI, INTEGRATION, README.
 
 #### DoD
 
-- artifact browser reusable;
-- source artifacts remain canonical;
-- arbitrary file access impossible;
-- corrupted artifacts render as partial/error state.
+- artifact browser is reusable and product-neutral;
+- source artifacts remain canonical and read-only;
+- arbitrary file access is impossible from BeeUI routes;
+- corrupted artifacts render as partial/error state instead of crashing;
+- large artifacts are bounded;
+- product adapter owns allowlist and artifact resolution;
+- BeeUI does not invent artifact semantics;
+- docs clearly state that BeeCap production artifact mapping belongs in BeeCap-side adapter.
 
 ---
 

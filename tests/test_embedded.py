@@ -171,11 +171,15 @@ class TestDefaultCreateBeeuiApp:
         resp = client.get("/")
         assert resp.headers["X-BeeUI-Read-Only"] == "true"
 
-    def test_no_api_routes(self) -> None:
+    def test_artifact_api_routes_present(self) -> None:
         app = create_beeui_app()
         routes = _route_paths(app)
         api_routes = {route for route in routes if route.startswith("/api")}
-        assert not api_routes, f"Unexpected /api/* routes: {api_routes}"
+        expected = {
+            "/api/runs/{run_id}/artifacts",
+            "/api/runs/{run_id}/artifacts/{artifact_id}",
+        }
+        assert api_routes == expected, f"Expected {expected}, got {api_routes}"
 
 
 # Тесты: загрузка конфигурации из config_path и приоритет explicit ui_config над config_path
@@ -500,7 +504,7 @@ class TestRouteCollision:
 
 # Тесты: отсутствие /api/* маршрутов в embedded режиме, так как API не должно быть доступно напрямую
 class TestNoApiRoutes:
-    def test_no_api_routes_after_embedded_creation(self) -> None:
+    def test_artifact_api_routes_after_embedded_creation(self) -> None:
         adapter = FakeEmbeddedAdapter()
         app = create_beeui_app(
             product_id="beecap",
@@ -509,11 +513,20 @@ class TestNoApiRoutes:
         )
         routes = _route_paths(app)
         api_routes = {route for route in routes if route.startswith("/api")}
-        assert not api_routes, f"Unexpected /api/* routes: {api_routes}"
+        expected = {
+            "/api/runs/{run_id}/artifacts",
+            "/api/runs/{run_id}/artifacts/{artifact_id}",
+        }
+        assert api_routes == expected, f"Expected {expected}, got {api_routes}"
 
-    def test_no_api_routes_after_mount(self) -> None:
+    def test_mount_exposes_artifact_api_under_mount_path(self) -> None:
         parent = FastAPI()
-        mount_beeui(parent, path="/ui")
-        routes = _route_paths(parent)
-        api_routes = {route for route in routes if route.startswith("/api")}
-        assert not api_routes, f"Unexpected /api/* routes: {api_routes}"
+        mount_beeui(parent, path="/ui", adapter=FakeEmbeddedAdapter())
+
+        client = TestClient(parent)
+        resp = client.get("/ui/api/runs/run_test/artifacts")
+
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["status"] == "ok"
+        assert data["data"] == []

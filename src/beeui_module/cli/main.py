@@ -48,6 +48,15 @@ def _print_routes() -> int:
     print(f"  GET {prefixed_path(prefix, '/components/layout')}")
     print(f"  GET {prefixed_path(prefix, '/components/extra')}")
     print(f"  GET {prefixed_path(prefix, '/components/plugins')}")
+    if settings["features"]["browser_artifact"]:
+        print(f"  GET {prefixed_path(prefix, '/runs/{run_id}/artifacts')}")
+        print(
+            f"  GET {prefixed_path(prefix, '/runs/{run_id}/artifacts/{artifact_id}')}"
+        )
+        print(f"  GET {prefixed_path(prefix, '/api/runs/{run_id}/artifacts')}")
+        print(
+            f"  GET {prefixed_path(prefix, '/api/runs/{run_id}/artifacts/{artifact_id}')}"
+        )
     print(f"  GET {prefix}/health")
     print(f"  GET {prefix}/static/...")
     return 0

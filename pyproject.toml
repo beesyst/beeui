@@ -34,6 +34,7 @@ where = ["src"]
     "templates/components/*.html",
     "templates/components/*/*.html",
     "templates/components/*/*/*.html",
+    "templates/artifacts/*.html",
     "static/css/*.css",
     "static/js/*.js",
     "static/vendor/tabler/**/*",

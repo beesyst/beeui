@@ -2,33 +2,50 @@
 
 **BeeUI** — общий Python-based UI framework для Bee-продуктов: `beecap`, `beeagent` и будущих модулей Bee ecosystem.
 
-## Iteration 10
+## Iteration 11
 
-Текущий deliverable — Embedded mount API v0: расширенный `create_beeui_app(...)` и новый `mount_beeui(...)` для подключения BeeUI к Bee-продуктам.
+Текущий deliverable — Generic artifact browser v1: read-only просмотр артефактов через `ProductUiAdapter`.
 
 Уже работает:
 
-- `uv sync --frozen --extra dev`
-- `uv run pytest -q`
-- `./start.sh doctor`
-- `./start.sh version`
-- `./start.sh routes`
-- `./start.sh web --host 127.0.0.1 --port 8780`
-- `import beeui_module`
-- schema-driven theme/layout/navigation in `config/schema.yml`
-- schema-driven literal and resolver-backed blocks in `config/schema.yml`
-- read-only `demo` data source
-- read-only `static` YAML/JSON data source
-- stable resolver envelope for controlled block value resolution
-- dashboard blocks render from top-level `blocks` and `pages[].blocks[]`
-- generic adapter contract package `src/beeui_module/adapters/`
-- stable adapter envelopes (`ok|partial|error`) and stable adapter errors
-- safe adapter ID helpers for `product_id`, `run_id`, `artifact_id`, `action_id`
+- всё из Iteration 10: `create_beeui_app(...)`, `mount_beeui(...)`, adapter injection, product metadata, mount path validation;
+- `uv sync --frozen --extra dev`;
+- `uv run pytest -q`;
+- `./start.sh doctor`;
+- `./start.sh version`;
+- `./start.sh routes`;
+- `./start.sh web --host 127.0.0.1 --port 8780`;
+- `import beeui_module`;
+- schema-driven theme/layout/navigation в `config/schema.yml`;
+- schema-driven literal и resolver-backed blocks в `config/schema.yml`;
+- read-only `demo` data source;
+- read-only `static` YAML/JSON data source;
+- stable resolver envelope для controlled block value resolution;
+- dashboard blocks рендерятся из top-level `blocks` и `pages[].blocks[]`;
+- generic adapter contract package `src/beeui_module/adapters/`;
+- stable adapter envelopes (`ok|partial|error`) and stable adapter errors;
+- safe adapter ID helpers for `product_id`, `run_id`, `artifact_id`, `action_id`;
 - BeeCap-compatible fixture adapter `BeeCapFixtureAdapter`;
 - controlled BeeCap-like fixtures under `tests/fixtures/beecap/`;
 - BeeCap adapter fixture tests in `tests/test_beecap_adapter.py`;
 - integration boundary docs in `docs/INTEGRATION.md`;
 - embedded BeeCap example in `examples/beecap_embedded/beeui.yml`;
+- `GET /runs/{run_id}/artifacts` — HTML список артефактов;
+- `GET /runs/{run_id}/artifacts/{artifact_id}` — HTML preview артефакта;
+- `GET /api/runs/{run_id}/artifacts` — JSON API список артефактов;
+- `GET /api/runs/{run_id}/artifacts/{artifact_id}` — JSON API preview артефакта;
+- JSON preview с redaction;
+- JSONL preview до 500 строк с row-level warnings;
+- text preview до 100 000 символов;
+- unsupported/binary artifacts отображаются как metadata-only;
+- malformed JSON/JSONL не ломают страницу/API;
+- large JSON/JSONL preview ограничен 512 KB;
+- safe `run_id` / `artifact_id` validation;
+- redaction placeholder для `secret`, `token`, `password`, `api_key`, `api_secret`;
+- доступ к артефактам идёт только через `ProductUiAdapter.list_artifacts()` и `ProductUiAdapter.read_artifact()`;
+- при отсутствии adapter возвращается explicit 503 unavailable state;
+- `features.browser_artifact` включает/отключает HTML/API artifact routes;
+- `features.api` остаётся зарезервированным для будущего stable BeeUI API и не отключает artifact browser API routes;
 - `create_beeui_app(settings, ui_config, *, config_path, product_id, product_title, adapter)`;
 - `mount_beeui(parent_app, *, path, ...)` для встраивания BeeUI в родительское FastAPI приложение;
 - `app.state.beeui_adapter` — сохранение adapter instance;
@@ -36,7 +53,7 @@
 - runtime-валидация adapter на соответствие минимальному протоколу `ProductUiAdapter`;
 - валидация mount path (безопасный путь, без path traversal);
 - проверка коллизии маршрутов при mount;
-- 37 embedded API тестов в `tests/test_embedded.py`.
+- embedded API тесты в `tests/test_embedded.py`.
 
 Поддерживаемые типы блоков:
 
@@ -49,7 +66,7 @@
 - `text_card`;
 - `progress_card`.
 
-Минимальная web surface после Iteration 10:
+Минимальная web surface после Iteration 11:
 
 - `GET /`
 - `GET /runs`
@@ -63,14 +80,22 @@
 - `GET /static/...`
 - `GET /static/vendor/tabler/css/tabler-compatible.min.css`
 - `GET /static/vendor/tabler/js/tabler-compatible.min.js`
+- `GET /runs/{run_id}/artifacts`
+- `GET /runs/{run_id}/artifacts/{artifact_id}`
+- `GET /api/runs/{run_id}/artifacts`
+- `GET /api/runs/{run_id}/artifacts/{artifact_id}`
 
 При использовании `mount_beeui(parent, path="/ui")` маршруты доступны под `/ui/`:
 
 - `GET /ui/`
 - `GET /ui/health`
 - `GET /ui/static/...`
+- `GET /ui/runs/{run_id}/artifacts`
+- `GET /ui/runs/{run_id}/artifacts/{artifact_id}`
+- `GET /ui/api/runs/{run_id}/artifacts`
+- `GET /ui/api/runs/{run_id}/artifacts/{artifact_id}`
 
-Iteration 10 не добавляет новых `/api/*` маршрутов.
+Iteration 11 добавляет только read-only artifact API routes. Stable BeeUI API для dashboard/runs/config/actions остаётся future scope.
 
 Shell и dashboard рендерятся через component templates:
 
@@ -96,10 +121,11 @@ Navigation, theme и layout shell options (title/subtitle/paths/logo_text/theme/
 Пока не входит в scope:
 
 - production BeeCap/BeeAgent adapters;
-- adapter-backed dashboard/runs/artifact rendering (Iteration 12+);
+- adapter-backed dashboard/runs rendering (Iteration 12+);
+- run detail page;
+- stable BeeUI API для dashboard/runs/config/actions;
 - auth/session;
 - config UI;
-- artifact browser;
 - no-code builder.
 
 Проект нужен, чтобы не писать заново в каждом продукте:
@@ -182,7 +208,7 @@ MVP не пытается сразу стать полноценным Retool/We
 
 ## Что BeeUI делает
 
-В текущем состоянии после Iteration 10 BeeUI отвечает за:
+В текущем состоянии после Iteration 11 BeeUI отвечает за:
 
 - FastAPI app factory;
 - Jinja2 templates;
@@ -200,13 +226,14 @@ MVP не пытается сразу стать полноценным Retool/We
 - product metadata injection;
 - adapter injection, validation и сохранение в `app.state.beeui_adapter`;
 - сохранение product metadata в `app.state.beeui_product`;
-- проверку mount path и route collision guard.
+- проверку mount path и route collision guard;
+- artifact browser — HTML/JSON list and preview через adapter;
+- JSON/JSONL/text bounded preview с malformed handling, preview limits и redaction;
+- read-only API routes для артефактов.
 
 Запланированные обязанности:
 
 - runs list / run detail pages;
-- artifact browser;
-- JSON/JSONL preview;
 - source artifact links;
 - config read-model;
 - config preview/apply framework;
@@ -423,7 +450,7 @@ BeeUI не должен получать прямую authority на tools/MCP/r
 
 Продукт импортирует BeeUI и монтирует его в своём web process.
 
-Текущий статус Iteration 10:
+Текущий статус после Iteration 11:
 
 - generic adapter contract существует;
 - BeeCap fixture/reference adapter существует для contract validation;
@@ -432,8 +459,9 @@ BeeUI не должен получать прямую authority на tools/MCP/r
 - `mount_beeui(...)` mounts BeeUI into parent FastAPI app;
 - adapter is validated and stored in `app.state.beeui_adapter`;
 - product metadata is stored in `app.state.beeui_product`;
-- no new `/api/*` routes;
-- adapter-backed rendering остаётся будущим scope.
+- artifact browser routes уже используют adapter для `list_artifacts()` и `read_artifact()`;
+- `/api/runs/{run_id}/artifacts*` routes доступны при `features.browser_artifact: true`;
+- adapter-backed dashboard/runs rendering остаётся future scope.
 
 Embedded example:
 
@@ -632,7 +660,7 @@ Non-goals Iteration 8:
 - no production BeeCap adapter;
 - no concrete BeeAgent adapter;
 - no direct product filesystem crawling;
-- no new `/api/*` routes;
+- public route surface не менялся в Iteration 8;
 - no direct execution authority.
 
 Iteration 9 добавляет BeeCap fixture/reference adapter support:
@@ -641,7 +669,9 @@ Iteration 9 добавляет BeeCap fixture/reference adapter support:
 - fixtures live under `tests/fixtures/beecap/`;
 - this adapter is not a production BeeCap integration;
 - real BeeCap adapter must live on the BeeCap side under `src/beecap_module/interfaces/ui/`;
-- Iteration 10 добавляет app factory adapter injection и `mount_beeui(...)`, а adapter-backed route rendering остаётся будущим scope.
+- Iteration 10 добавила app factory adapter injection и `mount_beeui(...)`;
+- Iteration 11 добавила adapter-backed artifact browser routes;
+- adapter-backed dashboard/runs rendering остаётся future scope.
 
 Текущий contract v0 после Iteration 8:
 
@@ -662,13 +692,13 @@ class ProductUiAdapter:
   def execute_action(self, action_id: str, payload: dict) -> dict: ...
 ```
 
-В будущей runtime integration BeeUI будет вызывать adapter через embedded mount/app factory layer.
+После Iteration 11 BeeUI вызывает adapter через embedded mount/app factory layer для artifact browser routes.
 
 Product adapter решает, что можно читать/делать.
 
 ## Artifact browser
 
-BeeUI должен предоставить generic artifact browser.
+BeeUI предоставляет generic artifact browser после Iteration 11.
 
 Он отображает:
 
@@ -693,6 +723,7 @@ Routes:
 
 ```text
 GET /runs/{run_id}/artifacts
+GET /runs/{run_id}/artifacts/{artifact_id}
 GET /api/runs/{run_id}/artifacts
 GET /api/runs/{run_id}/artifacts/{artifact_id}
 ```
@@ -969,7 +1000,7 @@ uv run --frozen --extra dev python config/start.py web
 
 ## Целевая структура проекта
 
-Актуальные ключевые файлы после Iteration 10:
+Актуальные ключевые файлы после Iteration 11:
 
 ```text
 config/
@@ -1015,6 +1046,12 @@ src/beeui_module/
     errors.py
     ids.py
     beecap.py
+  artifacts/
+    __init__.py
+    models.py
+    preview.py
+    redaction.py
+    routes.py
   pages/
     config.py
     models.py
@@ -1038,6 +1075,9 @@ src/beeui_module/
         table_card.html
         text_card.html
         empty_state.html
+      artifacts/
+        list.html
+        detail.html
     static/
       css/beeui.css
       js/beeui.js
@@ -1456,6 +1496,7 @@ Iteration 7 — Data sources and resolver v0
 Iteration 8 — Product adapter contract v0
 Iteration 9 — BeeCap adapter MVP
 Iteration 10 — Embedded mount API v0
+Iteration 11 — Generic artifact browser v1
 Iteration 12 — BeeCap dashboard parity MVP
 Iteration 13 — Runs list and run overview MVP
 ```
@@ -1622,7 +1663,7 @@ Visual builder later.
 Текущий статус:
 
 ```text
-Iteration 10 — Embedded mount API v0 — DONE
+Iteration 11 — Generic artifact browser v1 — DONE
 ```
 
 Работает:
@@ -1648,5 +1689,6 @@ uv run pytest -q
 - `mount_beeui(...)` mounts BeeUI into parent FastAPI app;
 - adapter is validated and stored in `app.state.beeui_adapter`;
 - product metadata is stored in `app.state.beeui_product`;
-- no new `/api/*` routes;
-- adapter-backed rendering остаётся будущим scope.
+- artifact browser HTML/API routes работают через adapter;
+- `/api/runs/{run_id}/artifacts*` routes доступны при `features.browser_artifact: true`;
+- adapter-backed dashboard/runs rendering остаётся future scope.

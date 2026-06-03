@@ -4,6 +4,7 @@ import logging
 import subprocess
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 from beeui_module.cli.doctor import run_doctor
 from beeui_module.cli.main import main
@@ -42,8 +43,41 @@ def test_main_prints_routes(capsys) -> None:
     assert "GET /components/layout" in captured.out
     assert "GET /components/extra" in captured.out
     assert "GET /components/plugins" in captured.out
+    assert "GET /runs/{run_id}/artifacts" in captured.out
+    assert "GET /runs/{run_id}/artifacts/{artifact_id}" in captured.out
+    assert "GET /api/runs/{run_id}/artifacts" in captured.out
+    assert "GET /api/runs/{run_id}/artifacts/{artifact_id}" in captured.out
     assert "GET /health" in captured.out
     assert "GET /static/..." in captured.out
+
+
+def test_main_routes_hides_artifacts_when_feature_flag_false(
+    capsys,
+    monkeypatch,
+) -> None:
+    settings = {
+        "web": {"route_prefix": ""},
+        "features": {"browser_artifact": False},
+    }
+    ui_config = SimpleNamespace(
+        pages=[
+            SimpleNamespace(path="/"),
+            SimpleNamespace(path="/runs"),
+        ]
+    )
+
+    monkeypatch.setattr("beeui_module.core.settings.load_settings", lambda _: settings)
+    monkeypatch.setattr(
+        "beeui_module.pages.config.load_beeui_config",
+        lambda _: ui_config,
+    )
+
+    assert main(["routes"]) == 0
+
+    captured = capsys.readouterr()
+    assert "GET /" in captured.out
+    assert "GET /runs" in captured.out
+    assert "artifacts" not in captured.out
 
 
 # Тест: CLI route_prefix normalization совпадает с web route semantics.
