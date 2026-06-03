@@ -355,7 +355,7 @@ uv run --frozen --extra docs mkdocs build --strict
 | --------------------------------- | ----------------------------------------------------------------------------------------------------------- |
 | Обычный запуск                    | `./start.sh`                                                                                                |
 | Doctor                            | `./start.sh doctor`                                                                                         |
-| Web demo                          | `./start.sh web --host 127.0.0.1 --port 8780`                                                             |
+| Web demo                          | `./start.sh web --host 127.0.0.1 --port 8780`                                                               |
 | Тесты после запуска               | `uv run pytest -q`                                                                                          |
 | Добавить runtime-зависимость      | `uv add <package>` → `./start.sh` → `uv run pytest -q` → commit `pyproject.toml` + `uv.lock`                |
 | Добавить dev-зависимость          | `uv add --optional dev <package>` → `./start.sh` → `uv run pytest -q` → commit `pyproject.toml` + `uv.lock` |
@@ -1234,6 +1234,7 @@ container: beeagent-api
 - Комментарии на русском добавляй только там, где без них теряется смысл.
 - Все команды запуска, тестов и smoke-check указывай через `uv run` или `./start.sh`.
 - Не меняй `pyproject.toml.version`, если задача явно не про релиз.
+- Не меняй `uv.lock`, если задача не меняет dependencies.
 
 ### Формат ответа
 

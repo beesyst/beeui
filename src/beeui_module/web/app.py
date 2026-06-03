@@ -10,6 +10,7 @@ from fastapi.templating import Jinja2Templates
 
 from beeui_module.adapters.base import ProductUiAdapter
 from beeui_module.adapters.envelopes import AdapterMetadata
+from beeui_module.artifacts.routes import register_artifact_routes
 from beeui_module.core.paths import schema_path, settings_path
 from beeui_module.core.settings import load_settings
 from beeui_module.core.version import get_version
@@ -142,6 +143,7 @@ def create_beeui_app(
     web_cfg = resolved_settings["web"]
     security_cfg = resolved_settings["security"]
     product_cfg = resolved_settings["product"]
+    features_cfg = resolved_settings["features"]
 
     route_prefix = _normalize_prefix(web_cfg["route_prefix"])
     static_cache_seconds = web_cfg["cache_static"]
@@ -204,6 +206,16 @@ def create_beeui_app(
         product_title=product_meta["title"],
         product_id=product_meta["id"],
     )
+
+    if features_cfg["browser_artifact"]:
+        register_artifact_routes(
+            app=app,
+            templates=templates,
+            route_prefix=route_prefix,
+            ui_config=resolved_ui_config,
+            product_title=product_meta["title"],
+            product_id=product_meta["id"],
+        )
 
     @app.get(health_path, response_class=JSONResponse)
     async def health() -> JSONResponse:

@@ -30,7 +30,7 @@ product:
   adapter: static
 
 features:
-  browser_artifact: false
+  browser_artifact: true
   config_preview: false
   config_apply: false
   operator_actions: false

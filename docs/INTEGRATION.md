@@ -1,22 +1,25 @@
 # INTEGRATION — подключение BeeUI к Bee-продуктам
 
-## Purpose
+## Назначение
 
-This document describes how Bee-продукты (`beecap`, `beeagent` и будущие) подключают BeeUI как embedded UI layer.
+Этот документ описывает, как Bee-продукты (`beecap`, `beeagent` и будущие) подключают BeeUI как embedded UI layer.
 
-## Current status
+## Текущий статус
 
-**Iteration 10** — Embedded mount API v0.
+**Iteration 11** — Generic artifact browser v1.
 
-- Generic `ProductUiAdapter` contract exists in `src/beeui_module/adapters/`.
-- `BeeCapFixtureAdapter` in `src/beeui_module/adapters/beecap.py` is a fixture/reference implementation only.
-- Real BeeCap adapter must live on the BeeCap side (see below).
-- Embedded mount API (`create_beeui_app(adapter=...)`) is **implemented**.
-- Mount helper `mount_beeui(...)` is **implemented**.
-- Adapter is accepted, validated and stored in `app.state`, but **not yet used** for adapter-backed dashboard/runs/artifact rendering (planned for Iteration 12+).
-- This is an MVP integration path — production-ready after adapter-backed rendering.
+- Generic `ProductUiAdapter` contract существует в `src/beeui_module/adapters/`.
+- `BeeCapFixtureAdapter` в `src/beeui_module/adapters/beecap.py` — только fixture/reference implementation.
+- Реальный BeeCap adapter должен жить на стороне BeeCap (см. ниже).
+- Embedded mount API (`create_beeui_app(adapter=...)`) реализован.
+- Mount helper `mount_beeui(...)` реализован.
+- Adapter принимается, валидируется и сохраняется в `app.state`.
+- Adapter-backed artifact browser реализован: `adapter.list_artifacts(run_id)` и `adapter.read_artifact(run_id, artifact_id)` вызываются из read-only HTML/JSON routes.
+- Artifact preview pipeline: `build_preview()` → JSON/JSONL/text/unsupported → redaction → безопасный render в escaped `<pre>`.
+- Artifact routes требуют adapter; без adapter возвращают 503 unavailable state.
+- Это MVP integration path; adapter-backed dashboard/runs rendering остаётся future scope (Iteration 12+).
 
-## Architecture boundary
+## Архитектурная граница
 
 ```text
 BeeCap (product side)
@@ -39,18 +42,18 @@ BeeUI (framework side)
   └── config/beeui.yml              ← product-specific UI config (future)
 ```
 
-Main rule:
+Главное правило:
 
 ```text
 BeeUI renders.
 Product decides.
 ```
 
-## Where the real BeeCap adapter should live
+## Где должен жить реальный BeeCap adapter
 
-The real `BeeCapUiAdapter` belongs in the BeeCap repository, **not** in BeeUI.
+Реальный `BeeCapUiAdapter` должен находиться в BeeCap repository, **не** в BeeUI.
 
-Expected location:
+Ожидаемое расположение:
 
 ```text
 src/beecap_module/interfaces/ui/
@@ -59,53 +62,53 @@ src/beecap_module/interfaces/ui/
   └── artifacts.py        ← artifact reading from BeeCap storage
 ```
 
-BeeCap-side adapter is responsible for:
+BeeCap-side adapter отвечает за:
 
 - reading BeeCap storage/artifacts;
 - constructing read-models (dashboard, runs, artifacts);
 - enforcing product-specific allowlists;
 - owning product authority decisions;
-- implementing bounded action callbacks (future).
+- implementing bounded action callbacks (future scope).
 
-## What BeeUI must NOT do during integration
+## Что BeeUI не должен делать во время интеграции
 
-- BeeUI must not read BeeCap storage/config directly.
-- BeeUI must not replicate trading/domain logic.
-- BeeUI must not make broker/order/runtime calls.
-- BeeUI must not become a second source of truth for product state.
-- BeeUI must not mutate product artifacts through read-only routes.
-- BeeUI must not import `beecap_module` directly.
+- BeeUI не должен читать BeeCap storage/config напрямую.
+- BeeUI не должен копировать trading/domain logic.
+- BeeUI не должен выполнять broker/order/runtime calls.
+- BeeUI не должен становиться вторым source of truth для product state.
+- BeeUI не должен мутировать product artifacts через read-only routes.
+- BeeUI не должен импортировать `beecap_module` напрямую.
 
-## Current fixture adapter
+## Текущий fixture adapter
 
-`BeeCapFixtureAdapter` in `src/beeui_module/adapters/beecap.py` exists only to:
+`BeeCapFixtureAdapter` в `src/beeui_module/adapters/beecap.py` существует только для:
 
-- validate the `ProductUiAdapter` contract against realistic BeeCap-shaped data;
-- provide a reference implementation for BeeCap-side adapter developers;
-- enable integration tests without a real BeeCap dependency.
+- проверки `ProductUiAdapter` contract на realistic BeeCap-shaped data;
+- reference implementation для BeeCap-side adapter developers;
+- integration tests без real BeeCap dependency.
 
-It is **not** a production adapter.
+Это **не** production adapter.
 
-It does **not**:
+Он **не** делает следующее:
 
-- read BeeCap storage;
-- implement trading/profit/order logic;
-- provide route-level integration;
-- replace the future real BeeCapUiAdapter.
+- читает BeeCap storage;
+- реализует trading/profit/order logic;
+- предоставляет route-level integration;
+- заменяет будущий real `BeeCapUiAdapter`.
 
-## Example embedded config
+## Пример embedded config
 
-An example of what a future BeeCap-specific `beeui.yml` might look like is in:
+Пример будущего BeeCap-specific `beeui.yml` находится здесь:
 
 ```text
 examples/beecap_embedded/beeui.yml
 ```
 
-This file is **not loaded at runtime**. It is documentation only.
+Этот файл **не загружается в runtime**. Это только документация.
 
-## Current integration flow (Iteration 10)
+## Текущий embedded integration flow
 
-### Using `create_beeui_app()`
+### Через `create_beeui_app()`
 
 ```python
 from beeui_module.web.app import create_beeui_app
@@ -119,7 +122,7 @@ app = create_beeui_app(
 )
 ```
 
-### Using `mount_beeui()`
+### Через `mount_beeui()`
 
 ```python
 from fastapi import FastAPI
@@ -138,26 +141,31 @@ mount_beeui(
 )
 ```
 
-After mounting, BeeUI routes are available under `/ui/`:
+После mount маршруты BeeUI доступны под `/ui/`:
 
 ```
 /ui/
 /ui/health
 /ui/static/...
 /ui/components
+/ui/runs/{run_id}/artifacts
+/ui/runs/{run_id}/artifacts/{artifact_id}
+/ui/api/runs/{run_id}/artifacts
+/ui/api/runs/{run_id}/artifacts/{artifact_id}
 ```
 
-### Important limitations
+### Важные ограничения
 
-- Adapter is accepted, validated and stored in `app.state.beeui_adapter`, but **not yet used** for adapter-backed dashboard/runs/artifact rendering.
-- Product metadata is stored in `app.state.beeui_product`.
-- Current demo mode (`create_beeui_app()` without arguments) remains fully backward-compatible.
-- Adapter-backed rendering is planned for Iteration 12+.
-- BeeAgent adapter implementation is future scope.
+- Adapter принимается, валидируется и сохраняется в `app.state.beeui_adapter`.
+- Adapter-backed artifact browser реализован в Iteration 11 (read-only HTML/JSON routes через adapter).
+- Adapter-backed dashboard/runs rendering остаётся future scope (Iteration 12+).
+- Product metadata сохраняется в `app.state.beeui_product`.
+- Demo mode (`create_beeui_app()` без аргументов) остаётся backward-compatible.
+- BeeAgent adapter implementation остаётся future scope.
 
-## Security notes
+## Security notes / Замечания по безопасности
 
-- All adapter input (run_id, artifact_id) is validated through `beeui_module.adapters.ids`.
-- Adapter envelopes use stable `ok|partial|error` status — raw exceptions are not leaked.
-- Secrets must never cross the adapter boundary into BeeUI.
-- Write/action adapter methods are unavailable by default.
+- Все adapter inputs (`run_id`, `artifact_id`) валидируются через `beeui_module.adapters.ids`.
+- Adapter envelopes используют стабильный status `ok|partial|error`; raw exceptions не попадают в response.
+- Secrets не должны пересекать adapter boundary и попадать в BeeUI.
+- Write/action adapter methods недоступны по умолчанию.

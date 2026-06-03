@@ -1,0 +1,147 @@
+{% extends "base.html" %} {% block title %}Artifact · {{ artifact_id }} · {{
+app_title }}{% endblock %} {% block content %}
+<div class="page-header d-print-none">
+  <div class="container-xl">
+    <div class="row g-2 align-items-center">
+      <div class="col">
+        <h2 class="page-title">Artifact: {{ artifact_id }}</h2>
+        <div class="text-secondary mt-1">Run: {{ run_id }}</div>
+      </div>
+      <div class="col-auto ms-auto d-print-none">
+        <a
+          href="{{ route_prefix }}/runs/{{ run_id }}/artifacts"
+          class="btn btn-outline-secondary"
+        >
+          Back to artifacts
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="page-body">
+  <div class="container-xl">
+    {% if not adapter_available %}
+    <div class="alert alert-warning" role="alert">
+      <h4 class="alert-title">Adapter unavailable</h4>
+      <p class="mb-0">{{ error }}</p>
+    </div>
+    {% elif error %}
+    <div class="alert alert-danger" role="alert">
+      <h4 class="alert-title">Error</h4>
+      <p class="mb-0">{{ error }}</p>
+    </div>
+    {% elif preview is none %}
+    <div class="empty">
+      <div class="empty-header">No data</div>
+      <p class="empty-subtitle text-secondary">
+        Artifact data could not be loaded.
+      </p>
+    </div>
+    {% elif preview.metadata_only and not preview.error %}
+    <div class="card">
+      <div class="card-header">
+        <h3 class="card-title">Artifact metadata</h3>
+      </div>
+      <div class="card-body">
+        <dl class="row">
+          <dt class="col-3">Artifact ID</dt>
+          <dd class="col-9">{{ preview.artifact_id }}</dd>
+          <dt class="col-3">Content Type</dt>
+          <dd class="col-9">
+            <span class="badge bg-secondary">{{ preview.content_type }}</span>
+          </dd>
+          <dt class="col-3">Preview Type</dt>
+          <dd class="col-9">
+            <span class="badge bg-info">{{ preview.preview_type }}</span>
+          </dd>
+        </dl>
+        <p class="text-secondary">
+          Preview not available for this artifact type.
+        </p>
+      </div>
+    </div>
+    {% elif preview.error %}
+    <div class="alert alert-danger" role="alert">
+      <h4 class="alert-title">Preview error</h4>
+      <p class="mb-0">{{ preview.error }}</p>
+    </div>
+    <div class="card mt-3">
+      <div class="card-header">
+        <h3 class="card-title">Artifact metadata</h3>
+      </div>
+      <div class="card-body">
+        <dl class="row">
+          <dt class="col-3">Artifact ID</dt>
+          <dd class="col-9">{{ preview.artifact_id }}</dd>
+          <dt class="col-3">Content Type</dt>
+          <dd class="col-9">
+            <span class="badge bg-secondary">{{ preview.content_type }}</span>
+          </dd>
+        </dl>
+      </div>
+    </div>
+    {% else %}
+    <div class="card">
+      <div class="card-header">
+        <h3 class="card-title">
+          {{ preview.artifact_id }}
+          <span class="badge bg-secondary ms-2"
+            >{{ preview.content_type }}</span
+          >
+          {% if preview.preview_type == "json" %}
+          <span class="badge bg-info ms-1">JSON</span>
+          {% elif preview.preview_type == "jsonl" %}
+          <span class="badge bg-info ms-1">JSONL</span>
+          {% elif preview.preview_type == "text" %}
+          <span class="badge bg-info ms-1">Text</span>
+          {% endif %} {% if preview.truncated %}
+          <span class="badge bg-warning ms-1">Truncated</span>
+          {% endif %}
+        </h3>
+      </div>
+
+      {% if preview.row_warnings %}
+      <div class="card-body border-bottom">
+        {% for warning in preview.row_warnings %}
+        <div class="alert alert-warning py-1 mb-1" role="alert">
+          {{ warning }}
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      <div class="card-body p-0">
+        {% if preview.preview_type == "json" %}
+        <pre
+          class="m-0 p-3"
+        ><code>{{ preview.preview_data | tojson(indent=2) }}</code></pre>
+        {% elif preview.preview_type == "jsonl" and preview.preview_data is
+        iterable and preview.preview_data is not string %}
+        <pre
+          class="m-0 p-3"
+        ><code>{% for row in preview.preview_data %}{{ row | tojson }}
+{% endfor %}</code></pre>
+        {% elif preview.preview_type == "text" %}
+        <pre class="m-0 p-3"><code>{{ preview.preview_data }}</code></pre>
+        {% endif %}
+      </div>
+
+      {% if preview.row_count is not none %}
+      <div class="card-footer text-secondary">
+        {{ preview.row_count }} row(s){% if preview.truncated %} (showing first
+        {{ preview.preview_data | length if preview.preview_data is iterable
+        else 0 }} rows){% endif %}
+      </div>
+      {% endif %} {% if preview.truncated and preview.preview_type == "text" and
+      preview.preview_data %}
+      <div class="card-footer text-secondary">
+        Content truncated (showing first {{ preview.preview_data | length }}
+        characters).
+      </div>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
