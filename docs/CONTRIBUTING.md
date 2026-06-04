@@ -150,6 +150,13 @@ git push origin --delete feat/8-iteration-0-frame_and_launch
 git fetch -p
 ```
 
+5. Опубликовать новую версию `beeui` как устанавливаемый пакет:
+
+```
+uv build
+uv publish
+```
+
 ### Проверка PR соразработчика
 
 **Создать отдельную папку под PR, выполняется из основной папке проекта**
