@@ -1762,7 +1762,7 @@ BeeUI can list and preview allowlisted product artifacts through `ProductUiAdapt
 - graceful unavailable state (503 HTML / JSON error) при отсутствии adapter;
 - redaction placeholder (`redact_value`, `redact_text`) для `secret`/`token`/`password`/`api_key`/`api_secret` и аналогичных ключей;
 - 46 тестов в `tests/test_artifacts.py`: redaction, preview (JSON/JSONL/text/malformed/large/unsupported), HTML routes, JSON API routes, invalid IDs, missing adapter, route prefix, security (escaping, no mutation, no write routes, no beecap import);
-- обновлены тесты embedded (ожидаемые /api/* routes);
+- обновлены тесты embedded (ожидаемые /api/\* routes);
 - обновлены docs: ROADMAP, WEB_UI, INTEGRATION, README.
 
 #### DoD
@@ -1778,469 +1778,478 @@ BeeUI can list and preview allowlisted product artifacts through `ProductUiAdapt
 
 ---
 
-## Этап 5 — BeeCap replacement MVP
+## Этап 5 — Adapter-backed Product Console MVP
 
-### Итерация 12 — BeeCap dashboard parity MVP
-
-**Статус:** PLANNED
-
-#### Goal
-
-Довести BeeUI до минимальной практической замены текущего BeeCap web dashboard.
-
-#### Scope
-
-Включено:
-
-- dashboard page;
-
-- mode-aware sections:
-  - dry-run;
-  - paper;
-  - live;
-
-- venue-aware sections:
-  - MRKT;
-  - Binance;
-
-- KPI cards:
-  - latest run;
-  - runtime status;
-  - active orders;
-  - open positions/cycles;
-  - completed cycles/trades;
-  - realized profit where available;
-
-- run links;
-
-- artifact links;
-
-- graceful missing state;
-
-- degraded state for partial/corrupted artifacts.
-
-Не включено:
-
-- config apply;
-- operator launch;
-- advanced charts;
-- auth;
-- no-code builder;
-- BeeCap trading/business logic inside BeeUI.
-
-#### Deliverable
-
-BeeCap can render useful operator dashboard through BeeUI.
-
-#### Checks
-
-- dashboard normal state;
-- no latest run state;
-- MRKT artifact fixture;
-- Binance live artifact fixture;
-- paper artifact fixture;
-- partial/corrupted artifact fixture;
-- no mutation;
-- no secret leakage;
-- `pytest -q`.
-
-#### DoD
-
-- BeeUI dashboard gives enough value to stop expanding BeeCap templates manually;
-- BeeCap-specific calculations remain in BeeCap adapter/read-model;
-- dashboard is read-only;
-- operator can inspect current product state without browsing storage manually.
-
-### Итерация 13 — Runs list and run overview MVP
+### Итерация 12 — Adapter-backed Product Console MVP
 
 **Статус:** PLANNED
 
 #### Goal
 
-Добавить reusable run list and run detail pages.
+Сделать BeeUI полноценным adapter-backed product console MVP: dashboard, runs, run detail, venue dashboards and stable read-only JSON API through `ProductUiAdapter`.
 
-#### Scope
-
-Включено:
-
-- `/runs`;
-- `/runs/{run_id}`;
-- search/filter/sort v0;
-- run metadata;
-- health/status;
-- mode/venue filters where adapter provides fields;
-- latest decision/explain summary if adapter provides it;
-- linked artifacts;
-- source artifact references;
-- partial state rendering.
-
-Не включено:
-
-- advanced charts;
-- replay engine;
-- write actions;
-- DB index;
-- product-specific calculations in BeeUI.
-
-#### Deliverable
-
-Operator can inspect product runs through BeeUI.
-
-#### Checks
-
-- run list render;
-- filter by mode/venue;
-- sort by timestamp/status;
-- run detail render;
-- malformed run_id rejection;
-- missing run;
-- partial artifacts;
-- no mutation;
-- `pytest -q`.
-
-#### DoD
-
-- runs can be inspected without manual storage browsing;
-- run detail remains read-only;
-- source artifact links visible;
-- BeeUI uses adapter read-model only.
-
-### Итерация 14 — Stable BeeUI API v0 for dashboard/runs/artifacts
-
-**Статус:** PLANNED
-
-#### Goal
-
-Зафиксировать первый JSON API contract для будущего separate frontend.
-
-#### Scope
-
-Включено:
-
-- API response envelope;
-- routes:
+Эта итерация заменяет старые отдельные planned-итерации:
 
 ```text
+It12 — BeeCap dashboard parity MVP
+It13 — Runs list and run overview MVP
+It14 — Stable BeeUI API v0 for dashboard/runs/artifacts
+```
+
+#### Почему это нужно
+
+После Iteration 10–11 BeeUI уже можно embedded-подключить к BeeCap и показывать artifacts через adapter, но BeeUI всё ещё не является полноценной заменой product console.
+
+Для практической BeeCap migration нельзя растягивать базовую read-only console на три отдельные BeeUI-итерации. BeeCap должен быстро получить один полезный `/beeui` surface:
+
+- dashboard;
+- runs;
+- run detail;
+- venue dashboards;
+- source/evidence links;
+- stable read-only API.
+
+BeeUI при этом остаётся generic renderer. Product-specific semantics остаются в product adapter/read-model.
+
+#### Scope
+
+**Включено:**
+
+- adapter-backed dashboard routes:
+
+```text
+GET /
 GET /api/dashboard
+```
+
+- adapter-backed runs routes:
+
+```text
+GET /runs
+GET /runs/{run_id}
 GET /api/runs
 GET /api/runs/{run_id}
+```
+
+- adapter-backed venue dashboard routes:
+
+```text
+GET /venues/{venue_id}
+GET /api/venues/{venue_id}/dashboard
+```
+
+- reuse existing artifact browser routes from Iteration 11:
+
+```text
+GET /runs/{run_id}/artifacts
+GET /runs/{run_id}/artifacts/{artifact_id}
 GET /api/runs/{run_id}/artifacts
 GET /api/runs/{run_id}/artifacts/{artifact_id}
 ```
 
-- error envelope;
-- partial-data envelope;
-- API/UI parity tests;
-- `docs/API_CONTRACT.md`.
+- generic renderer support for adapter payloads:
+  - KPI grid;
+  - metric cards;
+  - status cards;
+  - tables;
+  - links;
+  - source/evidence links;
+  - warnings;
+  - empty states;
+  - degraded states;
+  - partial states;
 
-Не включено:
+- stable read-only API envelope v0:
 
-- public external API;
-- auth/RBAC;
-- websocket/SSE;
-- React/Vue frontend;
-- write/action API.
+```json
+{
+  "ok": true,
+  "api": "beeui.v0",
+  "read_only": true,
+  "data": {},
+  "warnings": [],
+  "meta": {}
+}
+```
+
+- adapter result/error normalization into BeeUI API envelope;
+- UI/API parity tests;
+- route prefix compatibility;
+- embedded mount compatibility;
+- missing adapter state;
+- adapter unavailable/error state;
+- malformed adapter payload handling;
+- source/evidence links rendered safely;
+- docs update:
+  - `docs/API_CONTRACT.md`;
+  - `docs/WEB_UI.md`;
+  - `docs/INTEGRATION.md`;
+  - `docs/ROADMAP.md`;
+  - `README.ru.md` if route list is maintained there.
+
+#### Adapter contract extension
+
+If needed, extend `ProductUiAdapter` with product-neutral read-only methods:
+
+```python
+list_venues()
+get_venue_dashboard(venue_id: str)
+```
+
+Rules:
+
+- new methods must be read-only;
+- default implementation may return explicit unavailable/error envelope;
+- no product-specific venue assumptions in BeeUI;
+- venue id must pass safe ID validation;
+- BeeUI must not know `mrkt`, `binance`, or any product-specific semantics.
+
+#### Не включено
+
+- BeeCap imports;
+- BeeAgent imports;
+- product-specific calculations;
+- direct product storage reads;
+- arbitrary filesystem browsing;
+- config apply;
+- operator actions;
+- auth/session/RBAC;
+- standalone BeeUI service;
+- React/Vue/Svelte frontend;
+- no-code builder;
+- provider/broker/runtime calls.
 
 #### Deliverable
 
-Future frontend can attach to BeeUI backend read-model.
+BeeUI can render a useful read-only product console from any product adapter.
+
+BeeCap can use this iteration as the generic rendering foundation for replacing its read-only web console through BeeCap-side adapter/read-model code.
 
 #### Checks
 
-- response shape tests;
-- UI/API parity;
-- error envelope;
-- partial envelope;
-- malformed input;
-- no secret leakage;
-- OpenAPI smoke;
-- `pytest -q`.
+- `uv run pytest -q`;
+- `./start.sh doctor`;
+- `./start.sh routes`;
+- dashboard route with fake adapter;
+- dashboard API with fake adapter;
+- runs route with fake adapter;
+- runs API with fake adapter;
+- run detail route with fake adapter;
+- run detail API with fake adapter;
+- venue dashboard route with fake adapter;
+- venue dashboard API with fake adapter;
+- artifact routes still work;
+- invalid `run_id` rejected;
+- invalid `venue_id` rejected;
+- adapter unavailable state;
+- adapter error envelope;
+- malformed adapter payload;
+- route prefix compatibility;
+- embedded mount compatibility;
+- source/evidence links rendered safely;
+- no mutation from GET routes;
+- no secrets in HTML/API/logs;
+- no external assets/scripts introduced;
+- no `beecap_module` / `beeagent_module` import.
 
 #### DoD
 
-- API responses deterministic;
-- documented contract exists;
-- frontend does not need to read product storage directly;
-- server-rendered UI remains canonical for MVP.
+- BeeUI has adapter-backed dashboard/runs/run detail/venue pages;
+- server-rendered UI and JSON API are aligned;
+- API envelope is stable and documented;
+- Product adapter remains the only source of product semantics;
+- BeeUI does not invent product metrics;
+- BeeUI does not read product storage directly;
+- BeeUI remains read-only;
+- no product-specific logic is introduced into BeeUI core.
 
 ---
 
-## Этап 6 — Config/admin/operator foundation
+## Этап 6 — Config/Auth/Actions foundation
 
-### Итерация 15 — Config read-model and validation preview v1
+### Итерация 13 — Config/Auth/Actions foundation MVP
 
 **Статус:** PLANNED
 
 #### Goal
 
-Дать общий config read-model and validation preview layer без arbitrary YAML editor.
+Добавить минимальный reusable foundation для config read/preview/apply, auth/session/CSRF and bounded operator actions.
+
+Эта итерация заменяет старые отдельные planned-итерации:
+
+```text
+It15 — Config read-model and validation preview v1
+It16 — Bounded config apply and audit v1
+It17 — Bounded operator actions v1
+It18 — Auth/session/RBAC v0
+```
+
+#### Почему это нужно
+
+Config apply, admin actions and operator controls нельзя развивать отдельно от auth/session/CSRF boundary.
+
+Правильный порядок:
+
+```text
+read-only product console first
+then route switch
+then config/auth/actions foundation
+```
+
+Эта итерация не должна блокировать BeeCap read-only MVP. Она нужна после того, как BeeUI уже доказал себя как canonical read-only console.
+
+#### Change level
+
+**security-sensitive**
+
+Причина:
+
+- auth/session boundary;
+- CSRF;
+- POST routes;
+- config mutation;
+- operator action execution callbacks;
+- audit handoff;
+- secrets redaction;
+- role-aware access;
+- product callback authority boundary.
 
 #### Scope
 
-Включено:
+**Включено:**
 
-- config read-model;
-- editable/non-editable/redacted fields;
-- allowlisted future-editable keys;
-- validation preview;
-- product validation callback;
-- diff summary;
-- redaction rules;
-- HTML page and JSON endpoints:
+- config read-model routes:
 
 ```text
 GET /config
 GET /api/config/read-model
+```
+
+- config preview/apply routes:
+
+```text
 POST /api/config/preview
+POST /api/config/apply
 ```
 
-Не включено:
-
-- actual config write;
-- secrets editing;
-- arbitrary YAML editor;
-- live/broker controls.
-
-#### Deliverable
-
-Operator sees config and can preview proposed changes without writing.
-
-#### Checks
-
-- read-model rendering;
-- allowed preview;
-- forbidden key rejection;
-- invalid value rejection;
-- secrets redaction;
-- no file mutation;
-- CSRF placeholder if auth not implemented yet;
-- `pytest -q`.
-
-#### DoD
-
-- preview is read-only;
-- product validation callback reused;
-- secrets are not displayed;
-- no second config source;
-- no arbitrary YAML editor.
-
-### Итерация 16 — Bounded config apply and audit v1
-
-**Статус:** PLANNED
-
-#### Goal
-
-Добавить безопасный config apply workflow для allowlisted keys.
-
-#### Scope
-
-Включено:
-
-- apply endpoint/form;
-- stale config hash guard;
-- backup before write;
-- audit artifact for accepted/rejected attempts;
-- atomic/rollback-friendly write;
-- product validation callback;
-- explicit rejection reasons.
-
-Suggested artifacts:
+- action routes:
 
 ```text
-storage/interfaces/config_revisions/<change_id>/settings.before.yml
-storage/interfaces/config_changes/<change_id>/audit.json
+GET /actions
+GET /api/actions
+POST /api/actions/{action_id}/preview
+POST /api/actions/{action_id}/execute
 ```
 
-Не включено:
+- adapter callbacks:
 
-- secrets editing;
-- broker/live manual controls;
-- full YAML editor;
-- automatic runtime restart.
+```python
+get_config_read_model()
+validate_config_candidate(candidate)
+apply_config_candidate(candidate, expected_hash, actor)
 
-#### Deliverable
-
-BeeUI provides reusable bounded config apply layer; product defines allowlist and validation.
-
-#### Checks
-
-- allowed apply;
-- forbidden apply;
-- stale hash rejection;
-- invalid candidate rejection;
-- backup creation;
-- audit creation;
-- no secret leakage;
-- `pytest -q`.
-
-#### DoD
-
-- every apply attempt audited;
-- source config remains canonical;
-- write allowed only through product-defined allowlist;
-- no hidden runtime restart;
-- no secret editing.
-
-### Итерация 17 — Bounded operator actions v1
-
-**Статус:** PLANNED
-
-#### Goal
-
-Добавить generic bounded action framework для operator controls без прямой runtime authority в BeeUI.
-
-#### Scope
-
-Включено:
-
-- action registry;
-- action forms;
-- confirmation;
-- product action callback;
-- validation;
-- result envelope;
-- audit artifact;
-- disabled/denied/unavailable states.
-
-Suggested artifacts:
-
-```text
-storage/interfaces/operator_actions/<action_id>.json
+list_actions()
+preview_action(action_id, payload)
+execute_action(action_id, payload, actor)
 ```
 
-Не включено:
+- minimal auth/session layer:
+  - explicit local/dev auth-disabled mode;
+  - token/session mode;
+  - signed session cookie;
+  - login route;
+  - logout route;
+  - role model:
+    - `viewer`;
+    - `operator`;
+    - `admin`;
 
-- broker/manual order console;
-- direct execution inside BeeUI;
-- hidden background jobs;
-- live authority by default.
+- CSRF protection for browser POST routes;
 
-#### Deliverable
+- no default password/token/session secret in repository;
 
-BeeUI can show bounded operator buttons/forms, but execution happens only through product-owned callback/API.
+- fail-fast validation when auth is enabled but required secret/token config is missing;
 
-#### Checks
+- security headers baseline:
+  - `Cache-Control: no-store` for HTML/auth/config/action pages;
+  - `X-Content-Type-Options`;
+  - frame protection header where practical;
 
-- allowed action;
-- denied action;
-- unavailable action;
-- invalid payload;
-- audit linkage;
-- no secret leakage;
-- no direct runtime execution;
-- `pytest -q`.
+- config read-model rendering:
+  - editable fields;
+  - non-editable fields;
+  - redacted secrets;
+  - config hash / version token where product provides it;
+  - product-provided allowlist;
 
-#### DoD
+- config preview:
+  - no mutation;
+  - product validation callback only;
+  - explicit rejection reasons;
 
-- BeeUI never executes product logic directly;
-- all actions go through explicit product callback;
-- all action attempts audited;
-- read-only remains default.
+- config apply:
+  - product callback only;
+  - expected hash / stale guard support;
+  - product-owned backup/audit behavior or audit hook;
+  - no arbitrary YAML editor;
 
----
+- action framework:
+  - list actions;
+  - preview action;
+  - execute action through product callback only;
+  - allowed/blocked/denied/unavailable states;
+  - confirmation-ready response model;
+  - audit hook convention;
 
-## Этап 7 — Auth/security layer
+- docs update:
+  - `docs/SECURITY.md`;
+  - `docs/API_CONTRACT.md`;
+  - `docs/WEB_UI.md`;
+  - `docs/INTEGRATION.md`;
+  - `docs/ROADMAP.md`.
 
-### Итерация 18 — Auth/session/RBAC v0
-
-**Статус:** PLANNED
-
-#### Goal
-
-Добавить минимальный локальный auth layer для BeeUI.
-
-#### Scope
-
-Включено:
-
-- login/logout;
-
-- password hash;
-
-- signed session cookie;
-
-- roles:
-  - admin;
-  - operator;
-  - viewer;
-
-- route protection;
-
-- CSRF protection for POST routes;
-
-- secure cookie settings where applicable;
-
-- no default admin password in repo;
-
-- explicit local/dev auth-disabled mode.
-
-Не включено:
+#### Не включено
 
 - OAuth;
 - SSO;
-- 2FA;
-- multi-tenant SaaS auth;
-- external user management.
+- user database;
+- password reset;
+- multi-tenant model;
+- SQLAdmin;
+- arbitrary YAML editor;
+- secrets editing;
+- direct runtime execution in BeeUI;
+- direct broker/provider/manual order controls;
+- background jobs;
+- process supervisor;
+- standalone service;
+- public SaaS auth model.
 
 #### Deliverable
 
-BeeUI can protect internal operator/admin UI.
+BeeUI can host product-owned config/admin/action workflows safely through callbacks, without owning runtime authority.
+
+Products define:
+
+- config read-model;
+- editable allowlist;
+- validation;
+- apply behavior;
+- backup/audit artifacts;
+- available actions;
+- action preview/execute behavior.
+
+BeeUI provides:
+
+- rendering;
+- auth/session shell;
+- CSRF protection;
+- role checks;
+- callback dispatch;
+- stable HTML/API envelopes.
 
 #### Checks
 
-- login success/failure;
-- role access;
-- logout;
-- POST CSRF rejection;
-- no plaintext password;
-- no session secret leakage;
+- `uv run pytest -q`;
+- `./start.sh doctor`;
+- `./start.sh routes`;
 - auth disabled only when explicitly configured;
-- `pytest -q`.
+- auth enabled with missing token/session secret fails fast;
+- login success;
+- login failure;
+- logout;
+- unauthenticated POST rejected when auth enabled;
+- CSRF missing rejected;
+- CSRF invalid rejected;
+- viewer denied config apply/action execute;
+- operator allowed action where adapter allows;
+- admin access works for admin/config routes;
+- config read-model renders redacted fields;
+- config preview does not mutate;
+- config apply calls adapter only;
+- forbidden config key rejected by adapter;
+- stale hash rejected when product reports stale candidate;
+- action list renders;
+- action preview calls adapter only;
+- action execute calls adapter only;
+- denied action returns explicit reason;
+- no session/token secret leakage;
+- no secrets in HTML/API/logs;
+- no arbitrary YAML editor;
+- no direct product execution in BeeUI;
+- no provider/broker/runtime calls from BeeUI.
 
 #### DoD
 
-- all non-public routes protected when auth enabled;
-- write routes require role + CSRF;
-- secrets not logged;
-- auth can be disabled only explicitly for local/dev.
+- BeeUI owns reusable auth/session/CSRF shell;
+- BeeUI does not execute product logic directly;
+- config/action flows go through product callbacks;
+- mutation requires product validation and product-owned audit/backup handoff;
+- local unauthenticated mode is explicit and documented;
+- role semantics are ready for product usage;
+- no hidden write/control path is introduced;
+- docs describe the authority boundary.
 
 ---
 
-## Этап 8 — BeeAgent integration
+## Этап 7 — BeeAgent integration
 
-### Итерация 19 — BeeAgent adapter MVP
+### Итерация 14 — BeeAgent adapter MVP
 
 **Статус:** PLANNED
 
 #### Goal
 
-Подключить BeeAgent к BeeUI через adapter/schema без копирования BeeCap UI.
+Подключить BeeAgent к BeeUI через the same adapter-backed product console, without copying BeeCap UI.
+
+#### Почему это нужно
+
+BeeUI сначала должен быть доказан на BeeCap migration. После этого BeeAgent может использовать тот же product-neutral contract:
+
+```text
+Product adapter -> BeeUI console -> artifacts/config/actions
+```
+
+BeeAgent не должен получать отдельный UI stack и не должен давать BeeUI прямую authority над MCP/tools/LLM/runtime.
 
 #### Scope
 
-Включено:
+**Включено:**
 
-- `BeeAgentUiAdapter`;
-- dashboard;
-- modules;
-- runs;
-- artifacts;
-- capabilities;
-- approvals placeholder;
-- bounded action placeholders;
-- `examples/beeagent_embedded/beeui.yml`.
+- BeeAgent-compatible fixture/reference adapter;
+- example BeeAgent embedded config:
 
-Не включено:
+```text
+examples/beeagent_embedded/beeui.yml
+```
 
-- execution authority;
-- autonomous agent controls;
-- MCP write actions;
-- no-code builder;
-- direct local LLM/tool execution from BeeUI.
+- adapter-backed pages for:
+  - dashboard;
+  - modules;
+  - runs;
+  - run detail;
+  - artifacts;
+  - capabilities;
+  - approvals placeholder;
+  - bounded action placeholders;
+
+- capability/readiness indicators:
+  - module status;
+  - enabled/disabled capabilities;
+  - degraded/unavailable states;
+  - approval-required placeholders;
+
+- authority boundary tests;
+
+- docs update:
+  - `docs/INTEGRATION.md`;
+  - `docs/API_CONTRACT.md`;
+  - `docs/WEB_UI.md`;
+  - `docs/ROADMAP.md`.
 
 #### Expected BeeAgent side
 
-BeeAgent should provide a thin integration module:
+Real BeeAgent integration should live in BeeAgent, for example:
 
 ```text
 src/beeagent_module/interfaces/ui/
@@ -2251,34 +2260,57 @@ src/beeagent_module/interfaces/ui/
   actions.py
 ```
 
+BeeUI may contain only fixture/reference data proving the contract.
+
+#### Не включено
+
+- MCP execution;
+- tool calls from BeeUI;
+- local LLM execution from BeeUI;
+- autonomous agent controls;
+- direct runtime authority;
+- direct n8n/MCP/action execution;
+- secrets in prompts/logs/artifacts;
+- no-code builder;
+- BeeAgent production adapter inside BeeUI.
+
 #### Deliverable
 
-BeeAgent receives operator UI through BeeUI.
+BeeAgent can reuse BeeUI after BeeCap proves the architecture.
+
+BeeUI remains product-neutral and does not know BeeAgent execution internals.
 
 #### Checks
 
+- `uv run pytest -q`;
+- fake BeeAgent dashboard;
 - modules page;
 - runs page;
+- run detail page;
 - artifacts page;
 - capabilities page;
 - approvals placeholder;
 - missing/partial artifacts;
+- degraded capability state;
+- action placeholders are denied/unavailable unless product callback allows them;
 - no secret leakage;
-- authority boundary tests;
-- `pytest -q`.
+- no direct MCP/tool/LLM execution;
+- no BeeAgent runtime imports;
+- authority boundary tests.
 
 #### DoD
 
-- BeeAgent UI is built through BeeUI;
+- BeeAgent UI uses BeeUI contract;
+- BeeUI remains product-neutral;
 - BeeAgent keeps authority boundary;
 - capabilities/actions remain product-controlled;
 - BeeUI never directly calls MCP/tools/LLM/runtime execution.
 
 ---
 
-## Этап 9 — Frontend/no-code foundation
+## Этап 8 — Future frontend/no-code/standalone
 
-### Итерация 20 — Dashboard schema editor v0
+### Итерация 15 — Dashboard schema editor v0
 
 **Статус:** FUTURE
 
@@ -2305,7 +2337,9 @@ BeeAgent receives operator UI through BeeUI.
 - arbitrary HTML;
 - custom JS;
 - plugin marketplace;
-- full frontend builder.
+- full frontend builder;
+- product runtime controls;
+- broker/provider actions.
 
 #### Deliverable
 
@@ -2318,15 +2352,16 @@ Operator can change layout through safe schema, without editing YAML manually.
 - invalid layout rejection;
 - audit;
 - no arbitrary HTML/JS injection;
-- `pytest -q`.
+- `uv run pytest -q`.
 
 #### DoD
 
 - visual builder edits schema only;
 - schema validation protects layout;
-- no unsafe templates/scripts accepted.
+- no unsafe templates/scripts accepted;
+- source of truth remains product/config-owned.
 
-### Итерация 21 — Separate frontend contract v0
+### Итерация 16 — Separate frontend contract v0
 
 **Статус:** FUTURE
 
@@ -2339,18 +2374,21 @@ Operator can change layout through safe schema, without editing YAML manually.
 Включено:
 
 - stable API versioning;
-- OpenAPI review;
+- OpenAPI/schema review where applicable;
 - frontend-safe envelopes;
 - static frontend mount placeholder;
 - CORS policy for controlled standalone mode;
-- API docs.
+- API docs;
+- fixture payloads for frontend development.
 
 Не включено:
 
-- React/Vue implementation;
+- React/Vue/Svelte implementation;
 - public SaaS;
 - multi-tenant auth;
-- websocket streaming.
+- websocket/SSE streaming;
+- new runtime semantics;
+- direct product storage access from frontend.
 
 #### Deliverable
 
@@ -2362,15 +2400,16 @@ BeeUI can be used as backend for future separate frontend.
 - envelope compatibility;
 - CORS disabled by default;
 - no secret leakage;
-- `pytest -q`.
+- `uv run pytest -q`.
 
 #### DoD
 
 - frontend can attach to stable backend API;
 - server-rendered UI still works;
-- no second source of truth introduced.
+- no second source of truth introduced;
+- product adapters remain canonical product boundary.
 
-### Итерация 22 — Standalone BeeUI service v0
+### Итерация 17 — Standalone BeeUI service v0
 
 **Статус:** FUTURE
 
@@ -2394,7 +2433,9 @@ BeeUI can be used as backend for future separate frontend.
 - distributed auth platform;
 - service mesh;
 - multi-tenant SaaS;
-- broker/runtime authority.
+- broker/runtime authority;
+- direct product filesystem reads;
+- replacing embedded mode.
 
 #### Deliverable
 
@@ -2407,20 +2448,21 @@ BeeUI can work as separate service over BeeCap/BeeAgent APIs.
 - backend unavailable state;
 - timeout state;
 - auth boundary docs;
-- `pytest -q`.
+- `uv run pytest -q`.
 
 #### DoD
 
 - standalone mode works;
 - embedded mode remains supported;
 - backend product APIs remain source of truth;
-- degraded backend does not crash entire UI.
+- degraded backend does not crash entire UI;
+- no direct runtime authority is introduced.
 
 ---
 
 ## MVP path
 
-Для быстрого выхода к MVP идти так:
+Для быстрого выхода к practical MVP идти так:
 
 ```text
 Iteration 0 — Project skeleton and startup contract
@@ -2431,21 +2473,30 @@ Iteration 4 — Theme, layout and navigation schema v1
 Iteration 5 — Block registry and static dashboard blocks v1
 Iteration 7 — Data sources and resolver v0
 Iteration 8 — Product adapter contract v0
-Iteration 9 — BeeCap adapter MVP
+Iteration 9 — BeeCap adapter fixtures MVP
 Iteration 10 — Embedded mount API v0
-Iteration 12 — BeeCap dashboard parity MVP
-Iteration 13 — Runs list and run overview MVP
+Iteration 11 — Generic artifact browser v1
+
+BeeCap UI-24 — Embed BeeUI and add BeeCapUiAdapter MVP
+Iteration 12 — Adapter-backed Product Console MVP
+BeeCap UI-25 — BeeUI Console parity MVP
+BeeCap UI-26 — BeeUI default route switch with legacy fallback
 ```
 
 Минимальный практический MVP считается достигнутым, когда:
 
 - `beeui` запускается отдельно как demo;
 - `beeui` подключается к `beecap` как dependency;
-- BeeCap dashboard рендерится через BeeUI;
+- BeeCap имеет product-side `BeeCapUiAdapter`;
+- BeeUI mounted в BeeCap under `/beeui`;
+- BeeUI рендерит dashboard/runs/run detail/venue dashboards через adapter;
+- BeeCap `/beeui` полезен для daily read-only monitoring;
+- BeeCap переключает canonical `/` на BeeUI-backed console;
+- legacy BeeCap web остаётся только fallback under `/legacy`;
 - BeeCap current web templates больше не расширяются вручную;
-- BeeCap отдаёт только adapter/read-model/artifacts;
-- routes dashboard/runs/run detail работают read-only;
-- tests green.
+- BeeCap отдаёт только adapter/read-model/artifacts/callbacks;
+- tests green;
+- no mutation/no secrets/no provider calls/no broker calls.
 
 ## Интеграционная модель для Bee-продуктов
 
@@ -2527,6 +2578,57 @@ Bee-продукты должны реализовывать:
 - config validation callback;
 - bounded action callbacks;
 - authority/security-sensitive checks.
+
+## Migration rule for BeeCap
+
+During migration:
+
+```text
+Before BeeCap UI-24:
+  src/beecap_module/web is canonical.
+
+BeeCap UI-24:
+  BeeUI is mounted as parallel migration surface under /beeui.
+
+BeeCap UI-25:
+  /beeui becomes useful read-only console.
+
+BeeCap UI-26:
+  BeeUI becomes canonical route surface.
+  legacy web moves under /legacy.
+
+BeeCap UI-27:
+  config/admin/actions move to BeeUI callbacks.
+
+BeeCap UI-28:
+  src/beecap_module/web can be removed.
+```
+
+BeeCap final target structure:
+
+```text
+src/beecap_module/
+  cli/
+    web.py
+  interfaces/
+    ui/
+      __init__.py
+      adapter.py
+      read_model.py
+      artifacts.py
+      config.py
+      actions.py
+```
+
+BeeCap should no longer own:
+
+```text
+src/beecap_module/web/templates/
+src/beecap_module/web/static/
+src/beecap_module/web/app.py
+```
+
+after full parity and legacy removal.
 
 ## Связанные документы
 
