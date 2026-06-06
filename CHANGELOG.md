@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.14.0](https://github.com/beesyst/beeui/compare/beeui-v0.13.0...beeui-v0.14.0) (2026-06-06)
+
+
+### Features
+
+* **console:** add adapter-backed product console routes ([#39](https://github.com/beesyst/beeui/issues/39)) ([2d14f8c](https://github.com/beesyst/beeui/commit/2d14f8c75317190bb19d7e1d365859ea12c064d6))
+
 ## [0.13.0](https://github.com/beesyst/beeui/compare/beeui-v0.12.0...beeui-v0.13.0) (2026-06-03)
 
 
