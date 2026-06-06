@@ -17,6 +17,11 @@ def validate_run_id(run_id: str) -> str:
     return _validate_safe_id(run_id, field_name="run_id")
 
 
+# Валидация идентификаторов для площадок, запусков, артефактов и действий
+def validate_venue_id(venue_id: str) -> str:
+    return _validate_safe_id(venue_id, field_name="venue_id")
+
+
 # Валидация идентификаторов для артефактов и действий
 def validate_artifact_id(artifact_id: str) -> str:
     return _validate_safe_id(artifact_id, field_name="artifact_id")

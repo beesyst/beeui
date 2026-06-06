@@ -47,6 +47,11 @@ def redact_value(value: Any) -> Any:
     if isinstance(value, list):
         return [redact_value(item) for item in value]
 
+    if isinstance(value, str) and any(
+        pattern in value.lower().replace("-", "_") for pattern in _REDACT_KEYS
+    ):
+        return _REDACTED_PLACEHOLDER
+
     return deepcopy(value)
 
 

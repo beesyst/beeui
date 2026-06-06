@@ -1780,36 +1780,58 @@ BeeUI can list and preview allowlisted product artifacts through `ProductUiAdapt
 
 ## Этап 5 — Adapter-backed Product Console MVP
 
-### Итерация 12 — Adapter-backed Product Console MVP
+### Итерация 12 — Adapter-backed Product Console routes/API MVP
 
-**Статус:** PLANNED
+**Статус:** DONE
 
 #### Goal
 
-Сделать BeeUI полноценным adapter-backed product console MVP: dashboard, runs, run detail, venue dashboards and stable read-only JSON API through `ProductUiAdapter`.
-
-Эта итерация заменяет старые отдельные planned-итерации:
-
-```text
-It12 — BeeCap dashboard parity MVP
-It13 — Runs list and run overview MVP
-It14 — Stable BeeUI API v0 for dashboard/runs/artifacts
-```
+Сделать BeeUI generic adapter-backed product console MVP: dashboard, runs, run detail, venue dashboards and stable read-only JSON API through `ProductUiAdapter`, without product-specific domain logic in BeeUI core.
 
 #### Почему это нужно
 
-После Iteration 10–11 BeeUI уже можно embedded-подключить к BeeCap и показывать artifacts через adapter, но BeeUI всё ещё не является полноценной заменой product console.
+После Iteration 10–11 BeeUI уже можно embedded-подключить к продукту и показывать artifacts через adapter, но BeeUI ещё не является полноценной product console.
 
-Для практической BeeCap migration нельзя растягивать базовую read-only console на три отдельные BeeUI-итерации. BeeCap должен быстро получить один полезный `/beeui` surface:
+Сейчас BeeUI умеет:
+
+- запускать FastAPI/Jinja/Tabler shell;
+- рендерить schema-driven demo/static pages;
+- принимать product adapter через `create_beeui_app(...)` / `mount_beeui(...)`;
+- показывать allowlisted artifacts через adapter.
+
+Но BeeUI ещё не умеет generic adapter-backed rendering для:
 
 - dashboard;
-- runs;
+- runs list;
 - run detail;
 - venue dashboards;
-- source/evidence links;
-- stable read-only API.
+- stable read-only API envelope для этих read-models.
 
-BeeUI при этом остаётся generic renderer. Product-specific semantics остаются в product adapter/read-model.
+Без этой итерации BeeCap UI-25 не сможет сделать `/beeui` practically useful без повторного расширения BeeCap legacy templates или product-specific logic внутри BeeUI.
+
+Iteration 12 должна дать reusable generic console layer. BeeCap-specific metrics/calculations remain BeeCap-side adapter/read-model responsibility.
+
+#### Change level
+
+**runtime-risk**
+
+Причина:
+
+- добавляются новые HTML/API routes;
+- добавляется stable read-only API envelope;
+- adapter payloads начинают рендериться как product console;
+- меняется route/API behavior;
+- operator-facing UI can affect decisions.
+
+Security-sensitive checks are required for:
+
+- `run_id` validation;
+- `venue_id` validation;
+- adapter error normalization;
+- HTML escaping;
+- source/evidence links;
+- no mutation from GET routes;
+- no secrets in HTML/API/logs.
 
 #### Scope
 
@@ -1838,7 +1860,7 @@ GET /venues/{venue_id}
 GET /api/venues/{venue_id}/dashboard
 ```
 
-- reuse existing artifact browser routes from Iteration 11:
+- keep existing artifact browser routes from Iteration 11:
 
 ```text
 GET /runs/{run_id}/artifacts
@@ -1847,19 +1869,7 @@ GET /api/runs/{run_id}/artifacts
 GET /api/runs/{run_id}/artifacts/{artifact_id}
 ```
 
-- generic renderer support for adapter payloads:
-  - KPI grid;
-  - metric cards;
-  - status cards;
-  - tables;
-  - links;
-  - source/evidence links;
-  - warnings;
-  - empty states;
-  - degraded states;
-  - partial states;
-
-- stable read-only API envelope v0:
+- introduce generic API envelope for new read-only API routes:
 
 ```json
 {
@@ -1872,43 +1882,68 @@ GET /api/runs/{run_id}/artifacts/{artifact_id}
 }
 ```
 
-- adapter result/error normalization into BeeUI API envelope;
-- UI/API parity tests;
-- route prefix compatibility;
-- embedded mount compatibility;
-- missing adapter state;
-- adapter unavailable/error state;
-- malformed adapter payload handling;
-- source/evidence links rendered safely;
-- docs update:
-  - `docs/API_CONTRACT.md`;
-  - `docs/WEB_UI.md`;
-  - `docs/INTEGRATION.md`;
-  - `docs/ROADMAP.md`;
-  - `README.ru.md` if route list is maintained there.
+- introduce error envelope for new read-only API routes:
 
-#### Adapter contract extension
+```json
+{
+  "ok": false,
+  "api": "beeui.v0",
+  "read_only": true,
+  "error": {
+    "code": "adapter_unavailable",
+    "message": "Adapter is not available"
+  },
+  "warnings": [],
+  "meta": {}
+}
+```
 
-If needed, extend `ProductUiAdapter` with product-neutral read-only methods:
+- normalize adapter result statuses:
+  - `ok`;
+  - `partial`;
+  - `error`;
+  - unavailable adapter state;
+
+- add generic product console renderers/templates for:
+  - dashboard;
+  - runs list;
+  - run detail;
+  - venue dashboard;
+
+- generic UI support for adapter payload sections:
+  - KPI grid;
+  - metric cards;
+  - status cards;
+  - tables;
+  - links;
+  - source/evidence links;
+  - warnings;
+  - empty states;
+  - degraded states;
+  - partial states;
+
+- extend `ProductUiAdapter` only if needed with product-neutral read-only methods:
 
 ```python
 list_venues()
 get_venue_dashboard(venue_id: str)
 ```
 
-Rules:
-
-- new methods must be read-only;
-- default implementation may return explicit unavailable/error envelope;
-- no product-specific venue assumptions in BeeUI;
-- venue id must pass safe ID validation;
-- BeeUI must not know `mrkt`, `binance`, or any product-specific semantics.
+- route prefix compatibility;
+- embedded mount compatibility;
+- fake adapter / fixture adapter tests;
+- docs update:
+  - `docs/API_CONTRACT.md` if present or created;
+  - `docs/WEB_UI.md`;
+  - `docs/INTEGRATION.md`;
+  - `docs/ROADMAP.md`;
+  - `README.ru.md`.
 
 #### Не включено
 
 - BeeCap imports;
 - BeeAgent imports;
-- product-specific calculations;
+- MRKT/Binance/BeeCap-specific calculations;
 - direct product storage reads;
 - arbitrary filesystem browsing;
 - config apply;
@@ -1917,19 +1952,45 @@ Rules:
 - standalone BeeUI service;
 - React/Vue/Svelte frontend;
 - no-code builder;
-- provider/broker/runtime calls.
+- provider calls;
+- broker calls;
+- runtime calls;
+- replacing BeeCap `/` route;
+- BeeCap parity content.
 
 #### Deliverable
 
-BeeUI can render a useful read-only product console from any product adapter.
+BeeUI can render a useful generic read-only product console from any product adapter.
 
-BeeCap can use this iteration as the generic rendering foundation for replacing its read-only web console through BeeCap-side adapter/read-model code.
+Expected route surface after this iteration:
+
+```text
+GET /
+GET /api/dashboard
+
+GET /runs
+GET /api/runs
+
+GET /runs/{run_id}
+GET /api/runs/{run_id}
+
+GET /venues/{venue_id}
+GET /api/venues/{venue_id}/dashboard
+
+GET /runs/{run_id}/artifacts
+GET /runs/{run_id}/artifacts/{artifact_id}
+GET /api/runs/{run_id}/artifacts
+GET /api/runs/{run_id}/artifacts/{artifact_id}
+```
+
+BeeCap can then implement UI-25 by enriching `BeeCapUiAdapter` payloads without changing BeeUI core.
 
 #### Checks
 
 - `uv run pytest -q`;
 - `./start.sh doctor`;
 - `./start.sh routes`;
+- `./start.sh web --host 127.0.0.1 --port 8780`;
 - dashboard route with fake adapter;
 - dashboard API with fake adapter;
 - runs route with fake adapter;
@@ -1941,12 +2002,14 @@ BeeCap can use this iteration as the generic rendering foundation for replacing 
 - artifact routes still work;
 - invalid `run_id` rejected;
 - invalid `venue_id` rejected;
-- adapter unavailable state;
+- adapter missing/unavailable state;
 - adapter error envelope;
-- malformed adapter payload;
+- adapter partial envelope;
+- malformed adapter payload renders degraded/error state;
 - route prefix compatibility;
 - embedded mount compatibility;
 - source/evidence links rendered safely;
+- HTML autoescape preserved;
 - no mutation from GET routes;
 - no secrets in HTML/API/logs;
 - no external assets/scripts introduced;
@@ -1961,7 +2024,8 @@ BeeCap can use this iteration as the generic rendering foundation for replacing 
 - BeeUI does not invent product metrics;
 - BeeUI does not read product storage directly;
 - BeeUI remains read-only;
-- no product-specific logic is introduced into BeeUI core.
+- no product-specific logic is introduced into BeeUI core;
+- BeeCap UI-25 can proceed by implementing BeeCap-side read-models only.
 
 ---
 

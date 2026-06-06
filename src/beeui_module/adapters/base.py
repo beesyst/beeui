@@ -7,6 +7,7 @@ from beeui_module.adapters.envelopes import (
     AdapterErrorResult,
     AdapterMetadata,
     AdapterResult,
+    error_result_from_exception,
 )
 from beeui_module.adapters.errors import UnavailableError
 
@@ -60,6 +61,11 @@ class ProductUiAdapterBase(ABC):
     @abstractmethod
     def get_run(self, run_id: str) -> AdapterResult | AdapterErrorResult:
         raise NotImplementedError
+
+    def get_venue_dashboard(self, venue_id: str) -> AdapterResult | AdapterErrorResult:
+        return error_result_from_exception(
+            UnavailableError("Venue dashboard is unavailable")
+        )
 
     @abstractmethod
     def list_artifacts(self, run_id: str) -> AdapterResult | AdapterErrorResult:

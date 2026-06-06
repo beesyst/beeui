@@ -19,10 +19,14 @@ def register_configured_pages(
     ui_config: BeeUiConfig,
     product_title: str,
     product_id: str,
+    excluded_paths: set[str] | None = None,
 ) -> list[str]:
     registered_routes: list[str] = []
+    skipped_paths = excluded_paths or set()
 
     for page in ui_config.pages:
+        if page.path in skipped_paths:
+            continue
         route_path = prefixed_path(route_prefix, page.path)
         registered_routes.append(route_path)
 

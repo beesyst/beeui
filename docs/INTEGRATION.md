@@ -6,18 +6,22 @@
 
 ## Текущий статус
 
-**Iteration 11** — Generic artifact browser v1.
+**Iteration 12** — adapter-backed маршруты и API product console MVP.
 
-- Generic `ProductUiAdapter` contract существует в `src/beeui_module/adapters/`.
-- `BeeCapFixtureAdapter` в `src/beeui_module/adapters/beecap.py` — только fixture/reference implementation.
+- Generic contract `ProductUiAdapter` существует в `src/beeui_module/adapters/`.
+- `BeeCapFixtureAdapter` в `src/beeui_module/adapters/beecap.py` — только
+  fixture/reference реализация.
 - Реальный BeeCap adapter должен жить на стороне BeeCap (см. ниже).
 - Embedded mount API (`create_beeui_app(adapter=...)`) реализован.
 - Mount helper `mount_beeui(...)` реализован.
 - Adapter принимается, валидируется и сохраняется в `app.state`.
+- Adapter-backed product console реализован: `get_dashboard()`, `list_runs()`,
+  `get_run(run_id)` и optional `get_venue_dashboard(venue_id)` вызываются из
+  read-only HTML/JSON routes.
 - Adapter-backed artifact browser реализован: `adapter.list_artifacts(run_id)` и `adapter.read_artifact(run_id, artifact_id)` вызываются из read-only HTML/JSON routes.
 - Artifact preview pipeline: `build_preview()` → JSON/JSONL/text/unsupported → redaction → безопасный render в escaped `<pre>`.
 - Artifact routes требуют adapter; без adapter возвращают 503 unavailable state.
-- Это MVP integration path; adapter-backed dashboard/runs rendering остаётся future scope (Iteration 12+).
+- При наличии adapter product console routes владеют `/` и `/runs`; без adapter сохраняется backward-compatible demo/schema mode.
 
 ## Архитектурная граница
 
@@ -143,11 +147,18 @@ mount_beeui(
 
 После mount маршруты BeeUI доступны под `/ui/`:
 
-```
+```text
 /ui/
 /ui/health
 /ui/static/...
 /ui/components
+/ui/runs
+/ui/runs/{run_id}
+/ui/venues/{venue_id}
+/ui/api/dashboard
+/ui/api/runs
+/ui/api/runs/{run_id}
+/ui/api/venues/{venue_id}/dashboard
 /ui/runs/{run_id}/artifacts
 /ui/runs/{run_id}/artifacts/{artifact_id}
 /ui/api/runs/{run_id}/artifacts
@@ -157,15 +168,22 @@ mount_beeui(
 ### Важные ограничения
 
 - Adapter принимается, валидируется и сохраняется в `app.state.beeui_adapter`.
-- Adapter-backed artifact browser реализован в Iteration 11 (read-only HTML/JSON routes через adapter).
-- Adapter-backed dashboard/runs rendering остаётся future scope (Iteration 12+).
+- Adapter-backed product console реализован в Iteration 12 (read-only HTML/JSON routes через adapter).
+- `get_venue_dashboard(venue_id)` является optional method и при отсутствии
+  возвращает explicit unavailable state.
+- Adapter-backed artifact browser из Iteration 11 продолжает работать без
+  изменения contract.
 - Product metadata сохраняется в `app.state.beeui_product`.
 - Demo mode (`create_beeui_app()` без аргументов) остаётся backward-compatible.
 - BeeAgent adapter implementation остаётся future scope.
 
 ## Security notes / Замечания по безопасности
 
-- Все adapter inputs (`run_id`, `artifact_id`) валидируются через `beeui_module.adapters.ids`.
-- Adapter envelopes используют стабильный status `ok|partial|error`; raw exceptions не попадают в response.
+- Все adapter inputs (`run_id`, `venue_id`, `artifact_id`) валидируются через `beeui_module.adapters.ids`.
+- Adapter envelopes используют стабильный status `ok|partial|error`; исходные
+  исключения не попадают в response.
+- Product console JSON API использует стабильный read-only envelope
+  `ok/api/read_only/data|error/warnings/meta`.
+- Artifact API routes сохраняют существующий contract Iteration 11.
 - Secrets не должны пересекать adapter boundary и попадать в BeeUI.
 - Write/action adapter methods недоступны по умолчанию.

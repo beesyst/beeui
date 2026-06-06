@@ -10,7 +10,7 @@
 - `beeagent`;
 - будущие Bee-продукты.
 
-Текущая реализованная основа после Iteration 11 включает:
+Текущая реализованная основа после Iteration 12 включает:
 
 - FastAPI web app;
 - Jinja2 templates;
@@ -22,6 +22,8 @@
 - BeeCap-compatible fixture/reference adapter для проверки BeeCap-shaped payloads;
 - embedded app factory `create_beeui_app(...)` с поддержкой `config_path`, `product_id`, `product_title`, `adapter`;
 - mount helper `mount_beeui(...)` для встраивания BeeUI в родительское FastAPI приложение;
+- generic adapter-backed product console HTML routes через `ProductUiAdapter` (`/`, `/runs`, `/runs/{run_id}`, `/venues/{venue_id}` when adapter is present);
+- stable read-only JSON API envelope for product console routes (`/api/dashboard`, `/api/runs`, `/api/runs/{run_id}`, `/api/venues/{venue_id}/dashboard`);
 - generic artifact browser HTML/API routes через `ProductUiAdapter`;
 - JSON/JSONL/text preview с bounded limits и redaction placeholder.
 
@@ -30,8 +32,6 @@
 
 Запланированные обязанности:
 
-- adapter-backed dashboard/runs rendering;
-- stable read-only JSON API contracts;
 - bounded config/admin/operator controls;
 - auth/session layer;
 - foundation для будущего no-code dashboard builder.
@@ -185,7 +185,7 @@ src/beeui_module/
   data/                  # current read-only demo/static data sources and selector resolver
   adapters/              # generic adapter contract v0 + BeeCap fixture/reference adapter
   artifacts/             # Iteration 11: artifact browser (models, preview, redaction, routes)
-  api/                   # будущий module
+  api/                   # текущий helper для product console envelope
   auth/                  # будущий module
   config_ui/             # будущий module
   theme/                 # будущий module
@@ -199,7 +199,7 @@ src/beeui_module/
 - Product-specific domain logic must not live in generic BeeUI renderers.
 - `src/beeui_module/__init__.py` should stay lightweight.
 
-## Public embedded API после Iteration 10
+## Public embedded API после Iteration 12
 
 ### `create_beeui_app()`
 
@@ -229,7 +229,7 @@ app = create_beeui_app(
 
 Adapter сохраняется в `app.state.beeui_adapter`. Product metadata сохраняется в `app.state.beeui_product`.
 
-**Ограничение:** adapter принимается и валидируется. После Iteration 11 он используется artifact browser routes. Adapter-backed dashboard/runs rendering остаётся future scope.
+**Поведение:** adapter принимается и валидируется. При наличии adapter product console routes владеют `/` и `/runs`, а также включают read-only API routes для dashboard/runs/run detail/venue dashboard. Без adapter BeeUI остаётся backward-compatible и продолжает рендерить schema/demo pages.
 
 ### `mount_beeui()`
 
@@ -269,6 +269,13 @@ Mount helper выполняет:
 /ui/health
 /ui/static/...
 /ui/components
+/ui/runs
+/ui/runs/{run_id}
+/ui/venues/{venue_id}
+/ui/api/dashboard
+/ui/api/runs
+/ui/api/runs/{run_id}
+/ui/api/venues/{venue_id}/dashboard
 /ui/runs/{run_id}/artifacts
 /ui/runs/{run_id}/artifacts/{artifact_id}
 /ui/api/runs/{run_id}/artifacts
@@ -313,7 +320,7 @@ Doctor:
 
 ## Product integration
 
-### Текущая app factory после Iteration 11
+### Текущая app factory после Iteration 12
 
 App factory принимает `settings`, `ui_config`, `config_path`, product metadata и adapter. Generic `ProductUiAdapter` contract существует, `BeeCapFixtureAdapter` добавлен как fixture/reference adapter. Real BeeCap adapter должен жить в BeeCap repo.
 
@@ -330,7 +337,7 @@ ui_config = load_beeui_config(schema_path())
 app = create_beeui_app(settings=settings, ui_config=ui_config)
 ```
 
-Generic `ProductUiAdapter` contract существует в `src/beeui_module/adapters/`. Adapter можно передать в `create_beeui_app(...)`; после Iteration 11 artifact browser routes вызывают `list_artifacts(run_id)` и `read_artifact(run_id, artifact_id)`.
+Generic `ProductUiAdapter` contract существует в `src/beeui_module/adapters/`. Adapter можно передать в `create_beeui_app(...)`; после Iteration 12 product console routes вызывают `get_dashboard()`, `list_runs()`, `get_run(run_id)` и optional `get_venue_dashboard(venue_id)`, а artifact browser routes продолжают вызывать `list_artifacts(run_id)` и `read_artifact(run_id, artifact_id)`.
 
 ### BeeCap fixture adapter после Iteration 9
 
@@ -342,13 +349,17 @@ Iteration 9 добавляет `BeeCapFixtureAdapter` как тестовую/re
 
 Текущие ограничения остаются:
 
-- BeeUI вызывает adapter методы только для artifact browser routes:
+- BeeUI вызывает adapter только для read-only routes and does not mutate product state;
+- product console uses only generic read-model methods:
+  - `get_dashboard()`;
+  - `list_runs()`;
+  - `get_run(run_id)`;
+  - `get_venue_dashboard(venue_id)` when implemented;
   - `list_artifacts(run_id)`;
   - `read_artifact(run_id, artifact_id)`;
-- dashboard/runs adapter-backed rendering остаётся future scope;
 - adapter-backed block data sources остаются future scope.
 
-### Embedded API после Iteration 10
+### Embedded API после Iteration 12
 
 Фаза product integration использует небольшой app factory или mount helper.
 
@@ -382,7 +393,7 @@ mount_beeui(
 
 ### Product adapter contract
 
-Текущий adapter contract после Iteration 10:
+Текущий adapter contract после Iteration 12:
 
 ```python
 class ProductUiAdapter:
@@ -397,6 +408,7 @@ class ProductUiAdapter:
     def get_config_read_model(self) -> AdapterResult | AdapterErrorResult: ...
 
     # optional methods, unavailable by default in ProductUiAdapterBase
+    def get_venue_dashboard(self, venue_id: str) -> AdapterResult | AdapterErrorResult: ...
     def validate_config_candidate(self, candidate: dict) -> AdapterResult | AdapterErrorResult: ...
     def list_actions(self) -> AdapterResult | AdapterErrorResult: ...
     def preview_action(self, action_id: str, payload: dict) -> AdapterResult | AdapterErrorResult: ...
@@ -407,7 +419,10 @@ Iteration 8 добавила generic contract и fake adapter tests.
 Iteration 9 добавляет BeeCap fixture/reference adapter и BeeCap-shaped fixture tests.
 Iteration 10 добавляет adapter injection в app factory и `mount_beeui(...)`.
 Iteration 11 добавляет adapter-backed artifact browser routes.
-Adapter-backed dashboard/runs rendering, config apply/write, action execution и production BeeCap/BeeAgent adapters остаются future scope.
+Iteration 12 добавляет adapter-backed dashboard, runs, run detail, optional venue
+dashboard и product console API envelope `beeui.v0`.
+Config apply/write, action execution и production BeeCap/BeeAgent adapters
+остаются future scope.
 
 Required read-only methods:
 
@@ -419,6 +434,8 @@ Required read-only methods:
 - `get_config_read_model`.
 
 Optional write/config/action methods are unavailable by default unless a product explicitly implements them later.
+`get_venue_dashboard` также optional и при отсутствии возвращает explicit
+unavailable state.
 
 ## BeeUI config
 
@@ -544,7 +561,11 @@ pages:
     blocks: []
 ```
 
-В Iteration 7 block values могут быть static/literal, а representative blocks умеют получать read-only values из controlled `demo` и `static` sources через stable resolver envelope. После Iteration 11 generic `ProductUiAdapter` contract, BeeCap fixture/reference adapter и adapter injection реализованы; artifact browser routes используют adapter. Adapter-backed data sources и dashboard/runs rendering остаются future scope.
+В Iteration 7 block values могут быть static/literal, а representative blocks
+умеют получать read-only values из controlled `demo` и `static` sources через
+stable resolver envelope. После Iteration 12 product console и artifact browser
+routes используют adapter. Adapter-backed block data sources остаются future
+scope и не относятся к уже реализованным product console routes.
 
 Правила:
 
@@ -705,10 +726,12 @@ JSON routes:
 
 Не все routes должны существовать в MVP.
 
-Текущий MVP route set после Iteration 11:
+Текущий MVP route set после Iteration 12:
 
 - `/`
 - `/runs`
+- `/runs/{run_id}`
+- `/venues/{venue_id}`
 - `/components`
 - `/components/interface`
 - `/components/forms`
@@ -719,12 +742,16 @@ JSON routes:
 - `/static/...`
 - `/static/vendor/tabler/css/tabler-compatible.min.css`
 - `/static/vendor/tabler/js/tabler-compatible.min.js`
+- `/api/dashboard`
+- `/api/runs`
+- `/api/runs/{run_id}`
+- `/api/venues/{venue_id}/dashboard`
 - `/runs/{run_id}/artifacts`
 - `/runs/{run_id}/artifacts/{artifact_id}`
 - `/api/runs/{run_id}/artifacts`
 - `/api/runs/{run_id}/artifacts/{artifact_id}`
 
-Iteration 11 добавляет только read-only artifact HTML/API routes. Stable BeeUI API для dashboard/runs/config/actions остаётся future scope.
+При наличии adapter product console routes владеют `/` и `/runs`. Без adapter сохраняется schema/demo mode. Config/action routes остаются future scope.
 
 ## Read-only model
 
@@ -776,7 +803,11 @@ Examples:
 - product callback must own domain validation;
 - BeeUI must not bypass product validation.
 
-## JSON API v1
+## Текущий product console API и будущий frontend API
+
+Product console routes Iteration 12 используют envelope `beeui.v0`.
+Artifact API routes сохраняют существующий contract Iteration 11.
+Отдельный frontend API `v1` остаётся будущим scope.
 
 ### Envelope
 
@@ -785,9 +816,11 @@ Success:
 ```json
 {
   "ok": true,
-  "api": "v1",
+  "api": "beeui.v0",
   "read_only": true,
-  "data": {}
+  "data": {},
+  "warnings": [],
+  "meta": {}
 }
 ```
 
@@ -796,18 +829,22 @@ Error:
 ```json
 {
   "ok": false,
-  "api": "v1",
+  "api": "beeui.v0",
   "read_only": true,
-  "error": "error_code",
-  "detail": "Human-readable explanation"
+  "error": {
+    "code": "adapter_unavailable",
+    "message": "Adapter is not available"
+  },
+  "warnings": [],
+  "meta": {}
 }
 ```
 
 Правила:
 
-- `api` must be `"v1"` for stable routes;
+- `api` равно `"beeui.v0"` для product console routes;
 - `read_only` must be true for GET/read routes;
-- errors must use stable machine-readable `error`;
+- errors use stable machine-readable `error.code`;
 - raw exceptions must not leak to API response;
 - secrets must not leak;
 - missing/partial evidence must be explicit, not treated as zero.
@@ -985,7 +1022,7 @@ Implemented block types after Iteration 7:
 
 Текущие ограничения:
 
-- product adapter-backed data is not available yet;
+- adapter-backed block data sources пока не реализованы;
 - production HTTP sources are not available yet;
 - blocks do not call product APIs;
 - blocks do not read product storage directly;
@@ -1023,7 +1060,7 @@ Implemented block types after Iteration 7:
 ## Data resolver
 
 Data resolver is implemented after Iteration 7 for controlled read-only `demo` and `static` YAML/JSON sources.
-Product adapter-backed и production HTTP sources остаются будущим scope.
+Adapter-backed block sources и production HTTP sources остаются будущим scope.
 
 Selector example:
 
@@ -1042,9 +1079,8 @@ value_selector: dashboard.latest_run.id
 
 ## Runs
 
-После Iteration 11 BeeUI всё ещё не рендерит adapter-backed runs. Поведение ниже запланировано для runs/product integration iterations.
-
-Generic `/runs` page shows product runs if product adapter supports run listing.
+После Iteration 12 `/runs` рендерит список запусков через
+`adapter.list_runs()` при наличии adapter.
 
 ### `GET /runs`
 
@@ -1070,18 +1106,15 @@ Response:
 ```json
 {
   "ok": true,
-  "api": "v1",
+  "api": "beeui.v0",
   "read_only": true,
-  "data": {
-    "runs": [],
-    "count": 0,
-    "filters": {},
-    "warnings": []
-  }
+  "data": [],
+  "warnings": [],
+  "meta": {}
 }
 ```
 
-Поддерживаемые generic query params:
+Query filters пока не реализованы. Возможный future scope:
 
 - `q`
 - `status`
@@ -1089,11 +1122,12 @@ Response:
 - `venue`
 - `severity`
 
-Product adapter may ignore unsupported filters but must report this in `warnings`.
-
 ## Run detail
 
-Run detail routes запланированы и не входят в текущую route surface Iteration 11.
+После Iteration 12 run detail доступен через HTML и product console API:
+
+- `GET /runs/{run_id}`;
+- `GET /api/runs/{run_id}`.
 
 ### `GET /runs/{run_id}`
 
@@ -1123,15 +1157,16 @@ Response:
 ```json
 {
   "ok": true,
-  "api": "v1",
+  "api": "beeui.v0",
   "read_only": true,
   "data": {
     "run_id": "run_...",
     "summary": {},
     "sections": [],
-    "artifacts": [],
-    "warnings": []
-  }
+    "artifacts": []
+  },
+  "warnings": [],
+  "meta": {}
 }
 ```
 
@@ -1174,11 +1209,11 @@ Response использует existing adapter envelope:
 {
   "status": "ok",
   "data": [
-    {"artifact_id": "report_json", "content_type": "application/json"},
-    {"artifact_id": "log_txt", "content_type": "text/plain"}
+    { "artifact_id": "report_json", "content_type": "application/json" },
+    { "artifact_id": "log_txt", "content_type": "text/plain" }
   ],
   "warnings": [],
-  "meta": {"product": "beecap", "run_id": "beecap_run_042"}
+  "meta": { "product": "beecap", "run_id": "beecap_run_042" }
 }
 ```
 
@@ -1187,7 +1222,10 @@ Error response при отсутствии adapter:
 ```json
 {
   "status": "error",
-  "error": {"code": "adapter_unavailable", "message": "Adapter is not available"}
+  "error": {
+    "code": "adapter_unavailable",
+    "message": "Adapter is not available"
+  }
 }
 ```
 
@@ -1213,7 +1251,7 @@ Response для JSON:
     "artifact_id": "summary_report",
     "content_type": "application/json",
     "preview_type": "json",
-    "preview_data": {"score": 0.95, "status": "ok"},
+    "preview_data": { "score": 0.95, "status": "ok" },
     "truncated": false,
     "row_count": null,
     "row_warnings": [],
@@ -1221,7 +1259,7 @@ Response для JSON:
     "metadata_only": false
   },
   "warnings": [],
-  "meta": {"product": "beecap", "run_id": "beecap_run_042"}
+  "meta": { "product": "beecap", "run_id": "beecap_run_042" }
 }
 ```
 
@@ -1234,7 +1272,7 @@ JSONL response:
     "artifact_id": "data_jsonl",
     "content_type": "application/jsonl",
     "preview_type": "jsonl",
-    "preview_data": [{"id": 1}, {"id": 2}],
+    "preview_data": [{ "id": 1 }, { "id": 2 }],
     "truncated": false,
     "row_count": 10,
     "row_warnings": ["Row 5: malformed JSONL row (Expecting value)"],
@@ -1284,6 +1322,10 @@ JSONL response:
 Config read-model UI/API routes запланированы для следующих config iterations. Optional adapter method contract существует, но Iteration 11 не реализует config/action routes.
 
 BeeUI can provide generic config read-model UI if product adapter supports it.
+
+## Будущий config UI
+
+Config UI и перечисленные ниже config routes ещё не реализованы.
 
 ### `GET /config`
 
@@ -1578,7 +1620,7 @@ visual editor
 
 ## Typical operator scenarios
 
-Текущий сценарий после Iteration 11:
+Текущий сценарий после Iteration 12:
 
 ```text
 1. BeeUI loads config/settings.yml.
@@ -1587,30 +1629,39 @@ visual editor
 4. Product may pass adapter into create_beeui_app(...) or mount_beeui(...).
 5. Adapter is validated and stored in app.state.beeui_adapter.
 6. Product metadata is stored in app.state.beeui_product.
-7. Artifact routes call list_artifacts() and read_artifact() through adapter.
-8. Dashboard/runs pages still render schema/demo/static data until Iteration 12+.
-9. No product runtime/action/config mutation happens.
+7. If adapter is present, product console routes call `get_dashboard()`, `list_runs()`, `get_run()` and optional `get_venue_dashboard()` through adapter.
+8. Artifact routes call `list_artifacts()` and `read_artifact()` through adapter.
+9. If adapter is absent, dashboard/runs continue to render schema/demo/static pages.
+10. No product runtime/action/config mutation happens.
 ```
 
 ### 1. Open product dashboard
 
-Будущий dynamic dashboard scenario (requires dashboard adapter-backed rendering iterations).
+Текущий сценарий Iteration 12.
 
 1. Product starts embedded BeeUI web app.
 2. Operator opens `/`.
 3. BeeUI calls product adapter `get_dashboard()`.
-4. BeeUI renders configured page/blocks.
+4. BeeUI рендерит adapter-backed product dashboard.
 
 ### 2. Inspect runs
 
-Будущий сценарий (requires runs adapter-backed rendering iterations).
+Текущий сценарий Iteration 12.
 
 1. Open `/runs`.
 2. BeeUI calls product adapter `list_runs()`.
 3. Operator opens `/runs/{run_id}`.
 4. BeeUI calls `get_run(run_id)`.
 
-### 3. Inspect artifact
+### 3. Inspect venue dashboard
+
+Текущий optional сценарий Iteration 12.
+
+1. Open `/venues/{venue_id}` or `/api/venues/{venue_id}/dashboard`.
+2. BeeUI calls optional `get_venue_dashboard(venue_id)`.
+3. Если метод не реализован, BeeUI возвращает explicit unavailable state.
+
+### 4. Inspect artifact
 
 Текущий сценарий Iteration 11.
 
@@ -1643,10 +1694,12 @@ visual editor
 
 ## MVP route contract
 
-Текущий MVP route contract Iteration 11:
+Текущий MVP route contract Iteration 12:
 
 - `GET /`
 - `GET /runs`
+- `GET /runs/{run_id}`
+- `GET /venues/{venue_id}`
 - `GET /components`
 - `GET /components/interface`
 - `GET /components/forms`
@@ -1657,19 +1710,29 @@ visual editor
 - `GET /static/...`
 - `GET /static/vendor/tabler/css/tabler-compatible.min.css`
 - `GET /static/vendor/tabler/js/tabler-compatible.min.js`
+- `GET /api/dashboard`
+- `GET /api/runs`
+- `GET /api/runs/{run_id}`
+- `GET /api/venues/{venue_id}/dashboard`
 - `GET /runs/{run_id}/artifacts` (HTML artifact list — requires adapter)
 - `GET /runs/{run_id}/artifacts/{artifact_id}` (HTML artifact preview — requires adapter)
 - `GET /api/runs/{run_id}/artifacts` (JSON artifact list — requires adapter)
 - `GET /api/runs/{run_id}/artifacts/{artifact_id}` (JSON artifact preview — requires adapter)
 
-Artifact routes требуют adapter в `app.state.beeui_adapter`. Без adapter возвращают 503 с explicit unavailable state.
+Product console routes требуют adapter в `app.state.beeui_adapter` для adapter-backed mode. Без adapter BeeUI остаётся в schema/demo mode. Artifact routes по-прежнему требуют adapter и без него возвращают 503 с explicit unavailable state.
 
-Planned Iteration 12+ / product integration route families:
+Stable read-only API envelope for product console routes:
 
-- `GET /runs`
-- `GET /runs/{run_id}`
-- `GET /api/runs`
-- `GET /api/runs/{run_id}`
+```json
+{
+  "ok": true,
+  "api": "beeui.v0",
+  "read_only": true,
+  "data": {},
+  "warnings": [],
+  "meta": {}
+}
+```
 
 Позже:
 
@@ -1685,6 +1748,7 @@ Planned Iteration 12+ / product integration route families:
 Текущие документы:
 
 - `README.ru.md`
+- `docs/API_CONTRACT.md`
 - `docs/ROADMAP.md`
 - `docs/SDLC.md`
 - `docs/SECURITY.md`
@@ -1694,5 +1758,4 @@ Planned Iteration 12+ / product integration route families:
 
 Запланированные документы:
 
-- `docs/API_CONTRACT.md`
 - `docs/THEME.md`
