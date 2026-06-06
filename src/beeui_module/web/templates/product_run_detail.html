@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block title %}{{ page_title }} · {{ app_title }}{% endblock %}
+
+{% block content %}
+<div class="page-header d-print-none">
+  <div class="{{ layout.container_class }}">
+    <div class="row g-2 align-items-center">
+      <div class="col">
+        <h2 class="page-title">{{ page_title }}</h2>
+        <div class="text-secondary mt-1">{{ page_subtitle }}</div>
+      </div>
+      <div class="col-auto ms-auto d-print-none">
+        <a href="{{ url_prefix }}/runs" class="btn btn-outline-secondary">Back to runs</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="page-body">
+  <div class="{{ layout.container_class }}">
+    {% include "components/product_console_state.html" %}
+
+    <div class="row g-3">
+      <div class="col-12 col-lg-6">
+        <div class="card h-100">
+          <div class="card-header"><h3 class="card-title">Run payload</h3></div>
+          <div class="card-body">
+            {% if run %}
+            <pre class="mb-0"><code>{{ run | tojson(indent=2) }}</code></pre>
+            {% else %}
+            <div class="text-secondary">No run payload available.</div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <div class="col-12 col-lg-6">
+        <div class="card h-100">
+          <div class="card-header"><h3 class="card-title">Artifacts</h3></div>
+          <div class="card-body p-0">
+            {% if artifacts %}
+            <table class="table table-hover table-vcenter card-table mb-0">
+              <thead>
+                <tr>
+                  <th>Artifact ID</th>
+                  <th>Content Type</th>
+                  <th class="w-1"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for artifact in artifacts %}
+                <tr>
+                  <td>{{ artifact.artifact_id }}</td>
+                  <td>{{ artifact.content_type }}</td>
+                  <td><a class="btn btn-sm btn-outline-primary" href="{{ url_prefix }}/runs/{{ run_id }}/artifacts/{{ artifact.artifact_id }}">Open</a></td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+            {% else %}
+            <div class="p-3 text-secondary">No artifacts available.</div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

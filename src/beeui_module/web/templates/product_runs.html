@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block title %}{{ page_title }} · {{ app_title }}{% endblock %}
+
+{% block content %}
+<div class="page-header d-print-none">
+  <div class="{{ layout.container_class }}">
+    <div class="row g-2 align-items-center">
+      <div class="col">
+        <h2 class="page-title">{{ page_title }}</h2>
+        <div class="text-secondary mt-1">{{ page_subtitle }}</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="page-body">
+  <div class="{{ layout.container_class }}">
+    {% include "components/product_console_state.html" %}
+
+    <div class="card">
+      <div class="card-header"><h3 class="card-title">Run list</h3></div>
+      <div class="card-body p-0">
+        {% if runs %}
+        <table class="table table-hover table-vcenter card-table">
+          <thead>
+            <tr>
+              <th>Run ID</th>
+              <th>Status</th>
+              <th>Started</th>
+              <th>Completed</th>
+              <th class="w-1"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for run in runs %}
+            <tr>
+              <td>{{ run.id }}</td>
+              <td>{{ run.status }}</td>
+              <td>{{ run.started_at if run.started_at is defined else '-' }}</td>
+              <td>{{ run.completed_at if run.completed_at is defined else '-' }}</td>
+              <td><a class="btn btn-sm btn-outline-primary" href="{{ url_prefix }}/runs/{{ run.id }}">Open</a></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <div class="p-3 text-secondary">No runs available.</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

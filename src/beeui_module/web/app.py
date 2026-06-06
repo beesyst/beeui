@@ -17,6 +17,7 @@ from beeui_module.core.version import get_version
 from beeui_module.pages.component_catalog import register_component_catalog_routes
 from beeui_module.pages.config import load_beeui_config
 from beeui_module.pages.models import BeeUiConfig
+from beeui_module.pages.product_console import register_product_console_routes
 from beeui_module.pages.router import register_configured_pages
 
 
@@ -189,6 +190,18 @@ def create_beeui_app(
 
     health_path = f"{route_prefix}/health" if route_prefix else "/health"
 
+    excluded_paths: set[str] = set()
+    if adapter is not None:
+        register_product_console_routes(
+            app=app,
+            templates=templates,
+            route_prefix=route_prefix,
+            ui_config=resolved_ui_config,
+            product_title=product_meta["title"],
+            product_id=product_meta["id"],
+        )
+        excluded_paths = {"/", "/runs"}
+
     register_configured_pages(
         app=app,
         templates=templates,
@@ -196,6 +209,7 @@ def create_beeui_app(
         ui_config=resolved_ui_config,
         product_title=product_meta["title"],
         product_id=product_meta["id"],
+        excluded_paths=excluded_paths,
     )
 
     register_component_catalog_routes(

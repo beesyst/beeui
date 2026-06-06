@@ -502,7 +502,7 @@ class TestRouteCollision:
             raise AssertionError("Expected ValueError for conflicting route")
 
 
-# Тесты: отсутствие /api/* маршрутов в embedded режиме, так как API не должно быть доступно напрямую
+# Тесты: embedded app with adapter exposes artifact and product console read-only API routes
 class TestNoApiRoutes:
     def test_artifact_api_routes_after_embedded_creation(self) -> None:
         adapter = FakeEmbeddedAdapter()
@@ -514,8 +514,12 @@ class TestNoApiRoutes:
         routes = _route_paths(app)
         api_routes = {route for route in routes if route.startswith("/api")}
         expected = {
+            "/api/dashboard",
+            "/api/runs",
+            "/api/runs/{run_id}",
             "/api/runs/{run_id}/artifacts",
             "/api/runs/{run_id}/artifacts/{artifact_id}",
+            "/api/venues/{venue_id}/dashboard",
         }
         assert api_routes == expected, f"Expected {expected}, got {api_routes}"
 
