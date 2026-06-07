@@ -1,0 +1,36 @@
+<div class="card">
+  <div class="card-header">
+    <h3 class="card-title">{{ block.title }}</h3>
+    {% if block.status %}
+    <span class="badge bg-secondary-lt ms-auto">{{ block.status }}</span>
+    {% endif %}
+  </div>
+  <div class="card-body">
+    {% if block.subtitle %}
+    <p class="text-secondary mb-3">{{ block.subtitle }}</p>
+    {% endif %}
+
+    {% if block["items"] %}
+    <dl class="row mb-3">
+      {% for item in block["items"] %}
+      <dt class="col-5">{{ item.label }}</dt>
+      <dd class="col-7">
+        {% if item.href %}
+        <a href="{{ url_prefix }}{{ item.href }}">{{ item.value }}</a>
+        {% else %}
+        {{ item.value }}
+        {% endif %}
+      </dd>
+      {% endfor %}
+    </dl>
+    {% endif %}
+
+    {% if block.links %}
+    <div class="mt-auto">
+      {% for link in block.links %}
+      <a href="{{ url_prefix }}{{ link.href }}" class="btn btn-outline-primary btn-sm me-1">{{ link.label }}</a>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+</div>

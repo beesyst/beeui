@@ -1,0 +1,29 @@
+<div class="card">
+  <div class="card-header">
+    <h3 class="card-title">{{ block.title }}</h3>
+  </div>
+  <div class="list-group list-group-flush">
+    {% if block["items"] %}
+    {% for item in block["items"] %}
+    <div class="list-group-item">
+      <div class="d-flex align-items-center">
+        {% if item.href %}
+        <a href="{{ url_prefix }}{{ item.href }}" class="text-reset text-decoration-none flex-grow-1">
+          <span class="fw-semibold">{{ item.label }}</span>
+        </a>
+        {% else %}
+        <span class="flex-grow-1">
+          <span class="fw-semibold">{{ item.label }}</span>
+        </span>
+        {% endif %}
+        {% if item.content_type %}
+        <span class="badge bg-secondary-lt ms-2">{{ item.content_type }}</span>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+    {% else %}
+    <div class="list-group-item text-secondary">No artifacts available.</div>
+    {% endif %}
+  </div>
+</div>
