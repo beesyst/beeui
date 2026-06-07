@@ -1,0 +1,23 @@
+{% if block.type == "hero_snapshot" %}
+  {% include "components/layout/hero_snapshot.html" %}
+{% elif block.type == "metric_card" %}
+  {% include "components/layout/metric_card.html" %}
+{% elif block.type == "kpi_strip" %}
+  {% include "components/layout/kpi_strip.html" %}
+{% elif block.type == "venue_summary_grid" %}
+  {% include "components/layout/venue_summary_grid.html" %}
+{% elif block.type == "mode_cards" %}
+  {% include "components/layout/mode_cards.html" %}
+{% elif block.type == "status_table" %}
+  {% include "components/layout/status_table.html" %}
+{% elif block.type == "event_table" %}
+  {% include "components/layout/event_table.html" %}
+{% elif block.type == "attention_list" %}
+  {% include "components/layout/attention_list.html" %}
+{% elif block.type == "artifact_links" %}
+  {% include "components/layout/artifact_links.html" %}
+{% elif block.type == "raw_json_panel" %}
+  {% include "components/layout/raw_json_panel.html" %}
+{% elif block.type == "degraded" %}
+  {% include "components/layout/degraded.html" %}
+{% endif %}

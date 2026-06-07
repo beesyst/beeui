@@ -506,3 +506,93 @@ def test_no_product_specific_imports_in_console_router() -> None:
     )
     assert "beecap_module" not in source
     assert "beeagent_module" not in source
+
+
+# Тест: layout[] ссылки учитывают route prefix и FastAPI mount path
+def test_layout_links_use_route_prefix_and_embedded_mount() -> None:
+    class LayoutAdapter(FakeProductConsoleAdapter):
+        def get_dashboard(self) -> Any:
+            return ok_result(
+                {
+                    "layout": [
+                        {
+                            "type": "hero_snapshot",
+                            "title": "<script>alert(1)</script>",
+                            "items": [
+                                {
+                                    "label": "Safe run",
+                                    "value": "run_safe_001",
+                                    "href": "/runs/run_safe_001",
+                                },
+                                {
+                                    "label": "Unsafe run",
+                                    "value": "external",
+                                    "href": "https://example.com",
+                                },
+                            ],
+                        },
+                        {
+                            "type": "attention_list",
+                            "title": "Attention",
+                            "items": [
+                                {
+                                    "label": "Check",
+                                    "message": "Review state",
+                                    "severity": "warning",
+                                }
+                            ],
+                        },
+                    ]
+                }
+            )
+
+    settings = load_settings(settings_path())
+    settings["web"]["route_prefix"] = "/bee"
+    prefixed_client = TestClient(
+        create_beeui_app(settings=settings, adapter=LayoutAdapter())
+    )
+    response = prefixed_client.get("/bee/")
+
+    assert response.status_code == 200
+    assert "row row-deck row-cards" in response.text
+    assert "status-dot" in response.text
+    assert "&lt;script&gt;alert(1)&lt;/script&gt;" in response.text
+    assert '<a href="/bee/runs/run_safe_001">' in response.text
+    assert 'href="https://example.com"' not in response.text
+
+    parent = FastAPI()
+    mount_beeui(parent, path="/ui", adapter=LayoutAdapter())
+    mounted_response = TestClient(parent).get("/ui/")
+
+    assert mounted_response.status_code == 200
+    assert '<a href="/ui/runs/run_safe_001">' in mounted_response.text
+
+
+# Тест: layout[] рендерится без ошибок при сохранении контракта API метода list_runs
+def test_runs_layout_wrapper_preserves_list_api_contract() -> None:
+    class LayoutRunsAdapter(FakeProductConsoleAdapter):
+        def list_runs(self) -> Any:
+            return ok_result(
+                {
+                    "layout": [
+                        {
+                            "type": "metric_card",
+                            "title": "Runs",
+                            "value": 1,
+                        }
+                    ],
+                    "runs": [{"id": "run_safe_001", "status": "completed"}],
+                },
+                meta={"count": 1},
+            )
+
+    client = TestClient(create_beeui_app(adapter=LayoutRunsAdapter()))
+
+    html = client.get("/runs")
+    api = client.get("/api/runs")
+
+    assert html.status_code == 200
+    assert "row row-deck row-cards" in html.text
+    assert api.status_code == 200
+    assert api.json()["data"] == [{"id": "run_safe_001", "status": "completed"}]
+    assert api.json()["meta"]["count"] == 1

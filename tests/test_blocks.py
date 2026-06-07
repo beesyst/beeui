@@ -266,3 +266,443 @@ def test_schema_rejects_unsafe_links_card_hrefs(tmp_path: Path) -> None:
             raise AssertionError(
                 f"load_beeui_config must reject unsafe links_card href {unsafe_href}"
             )
+
+
+from beeui_module.blocks.layout_renderer import render_layout
+
+
+# Тест: пустой layout возвращает пустой список
+def test_layout_empty_returns_empty_list() -> None:
+    assert render_layout(None) == []
+    assert render_layout([]) == []
+    assert render_layout("not a list") == []
+    assert render_layout(42) == []
+
+
+# Тест: не-object элемент в layout возвращает degraded блок
+def test_layout_non_object_item_returns_degraded() -> None:
+    result = render_layout(["not an object"])
+    assert len(result) == 1
+    assert result[0]["type"] == "degraded"
+    assert "width_class" in result[0]
+
+
+# Тест: неизвестный block type возвращает degraded блок
+def test_layout_unknown_block_type_returns_degraded() -> None:
+    result = render_layout([{"type": "unknown_block", "width": 6}])
+    assert len(result) == 1
+    assert result[0]["type"] == "degraded"
+
+
+# Тест: block type без type поля возвращает degraded блок
+def test_layout_missing_type_returns_degraded() -> None:
+    result = render_layout([{"width": 6}])
+    assert len(result) == 1
+    assert result[0]["type"] == "degraded"
+
+
+# Тест: width mapping работает корректно
+def test_layout_width_mapping() -> None:
+    result = render_layout(
+        [
+            {"type": "metric_card", "title": "A", "width": 12},
+            {"type": "metric_card", "title": "B", "width": 6},
+            {"type": "metric_card", "title": "C", "width": 3},
+            {"type": "metric_card", "title": "D", "width": 99},
+        ]
+    )
+    assert len(result) == 4
+    assert result[0]["width_class"] == "col-12"
+    assert result[1]["width_class"] == "col-12 col-lg-6"
+    assert result[2]["width_class"] == "col-12 col-sm-6 col-lg-3"
+    assert result[3]["width_class"] == "col-12"  # invalid -> default
+
+
+# Тест: hero_snapshot рендерится с items и links
+def test_layout_hero_snapshot_renders() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "hero_snapshot",
+                "title": "System",
+                "subtitle": "Overview",
+                "status": "ok",
+                "width": 6,
+                "items": [
+                    {"label": "Run", "value": "run_001", "href": "/runs/run_001"},
+                    {"label": "Runtime", "value": "stopped"},
+                ],
+                "links": [
+                    {"label": "Open runs", "href": "/runs"},
+                ],
+            }
+        ]
+    )
+    assert len(result) == 1
+    block = result[0]
+    assert block["type"] == "hero_snapshot"
+    assert block["title"] == "System"
+    assert block["subtitle"] == "Overview"
+    assert block["status"] == "ok"
+    assert len(block["items"]) == 2
+    assert block["items"][0]["href"] == "/runs/run_001"
+    assert block["items"][1]["href"] is None
+    assert len(block["links"]) == 1
+    assert block["links"][0]["href"] == "/runs"
+
+
+# Тест: hero_snapshot с небезопасной ссылкой отфильтровывается
+def test_layout_hero_snapshot_rejects_unsafe_links() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "hero_snapshot",
+                "title": "Test",
+                "width": 6,
+                "items": [
+                    {"label": "Bad", "value": "ext", "href": "http://evil.com"},
+                    {"label": "Dbl", "value": "ext", "href": "//evil.com"},
+                    {
+                        "label": "Javascript",
+                        "value": "bad",
+                        "href": "javascript:alert(1)",
+                    },
+                    {"label": "Mail", "value": "bad", "href": "mailto:test@example.com"},
+                    {"label": "Control", "value": "bad", "href": "/runs/\x01secret"},
+                    {
+                        "label": "Encoded newline",
+                        "value": "bad",
+                        "href": "/runs/%0asecret",
+                    },
+                    {
+                        "label": "Encoded tab",
+                        "value": "bad",
+                        "href": "/runs/%09secret",
+                    },
+                    {
+                        "label": "Encoded null",
+                        "value": "bad",
+                        "href": "/runs/%00secret",
+                    },
+                    {"label": "Traversal", "value": "bad", "href": "/../secret"},
+                    {
+                        "label": "Nested traversal",
+                        "value": "bad",
+                        "href": "/runs/../../secret",
+                    },
+                    {
+                        "label": "Encoded traversal",
+                        "value": "bad",
+                        "href": "/%2e%2e/secret",
+                    },
+                    {
+                        "label": "Backslash traversal",
+                        "value": "bad",
+                        "href": "/runs\\..\\secret",
+                    },
+                    {"label": "Safe", "value": "int", "href": "/runs/1"},
+                ],
+                "links": [
+                    {"label": "Bad", "href": "https://evil.com"},
+                ],
+            }
+        ]
+    )
+    block = result[0]
+    assert all(item["href"] is None for item in block["items"][:-1])
+    assert block["items"][-1]["href"] == "/runs/1"
+    assert len(block["links"]) == 0
+
+
+# Тест: metric_card рендерится с value, status и hint
+def test_layout_metric_card_renders() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "metric_card",
+                "title": "Profit",
+                "value": "n/a",
+                "status": "missing_evidence",
+                "hint": "No closed trades",
+                "width": 3,
+            }
+        ]
+    )
+    assert len(result) == 1
+    block = result[0]
+    assert block["type"] == "metric_card"
+    assert block["value"] == "n/a"
+    assert block["status"] == "missing_evidence"
+    assert block["hint"] == "No closed trades"
+
+
+# Тест: kpi_strip рендерится с items
+def test_layout_kpi_strip_renders() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "kpi_strip",
+                "title": "KPIs",
+                "width": 12,
+                "items": [
+                    {"label": "Runs", "value": "42", "status": "ok"},
+                    {"label": "Errors", "value": "0"},
+                ],
+            }
+        ]
+    )
+    assert len(result) == 1
+    block = result[0]
+    assert block["type"] == "kpi_strip"
+    assert len(block["items"]) == 2
+    assert block["items"][0]["status"] == "ok"
+
+
+# Тест: venue_summary_grid рендерится с items
+def test_layout_venue_summary_grid_renders() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "venue_summary_grid",
+                "title": "Venues",
+                "width": 6,
+                "items": [
+                    {"label": "MRKT", "value": "active"},
+                    {"label": "Binance", "value": "connected"},
+                ],
+            }
+        ]
+    )
+    assert len(result) == 1
+    assert result[0]["type"] == "venue_summary_grid"
+    assert len(result[0]["items"]) == 2
+
+
+# Тест: mode_cards рендерится с items
+def test_layout_mode_cards_renders() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "mode_cards",
+                "title": "Modes",
+                "width": 6,
+                "items": [
+                    {"label": "Paper", "value": "enabled", "status": "ok"},
+                    {"label": "Live", "value": "disabled", "status": "warning"},
+                ],
+            }
+        ]
+    )
+    assert len(result) == 1
+    assert result[0]["type"] == "mode_cards"
+    assert len(result[0]["items"]) == 2
+
+
+# Тест: status_table рендерится с columns и rows
+def test_layout_status_table_renders() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "status_table",
+                "title": "Health",
+                "width": 6,
+                "columns": ["Source", "Status", "Reason"],
+                "rows": [
+                    ["runtime/active.json", "missing", "No active runtime"],
+                ],
+            }
+        ]
+    )
+    assert len(result) == 1
+    block = result[0]
+    assert block["type"] == "status_table"
+    assert block["columns"] == ["Source", "Status", "Reason"]
+    assert len(block["rows"]) == 1
+    assert block["rows"][0][0] == "runtime/active.json"
+
+
+# Тест: status_table с dict rows деградирует
+def test_layout_status_table_dict_rows_degrades() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "status_table",
+                "title": "Health",
+                "width": 6,
+                "columns": ["Source", "Status"],
+                "rows": [
+                    {"source": "runtime", "status": "ok"},
+                ],
+            }
+        ]
+    )
+    assert len(result) == 1
+    assert result[0]["type"] == "degraded"
+
+
+def test_layout_status_table_invalid_row_length_degrades() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "status_table",
+                "title": "Health",
+                "columns": ["Source", "Status"],
+                "rows": [["runtime"]],
+            }
+        ]
+    )
+    assert result[0]["type"] == "degraded"
+
+
+def test_layout_status_table_empty_columns_degrades() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "status_table",
+                "title": "Health",
+                "columns": [],
+                "rows": [],
+            }
+        ]
+    )
+    assert result[0]["type"] == "degraded"
+
+
+# Тест: event_table рендерится с columns и rows
+def test_layout_event_table_renders() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "event_table",
+                "title": "Events",
+                "width": 12,
+                "columns": ["Time", "Event"],
+                "rows": [
+                    ["2026-06-01", "Started"],
+                ],
+            }
+        ]
+    )
+    assert len(result) == 1
+    assert result[0]["type"] == "event_table"
+
+
+# Тест: attention_list рендерится с items
+def test_layout_attention_list_renders() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "attention_list",
+                "title": "Alerts",
+                "width": 6,
+                "items": [
+                    {
+                        "label": "Disk full",
+                        "message": "90% used",
+                        "severity": "warning",
+                    },
+                    {
+                        "label": "Service down",
+                        "message": "No response",
+                        "severity": "error",
+                    },
+                ],
+            }
+        ]
+    )
+    assert len(result) == 1
+    block = result[0]
+    assert block["type"] == "attention_list"
+    assert block["items"][0]["severity"] == "warning"
+    assert block["items"][1]["severity"] == "error"
+
+
+# Тест: artifact_links рендерится с items
+def test_layout_artifact_links_renders() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "artifact_links",
+                "title": "Artifacts",
+                "width": 6,
+                "items": [
+                    {
+                        "label": "report.json",
+                        "href": "/runs/1/artifacts/report",
+                        "content_type": "json",
+                    },
+                ],
+            }
+        ]
+    )
+    assert len(result) == 1
+    block = result[0]
+    assert block["type"] == "artifact_links"
+    assert block["items"][0]["href"] == "/runs/1/artifacts/report"
+
+
+# Тест: artifact_links с небезопасными href отфильтровывается
+def test_layout_artifact_links_rejects_unsafe_href() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "artifact_links",
+                "title": "Artifacts",
+                "width": 6,
+                "items": [
+                    {"label": "bad", "href": "http://evil.com"},
+                    {"label": "protocol relative", "href": "//example.com"},
+                    {"label": "javascript", "href": "javascript:alert(1)"},
+                    {"label": "mail", "href": "mailto:test@example.com"},
+                    {"label": "control", "href": "/runs/\x01secret"},
+                    {"label": "traversal", "href": "/../secret"},
+                    {"label": "nested traversal", "href": "/runs/../../secret"},
+                    {"label": "encoded traversal", "href": "/%2e%2e/secret"},
+                    {"label": "backslash traversal", "href": "/runs\\..\\secret"},
+                    {"label": "good", "href": "/runs/1/artifacts/report"},
+                ],
+            }
+        ]
+    )
+    block = result[0]
+    assert all(item["href"] is None for item in block["items"][:-1])
+    assert block["items"][-1]["href"] == "/runs/1/artifacts/report"
+
+
+# Тест: raw_json_panel рендерится с data
+def test_layout_raw_json_panel_renders() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "raw_json_panel",
+                "title": "Raw data",
+                "width": 12,
+                "data": {"key": "value"},
+            }
+        ]
+    )
+    assert len(result) == 1
+    block = result[0]
+    assert block["type"] == "raw_json_panel"
+    assert block["data"] == {"key": "value"}
+
+
+# Тест: malformed payload не ломает render_layout
+def test_layout_malformed_items_do_not_crash() -> None:
+    result = render_layout(
+        [
+            {"type": "hero_snapshot", "items": "not a list", "width": 6},
+            {"type": "metric_card", "value": {"nested": "bad"}},
+            {"type": "status_table", "columns": "not a list", "rows": "not a list"},
+            {"type": "kpi_strip", "items": [{"label": "ok", "value": "1"}]},
+            None,
+            42,
+        ]
+    )
+    assert len(result) == 6
+    assert result[4]["type"] == "degraded"
+    assert result[5]["type"] == "degraded"
+    assert result[0]["type"] == "degraded"
+    assert result[1]["type"] == "degraded"
+    assert result[2]["type"] == "degraded"
+    assert result[3]["type"] == "degraded"

@@ -24,6 +24,7 @@ from beeui_module.api.envelopes import (
     malformed_payload_envelope,
     safe_adapter_call,
 )
+from beeui_module.blocks.layout_renderer import render_layout
 from beeui_module.artifacts.redaction import redact_value
 from beeui_module.pages.models import BeeUiConfig
 from beeui_module.pages.router import (
@@ -248,7 +249,7 @@ def register_product_console_routes(
             return JSONResponse(payload, status_code=status_code)
 
         payload, status_code = api_envelope_from_adapter(
-            safe_adapter_call(adapter.list_runs),
+            _normalize_runs_result_for_api(safe_adapter_call(adapter.list_runs)),
             expected_data_type=list,
             malformed_message="Adapter returned non-list runs payload",
         )
@@ -317,6 +318,25 @@ def _call_optional_adapter_method(
             f"Adapter method {method_name} is unavailable",
         )
     return safe_adapter_call(method, *args)
+
+
+def _normalize_runs_result_for_api(
+    result: AdapterResult | AdapterErrorResult,
+) -> AdapterResult | AdapterErrorResult:
+    if not isinstance(result, AdapterResult) or not isinstance(result.data, dict):
+        return result
+    if not isinstance(result.data.get("layout"), list):
+        return result
+
+    runs = result.data.get("runs", result.data.get("items", []))
+    if not isinstance(runs, list):
+        return result
+    return AdapterResult(
+        status=result.status,
+        data=runs,
+        warnings=result.warnings,
+        meta=result.meta,
+    )
 
 
 def _resolve_url_prefix(request: Request, route_prefix: str) -> str:
@@ -488,6 +508,10 @@ def _dashboard_html_context(
         context["error"] = payload["error"]["message"]
         return context, status_code
 
+    layout = payload.get("layout")
+    context["layout_blocks"] = render_layout(layout)
+    context["has_layout"] = isinstance(layout, list) and len(layout) > 0
+
     latest_run = (
         payload.get("latest_run")
         if isinstance(payload.get("latest_run"), dict)
@@ -542,17 +566,28 @@ def _runs_html_context(
         return context, error_status_code(str(code))
 
     payload = redact_value(result.data)
-    if not isinstance(payload, list):
-        payload, status_code = malformed_payload_envelope(
-            "Adapter returned non-list runs payload"
+
+    # Support both list (backward-compatible) and dict with optional layout + items.
+    if isinstance(payload, dict):
+        layout = payload.get("layout")
+        context["layout_blocks"] = render_layout(layout)
+        context["has_layout"] = isinstance(layout, list) and len(layout) > 0
+        raw_items = payload.get("runs") or payload.get("items") or []
+    elif isinstance(payload, list):
+        context["layout_blocks"] = []
+        context["has_layout"] = False
+        raw_items = payload
+    else:
+        response, status_code = malformed_payload_envelope(
+            "Adapter returned malformed runs payload"
         )
         context["status"] = "error"
-        context["error"] = payload["error"]["message"]
+        context["error"] = response["error"]["message"]
         return context, status_code
 
     local_warnings: list[dict[str, str]] = []
     runs: list[dict[str, Any]] = []
-    for item in payload:
+    for item in raw_items:
         if not isinstance(item, dict):
             local_warnings.append(
                 {
@@ -632,6 +667,10 @@ def _run_detail_html_context(
         context["error"] = response["error"]["message"]
         return context, status_code
 
+    layout = payload.get("layout")
+    context["layout_blocks"] = render_layout(layout)
+    context["has_layout"] = isinstance(layout, list) and len(layout) > 0
+
     artifacts, local_warnings = _normalize_artifacts(payload.get("artifacts"), run_id)
     context["run"] = payload
     context["artifacts"] = artifacts
@@ -693,6 +732,10 @@ def _venue_html_context(
         context["status"] = "error"
         context["error"] = response["error"]["message"]
         return context, status_code
+
+    layout = payload.get("layout")
+    context["layout_blocks"] = render_layout(layout)
+    context["has_layout"] = isinstance(layout, list) and len(layout) > 0
 
     context["dashboard"] = payload
     context["summary_items"] = _mapping_items(payload)

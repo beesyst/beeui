@@ -2,9 +2,14 @@
 
 **BeeUI** — общий Python-based UI framework для Bee-продуктов: `beecap`, `beeagent` и будущих модулей Bee ecosystem.
 
-## Iteration 12
+## Iteration 12.1
 
-Текущий deliverable — Adapter-backed Product Console routes/API MVP: generic read-only dashboard, runs, run detail, venue dashboard и artifact browser через `ProductUiAdapter`.
+Текущий deliverable — Adapter-backed Tabler dashboard blocks renderer:
+generic layout[] block rendering для adapter-backed product console pages.
+Поддерживаются 10 block types (hero_snapshot, metric_card, kpi_strip,
+venue_summary_grid, mode_cards, status_table, event_table, attention_list,
+artifact_links, raw_json_panel) с safe width mapping и degraded fallback
+для malformed/unsupported blocks.
 
 Уже работает:
 
@@ -60,9 +65,20 @@
 - runtime-валидация adapter на соответствие минимальному протоколу `ProductUiAdapter`;
 - валидация mount path (безопасный путь, без path traversal);
 - проверка коллизии маршрутов при mount;
-- embedded API тесты в `tests/test_embedded.py`.
+- embedded API тесты в `tests/test_embedded.py`;
+- generic adapter-backed layout[] block renderer c 10 block types и degraded fallback;
+- layout blocks рендерятся на `/`, `/runs`, `/runs/{run_id}`, `/venues/{venue_id}`;
+- fallback to generic renderer when layout absent.
 
-Поддерживаемые типы блоков:
+### Два block contract в BeeUI
+
+BeeUI сейчас поддерживает два разных block contract.
+
+#### 1. Schema/demo blocks
+
+Используются в `config/schema.yml` для demo/schema mode и declarative pages.
+
+Поддерживаемые типы:
 
 - `metric_card`;
 - `kpi_grid`;
@@ -73,7 +89,28 @@
 - `text_card`;
 - `progress_card`.
 
-Минимальная web surface после Iteration 12:
+Эти blocks объявляются в top-level `blocks` и размещаются через `pages[].blocks[]`.
+
+#### 2. Adapter-backed `layout[]` blocks
+
+Используются в product console mode, когда product adapter возвращает optional поле `layout`.
+
+Поддерживаемые типы:
+
+- `hero_snapshot`;
+- `metric_card`;
+- `kpi_strip`;
+- `venue_summary_grid`;
+- `mode_cards`;
+- `status_table`;
+- `event_table`;
+- `attention_list`;
+- `artifact_links`;
+- `raw_json_panel`.
+
+Malformed или unsupported blocks рендерятся как `degraded` block, а не ломают страницу.
+
+Минимальная web surface после Iteration 12.1:
 
 - `GET /`
 - `GET /runs`
@@ -226,14 +263,15 @@ MVP не пытается сразу стать полноценным Retool/We
 
 ## Что BeeUI делает
 
-В текущем состоянии после Iteration 12 BeeUI отвечает за:
+В текущем состоянии после Iteration 12.1 BeeUI отвечает за:
 
 - FastAPI app factory;
 - Jinja2 templates;
 - Tabler layout;
 - global navigation;
 - reusable blocks;
-- dashboard rendering;
+- dashboard rendering for schema/demo mode and adapter-backed product console mode;
+- adapter-backed `layout[]` rendering для product console pages через generic Tabler blocks;
 - declarative pages/navigation/theme/layout;
 - static/literal and resolver-backed dashboard blocks from `config/schema.yml`;
 - generic product adapter contract v0 in `src/beeui_module/adapters/`;
@@ -468,7 +506,7 @@ BeeUI не должен получать прямую authority на tools/MCP/r
 
 Продукт импортирует BeeUI и монтирует его в своём web process.
 
-Текущий статус после Iteration 12:
+Текущий статус после Iteration 12.1:
 
 - generic adapter contract существует;
 - BeeCap fixture/reference adapter существует для contract validation;
@@ -692,6 +730,14 @@ Iteration 9 добавляет BeeCap fixture/reference adapter support:
 - Iteration 10 добавила app factory adapter injection и `mount_beeui(...)`;
 - Iteration 11 добавила adapter-backed artifact browser routes;
 - Iteration 12 добавила adapter-backed dashboard, runs, run detail, venue dashboard и stable read-only API envelope.
+
+Iteration 12.1 добавляет optional presentation contract:
+
+- product adapter может вернуть `layout[]` внутри dashboard/run/runs/venue payload;
+- BeeUI рендерит `layout[]` через generic Tabler blocks;
+- `layout[]` не является source of truth;
+- product adapter остаётся владельцем product semantics;
+- при отсутствии `layout[]` используется generic fallback renderer.
 
 Текущий contract v0 после Iteration 12:
 
@@ -1041,7 +1087,7 @@ uv run --frozen --extra dev python config/start.py web
 
 ## Целевая структура проекта
 
-Актуальные ключевые файлы после Iteration 12:
+Актуальные ключевые файлы после Iteration 12.1:
 
 ```text
 config/
@@ -1555,6 +1601,7 @@ Iteration 9 — BeeCap adapter MVP
 Iteration 10 — Embedded mount API v0
 Iteration 11 — Generic artifact browser v1
 Iteration 12 — Adapter-backed Product Console routes/API MVP
+Iteration 12.1 — Adapter-backed Tabler dashboard blocks renderer
 BeeCap UI-25 — BeeUI Console parity MVP
 BeeCap UI-26 — BeeUI default route switch with legacy fallback
 ```
@@ -1721,7 +1768,7 @@ Visual builder later.
 Текущий статус:
 
 ```text
-Iteration 12 — Adapter-backed Product Console routes/API MVP — DONE
+Iteration 12.1 — Adapter-backed Tabler dashboard blocks renderer — DONE
 ```
 
 Работает:
@@ -1749,4 +1796,7 @@ uv run pytest -q
 - product metadata is stored in `app.state.beeui_product`;
 - artifact browser HTML/API routes работают через adapter;
 - `/api/runs/{run_id}/artifacts*` routes доступны при `features.browser_artifact: true`;
-- product console HTML/API routes работают через adapter when adapter is present.
+- product console HTML/API routes работают через adapter when adapter is present;
+- adapter-backed `layout[]` blocks рендерятся на `/`, `/runs`, `/runs/{run_id}`, `/venues/{venue_id}`;
+- malformed/unsupported layout blocks рендерятся как degraded state;
+- layout links валидируются как safe internal links и учитывают route prefix / embedded mount path.

@@ -1,0 +1,12 @@
+<div class="card">
+  <div class="card-header">
+    <h3 class="card-title">{{ block.title }}</h3>
+  </div>
+  <div class="card-body">
+    {% if block.data is not none %}
+    <pre class="mb-0"><code>{{ block.data | tojson(indent=2) }}</code></pre>
+    {% else %}
+    <div class="text-secondary">No data available.</div>
+    {% endif %}
+  </div>
+</div>

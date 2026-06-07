@@ -2027,6 +2027,101 @@ BeeCap can then implement UI-25 by enriching `BeeCapUiAdapter` payloads without 
 - no product-specific logic is introduced into BeeUI core;
 - BeeCap UI-25 can proceed by implementing BeeCap-side read-models only.
 
+### Итерация 12.1 — Adapter-backed Tabler dashboard blocks renderer
+
+**Статус:** DONE
+
+#### Goal
+
+Добавить в BeeUI generic renderer для adapter-backed `layout[]` blocks, чтобы product adapters могли отдавать структурированную композицию dashboard/run/venue pages, а BeeUI рендерил её как полноценную Tabler operator console, без product-specific логики в BeeUI.
+
+#### Почему это нужно
+
+После adapter-backed Product Console MVP BeeUI умеет получать dashboard/runs/run detail/venue payloads через `ProductUiAdapter`, но primary pages могут выглядеть как generic/debug payload. Это блокирует BeeCap MVP после route switch: данные и маршруты есть, но операторский cockpit не достигнут.
+
+BeeUI должен получить reusable визуальный слой:
+
+- Tabler grid/cards/tables/badges/alerts;
+- compact operator blocks;
+- degraded/empty/partial states;
+- source/evidence links;
+- fallback raw/debug panel only when no structured layout exists.
+
+BeeCap/BeeAgent остаются владельцами product semantics. BeeUI только рендерит.
+
+#### Change level
+
+**runtime-risk**
+
+Security-sensitive checks required for:
+
+- HTML escaping;
+- source links;
+- adapter-provided URLs/labels;
+- route/API exposure;
+- invalid/malformed block payloads.
+
+#### Scope
+
+**Включено:**
+
+- поддержать optional `layout` field в adapter-backed payloads;
+- рендерить `layout[]` на страницах:
+  - `/`;
+  - `/runs`;
+  - `/runs/{run_id}`;
+  - `/venues/{venue_id}`;
+- оставить current generic payload renderer как fallback;
+- добавить generic block renderers:
+  - `hero_snapshot`;
+  - `metric_card`;
+  - `kpi_strip`;
+  - `venue_summary_grid`;
+  - `mode_cards`;
+  - `status_table`;
+  - `event_table`;
+  - `attention_list`;
+  - `artifact_links`;
+  - `raw_json_panel`;
+- поддержать safe width mapping to Tabler/Bootstrap column classes;
+- рендерить malformed/unsupported blocks as degraded alerts, not crashes;
+- сохранять API envelopes and existing route behavior;
+- добавить tests для block rendering/fallback/security;
+- обновить docs:
+  - `docs/ROADMAP.md`;
+  - `docs/API_CONTRACT.md`;
+  - `docs/WEB_UI.md`.
+
+**Не включено:**
+
+- BeeCap-specific logic;
+- BeeAgent-specific logic;
+- config apply;
+- auth/session/CSRF;
+- operator actions;
+- broker/provider/runtime calls;
+- new runtime artifacts;
+- arbitrary HTML/JS from adapter/config;
+- visual builder;
+- external CDN/assets/scripts.
+
+#### Deliverable
+
+BeeUI renders adapter-provided `layout[]` as product-grade Tabler dashboard pages, while products keep all domain-specific metrics and semantics inside their adapters/read-models.
+
+#### DoD
+
+- fake adapter renders `/`, `/runs`, `/runs/{run_id}`, `/venues/{venue_id}` through `layout[]`;
+- each supported block type has tests;
+- unsupported/malformed blocks render explicit degraded state;
+- existing generic renderer still works when `layout` is absent;
+- adapter text is escaped;
+- source links are safe internal links only;
+- no external assets/scripts;
+- no mutation from GET routes;
+- no secrets in HTML/API/logs;
+- docs describe `layout[]` block contract.
+
 ---
 
 ## Этап 6 — Config/Auth/Actions foundation

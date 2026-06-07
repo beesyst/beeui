@@ -10,7 +10,7 @@
 - `beeagent`;
 - будущие Bee-продукты.
 
-Текущая реализованная основа после Iteration 12 включает:
+Текущая реализованная основа после Iteration 12.1 включает:
 
 - FastAPI web app;
 - Jinja2 templates;
@@ -23,6 +23,9 @@
 - embedded app factory `create_beeui_app(...)` с поддержкой `config_path`, `product_id`, `product_title`, `adapter`;
 - mount helper `mount_beeui(...)` для встраивания BeeUI в родительское FastAPI приложение;
 - generic adapter-backed product console HTML routes через `ProductUiAdapter` (`/`, `/runs`, `/runs/{run_id}`, `/venues/{venue_id}` when adapter is present);
+- adapter-backed `layout[]` rendering для product console pages;
+- generic Tabler layout blocks for dashboard/run/runs/venue pages;
+- degraded fallback для malformed/unsupported layout blocks;
 - stable read-only JSON API envelope for product console routes (`/api/dashboard`, `/api/runs`, `/api/runs/{run_id}`, `/api/venues/{venue_id}/dashboard`);
 - generic artifact browser HTML/API routes через `ProductUiAdapter`;
 - JSON/JSONL/text preview с bounded limits и redaction placeholder.
@@ -338,6 +341,39 @@ app = create_beeui_app(settings=settings, ui_config=ui_config)
 ```
 
 Generic `ProductUiAdapter` contract существует в `src/beeui_module/adapters/`. Adapter можно передать в `create_beeui_app(...)`; после Iteration 12 product console routes вызывают `get_dashboard()`, `list_runs()`, `get_run(run_id)` и optional `get_venue_dashboard(venue_id)`, а artifact browser routes продолжают вызывать `list_artifacts(run_id)` и `read_artifact(run_id, artifact_id)`.
+
+### Layout block rendering (Iteration 12.1)
+
+Этот contract отличается от schema/demo blocks из `config/schema.yml`.
+
+- schema/demo blocks используются для declarative pages в demo/schema mode;
+- `layout[]` blocks приходят из product adapter и используются только в product console mode;
+- BeeUI не вычисляет product metrics, а только рендерит переданную product adapter структуру.
+
+Adapter-backed payloads могут содержать optional поле `layout`:
+массив объектов, описывающих структуру dashboard-блоков.
+При наличии `layout[]` HTML-страницы рендерят его как
+Tabler dashboard grid с поддержкой `row row-deck row-cards`.
+
+Generic layout renderer (`src/beeui_module/blocks/layout_renderer.py`)
+нормализует и валидирует каждый block:
+
+- неизвестный block type → `degraded` block;
+- malformed block → `degraded` block;
+- unsafe external ссылки → null (не рендерятся);
+- invalid width → `col-12` default.
+
+При отсутствии `layout` или пустом массиве используется существующий
+generic fallback renderer (как в Iteration 12).
+
+Страницы, поддерживающие layout rendering:
+
+- `GET /` → `product_dashboard.html`
+- `GET /runs` → `product_runs.html` (если adapter возвращает dict с layout)
+- `GET /runs/{run_id}` → `product_run_detail.html`
+- `GET /venues/{venue_id}` → `product_venue_dashboard.html`
+
+Поддерживаемые block types описаны в `docs/API_CONTRACT.md`.
 
 ### BeeCap fixture adapter после Iteration 9
 

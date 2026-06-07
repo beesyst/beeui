@@ -1,0 +1,14 @@
+<div class="card">
+  <div class="card-body">
+    <div class="d-flex align-items-center">
+      <div class="subheader">{{ block.title }}</div>
+      {% if block.status %}
+      <span class="badge bg-secondary-lt ms-auto">{{ block.status }}</span>
+      {% endif %}
+    </div>
+    <div class="h1 mb-1">{{ block.value }}</div>
+    {% if block.hint %}
+    <div class="text-secondary small mt-1">{{ block.hint }}</div>
+    {% endif %}
+  </div>
+</div>

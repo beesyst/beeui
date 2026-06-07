@@ -15,6 +15,15 @@ endblock %} {% block content %}
   <div class="{{ layout.container_class }}">
     {% include "components/product_console_state.html" %}
 
+    {% if has_layout %}
+    <div class="row row-deck row-cards g-3">
+      {% for block in layout_blocks %}
+      <div class="{{ block.width_class }}">
+        {% include "components/layout_block.html" %}
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
     <div class="row g-3">
       <div class="col-12 col-lg-4">
         <div class="card h-100">
@@ -88,6 +97,7 @@ endblock %} {% block content %}
         </div>
       </div>
     </div>
+    {% endif %}
   </div>
 </div>
 {% endblock %}
