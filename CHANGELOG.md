@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.15.0](https://github.com/beesyst/beeui/compare/beeui-v0.14.0...beeui-v0.15.0) (2026-06-07)
+
+
+### Features
+
+* **product-console:** add adapter-backed Tabler layout blocks ([#42](https://github.com/beesyst/beeui/issues/42)) ([7060f2a](https://github.com/beesyst/beeui/commit/7060f2a872ac90b726ef226d32f8857c3dbc0811))
+
 ## [0.14.0](https://github.com/beesyst/beeui/compare/beeui-v0.13.0...beeui-v0.14.0) (2026-06-06)
 
 
