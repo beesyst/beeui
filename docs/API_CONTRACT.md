@@ -117,6 +117,7 @@ Adapter-backed payloads (`dashboard`, `run`, `venue dashboard`, optionally `runs
 | `attention_list` | List group с severity-dot indicators |
 | `artifact_links` | List group artifact links с content_type badge |
 | `raw_json_panel` | Card c raw JSON data |
+| `chart` | Server-rendered chart placeholder (no external JS); adapter-provided title/subtitle/status/symbol/timeframe/series/points/candles; empty state when no data |
 | `degraded` | Fallback для malformed/unsupported blocks |
 
 ### Width mapping

@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
+from beeui_module.blocks.layout_renderer import render_layout
 from beeui_module.pages.config import load_beeui_config
 
 
@@ -268,9 +270,6 @@ def test_schema_rejects_unsafe_links_card_hrefs(tmp_path: Path) -> None:
             )
 
 
-from beeui_module.blocks.layout_renderer import render_layout
-
-
 # Тест: пустой layout возвращает пустой список
 def test_layout_empty_returns_empty_list() -> None:
     assert render_layout(None) == []
@@ -367,7 +366,11 @@ def test_layout_hero_snapshot_rejects_unsafe_links() -> None:
                         "value": "bad",
                         "href": "javascript:alert(1)",
                     },
-                    {"label": "Mail", "value": "bad", "href": "mailto:test@example.com"},
+                    {
+                        "label": "Mail",
+                        "value": "bad",
+                        "href": "mailto:test@example.com",
+                    },
                     {"label": "Control", "value": "bad", "href": "/runs/\x01secret"},
                     {
                         "label": "Encoded newline",
@@ -711,15 +714,57 @@ def test_layout_malformed_items_do_not_crash() -> None:
 # Тест: все типы блоков рендерятся с корректными type и width_class
 def test_layout_all_block_types_render_with_type_and_width() -> None:
     layout = [
-        {"type": "hero_snapshot", "title": "S", "width": 6, "items": [{"label": "L", "value": "V"}]},
+        {
+            "type": "hero_snapshot",
+            "title": "S",
+            "width": 6,
+            "items": [{"label": "L", "value": "V"}],
+        },
         {"type": "metric_card", "title": "M", "value": "42", "width": 3},
-        {"type": "kpi_strip", "title": "K", "width": 12, "items": [{"label": "L", "value": "V"}]},
-        {"type": "venue_summary_grid", "title": "V", "width": 6, "items": [{"label": "L", "value": "V"}]},
-        {"type": "mode_cards", "title": "Mo", "width": 6, "items": [{"label": "L", "value": "V"}]},
-        {"type": "status_table", "title": "St", "width": 6, "columns": ["A"], "rows": [["B"]]},
-        {"type": "event_table", "title": "E", "width": 12, "columns": ["A"], "rows": [["B"]]},
-        {"type": "attention_list", "title": "A", "width": 6, "items": [{"label": "L", "message": "M"}]},
-        {"type": "artifact_links", "title": "Ar", "width": 6, "items": [{"label": "L", "href": "/runs/1"}]},
+        {
+            "type": "kpi_strip",
+            "title": "K",
+            "width": 12,
+            "items": [{"label": "L", "value": "V"}],
+        },
+        {
+            "type": "venue_summary_grid",
+            "title": "V",
+            "width": 6,
+            "items": [{"label": "L", "value": "V"}],
+        },
+        {
+            "type": "mode_cards",
+            "title": "Mo",
+            "width": 6,
+            "items": [{"label": "L", "value": "V"}],
+        },
+        {
+            "type": "status_table",
+            "title": "St",
+            "width": 6,
+            "columns": ["A"],
+            "rows": [["B"]],
+        },
+        {
+            "type": "event_table",
+            "title": "E",
+            "width": 12,
+            "columns": ["A"],
+            "rows": [["B"]],
+        },
+        {
+            "type": "attention_list",
+            "title": "A",
+            "width": 6,
+            "items": [{"label": "L", "message": "M"}],
+        },
+        {
+            "type": "artifact_links",
+            "title": "Ar",
+            "width": 6,
+            "items": [{"label": "L", "href": "/runs/1"}],
+        },
         {"type": "raw_json_panel", "title": "R", "width": 12, "data": {"k": "v"}},
     ]
     result = render_layout(layout)
@@ -731,31 +776,37 @@ def test_layout_all_block_types_render_with_type_and_width() -> None:
 
 # Тест: блоки рендерят safe text (Jinja-экранирование в rendered dict)
 def test_layout_block_text_is_escaped() -> None:
-    result = render_layout([
-        {
-            "type": "hero_snapshot",
-            "title": "<script>bad</script>",
-            "width": 6,
-            "items": [
-                {"label": "<b>label</b>", "value": "<i>value</i>", "href": "/safe"},
-            ],
-        },
-        {
-            "type": "metric_card",
-            "title": "<metric>",
-            "value": "<value>",
-            "status": "<status>",
-            "hint": "<hint>",
-        },
-        {
-            "type": "attention_list",
-            "title": "A",
-            "width": 6,
-            "items": [
-                {"label": "<b>alert</b>", "message": "<script>bad</script>", "severity": "error"},
-            ],
-        },
-    ])
+    result = render_layout(
+        [
+            {
+                "type": "hero_snapshot",
+                "title": "<script>bad</script>",
+                "width": 6,
+                "items": [
+                    {"label": "<b>label</b>", "value": "<i>value</i>", "href": "/safe"},
+                ],
+            },
+            {
+                "type": "metric_card",
+                "title": "<metric>",
+                "value": "<value>",
+                "status": "<status>",
+                "hint": "<hint>",
+            },
+            {
+                "type": "attention_list",
+                "title": "A",
+                "width": 6,
+                "items": [
+                    {
+                        "label": "<b>alert</b>",
+                        "message": "<script>bad</script>",
+                        "severity": "error",
+                    },
+                ],
+            },
+        ]
+    )
     assert result[0]["title"] == "<script>bad</script>"
     assert result[0]["items"][0]["label"] == "<b>label</b>"
     assert result[0]["items"][0]["value"] == "<i>value</i>"
@@ -768,13 +819,20 @@ def test_layout_block_text_is_escaped() -> None:
 # Тест: raw_json_panel не рендерится когда есть непустой layout структурированных блоков
 def test_layout_structured_blocks_hide_raw_panel() -> None:
     layout = [
-        {"type": "hero_snapshot", "title": "S", "width": 6, "items": [{"label": "L", "value": "V"}]},
+        {
+            "type": "hero_snapshot",
+            "title": "S",
+            "width": 6,
+            "items": [{"label": "L", "value": "V"}],
+        },
         {"type": "metric_card", "title": "M", "value": "42", "width": 3},
     ]
     result = render_layout(layout)
     types = [b["type"] for b in result]
     assert "raw_json_panel" not in types
-    layout_with_raw = layout + [{"type": "raw_json_panel", "title": "Debug", "width": 12, "data": {"k": "v"}}]
+    layout_with_raw = layout + [
+        {"type": "raw_json_panel", "title": "Debug", "width": 12, "data": {"k": "v"}}
+    ]
     result_with_raw = render_layout(layout_with_raw)
     types_with_raw = [b["type"] for b in result_with_raw]
     assert "raw_json_panel" in types_with_raw
@@ -789,17 +847,19 @@ def test_layout_fallback_when_empty() -> None:
 
 # Тест: KPI strip использует правильные CSS-классы для stat card
 def test_layout_kpi_strip_uses_stat_cards() -> None:
-    result = render_layout([
-        {
-            "type": "kpi_strip",
-            "title": "KPIs",
-            "width": 12,
-            "items": [
-                {"label": "Runs", "value": "42", "status": "ok"},
-                {"label": "Rate", "value": "94%"},
-            ],
-        }
-    ])
+    result = render_layout(
+        [
+            {
+                "type": "kpi_strip",
+                "title": "KPIs",
+                "width": 12,
+                "items": [
+                    {"label": "Runs", "value": "42", "status": "ok"},
+                    {"label": "Rate", "value": "94%"},
+                ],
+            }
+        ]
+    )
     block = result[0]
     assert block["type"] == "kpi_strip"
     assert block["title"] == "KPIs"
@@ -810,19 +870,84 @@ def test_layout_kpi_strip_uses_stat_cards() -> None:
     assert block["items"][1]["status"] == ""
 
 
+# Тест: chart block type рендерится без данных
+def test_layout_chart_type_renders() -> None:
+    result = render_layout(
+        [
+            {"type": "chart", "title": "Price Chart", "width": 12},
+        ]
+    )
+
+    assert len(result) == 1
+    block = result[0]
+    assert block["type"] == "chart"
+    assert block["title"] == "Price Chart"
+    assert block["has_data"] is False
+    assert block["width_class"] == "col-12"
+
+
+# Тест: chart с полными данными рендерится с has_data=True
+def test_layout_chart_with_data_renders() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "chart",
+                "title": "<script>bad</script>",
+                "subtitle": "Daily prices",
+                "status": "ok",
+                "symbol": "BTC/USD",
+                "timeframe": "1h",
+                "series": [{"name": "close", "data": [100, 101, 102]}],
+                "points": [{"x": 1, "y": 100}],
+                "candles": [{"open": 99, "high": 103, "low": 98, "close": 101}],
+                "width": 12,
+            },
+        ]
+    )
+
+    assert len(result) == 1
+    block = result[0]
+    assert block["type"] == "chart"
+    assert block["title"] == "<script>bad</script>"
+    assert block["has_data"] is True
+    assert block["symbol"] == "BTC/USD"
+    assert block["timeframe"] == "1h"
+
+
+# Тест: chart.html template существует в package
+def test_layout_chart_template_exists() -> None:
+    assert Path("src/beeui_module/web/templates/components/layout/chart.html").is_file()
+
+
+# Тест: все layout templates, упомянутые в layout_block.html, существуют
+def test_layout_block_includes_exist() -> None:
+    template_root = Path("src/beeui_module/web/templates")
+    layout_block = (template_root / "components" / "layout_block.html").read_text(
+        encoding="utf-8"
+    )
+    includes = re.findall(r'"(components/layout/[^"]+\.html)"', layout_block)
+    assert includes, "layout_block.html must include layout templates"
+    for include in includes:
+        assert (template_root / include).is_file(), (
+            f"Missing included template: {include}"
+        )
+
+
 # Тест: venue_summary_grid использует правильную сетку
 def test_layout_venue_summary_grid_uses_grid() -> None:
-    result = render_layout([
-        {
-            "type": "venue_summary_grid",
-            "title": "Venues",
-            "width": 6,
-            "items": [
-                {"label": "MRKT", "value": "active", "status": "ok"},
-                {"label": "Binance", "value": "connected", "status": "ok"},
-            ],
-        }
-    ])
+    result = render_layout(
+        [
+            {
+                "type": "venue_summary_grid",
+                "title": "Venues",
+                "width": 6,
+                "items": [
+                    {"label": "MRKT", "value": "active", "status": "ok"},
+                    {"label": "Binance", "value": "connected", "status": "ok"},
+                ],
+            }
+        ]
+    )
     block = result[0]
     assert block["type"] == "venue_summary_grid"
     assert block["items"][0]["status"] == "ok"
@@ -831,17 +956,19 @@ def test_layout_venue_summary_grid_uses_grid() -> None:
 
 # Тест: mode_cards рендерится с compact card deck
 def test_layout_mode_cards_uses_compact_cards() -> None:
-    result = render_layout([
-        {
-            "type": "mode_cards",
-            "title": "Modes",
-            "width": 6,
-            "items": [
-                {"label": "Paper", "value": "enabled", "status": "ok"},
-                {"label": "Live", "value": "disabled", "status": "warning"},
-            ],
-        }
-    ])
+    result = render_layout(
+        [
+            {
+                "type": "mode_cards",
+                "title": "Modes",
+                "width": 6,
+                "items": [
+                    {"label": "Paper", "value": "enabled", "status": "ok"},
+                    {"label": "Live", "value": "disabled", "status": "warning"},
+                ],
+            }
+        ]
+    )
     block = result[0]
     assert block["type"] == "mode_cards"
     assert len(block["items"]) == 2
@@ -849,18 +976,20 @@ def test_layout_mode_cards_uses_compact_cards() -> None:
 
 # Тест: attention_list использует list-group с severity
 def test_layout_attention_list_uses_list_group() -> None:
-    result = render_layout([
-        {
-            "type": "attention_list",
-            "title": "Alerts",
-            "width": 6,
-            "items": [
-                {"label": "Disk", "message": "90%", "severity": "error"},
-                {"label": "Memory", "message": "80%", "severity": "warning"},
-                {"label": "Info", "message": "ok", "severity": "info"},
-            ],
-        }
-    ])
+    result = render_layout(
+        [
+            {
+                "type": "attention_list",
+                "title": "Alerts",
+                "width": 6,
+                "items": [
+                    {"label": "Disk", "message": "90%", "severity": "error"},
+                    {"label": "Memory", "message": "80%", "severity": "warning"},
+                    {"label": "Info", "message": "ok", "severity": "info"},
+                ],
+            }
+        ]
+    )
     block = result[0]
     assert block["type"] == "attention_list"
     assert block["items"][0]["severity"] == "error"
@@ -870,17 +999,27 @@ def test_layout_attention_list_uses_list_group() -> None:
 
 # Тест: artifact_links использует list-group с href и content_type
 def test_layout_artifact_links_uses_list_group() -> None:
-    result = render_layout([
-        {
-            "type": "artifact_links",
-            "title": "Artifacts",
-            "width": 6,
-            "items": [
-                {"label": "report.json", "href": "/runs/1/artifacts/report", "content_type": "json"},
-                {"label": "log.txt", "href": "/runs/1/artifacts/log", "content_type": "text"},
-            ],
-        }
-    ])
+    result = render_layout(
+        [
+            {
+                "type": "artifact_links",
+                "title": "Artifacts",
+                "width": 6,
+                "items": [
+                    {
+                        "label": "report.json",
+                        "href": "/runs/1/artifacts/report",
+                        "content_type": "json",
+                    },
+                    {
+                        "label": "log.txt",
+                        "href": "/runs/1/artifacts/log",
+                        "content_type": "text",
+                    },
+                ],
+            }
+        ]
+    )
     block = result[0]
     assert block["type"] == "artifact_links"
     assert block["items"][0]["href"] == "/runs/1/artifacts/report"

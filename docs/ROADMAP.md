@@ -2315,6 +2315,92 @@ Security/static checks:
 - no product-specific logic is introduced into BeeUI core;
 - docs describe the visual/layout hardening and asset policy.
 
+### Итерация 12.3 — Chart layout block package/rendering integrity
+
+**Статус:** DONE
+
+#### Goal
+
+Устранить несогласованность BeeUI adapter-backed `layout[]` block contract: если product adapter отдаёт block type `chart`, BeeUI должен безопасно рендерить его через package-local template или явно деградировать без `500 TemplateNotFound`.
+
+#### Почему это нужно
+
+После Iteration 12.1/12.2 BeeUI используется как canonical renderer для BeeCap adapter-backed pages. BeeCap может отдавать chart-like blocks для run/venue/operator dashboards. Если `chart` заявлен в renderer/API contract, но шаблон отсутствует в wheel, embedded product pages падают с `500`, что блокирует BeeCap → BeeUI production parity.
+
+#### Change level
+
+**runtime-risk**
+
+Security-sensitive checks required for:
+
+- adapter-provided chart payload escaping;
+- safe internal source links;
+- no external CDN/scripts;
+- package-local static/template integrity;
+- no mutation from GET routes.
+
+#### Scope
+
+**Включено:**
+
+- проверить фактический contract:
+  - `layout_renderer.py`;
+  - `layout_block.html`;
+  - packaged wheel contents;
+  - tests;
+- если `chart` поддерживается renderer/API:
+  - добавить `components/layout/chart.html`;
+  - подключить `chart` в `layout_block.html`;
+  - добавить safe degraded/empty state;
+  - добавить tests на HTML render;
+  - добавить package/template integrity test;
+- если `chart` не должен поддерживаться:
+  - убрать `chart` из supported block types/docs/tests;
+  - unsupported `chart` должен рендериться как degraded block, не падать;
+- обновить docs:
+  - `docs/API_CONTRACT.md`;
+  - `docs/WEB_UI.md`;
+  - `docs/COMPONENTS.md`;
+  - `docs/ROADMAP.md`.
+
+**Не включено:**
+
+- ApexCharts/JS chart engine;
+- external chart CDN;
+- full trading chart;
+- BeeCap-specific chart calculations;
+- BeeAgent-specific logic;
+- provider/broker/runtime calls;
+- config/admin/actions/auth;
+- new config keys;
+- new dependencies unless strictly justified.
+
+#### Deliverable
+
+BeeUI package renders or safely degrades `chart` layout blocks without `TemplateNotFound`, and wheel/package tests guarantee that required templates are included.
+
+#### Checks
+
+- `uv run pytest -q`;
+- `./start.sh doctor`;
+- `./start.sh routes`;
+- `./start.sh web --host 127.0.0.1 --port 8780`;
+- fake adapter page with `chart` block renders `200`;
+- unsafe chart title/labels are escaped;
+- missing/empty chart data renders empty/degraded card;
+- no external CDN/scripts/assets;
+- no secrets in HTML/API/logs;
+- package template exists in installed package/wheel context.
+
+#### DoD
+
+- `chart` block contract is consistent across renderer, templates, docs and tests;
+- no `500 TemplateNotFound` for adapter-provided chart blocks;
+- unsupported/malformed chart payloads degrade visibly;
+- BeeUI remains product-neutral;
+- no product-specific chart semantics added;
+- docs reflect actual supported block behavior.
+
 ---
 
 ## Этап 6 — Config/Auth/Actions foundation
