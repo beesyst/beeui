@@ -67,12 +67,20 @@
   --tblr-primary-rgb: 92, 82, 162;
 }
 
-.beeui-theme-base-gray,
-.beeui-theme-base-slate,
-.beeui-theme-base-zinc,
-.beeui-theme-base-neutral,
-.beeui-theme-base-stone {
+[data-bs-theme="light"] .beeui-theme-base-gray,
+[data-bs-theme="light"] .beeui-theme-base-slate,
+[data-bs-theme="light"] .beeui-theme-base-zinc,
+[data-bs-theme="light"] .beeui-theme-base-neutral,
+[data-bs-theme="light"] .beeui-theme-base-stone {
   --beeui-surface: #ffffff;
+}
+
+[data-bs-theme="dark"] .beeui-theme-base-gray,
+[data-bs-theme="dark"] .beeui-theme-base-slate,
+[data-bs-theme="dark"] .beeui-theme-base-zinc,
+[data-bs-theme="dark"] .beeui-theme-base-neutral,
+[data-bs-theme="dark"] .beeui-theme-base-stone {
+  --beeui-surface: var(--tblr-bg-surface);
 }
 
 .beeui-theme-font-serif {
@@ -138,17 +146,7 @@ body {
     var(--tblr-body-bg);
 }
 
-.beeui-page {
-  display: grid;
-  min-height: 100vh;
-  grid-template-columns: var(--beeui-sidebar-width) minmax(0, 1fr);
-}
-
 .beeui-sidebar {
-  position: sticky;
-  top: 0;
-  height: 100vh;
-  align-self: start;
   border-right: 1px solid var(--beeui-sidebar-border);
   background: linear-gradient(180deg, var(--beeui-sidebar-bg), color-mix(in srgb, var(--beeui-sidebar-bg), #dbe2ea 7%));
 }
@@ -160,7 +158,6 @@ body {
 }
 
 .beeui-sidebar .navbar-nav {
-  display: grid;
   gap: 0.4rem;
 }
 
@@ -195,25 +192,9 @@ body {
   margin-top: 0.25rem;
 }
 
-.page-wrapper {
-  background: var(--beeui-surface);
-  min-width: 0;
-}
-
 .beeui-navbar {
   border-bottom: 1px solid var(--tblr-border-color);
   background: color-mix(in srgb, var(--beeui-surface), #eaf1fb 8%);
-}
-
-.page-header {
-  border-bottom: 1px solid var(--tblr-border-color);
-  margin-bottom: 1rem;
-  padding-bottom: 0.75rem;
-}
-
-.page-title {
-  margin: 0;
-  font-size: 1.35rem;
 }
 
 .beeui-card-title {
@@ -337,7 +318,8 @@ body {
 }
 
 .beeui-footer {
-  background: color-mix(in srgb, var(--beeui-surface), #f5f8fd 10%);
+  background: transparent;
+  border-top: 0;
 }
 
 .beeui-catalog-card {
@@ -385,13 +367,7 @@ body {
 }
 
 @media (max-width: 991px) {
-  .beeui-page {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
   .beeui-sidebar {
-    position: static;
-    height: auto;
     border-right: 0;
     border-bottom: 1px solid var(--beeui-sidebar-border);
   }

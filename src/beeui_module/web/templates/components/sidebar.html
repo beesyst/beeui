@@ -1,5 +1,6 @@
 <aside
   class="navbar navbar-vertical navbar-expand-lg beeui-sidebar {{ layout.sidebar_variant_class }} {{ layout.sidebar_collapsed_class }}"
+  {% if layout.sidebar_variant == "dark" %}data-bs-theme="dark"{% endif %}
   aria-label="Sidebar"
   id="beeui-sidebar"
 >
@@ -19,16 +20,95 @@
       <a href="{{ route_prefix }}/">{{ logo_text }}</a>
     </h1>
     <div class="collapse navbar-collapse" id="beeui-sidebar-menu">
+      {% macro render_icon(icon) %}
+      <span
+        class="nav-link-icon d-md-none d-lg-inline-block"
+        aria-hidden="true"
+      >
+        {% if icon == "dashboard" %}
+        <svg
+          class="icon icon-1"
+          data-beeui-icon="dashboard"
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path
+            d="M4 4m0 2a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v1a2 2 0 0 1 -2 2h-2a2 2 0 0 1 -2 -2z"
+          />
+          <path
+            d="M4 13m0 2a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v3a2 2 0 0 1 -2 2h-2a2 2 0 0 1 -2 -2z"
+          />
+          <path
+            d="M14 4m0 2a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v3a2 2 0 0 1 -2 2h-2a2 2 0 0 1 -2 -2z"
+          />
+          <path
+            d="M14 15m0 2a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v1a2 2 0 0 1 -2 2h-2a2 2 0 0 1 -2 -2z"
+          />
+        </svg>
+        {% elif icon == "runs" %}
+        <svg
+          class="icon icon-1"
+          data-beeui-icon="runs"
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M5 5h14v14h-14z" />
+          <path d="M9 9h6" />
+          <path d="M9 13h6" />
+          <path d="M9 17h4" />
+        </svg>
+        {% elif icon == "reports" %}
+        <svg
+          class="icon icon-1"
+          data-beeui-icon="reports"
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M3 3v18h18" />
+          <path d="M7 14l3 -3l3 2l5 -6" />
+        </svg>
+        {% endif %}
+      </span>
+      {% endmacro %}
+
       {% macro render_items(items) %}
       <ul class="navbar-nav pt-lg-3" role="list">
         {% for item in items %}
-        <li class="nav-item{% if item.active or item.descendant_active %} active{% endif %}{% if item.is_group %} beeui-nav-group{% endif %}">
+        <li
+          class="nav-item{% if item.active %} active{% endif %}{% if item.is_group %} beeui-nav-group{% endif %}"
+        >
           {% if item.is_group %}
-          <div class="nav-link sidebar__link beeui-nav-group-title{% if item.descendant_active %} is-active{% endif %}" aria-label="{{ item.title }}">
+          <div
+            class="nav-link sidebar__link beeui-nav-group-title{% if item.descendant_active %} is-active{% endif %}"
+            aria-label="{{ item.title }}"
+          >
             <span class="nav-link-title">{{ item.title }}</span>
           </div>
           {% elif item.disabled %}
-          <span class="nav-link sidebar__link beeui-nav-disabled" aria-disabled="true" tabindex="-1">
+          <span
+            class="nav-link sidebar__link beeui-nav-disabled"
+            aria-disabled="true"
+            tabindex="-1"
+          >
+            {{ render_icon(item.icon) }}
             <span class="nav-link-title">{{ item.title }}</span>
           </span>
           {% else %}
@@ -36,13 +116,15 @@
             class="nav-link sidebar__link{% if item.active %} is-active{% endif %}"
             href="{{ item.href }}"
           >
-            <span class="nav-link-icon d-md-none d-lg-inline-block" aria-hidden="true"></span>
+            {{ render_icon(item.icon) }}
             <span class="nav-link-title">{{ item.title }}</span>
           </a>
           {% endif %}
 
           {% if item.children %}
-          <div class="beeui-nav-children{% if item.descendant_active %} is-open{% endif %}">
+          <div
+            class="beeui-nav-children{% if item.descendant_active %} is-open{% endif %}"
+          >
             {{ render_items(item.children) }}
           </div>
           {% endif %}

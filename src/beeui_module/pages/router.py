@@ -155,8 +155,6 @@ def build_shell_classes(theme: dict[str, Any], layout: dict[str, Any]) -> str:
         layout["type_class"],
         layout["sidebar_variant_class"],
         layout["sidebar_collapsed_class"],
-        layout["navbar_variant_class"],
-        layout["navbar_sticky_class"],
         theme["mode_class"],
         theme["primary_class"],
         theme["base_class"],
@@ -164,6 +162,13 @@ def build_shell_classes(theme: dict[str, Any], layout: dict[str, Any]) -> str:
         theme["radius_class"],
         theme["density_class"],
     ]
+    if layout["navbar_enabled"]:
+        classes.extend(
+            [
+                layout["navbar_variant_class"],
+                layout["navbar_sticky_class"],
+            ]
+        )
     return " ".join(class_name for class_name in classes if class_name)
 
 
