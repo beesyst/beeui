@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.15.2](https://github.com/beesyst/beeui/compare/beeui-v0.15.1...beeui-v0.15.2) (2026-06-08)
+
+
+### Bug Fixes
+
+* **ui:** restore chart layout block rendering ([#48](https://github.com/beesyst/beeui/issues/48)) ([130f6e0](https://github.com/beesyst/beeui/commit/130f6e0decb1206399fb52333a4e2f4a6869b68f))
+
 ## [0.15.1](https://github.com/beesyst/beeui/compare/beeui-v0.15.0...beeui-v0.15.1) (2026-06-08)
 
 
