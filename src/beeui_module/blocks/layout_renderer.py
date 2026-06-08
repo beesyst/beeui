@@ -23,6 +23,7 @@ _SUPPORTED_BLOCK_TYPES: set[str] = {
     "attention_list",
     "artifact_links",
     "raw_json_panel",
+    "chart",
 }
 
 
@@ -374,6 +375,29 @@ def _render_raw_json_panel(raw: dict[str, Any], width_class: str) -> dict[str, A
     }
 
 
+# Рендеринг блока "chart" с нормализацией adapter-provided chart payload
+def _render_chart(raw: dict[str, Any], width_class: str) -> dict[str, Any]:
+    series = _safe_list(raw.get("series"))
+    points = _safe_list(raw.get("points"))
+    candles = _safe_list(raw.get("candles"))
+    has_data = bool(series or points or candles)
+
+    return {
+        "type": "chart",
+        "width_class": width_class,
+        "title": _safe_str(raw.get("title", "")),
+        "subtitle": _safe_str(raw.get("subtitle", "")),
+        "status": _safe_str(raw.get("status", "")),
+        "hint": _safe_str(raw.get("hint", "")),
+        "symbol": _safe_str(raw.get("symbol", "")),
+        "timeframe": _safe_str(raw.get("timeframe", "")),
+        "series": series,
+        "points": points,
+        "candles": candles,
+        "has_data": has_data,
+    }
+
+
 # Сопоставление типов блоков с их функциями рендеринга для динамического вызова при обработке layout[] списка
 _BLOCK_RENDERERS: dict[str, Any] = {
     "hero_snapshot": _render_hero_snapshot,
@@ -386,6 +410,7 @@ _BLOCK_RENDERERS: dict[str, Any] = {
     "attention_list": _render_attention_list,
     "artifact_links": _render_artifact_links,
     "raw_json_panel": _render_raw_json_panel,
+    "chart": _render_chart,
 }
 
 

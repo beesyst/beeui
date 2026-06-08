@@ -18,6 +18,8 @@
   {% include "components/layout/artifact_links.html" %}
 {% elif block.type == "raw_json_panel" %}
   {% include "components/layout/raw_json_panel.html" %}
+{% elif block.type == "chart" %}
+  {% include "components/layout/chart.html" %}
 {% elif block.type == "degraded" %}
   {% include "components/layout/degraded.html" %}
 {% endif %}

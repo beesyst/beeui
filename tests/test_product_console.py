@@ -508,6 +508,71 @@ def test_no_product_specific_imports_in_console_router() -> None:
     assert "beeagent_module" not in source
 
 
+# Тест: адаптер с chart layout block возвращает 200 с корректным рендерингом
+def test_adapter_chart_layout_block_renders() -> None:
+    class ChartLayoutAdapter(FakeProductConsoleAdapter):
+        def get_dashboard(self) -> Any:
+            return ok_result(
+                {
+                    "layout": [
+                        {"type": "chart", "title": "BTC/USD Chart", "width": 6},
+                        {
+                            "type": "metric_card",
+                            "title": "Metric",
+                            "value": "42",
+                            "width": 6,
+                        },
+                    ],
+                    "latest_run": {"id": "run_001", "status": "ok"},
+                }
+            )
+
+    app = create_beeui_app(adapter=ChartLayoutAdapter())
+    client = TestClient(app)
+
+    response = client.get("/")
+
+    assert response.status_code == 200
+    assert "BTC/USD Chart" in response.text
+    assert "Metric" in response.text
+    assert "Unsupported block type: chart" not in response.text
+    assert "TemplateNotFound" not in response.text
+    assert "http://" not in response.text
+    assert "https://" not in response.text
+
+
+# Тест: chart layout HTML экранирует опасные adapter-provided значения
+def test_chart_layout_html_escapes_adapter_values() -> None:
+    class UnsafeChartAdapter(FakeProductConsoleAdapter):
+        def get_dashboard(self) -> Any:
+            return ok_result(
+                {
+                    "layout": [
+                        {
+                            "type": "chart",
+                            "title": "<script>alert(1)</script>",
+                            "subtitle": "<b>subtitle</b>",
+                            "hint": "<img src=x onerror=alert(1)>",
+                            "symbol": "<BTC>",
+                            "timeframe": "<1h>",
+                            "series": [{"name": "close", "data": [1, 2, 3]}],
+                        }
+                    ]
+                }
+            )
+
+    response = TestClient(create_beeui_app(adapter=UnsafeChartAdapter())).get("/")
+
+    assert response.status_code == 200
+    assert "&lt;script&gt;alert(1)&lt;/script&gt;" in response.text
+    assert "&lt;b&gt;subtitle&lt;/b&gt;" in response.text
+    assert "&lt;img src=x onerror=alert(1)&gt;" in response.text
+    assert "&lt;BTC&gt;" in response.text
+    assert "&lt;1h&gt;" in response.text
+    assert "<script>alert(1)</script>" not in response.text
+    assert "<img src=x onerror=alert(1)>" not in response.text
+
+
 # Тест: layout[] ссылки учитывают route prefix и FastAPI mount path
 def test_layout_links_use_route_prefix_and_embedded_mount() -> None:
     class LayoutAdapter(FakeProductConsoleAdapter):
