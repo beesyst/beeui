@@ -1,11 +1,15 @@
 from __future__ import annotations
 
+from dataclasses import replace
+from pathlib import Path
+
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from beeui_module.core.paths import settings_path
 from beeui_module.core.settings import load_settings
 from beeui_module.core.version import get_version
+from beeui_module.pages.config import load_beeui_config
 from beeui_module.web.app import create_beeui_app
 
 
@@ -126,29 +130,111 @@ def test_get_static_css_returns_file() -> None:
     assert response.headers["X-BeeUI-Read-Only"] == "true"
 
 
-# Тест: локальный vendor asset доступен через static route
+# Тест: локальный real Tabler CSS доступен через static route
 def test_get_local_tabler_vendor_asset_returns_file() -> None:
     app = create_beeui_app()
     client = TestClient(app)
 
-    response = client.get("/static/vendor/tabler/css/tabler-compatible.min.css")
+    response = client.get("/static/vendor/tabler/css/tabler.min.css")
 
     assert response.status_code == 200
     assert "--tblr-body-bg:" in response.text
     assert "--tblr-primary-rgb:" in response.text
+    assert "Tabler v1.4.0" in response.text
     assert response.headers["X-BeeUI-Read-Only"] == "true"
 
 
-# Тест: локальный vendor JS asset доступен через static route
+# Тест: vendor CSS является compiled Tabler core, а не placeholder subset
+def test_local_tabler_css_is_not_placeholder() -> None:
+    css_path = Path(
+        "src/beeui_module/web/static/vendor/tabler/css/tabler.min.css"
+    )
+    css = css_path.read_text(encoding="utf-8")
+
+    assert css_path.stat().st_size > 100_000
+    for marker in (
+        ".page-wrapper",
+        ".page-body",
+        ".navbar-vertical",
+        ".card",
+        ".card-header",
+        ".table-vcenter",
+        ".badge",
+        "--tblr-",
+    ):
+        assert marker in css
+
+    lowered = css.lower()
+    for forbidden in (
+        "cdn.jsdelivr",
+        "preview.tabler.io",
+        "posthog",
+        "scripts.tabler.io",
+        "sourcemappingurl",
+    ):
+        assert forbidden not in lowered
+
+
+# Тест: BeeUI override layer не реализует второй core grid/component framework
+def test_beeui_css_does_not_override_core_grid() -> None:
+    css = Path("src/beeui_module/web/static/css/beeui.css").read_text(
+        encoding="utf-8"
+    )
+
+    for selector in (
+        "\n.row {",
+        "\n.col-lg-6 {",
+        "\n.container-xl {",
+        "\n.card {",
+        "\n.table {",
+        "\n.badge {",
+        "\n.btn {",
+    ):
+        assert selector not in css
+
+
+# Тест: theme base surface override остаётся привязан к light/dark theme
+def test_beeui_theme_base_surface_override_is_theme_scoped() -> None:
+    css = Path("src/beeui_module/web/static/css/beeui.css").read_text(
+        encoding="utf-8"
+    )
+
+    light_rule = css.index('[data-bs-theme="light"] .beeui-theme-base-gray')
+    light_value = css.index("--beeui-surface: #ffffff;", light_rule)
+    dark_rule = css.index('[data-bs-theme="dark"] .beeui-theme-base-gray')
+    dark_value = css.index(
+        "--beeui-surface: var(--tblr-bg-surface);",
+        dark_rule,
+    )
+
+    assert light_rule < light_value < dark_rule < dark_value
+    assert "\n.beeui-theme-base-gray," not in css
+
+
+# Тест: footer использует Tabler transparent footer без светлого override
+def test_beeui_footer_override_is_transparent() -> None:
+    css = Path("src/beeui_module/web/static/css/beeui.css").read_text(
+        encoding="utf-8"
+    )
+    footer_rule = css.split(".beeui-footer {", 1)[1].split("}", 1)[0]
+
+    assert "background: transparent;" in footer_rule
+    assert "border-top: 0;" in footer_rule
+    assert "#fff" not in footer_rule.lower()
+    assert "white" not in footer_rule.lower()
+
+
+# Тест: локальный real Tabler JS доступен через static route
 def test_get_local_tabler_vendor_js_asset_returns_file() -> None:
     app = create_beeui_app()
     client = TestClient(app)
 
-    response = client.get("/static/vendor/tabler/js/tabler-compatible.min.js")
+    response = client.get("/static/vendor/tabler/js/tabler.min.js")
 
     assert response.status_code == 200
-    assert "data-bs-toggle" in response.text
-    assert "collapse" in response.text
+    assert "Tabler v1.4.0" in response.text
+    assert "Bootstrap v5.3.7" in response.text
+    assert "sourceMappingURL" not in response.text
     assert response.headers["X-BeeUI-Read-Only"] == "true"
 
 
@@ -171,18 +257,35 @@ def test_html_does_not_include_external_assets_or_tracking() -> None:
     assert "@import url(http" not in html
 
 
-# Тест: главная страница подключает только локальные CSS/JS assets
-def test_html_uses_local_assets_only() -> None:
+# Тест: default dark shell скрывает top navbar и сохраняет transparent footer
+def test_default_dark_shell_has_no_navbar_and_transparent_footer() -> None:
+    response = TestClient(create_beeui_app()).get("/")
+
+    assert response.status_code == 200
+    assert "beeui-navbar" not in response.text
+    assert 'class="footer footer-transparent d-print-none beeui-footer"' in response.text
+
+
+# Тест: HTML подключает real local Tabler assets до BeeUI overrides
+def test_html_uses_real_local_tabler_assets() -> None:
     app = create_beeui_app()
     client = TestClient(app)
 
     response = client.get("/")
 
     assert response.status_code == 200
-    assert "/static/vendor/tabler/css/tabler-compatible.min.css" in response.text
-    assert "/static/vendor/tabler/js/tabler-compatible.min.js" in response.text
-    assert "/static/css/beeui.css" in response.text
-    assert "/static/js/beeui.js" in response.text
+    tabler_css = "/static/vendor/tabler/css/tabler.min.css"
+    tabler_js = "/static/vendor/tabler/js/tabler.min.js"
+    beeui_css = "/static/css/beeui.css"
+    beeui_js = "/static/js/beeui.js"
+    assert tabler_css in response.text
+    assert tabler_js in response.text
+    assert beeui_css in response.text
+    assert beeui_js in response.text
+    assert response.text.index(tabler_css) < response.text.index(beeui_css)
+    assert response.text.index(tabler_js) < response.text.index(beeui_js)
+    assert "http://" not in response.text
+    assert "https://" not in response.text
     assert 'data-bs-theme="dark"' in response.text
     assert "beeui-theme-primary-blue" in response.text
     assert "beeui-theme-base-gray" in response.text
@@ -192,8 +295,16 @@ def test_html_uses_local_assets_only() -> None:
 def test_product_title_is_escaped_in_html() -> None:
     settings = load_settings(settings_path())
     settings["product"]["title"] = "<script>alert(1)</script>"
+    ui_config = load_beeui_config(settings_path().parent / "schema.yml")
+    ui_config = replace(
+        ui_config,
+        layout=replace(
+            ui_config.layout,
+            navbar=replace(ui_config.layout.navbar, enabled=True),
+        ),
+    )
 
-    app = create_beeui_app(settings=settings)
+    app = create_beeui_app(settings=settings, ui_config=ui_config)
     client = TestClient(app)
 
     response = client.get("/")

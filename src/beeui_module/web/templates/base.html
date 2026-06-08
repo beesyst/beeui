@@ -4,13 +4,13 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{% block title %}BeeUI{% endblock %}</title>
-    <link rel="stylesheet" href="{{ route_prefix }}/static/vendor/tabler/css/tabler-compatible.min.css" />
+    <link rel="stylesheet" href="{{ route_prefix }}/static/vendor/tabler/css/tabler.min.css" />
     <link rel="stylesheet" href="{{ route_prefix }}/static/css/beeui.css" />
   </head>
   <body class="{{ shell_classes }}">
-    <div class="page beeui-page {{ layout.type_class }} {{ layout.container_class }}">
-      {% include "components/sidebar.html" %}
+    {% include "components/sidebar.html" %}
 
+    <div class="page beeui-page {{ layout.type_class }}">
       <div class="page-wrapper">
         {% if layout.navbar_enabled %}
         {% include "components/navbar.html" %}
@@ -24,7 +24,7 @@
       </div>
     </div>
 
-    <script src="{{ route_prefix }}/static/vendor/tabler/js/tabler-compatible.min.js"></script>
+    <script src="{{ route_prefix }}/static/vendor/tabler/js/tabler.min.js"></script>
     <script src="{{ route_prefix }}/static/js/beeui.js"></script>
   </body>
 </html>

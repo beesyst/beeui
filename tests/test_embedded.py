@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from pathlib import Path
 from typing import Any, cast
 
@@ -331,9 +332,18 @@ class TestRoutePrefixWithEmbedded:
     def test_route_prefix_works_with_product_metadata(self) -> None:
         settings = load_settings(settings_path())
         settings["web"]["route_prefix"] = "/bee"
+        ui_config = load_beeui_config(settings_path().parent / "schema.yml")
+        ui_config = replace(
+            ui_config,
+            layout=replace(
+                ui_config.layout,
+                navbar=replace(ui_config.layout.navbar, enabled=True),
+            ),
+        )
 
         app = create_beeui_app(
             settings=settings,
+            ui_config=ui_config,
             product_id="beecap",
             product_title="BeeCap",
         )

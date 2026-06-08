@@ -16,7 +16,7 @@ app:
       variant: dark
       collapsed: false
     navbar:
-      enabled: true
+      enabled: false
       variant: default
       sticky: false
 
@@ -28,8 +28,9 @@ navigation:
         icon: dashboard
       - title: Runs
         path: /runs
-        icon: list
+        icon: runs
       - title: Reports
+        icon: reports
         disabled: true
 
 data_sources:

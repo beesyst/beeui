@@ -1,34 +1,38 @@
-# Web UI
+# Веб-интерфейс
 
 ## Назначение
 
-`beeui` — это reusable web UI framework для Bee-продуктов.
+`beeui` — это переиспользуемый веб-фреймворк для Bee-продуктов.
 
-Он предоставляет canonical web surface, которую можно подключать к продуктам вроде:
+Он предоставляет каноническую веб-поверхность, которую можно подключать к продуктам вроде:
 
 - `beecap`;
 - `beeagent`;
 - будущие Bee-продукты.
 
-Текущая реализованная основа после Iteration 12.1 включает:
+Текущая реализованная основа после Iteration 12.2 включает:
 
-- FastAPI web app;
-- Jinja2 templates;
-- Tabler-based product shell;
-- declarative pages/navigation;
-- reusable dashboard blocks;
-- controlled demo/static data resolver;
-- generic `ProductUiAdapter` contract v0;
-- BeeCap-compatible fixture/reference adapter для проверки BeeCap-shaped payloads;
-- embedded app factory `create_beeui_app(...)` с поддержкой `config_path`, `product_id`, `product_title`, `adapter`;
-- mount helper `mount_beeui(...)` для встраивания BeeUI в родительское FastAPI приложение;
-- generic adapter-backed product console HTML routes через `ProductUiAdapter` (`/`, `/runs`, `/runs/{run_id}`, `/venues/{venue_id}` when adapter is present);
-- adapter-backed `layout[]` rendering для product console pages;
-- generic Tabler layout blocks for dashboard/run/runs/venue pages;
-- degraded fallback для malformed/unsupported layout blocks;
-- stable read-only JSON API envelope for product console routes (`/api/dashboard`, `/api/runs`, `/api/runs/{run_id}`, `/api/venues/{venue_id}/dashboard`);
-- generic artifact browser HTML/API routes через `ProductUiAdapter`;
-- JSON/JSONL/text preview с bounded limits и redaction placeholder.
+- веб-приложение FastAPI;
+- шаблоны Jinja2;
+- продуктовую оболочку на основе Tabler;
+- декларативные страницы и навигацию;
+- переиспользуемые блоки панели;
+- контролируемый resolver демонстрационных и статических данных;
+- общий контракт `ProductUiAdapter` v0;
+- совместимый с BeeCap fixture/reference-адаптер для проверки payload-структур BeeCap;
+- встраиваемую фабрику приложения `create_beeui_app(...)` с поддержкой `config_path`, `product_id`, `product_title`, `adapter`;
+- helper `mount_beeui(...)` для встраивания BeeUI в родительское приложение FastAPI;
+- общие HTML-маршруты продуктовой консоли на основе адаптера через `ProductUiAdapter` (`/`, `/runs`, `/runs/{run_id}`, `/venues/{venue_id}` при наличии адаптера);
+- рендеринг `layout[]` для страниц продуктовой консоли на основе адаптера;
+- общие layout-блоки Tabler для панели, списка запусков, деталей запуска и страниц площадок;
+- резервный `degraded`-рендеринг для некорректных и неподдерживаемых layout-блоков;
+- стабильный read-only JSON API envelope для маршрутов продуктовой консоли (`/api/dashboard`, `/api/runs`, `/api/runs/{run_id}`, `/api/venues/{venue_id}/dashboard`);
+- общие HTML/API-маршруты браузера артефактов через `ProductUiAdapter`;
+- предпросмотр JSON/JSONL/текста с ограниченными лимитами и placeholder редактирования секретов.
+- реальные локальные скомпилированные CSS/JS-ресурсы `@tabler/core@1.4.0`;
+- усиление визуального соответствия Tabler для продуктовой консоли на основе адаптера;
+- тёмную вертикальную оболочку с локальным контекстом темы боковой панели;
+- специфичный для BeeUI слой CSS-переопределений без повторной реализации примитивов сетки, карточек и таблиц Tabler.
 
 `features.browser_artifact` включает/отключает Iteration 11 artifact browser HTML/API routes.
 `features.api` остаётся зарезервированным для будущего stable BeeUI API contract и не отключает artifact browser API routes.
@@ -170,7 +174,7 @@ src/beeui_module/
     static/
       css/beeui.css
       js/beeui.js
-      vendor/tabler/     # local Tabler-compatible subset
+      vendor/tabler/     # real local compiled @tabler/core assets
 
   cli/
     main.py
@@ -342,7 +346,7 @@ app = create_beeui_app(settings=settings, ui_config=ui_config)
 
 Generic `ProductUiAdapter` contract существует в `src/beeui_module/adapters/`. Adapter можно передать в `create_beeui_app(...)`; после Iteration 12 product console routes вызывают `get_dashboard()`, `list_runs()`, `get_run(run_id)` и optional `get_venue_dashboard(venue_id)`, а artifact browser routes продолжают вызывать `list_artifacts(run_id)` и `read_artifact(run_id, artifact_id)`.
 
-### Layout block rendering (Iteration 12.1)
+### Layout block rendering (Iteration 12.1 + 12.2)
 
 Этот contract отличается от schema/demo blocks из `config/schema.yml`.
 
@@ -365,6 +369,19 @@ Generic layout renderer (`src/beeui_module/blocks/layout_renderer.py`)
 
 При отсутствии `layout` или пустом массиве используется существующий
 generic fallback renderer (как в Iteration 12).
+
+Iteration 12.2 — усиление визуального соответствия Tabler:
+
+- BeeUI поставляет реальные локальные скомпилированные ресурсы
+  `@tabler/core@1.4.0` (`tabler.min.css` и `tabler.min.js`) вместо
+  самодельного подмножества совместимости;
+- `beeui.css` загружается после Tabler и содержит только токены, оформление
+  боковой панели и продуктовые улучшения BeeUI, не дублируя базовые классы
+  сетки, карточек и таблиц;
+- `kpi_strip` переведён со строчного выравнивания на статистические карточки
+  (`.card.h-100` со значением `.h1` и подписью `.subheader`);
+- все шаблоны layout-блоков используют совместимые с Tabler CSS-классы;
+- для каждого типа блока добавлены тесты визуального контракта.
 
 Страницы, поддерживающие layout rendering:
 
@@ -544,7 +561,7 @@ app:
       variant: dark
       collapsed: false
     navbar:
-      enabled: true
+      enabled: false
       variant: default
       sticky: false
 
@@ -625,39 +642,40 @@ scope и не относятся к уже реализованным product co
 
 ## Tabler shell policy
 
-`beeui` uses Tabler as visual foundation.
-В Iteration 1 shell является Tabler-compatible local shell. Полный vendored Tabler bundle может быть добавлен отдельной задачей, если он не принесёт demo telemetry/tracking assets.
+`beeui` использует Tabler как визуальную основу.
+Shell использует реальные локальные скомпилированные ресурсы Tabler core без
+демонстрационной телеметрии и ресурсов отслеживания.
 
-Policy:
+Правила:
 
-- use local assets by default;
-- no remote scripts in production templates;
-- no demo telemetry/scripts;
-- no copied Tabler preview tracking;
-- no marketing/sponsor/demo blocks from Tabler preview;
-- static assets must be package-local or explicitly vendored;
-- CSS customization must go through controlled theme variables, not arbitrary user CSS.
+- по умолчанию используются локальные ресурсы;
+- удалённые скрипты запрещены в production-шаблонах;
+- демонстрационная телеметрия и скрипты не подключаются;
+- отслеживание из Tabler preview не копируется;
+- маркетинговые, спонсорские и демонстрационные блоки Tabler preview не поставляются;
+- статические ресурсы должны входить в пакет или быть явно вендоризированы;
+- CSS настраивается через контролируемые переменные темы, а не через произвольный пользовательский CSS.
 
-BeeUI поставляет локальный Tabler-compatible subset в
-`src/beeui_module/web/static/vendor/tabler/`.
-It is not a full upstream Tabler demo bundle.
-Preview/demo/tracking assets не поставляются.
+BeeUI поставляет реальные локальные скомпилированные ресурсы
+`@tabler/core@1.4.0` в `src/beeui_module/web/static/vendor/tabler/`.
+Ресурсы предпросмотра, демонстрационные, маркетинговые и спонсорские ресурсы,
+карты исходников и средства отслеживания не поставляются.
 
-Forbidden in production templates:
+В production-шаблонах запрещены:
 
-- remote telemetry;
+- удалённая телеметрия;
 - `posthog`;
 - `scripts.tabler.io`;
 - `preview/js/demo`;
 - `preview/css/demo`;
-- unreviewed external CDN scripts.
+- непроверенные внешние CDN-скрипты.
 
-Allowed:
+Разрешены:
 
-- local Tabler CSS/JS;
-- local BeeUI CSS/JS;
-- controlled product logo/static assets;
-- optional CDN only for explicit dev/demo mode, if documented.
+- локальные CSS/JS Tabler;
+- локальные CSS/JS BeeUI;
+- контролируемые логотипы и статические ресурсы продукта;
+- необязательный CDN только для явно включённого и документированного режима разработки или демонстрации.
 
 ## Template primitives
 
@@ -762,7 +780,7 @@ JSON routes:
 
 Не все routes должны существовать в MVP.
 
-Текущий MVP route set после Iteration 12:
+Текущий набор маршрутов MVP после Iteration 12.2:
 
 - `/`
 - `/runs`
@@ -776,8 +794,8 @@ JSON routes:
 - `/components/plugins`
 - `/health`
 - `/static/...`
-- `/static/vendor/tabler/css/tabler-compatible.min.css`
-- `/static/vendor/tabler/js/tabler-compatible.min.js`
+- `/static/vendor/tabler/css/tabler.min.css`
+- `/static/vendor/tabler/js/tabler.min.js`
 - `/api/dashboard`
 - `/api/runs`
 - `/api/runs/{run_id}`
@@ -788,6 +806,12 @@ JSON routes:
 - `/api/runs/{run_id}/artifacts/{artifact_id}`
 
 При наличии adapter product console routes владеют `/` и `/runs`. Без adapter сохраняется schema/demo mode. Config/action routes остаются future scope.
+
+Маршрут `/components/plugins` содержит только инертные заглушки каталога
+компонентов. Полноценная интеграция плагинов и дополнений остаётся будущей
+задачей. Интерфейс настройки темы, аутентификация, вход, восстановление пароля
+и верхняя горизонтальная навигация также не реализованы и относятся к будущим
+итерациям.
 
 ## Read-only model
 
@@ -1744,8 +1768,8 @@ visual editor
 - `GET /components/plugins`
 - `GET /health`
 - `GET /static/...`
-- `GET /static/vendor/tabler/css/tabler-compatible.min.css`
-- `GET /static/vendor/tabler/js/tabler-compatible.min.js`
+- `GET /static/vendor/tabler/css/tabler.min.css`
+- `GET /static/vendor/tabler/js/tabler.min.js`
 - `GET /api/dashboard`
 - `GET /api/runs`
 - `GET /api/runs/{run_id}`

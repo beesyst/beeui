@@ -2122,6 +2122,199 @@ BeeUI renders adapter-provided `layout[]` as product-grade Tabler dashboard page
 - no secrets in HTML/API/logs;
 - docs describe `layout[]` block contract.
 
+### Итерация 12.2 — Tabler visual parity hardening for adapter-backed console
+
+**Статус:** DONE
+
+#### Goal
+
+Довести adapter-backed BeeUI product console до визуально пригодного Tabler-grade MVP: dashboard/runs/run detail/venue pages должны выглядеть как читаемая operator console, а не как cramped generic/debug cards.
+
+#### Почему это нужно
+
+Iteration 12.1 добавила `layout[]` renderer для adapter-backed pages, но фактический BeeCap embedded результат остаётся визуально неприемлемым:
+
+- KPI/metric blocks слипаются в inline text;
+- cards/tables/badges не дают нормальную визуальную иерархию;
+- root dashboard и venue pages не выглядят как Tabler operator cockpit;
+- текущий result не соответствует цели “product-grade Tabler dashboard pages”;
+- BeeCap UI-28 Config/Admin/Controls нельзя делать поверх слабого UI-фундамента.
+
+BeeUI должен владеть rendering/layout/templates/static/common UI. BeeCap должен отдавать только adapter/read-model/artifacts/callbacks.
+
+#### Change level
+
+**runtime-risk**
+
+Причина:
+
+- меняется operator-facing HTML rendering;
+- меняется визуальный contract adapter-backed routes;
+- adapter-provided payload становится основой operator decisions;
+- сохраняются route/API contracts, но HTML behavior меняется существенно.
+
+Security-sensitive checks required for:
+
+- HTML escaping;
+- safe internal links;
+- no secrets in HTML/API/logs;
+- no external CDN/scripts/tracking;
+- no provider/broker/runtime calls;
+- no mutation from GET routes.
+
+#### Scope
+
+**Включено:**
+
+- привести shell к Tabler-compatible structure:
+  - `.page`;
+  - `.navbar.navbar-vertical`;
+  - `.page-wrapper`;
+  - `.page-header`;
+  - `.page-body`;
+  - `.container-xl`;
+  - `.row.row-deck.row-cards`;
+
+- проверить и исправить local Tabler asset layer:
+  - заменить слабый compatibility placeholder на reviewed local compiled Tabler core assets;
+  - не использовать CDN;
+  - не включать Tabler preview/demo telemetry, sponsor, PostHog, marketing/demo scripts;
+
+- улучшить rendering текущих adapter-backed block types:
+  - `hero_snapshot`;
+  - `metric_card`;
+  - `kpi_strip`;
+  - `venue_summary_grid`;
+  - `mode_cards`;
+  - `status_table`;
+  - `event_table`;
+  - `attention_list`;
+  - `artifact_links`;
+  - `raw_json_panel` только как explicit fallback/debug block;
+
+- сделать primary pages visually usable above the fold:
+  - `/`;
+  - `/runs`;
+  - `/runs/{run_id}`;
+  - `/venues/mrkt`;
+  - `/venues/binance`;
+
+- сохранить product-neutral rendering:
+  - без MRKT/Binance/BeeCap-specific calculations inside BeeUI;
+  - product semantics только из adapter payload;
+
+- сохранить current API envelopes and route behavior;
+
+- добавить visual contract tests:
+  - Tabler layout/card/table classes;
+  - no raw/debug panel when `layout[]` exists;
+  - unsafe text escaped;
+  - unsafe/external links rejected or rendered inert;
+  - malformed/unsupported blocks render degraded alerts;
+
+- обновить docs:
+  - `docs/ROADMAP.md`;
+  - `docs/WEB_UI.md`;
+  - `docs/COMPONENTS.md`;
+  - `docs/API_CONTRACT.md`;
+  - `README.ru.md`, если меняется asset/component contract.
+
+**Не включено:**
+
+- config apply;
+- admin/support parity;
+- auth/session/CSRF;
+- operator actions;
+- broker/provider/runtime calls;
+- BeeCap-specific calculations;
+- BeeAgent-specific calculations;
+- arbitrary HTML/JS from adapter/config;
+- visual builder;
+- charts/maps;
+- standalone mode;
+- deleting `src/beecap_module/web`;
+- rebuilding BeeCap legacy templates.
+
+#### Deliverable
+
+BeeUI adapter-backed product console renders as a credible Tabler operator MVP.
+
+Expected visual behavior:
+
+- dashboard has readable cockpit layout above the fold;
+- KPI strips render as cards/stat cells, not collapsed inline text;
+- tables render inside proper cards;
+- statuses use visible badges/alerts/dots;
+- venue pages are readable without opening raw JSON;
+- unsupported/malformed blocks degrade visibly without crashing;
+- primary pages do not show raw/debug panels when structured `layout[]` exists.
+
+Expected routes to verify:
+
+```text
+GET /
+GET /runs
+GET /runs/{run_id}
+GET /venues/mrkt
+GET /venues/binance
+GET /runs/{run_id}/artifacts
+```
+
+#### Checks
+
+- `uv run pytest -q`;
+- `./start.sh doctor`;
+- `./start.sh routes`;
+- `./start.sh web --host 127.0.0.1 --port 8780`;
+
+BeeUI route smoke:
+
+```text
+GET /
+GET /runs
+GET /runs/{fixture_run_id}
+GET /venues/mrkt
+GET /venues/binance
+GET /static/css/beeui.css
+GET /static/vendor/tabler/...
+```
+
+BeeCap embedded smoke after local dependency/update:
+
+```text
+GET /
+GET /runs
+GET /venues/mrkt
+GET /venues/binance
+GET /legacy/
+```
+
+Security/static checks:
+
+- no `posthog`;
+- no `scripts.tabler.io`;
+- no `preview.tabler.io`;
+- no `docs.tabler.io`;
+- no external CDN CSS/JS;
+- no secrets in HTML/API/logs;
+- no provider/broker/runtime calls from GET routes;
+- no mutation of product `storage/` from GET routes.
+
+#### DoD
+
+- BeeUI visually matches a practical Tabler operator console baseline;
+- fake adapter pages render through `layout[]`;
+- BeeCap embedded pages are visually acceptable for daily read-only monitoring;
+- all supported layout block types have tests;
+- unsupported/malformed blocks render explicit degraded state;
+- adapter text remains escaped;
+- adapter links are safe internal links only;
+- no external assets/scripts/tracking;
+- no mutation from GET routes;
+- no secrets in HTML/API/logs;
+- no product-specific logic is introduced into BeeUI core;
+- docs describe the visual/layout hardening and asset policy.
+
 ---
 
 ## Этап 6 — Config/Auth/Actions foundation

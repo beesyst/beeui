@@ -326,6 +326,43 @@ def test_theme_and_layout_schema_are_rendered() -> None:
     assert "container-xl" in response.text
 
 
+# Тест: dark sidebar получает локальный Bootstrap theme context
+def test_dark_sidebar_renders_dark_theme_attribute() -> None:
+    response = TestClient(create_beeui_app()).get("/")
+
+    assert response.status_code == 200
+    assert (
+        'class="navbar navbar-vertical navbar-expand-lg beeui-sidebar '
+        'beeui-sidebar-variant-dark '
+        '"\n  data-bs-theme="dark"'
+    ) in response.text
+
+
+# Тест: page blocks используют canonical Tabler grid без wrapper card
+def test_page_blocks_use_tabler_grid_without_wrapper_card() -> None:
+    response = TestClient(create_beeui_app()).get("/")
+
+    assert response.status_code == 200
+    page_blocks = response.text.split(
+        '<section aria-label="Page blocks">',
+        1,
+    )[1].split("</section>", 1)[0]
+    assert 'class="card p-3"' not in page_blocks
+    assert 'class="row row-deck row-cards beeui-block-grid"' in page_blocks
+
+
+# Тест: navigation icon names рендерятся только через inline allowlist
+def test_sidebar_renders_allowlisted_navigation_icons() -> None:
+    response = TestClient(create_beeui_app()).get("/")
+
+    assert response.status_code == 200
+    for icon in ("dashboard", "runs", "reports"):
+        assert f'data-beeui-icon="{icon}"' in response.text
+    assert response.text.count("data-beeui-icon=") == 3
+    assert "http://" not in response.text.lower()
+    assert "https://" not in response.text.lower()
+
+
 # Тест: light mode должен менять только theme attribute/classes
 def test_light_theme_fixture_renders_from_schema() -> None:
     settings = load_settings(settings_path())

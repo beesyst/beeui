@@ -132,8 +132,8 @@ def test_load_beeui_config_fails_on_unknown_navigation_path(tmp_path: Path) -> N
     config_path = _write_config(
         tmp_path,
         _base_config().replace(
-            "        path: /runs\n        icon: list\n",
-            "        path: /missing\n        icon: list\n",
+            "        path: /runs\n        icon: runs\n",
+            "        path: /missing\n        icon: runs\n",
             1,
         ),
     )
@@ -151,8 +151,8 @@ def test_load_beeui_config_rejects_external_navigation_path(tmp_path: Path) -> N
     config_path = _write_config(
         tmp_path,
         _base_config().replace(
-            "        path: /runs\n        icon: list\n",
-            "        path: https://example.com\n        icon: list\n",
+            "        path: /runs\n        icon: runs\n",
+            "        path: https://example.com\n        icon: runs\n",
             1,
         ),
     )
@@ -381,8 +381,8 @@ def test_load_beeui_config_rejects_reserved_health_path(tmp_path: Path) -> None:
     config_path = _write_config(
         tmp_path,
         _base_config().replace(
-            "        path: /runs\n        icon: list\n",
-            "        path: /health\n        icon: list\n",
+            "        path: /runs\n        icon: runs\n",
+            "        path: /health\n        icon: runs\n",
             1,
         ),
     )
@@ -400,8 +400,8 @@ def test_load_beeui_config_rejects_reserved_components_path(tmp_path: Path) -> N
     config_path = _write_config(
         tmp_path,
         _base_config().replace(
-            "        path: /runs\n        icon: list\n",
-            "        path: /components\n        icon: list\n",
+            "        path: /runs\n        icon: runs\n",
+            "        path: /components\n        icon: runs\n",
             1,
         ),
     )
@@ -419,8 +419,8 @@ def test_load_beeui_config_rejects_reserved_components_prefix(tmp_path: Path) ->
     config_path = _write_config(
         tmp_path,
         _base_config().replace(
-            "        path: /runs\n        icon: list\n",
-            "        path: /components/forms\n        icon: list\n",
+            "        path: /runs\n        icon: runs\n",
+            "        path: /components/forms\n        icon: runs\n",
             1,
         ),
     )
@@ -440,8 +440,8 @@ def test_load_beeui_config_rejects_reserved_static_path(tmp_path: Path) -> None:
     config_path = _write_config(
         tmp_path,
         _base_config().replace(
-            "        path: /runs\n        icon: list\n",
-            "        path: /static\n        icon: list\n",
+            "        path: /runs\n        icon: runs\n",
+            "        path: /static\n        icon: runs\n",
             1,
         ),
     )
@@ -459,8 +459,8 @@ def test_load_beeui_config_rejects_reserved_static_prefix(tmp_path: Path) -> Non
     config_path = _write_config(
         tmp_path,
         _base_config().replace(
-            "        path: /runs\n        icon: list\n",
-            "        path: /static/css/beeui.css\n        icon: list\n",
+            "        path: /runs\n        icon: runs\n",
+            "        path: /static/css/beeui.css\n        icon: runs\n",
             1,
         ),
     )

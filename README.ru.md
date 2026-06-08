@@ -1,15 +1,22 @@
-# BeeUI — reusable UI framework для Bee-продуктов
+# BeeUI — переиспользуемый UI-фреймворк для Bee-продуктов
 
-**BeeUI** — общий Python-based UI framework для Bee-продуктов: `beecap`, `beeagent` и будущих модулей Bee ecosystem.
+**BeeUI** — общий UI-фреймворк на Python для Bee-продуктов: `beecap`, `beeagent` и будущих модулей экосистемы Bee.
 
-## Iteration 12.1
+## Iteration 12.2
 
-Текущий deliverable — Adapter-backed Tabler dashboard blocks renderer:
-generic layout[] block rendering для adapter-backed product console pages.
-Поддерживаются 10 block types (hero_snapshot, metric_card, kpi_strip,
-venue_summary_grid, mode_cards, status_table, event_table, attention_list,
-artifact_links, raw_json_panel) с safe width mapping и degraded fallback
-для malformed/unsupported blocks.
+Текущий результат — усиление визуального соответствия Tabler для продуктовой
+консоли на основе адаптера. BeeUI поставляет локально скомпилированные CSS/JS
+из `@tabler/core@1.4.0` и небольшой слой переопределений, специфичный для BeeUI.
+Все 10 типов layout-блоков рендерятся с классами Tabler, а полоса KPI использует
+статистические карточки вместо строчного текста. Консоль оператора уровня Tabler
+доступна для:
+
+- `GET /` — панели со сводкой, полосой KPI, таблицами и списком требующих внимания событий;
+- `GET /runs` — списка запусков с layout-блоками или резервной таблицей;
+- `GET /runs/{run_id}` — деталей запуска со сводкой, состоянием площадок, событиями и ссылками на артефакты;
+- `GET /venues/{venue_id}` — панели площадки со снимком, метриками и состоянием цикла.
+
+Полный объём Iteration 12.2 описан в `docs/ROADMAP.md`.
 
 Уже работает:
 
@@ -67,6 +74,11 @@ artifact_links, raw_json_panel) с safe width mapping и degraded fallback
 - проверка коллизии маршрутов при mount;
 - embedded API тесты в `tests/test_embedded.py`;
 - generic adapter-backed layout[] block renderer c 10 block types и degraded fallback;
+- реальные локальные скомпилированные ресурсы ядра Tabler `@tabler/core@1.4.0`;
+- локальные `tabler.min.css` / `tabler.min.js` без CDN, ресурсов предпросмотра и демонстрационных ресурсов, а также без отслеживания;
+- вертикальная оболочка Tabler с локальным контекстом тёмной темы для боковой панели;
+- слой переопределений BeeUI без дублирования базового Tabler-фреймворка для сетки, карточек, таблиц, кнопок и бейджей;
+- прозрачный подвал и отсутствие белого переопределения поверхности в тёмном режиме;
 - layout blocks рендерятся на `/`, `/runs`, `/runs/{run_id}`, `/venues/{venue_id}`;
 - fallback to generic renderer when layout absent.
 
@@ -110,7 +122,7 @@ BeeUI сейчас поддерживает два разных block contract.
 
 Malformed или unsupported blocks рендерятся как `degraded` block, а не ломают страницу.
 
-Минимальная web surface после Iteration 12.1:
+Текущая web surface после Iteration 12.2:
 
 - `GET /`
 - `GET /runs`
@@ -124,8 +136,8 @@ Malformed или unsupported blocks рендерятся как `degraded` block
 - `GET /components/plugins`
 - `GET /health`
 - `GET /static/...`
-- `GET /static/vendor/tabler/css/tabler-compatible.min.css`
-- `GET /static/vendor/tabler/js/tabler-compatible.min.js`
+- `GET /static/vendor/tabler/css/tabler.min.css`
+- `GET /static/vendor/tabler/js/tabler.min.js`
 - `GET /api/dashboard`
 - `GET /api/runs`
 - `GET /api/runs/{run_id}`
@@ -163,15 +175,15 @@ Shell и dashboard рендерятся через component templates:
 - `components/empty_state.html`.
 - block component templates для literal и resolver-backed dashboard blocks.
 
-Tabler-compatible vendor assets поставляются локально из package path:
+Tabler core vendor assets поставляются локально из package path:
 
-- `src/beeui_module/web/static/vendor/tabler/css/tabler-compatible.min.css`
-- `src/beeui_module/web/static/vendor/tabler/js/tabler-compatible.min.js`
+- `src/beeui_module/web/static/vendor/tabler/css/tabler.min.css`
+- `src/beeui_module/web/static/vendor/tabler/js/tabler.min.js`
+- `src/beeui_module/web/static/vendor/tabler/LICENSE`
 
-BeeUI поставляет локальный Tabler-compatible subset в
-`src/beeui_module/web/static/vendor/tabler/`.
-Это не полный upstream Tabler demo bundle.
-Preview/demo/tracking assets не поставляются.
+Assets взяты из official `@tabler/core@1.4.0` npm dist. BeeUI не требует
+Node/npm во время установки или runtime. Preview/demo/marketing/sponsor,
+source maps и tracking assets не поставляются.
 
 Navigation, theme и layout shell options (title/subtitle/paths/logo_text/theme/layout) рендерятся из `config/schema.yml`.
 
@@ -263,7 +275,7 @@ MVP не пытается сразу стать полноценным Retool/We
 
 ## Что BeeUI делает
 
-В текущем состоянии после Iteration 12.1 BeeUI отвечает за:
+В текущем состоянии после Iteration 12.2 BeeUI отвечает за:
 
 - FastAPI app factory;
 - Jinja2 templates;
@@ -506,7 +518,7 @@ BeeUI не должен получать прямую authority на tools/MCP/r
 
 Продукт импортирует BeeUI и монтирует его в своём web process.
 
-Текущий статус после Iteration 12.1:
+Текущий статус после Iteration 12.2:
 
 - generic adapter contract существует;
 - BeeCap fixture/reference adapter существует для contract validation;
@@ -1087,7 +1099,7 @@ uv run --frozen --extra dev python config/start.py web
 
 ## Целевая структура проекта
 
-Актуальные ключевые файлы после Iteration 12.1:
+Актуальные ключевые файлы после Iteration 12.2:
 
 ```text
 config/
@@ -1179,8 +1191,8 @@ src/beeui_module/
       js/beeui.js
       vendor/
         tabler/
-          css/tabler-compatible.min.css
-          js/tabler-compatible.min.js
+          css/tabler.min.css
+          js/tabler.min.js
 ```
 
 Остальная структура ниже — целевая для следующих итераций.
@@ -1602,6 +1614,7 @@ Iteration 10 — Embedded mount API v0
 Iteration 11 — Generic artifact browser v1
 Iteration 12 — Adapter-backed Product Console routes/API MVP
 Iteration 12.1 — Adapter-backed Tabler dashboard blocks renderer
+Iteration 12.2 — Усиление визуального соответствия Tabler для продуктовой консоли на основе адаптера
 BeeCap UI-25 — BeeUI Console parity MVP
 BeeCap UI-26 — BeeUI default route switch with legacy fallback
 ```
@@ -1768,7 +1781,7 @@ Visual builder later.
 Текущий статус:
 
 ```text
-Iteration 12.1 — Adapter-backed Tabler dashboard blocks renderer — DONE
+Iteration 12.2 — Усиление визуального соответствия Tabler для продуктовой консоли на основе адаптера — ЗАВЕРШЕНО
 ```
 
 Работает:
@@ -1800,3 +1813,7 @@ uv run pytest -q
 - adapter-backed `layout[]` blocks рендерятся на `/`, `/runs`, `/runs/{run_id}`, `/venues/{venue_id}`;
 - malformed/unsupported layout blocks рендерятся как degraded state;
 - layout links валидируются как safe internal links и учитывают route prefix / embedded mount path.
+- реальные локальные скомпилированные CSS/JS из `@tabler/core@1.4.0` поставляются как локальные статические ресурсы пакета;
+- самодельный слой совместимости `tabler-compatible` удалён из текущей runtime-поверхности;
+- CSS BeeUI используется как контролируемый слой оформления продукта поверх Tabler, а не как второй CSS-фреймворк;
+- тёмные оболочка, боковая панель и подвал визуально согласованы с вертикальным layout Tabler.

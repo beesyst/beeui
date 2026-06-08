@@ -554,6 +554,17 @@ def test_layout_links_use_route_prefix_and_embedded_mount() -> None:
     response = prefixed_client.get("/bee/")
 
     assert response.status_code == 200
+    for marker in (
+        "page-wrapper",
+        "page-header",
+        "page-body",
+        "container-xl",
+        "row row-deck row-cards",
+        "card",
+        "card-header",
+        "card-body",
+    ):
+        assert marker in response.text
     assert "row row-deck row-cards" in response.text
     assert "status-dot" in response.text
     assert "&lt;script&gt;alert(1)&lt;/script&gt;" in response.text
@@ -566,6 +577,46 @@ def test_layout_links_use_route_prefix_and_embedded_mount() -> None:
 
     assert mounted_response.status_code == 200
     assert '<a href="/ui/runs/run_safe_001">' in mounted_response.text
+
+
+# Тест: KPI template использует responsive card grid из local CSS contract
+def test_kpi_template_uses_responsive_card_grid() -> None:
+    template = Path(
+        "src/beeui_module/web/templates/components/layout/kpi_strip.html"
+    ).read_text(encoding="utf-8")
+
+    assert 'class="col-12 col-sm-6 col-lg-3"' in template
+    assert 'class="card h-100"' in template
+    assert 'class="card-body text-center"' in template
+    assert 'class="col-sm"' not in template
+
+
+# Тест: KPI layout title/value экранируются при реальном HTML rendering
+def test_kpi_layout_html_escapes_adapter_title_and_value() -> None:
+    class UnsafeKpiAdapter(FakeProductConsoleAdapter):
+        def get_dashboard(self) -> Any:
+            return ok_result(
+                {
+                    "layout": [
+                        {
+                            "type": "kpi_strip",
+                            "title": "<script>bad</script>",
+                            "items": [
+                                {
+                                    "label": "Unsafe value",
+                                    "value": "<script>bad</script>",
+                                }
+                            ],
+                        }
+                    ]
+                }
+            )
+
+    response = TestClient(create_beeui_app(adapter=UnsafeKpiAdapter())).get("/")
+
+    assert response.status_code == 200
+    assert response.text.count("&lt;script&gt;bad&lt;/script&gt;") == 2
+    assert "<script>bad</script>" not in response.text
 
 
 # Тест: layout[] рендерится без ошибок при сохранении контракта API метода list_runs
