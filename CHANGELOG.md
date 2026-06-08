@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.15.1](https://github.com/beesyst/beeui/compare/beeui-v0.15.0...beeui-v0.15.1) (2026-06-08)
+
+
+### Bug Fixes
+
+* **web:** restore Tabler visual parity for product console ([#45](https://github.com/beesyst/beeui/issues/45)) ([8dcf585](https://github.com/beesyst/beeui/commit/8dcf5852fe70f4b910cc967cd6074186d91ffe6e))
+
 ## [0.15.0](https://github.com/beesyst/beeui/compare/beeui-v0.14.0...beeui-v0.15.0) (2026-06-07)
 
 
