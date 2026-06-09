@@ -7,10 +7,26 @@
       {% for item in block["items"] %}
       <div class="col-sm-6">
         <div class="border rounded p-3">
-          <div class="subheader">{{ item.label }}</div>
+          <div class="subheader">
+            {% if item.href %}
+            <a href="{{ url_prefix }}{{ item.href }}">{{ item.label }}</a>
+            {% else %}
+            {{ item.label }}
+            {% endif %}
+          </div>
           <div class="h3 mb-1">{{ item.value }}</div>
           {% if item.status %}
           <span class="badge bg-secondary-lt">{{ item.status }}</span>
+          {% endif %}
+          {% if item.latest %}
+          <div class="text-secondary small mt-1">
+            Latest:
+            {% if item.latest_href %}
+            <a href="{{ url_prefix }}{{ item.latest_href }}">{{ item.latest }}</a>
+            {% else %}
+            {{ item.latest }}
+            {% endif %}
+          </div>
           {% endif %}
         </div>
       </div>

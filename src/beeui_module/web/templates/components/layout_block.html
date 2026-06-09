@@ -20,6 +20,18 @@
   {% include "components/layout/raw_json_panel.html" %}
 {% elif block.type == "chart" %}
   {% include "components/layout/chart.html" %}
+{% elif block.type == "operator_hero" %}
+  {% include "components/layout/operator_hero.html" %}
+{% elif block.type == "venue_card" %}
+  {% include "components/layout/venue_card.html" %}
+{% elif block.type == "kpi_grid" %}
+  {% include "components/layout/kpi_grid.html" %}
+{% elif block.type == "state_grid" %}
+  {% include "components/layout/state_grid.html" %}
+{% elif block.type == "quick_links" %}
+  {% include "components/layout/quick_links.html" %}
+{% elif block.type == "run_table" %}
+  {% include "components/layout/run_table.html" %}
 {% elif block.type == "degraded" %}
   {% include "components/layout/degraded.html" %}
 {% endif %}

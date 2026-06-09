@@ -1,0 +1,59 @@
+<div class="card">
+  <div class="card-header">
+    <h3 class="card-title">{{ block.title }}</h3>
+    {% if block.filters %}
+      <div class="card-actions">
+        <input type="text" class="form-control" placeholder="Filter..." disabled>
+      </div>
+    {% endif %}
+  </div>
+  <div class="table-responsive">
+    <table class="table table-vcenter card-table">
+      {% if block.columns %}
+        <thead>
+          <tr>
+            {% for col in block.columns %}
+              <th>{{ col }}</th>
+            {% endfor %}
+          </tr>
+        </thead>
+      {% endif %}
+      <tbody>
+        {% if block.rows %}
+          {% for row in block.rows %}
+            <tr>
+              <td>
+                {% if row.run_href %}
+                  <a href="{{ url_prefix }}{{ row.run_href }}">{{ row.run_id }}</a>
+                {% else %}
+                  {{ row.run_id }}
+                {% endif %}
+              </td>
+              <td>{{ row.mode }}</td>
+              <td>{{ row.venue }}</td>
+              <td>{{ row.symbol }}</td>
+              <td>{{ row.timeframe }}</td>
+              <td>{{ row.started_utc }}</td>
+              <td>{{ row.health }}</td>
+              <td>{{ row.event_time_utc }}</td>
+              <td>{{ row.event }}</td>
+              <td>{{ row.severity }}</td>
+              <td>{{ row.events }}</td>
+              <td>
+                {% if row.artifact_href %}
+                  <a href="{{ url_prefix }}{{ row.artifact_href }}">{{ row.artifact }}</a>
+                {% else %}
+                  {{ row.artifact }}
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="{{ block.columns | length if block.columns else 1 }}" class="text-secondary">No runs available.</td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>

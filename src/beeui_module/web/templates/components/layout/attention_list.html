@@ -11,6 +11,10 @@
         <span class="status-dot status-red me-2"></span>
         {% elif item.severity == "warning" %}
         <span class="status-dot status-yellow me-2"></span>
+        {% elif item.severity == "ok" %}
+        <span class="status-dot status-green me-2"></span>
+        {% elif item.severity == "unknown" %}
+        <span class="status-dot status-gray me-2"></span>
         {% else %}
         <span class="status-dot me-2"></span>
         {% endif %}

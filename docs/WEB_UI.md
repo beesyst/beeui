@@ -26,6 +26,13 @@
 - рендеринг `layout[]` для страниц продуктовой консоли на основе адаптера;
 - общие layout-блоки Tabler для панели, списка запусков, деталей запуска и страниц площадок;
 - резервный `degraded`-рендеринг для некорректных и неподдерживаемых layout-блоков;
+- расширенный набор adapter-backed layout блоков (Iteration 12.4):
+  - `operator_hero` — системный snapshot с datagrid и primary links;
+  - `venue_card` — компактная карточка площадки с items, alerts и links;
+  - `kpi_grid` — responsive KPI stat cards с unit и hint;
+  - `state_grid` — dense key/value state section;
+  - `quick_links` — list group internal operator links;
+  - `run_table` — операторская таблица с run/event/artifact columns;
 - стабильный read-only JSON API envelope для маршрутов продуктовой консоли (`/api/dashboard`, `/api/runs`, `/api/runs/{run_id}`, `/api/venues/{venue_id}/dashboard`);
 - общие HTML/API-маршруты браузера артефактов через `ProductUiAdapter`;
 - предпросмотр JSON/JSONL/текста с ограниченными лимитами и placeholder редактирования секретов.

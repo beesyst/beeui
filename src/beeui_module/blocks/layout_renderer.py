@@ -24,7 +24,27 @@ _SUPPORTED_BLOCK_TYPES: set[str] = {
     "artifact_links",
     "raw_json_panel",
     "chart",
+    "operator_hero",
+    "venue_card",
+    "kpi_grid",
+    "state_grid",
+    "quick_links",
+    "run_table",
 }
+_RUN_TABLE_COLUMNS: tuple[str, ...] = (
+    "Run",
+    "Mode",
+    "Venue",
+    "Symbol",
+    "TF",
+    "Started UTC",
+    "Health",
+    "Event Time UTC",
+    "Event",
+    "Severity",
+    "Events",
+    "Artifact",
+)
 
 
 # Определение класса ширины по целочисленному значению width
@@ -72,6 +92,20 @@ def _safe_str(value: Any) -> str:
     return ""
 
 
+# Безопасное отображение user-visible значений: None, пустые или "null"/"none" -> default
+def _display_value(value: Any, default: str = "n/a") -> str:
+    if value is None:
+        return default
+    if isinstance(value, str):
+        clean = value.strip()
+        if clean.lower() in {"", "none", "null"}:
+            return default
+        return clean
+    if isinstance(value, (int, float, bool)):
+        return str(value)
+    return default
+
+
 # Нормализация списка
 def _safe_list(raw: Any) -> list[Any]:
     if isinstance(raw, list):
@@ -108,6 +142,14 @@ def _safe_columns(raw: Any) -> list[str]:
     ):
         raise ValueError("Block columns are missing or invalid")
     return list(raw)
+
+
+# Валидация соответствия столбцов таблицы операторскому контракту для блока "run_table"
+def _safe_run_table_columns(raw: Any) -> list[str]:
+    columns = _safe_columns(raw)
+    if tuple(columns) != _RUN_TABLE_COLUMNS:
+        raise ValueError("Run table columns must match the operator contract")
+    return columns
 
 
 # Валидация наличия обязательного поля "title" и его типа для блоков, требующих заголовок
@@ -185,7 +227,7 @@ def _render_hero_snapshot(raw: dict[str, Any], width_class: str) -> dict[str, An
             }
         )
 
-    links: list[dict[str, str]] = []
+    links: list[dict[str, Any]] = []
     for link in _safe_dict_list(raw.get("links")):
         href = _validate_link(link.get("href"))
         if href is not None:
@@ -227,7 +269,7 @@ def _render_kpi_strip(raw: dict[str, Any], width_class: str) -> dict[str, Any]:
     _require_title(raw)
     _require_list(raw, "items")
 
-    items: list[dict[str, str]] = []
+    items: list[dict[str, Any]] = []
     for item in _safe_dict_list(raw.get("items")):
         items.append(
             {
@@ -249,7 +291,7 @@ def _render_venue_summary_grid(raw: dict[str, Any], width_class: str) -> dict[st
     _require_title(raw)
     _require_list(raw, "items")
 
-    items: list[dict[str, str]] = []
+    items: list[dict[str, Any]] = []
     for item in _safe_dict_list(raw.get("items")):
         items.append(
             {
@@ -271,19 +313,24 @@ def _render_mode_cards(raw: dict[str, Any], width_class: str) -> dict[str, Any]:
     _require_title(raw)
     _require_list(raw, "items")
 
-    items: list[dict[str, str]] = []
+    items: list[dict[str, Any]] = []
     for item in _safe_dict_list(raw.get("items")):
+        href = _validate_link(item.get("href"))
+        latest_href = _validate_link(item.get("latest_href"))
         items.append(
             {
-                "label": _safe_str(item.get("label")),
-                "value": _safe_str(item.get("value")),
+                "label": _display_value(item.get("label")),
+                "value": _display_value(item.get("value")),
                 "status": _safe_str(item.get("status", "")),
+                "href": href,
+                "latest": _display_value(item.get("latest")),
+                "latest_href": latest_href,
             }
         )
     return {
         "type": "mode_cards",
         "width_class": width_class,
-        "title": _safe_str(raw.get("title")),
+        "title": _display_value(raw.get("title")),
         "items": items,
     }
 
@@ -323,19 +370,19 @@ def _render_attention_list(raw: dict[str, Any], width_class: str) -> dict[str, A
     _require_title(raw)
     _require_list(raw, "items")
 
-    items: list[dict[str, str]] = []
+    items: list[dict[str, Any]] = []
     for item in _safe_dict_list(raw.get("items")):
         items.append(
             {
-                "label": _safe_str(item.get("label")),
-                "message": _safe_str(item.get("message")),
+                "label": _display_value(item.get("label")),
+                "message": _display_value(item.get("message")),
                 "severity": _safe_str(item.get("severity", "warning")),
             }
         )
     return {
         "type": "attention_list",
         "width_class": width_class,
-        "title": _safe_str(raw.get("title")),
+        "title": _display_value(raw.get("title")),
         "items": items,
     }
 
@@ -398,6 +445,199 @@ def _render_chart(raw: dict[str, Any], width_class: str) -> dict[str, Any]:
     }
 
 
+# Рендеринг блока "operator_hero" — high-level system/operator snapshot
+def _render_operator_hero(raw: dict[str, Any], width_class: str) -> dict[str, Any]:
+    _require_title(raw)
+    _require_list(raw, "items")
+
+    items: list[dict[str, Any]] = []
+    for item in _safe_dict_list(raw.get("items")):
+        href = _validate_link(item.get("href"))
+        items.append(
+            {
+                "label": _display_value(item.get("label")),
+                "value": _display_value(item.get("value")),
+                "href": href,
+            }
+        )
+
+    primary_links: list[dict[str, str]] = []
+    for link in _safe_dict_list(raw.get("primary_links")):
+        href = _validate_link(link.get("href"))
+        if href is not None:
+            primary_links.append(
+                {
+                    "label": _display_value(link.get("label")),
+                    "href": href,
+                }
+            )
+
+    return {
+        "type": "operator_hero",
+        "width_class": width_class,
+        "title": _display_value(raw.get("title")),
+        "subtitle": _display_value(raw.get("subtitle")),
+        "status": _safe_str(raw.get("status", "")),
+        "items": items,
+        "primary_links": primary_links,
+    }
+
+
+# Рендеринг блока "venue_card" — compact venue/operator summary card
+def _render_venue_card(raw: dict[str, Any], width_class: str) -> dict[str, Any]:
+    _require_title(raw)
+
+    items: list[dict[str, Any]] = []
+    for item in _safe_dict_list(raw.get("items")):
+        items.append(
+            {
+                "label": _display_value(item.get("label")),
+                "value": _display_value(item.get("value")),
+                "status": _safe_str(item.get("status", "")),
+            }
+        )
+
+    alerts: list[dict[str, str]] = []
+    for alert in _safe_dict_list(raw.get("alerts")):
+        alerts.append(
+            {
+                "severity": _safe_str(alert.get("severity", "warning")),
+                "message": _display_value(alert.get("message")),
+            }
+        )
+
+    links: list[dict[str, Any]] = []
+    for link in _safe_dict_list(raw.get("links")):
+        href = _validate_link(link.get("href"))
+        if href is not None:
+            links.append(
+                {
+                    "label": _display_value(link.get("label")),
+                    "href": href,
+                }
+            )
+
+    return {
+        "type": "venue_card",
+        "width_class": width_class,
+        "title": _display_value(raw.get("title")),
+        "subtitle": _display_value(raw.get("subtitle")),
+        "status": _safe_str(raw.get("status", "")),
+        "items": items,
+        "alerts": alerts,
+        "links": links,
+    }
+
+
+# Рендеринг блока "kpi_grid" — responsive KPI stat cards
+def _render_kpi_grid(raw: dict[str, Any], width_class: str) -> dict[str, Any]:
+    _require_title(raw)
+    _require_list(raw, "items")
+
+    items: list[dict[str, Any]] = []
+    for item in _safe_dict_list(raw.get("items")):
+        items.append(
+            {
+                "label": _display_value(item.get("label")),
+                "value": _display_value(item.get("value")),
+                "unit": _display_value(item.get("unit"), default=""),
+                "status": _safe_str(item.get("status", "")),
+                "hint": _display_value(item.get("hint"), default=""),
+            }
+        )
+    return {
+        "type": "kpi_grid",
+        "width_class": width_class,
+        "title": _display_value(raw.get("title")),
+        "items": items,
+    }
+
+
+# Рендеринг блока "state_grid" — dense key/value state section
+def _render_state_grid(raw: dict[str, Any], width_class: str) -> dict[str, Any]:
+    _require_title(raw)
+    _require_list(raw, "items")
+
+    items: list[dict[str, Any]] = []
+    for item in _safe_dict_list(raw.get("items")):
+        items.append(
+            {
+                "label": _display_value(item.get("label")),
+                "value": _display_value(item.get("value")),
+                "status": _safe_str(item.get("status", "")),
+            }
+        )
+    return {
+        "type": "state_grid",
+        "width_class": width_class,
+        "title": _display_value(raw.get("title")),
+        "items": items,
+    }
+
+
+# Рендеринг блока "quick_links" — grouped internal operator links
+def _render_quick_links(raw: dict[str, Any], width_class: str) -> dict[str, Any]:
+    _require_title(raw)
+
+    items: list[dict[str, Any]] = []
+    for item in _safe_dict_list(raw.get("items")):
+        href = _validate_link(item.get("href"))
+        items.append(
+            {
+                "label": _display_value(item.get("label")),
+                "href": href,
+            }
+        )
+    return {
+        "type": "quick_links",
+        "width_class": width_class,
+        "title": _display_value(raw.get("title")),
+        "items": items,
+    }
+
+
+# Рендеринг блока "run_table" — operator run/event/artifact table
+def _render_run_table(raw: dict[str, Any], width_class: str) -> dict[str, Any]:
+    _require_title(raw)
+
+    columns = _safe_run_table_columns(raw.get("columns"))
+    raw_rows = _safe_dict_list(raw.get("rows"))
+
+    rows: list[dict[str, Any]] = []
+    for row in raw_rows:
+        run_href = _validate_link(row.get("run_href"))
+        artifact_href = _validate_link(row.get("artifact_href"))
+        rows.append(
+            {
+                "run_id": _display_value(row.get("run_id")),
+                "run_href": run_href,
+                "mode": _display_value(row.get("mode")),
+                "venue": _display_value(row.get("venue")),
+                "symbol": _display_value(row.get("symbol")),
+                "timeframe": _display_value(row.get("timeframe")),
+                "started_utc": _display_value(row.get("started_utc")),
+                "health": _display_value(row.get("health")),
+                "event_time_utc": _display_value(row.get("event_time_utc")),
+                "event": _display_value(row.get("event")),
+                "severity": _display_value(row.get("severity")),
+                "events": _display_value(row.get("events")),
+                "artifact": _display_value(row.get("artifact")),
+                "artifact_href": artifact_href,
+            }
+        )
+
+    filters = bool(raw.get("filters", False))
+
+    return {
+        "type": "run_table",
+        "width_class": width_class,
+        "title": _display_value(raw.get("title")),
+        "columns": columns,
+        "rows": rows,
+        "filters": filters,
+    }
+
+
 # Сопоставление типов блоков с их функциями рендеринга для динамического вызова при обработке layout[] списка
 _BLOCK_RENDERERS: dict[str, Any] = {
     "hero_snapshot": _render_hero_snapshot,
@@ -411,6 +651,12 @@ _BLOCK_RENDERERS: dict[str, Any] = {
     "artifact_links": _render_artifact_links,
     "raw_json_panel": _render_raw_json_panel,
     "chart": _render_chart,
+    "operator_hero": _render_operator_hero,
+    "venue_card": _render_venue_card,
+    "kpi_grid": _render_kpi_grid,
+    "state_grid": _render_state_grid,
+    "quick_links": _render_quick_links,
+    "run_table": _render_run_table,
 }
 
 

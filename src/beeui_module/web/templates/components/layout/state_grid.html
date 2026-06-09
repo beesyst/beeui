@@ -1,0 +1,20 @@
+<div class="card">
+  <div class="card-header">
+    <h3 class="card-title">{{ block.title }}</h3>
+  </div>
+  <div class="card-body">
+    <div class="datagrid">
+      {% for item in block["items"] %}
+        <div class="datagrid-item">
+          <div class="datagrid-title">{{ item.label }}</div>
+          <div class="datagrid-content">
+            {{ item.value }}
+            {% if item.status %}
+              <span class="badge bg-secondary-lt ms-1">{{ item.status }}</span>
+            {% endif %}
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>

@@ -2401,6 +2401,408 @@ BeeUI package renders or safely degrades `chart` layout blocks without `Template
 - no product-specific chart semantics added;
 - docs reflect actual supported block behavior.
 
+### Итерация 12.4 — Operator console block primitives parity
+
+**Статус:** DONE
+
+#### Goal
+
+Добавить в BeeUI достаточный набор product-neutral operator-console block primitives, чтобы BeeCap/BeeAgent могли строить полноценные read-only dashboards через adapter-provided `layout[]`, без возврата к product-owned Tabler templates и без product-specific логики внутри BeeUI.
+
+#### Почему это нужно
+
+После Iteration 12.1/12.2/12.3 BeeUI умеет рендерить adapter-backed `layout[]` и безопасно обрабатывать `chart` blocks, но текущий набор blocks остаётся недостаточным для реальной operator console parity:
+
+- root dashboard не может компактно показать system snapshot, venue cards, modes, KPI и attention hierarchy;
+- venue pages не имеют специализированных generic state/KPI/links sections;
+- runs page не имеет полноценной operator table с run/event/artifact columns;
+- BeeCap parity начинает требовать расширения BeeCap legacy templates, что противоречит цели BeeUI.
+
+BeeUI должен владеть reusable rendering primitives. Product adapter должен владеть product semantics and metrics.
+
+Главное правило сохраняется:
+
+```text
+BeeUI renders.
+Product decides.
+```
+
+#### Change level
+
+**runtime-risk**
+
+Причина:
+
+- расширяется adapter-backed `layout[]` presentation contract;
+- меняется operator-facing HTML rendering;
+- добавляются новые block types/templates;
+- adapter-provided payload влияет на operator decisions.
+
+Security-sensitive checks required for:
+
+- HTML escaping;
+- adapter-provided labels/values/statuses/hints;
+- safe internal links only;
+- malformed/unsupported block degradation;
+- no external CDN/scripts/tracking;
+- no secrets in HTML/API/logs;
+- no mutation from GET routes.
+
+#### Scope
+
+**Включено:**
+
+- добавить новые adapter-backed `layout[]` block types:
+
+```text
+operator_hero
+venue_card
+kpi_grid
+state_grid
+quick_links
+run_table
+```
+
+- улучшить существующие adapter-backed blocks where needed:
+
+```text
+mode_cards
+attention_list
+chart
+```
+
+- сохранить existing block types:
+
+```text
+hero_snapshot
+metric_card
+kpi_strip
+venue_summary_grid
+status_table
+event_table
+artifact_links
+raw_json_panel
+degraded
+```
+
+- добавить package-local templates:
+
+```text
+src/beeui_module/web/templates/components/layout/operator_hero.html
+src/beeui_module/web/templates/components/layout/venue_card.html
+src/beeui_module/web/templates/components/layout/kpi_grid.html
+src/beeui_module/web/templates/components/layout/state_grid.html
+src/beeui_module/web/templates/components/layout/quick_links.html
+src/beeui_module/web/templates/components/layout/run_table.html
+```
+
+- update dispatch in:
+
+```text
+src/beeui_module/web/templates/components/layout_block.html
+```
+
+- update renderer normalization in:
+
+```text
+src/beeui_module/blocks/layout_renderer.py
+```
+
+- use Tabler-compatible local markup patterns:
+  - `.card`;
+  - `.card-header`;
+  - `.card-title`;
+  - `.card-body`;
+  - `.row`;
+  - `.row-cards`;
+  - `.datagrid`;
+  - `.table`;
+  - `.badge`;
+  - `.status-dot`;
+  - `.list-group`;
+  - `.empty`;
+  - responsive column classes;
+
+- use uploaded Tabler examples only as visual reference for safe local patterns;
+
+- do not copy Tabler preview/demo pages wholesale;
+
+- do not include PostHog, preview/demo scripts, sponsor/marketing blocks, remote fonts, remote OG/meta assets or external CDN;
+
+- keep all assets package-local;
+
+- keep Jinja autoescape;
+
+- no `|safe` for adapter-provided values;
+
+- links remain internal-only:
+  - allow `/...`;
+  - reject `//...`;
+  - reject `http://...`;
+  - reject `https://...`;
+  - reject schemes such as `javascript:` / `mailto:`;
+  - reject traversal/control characters;
+
+- missing display values render as `n/a`, not `None`;
+
+- malformed blocks render `degraded`, not `500`;
+
+- update docs:
+  - `docs/API_CONTRACT.md`;
+  - `docs/WEB_UI.md`;
+  - `docs/COMPONENTS.md`;
+  - `README.ru.md`;
+  - `docs/ROADMAP.md`.
+
+**Не включено:**
+
+- BeeCap-specific metrics/calculations;
+- BeeAgent-specific semantics;
+- direct product storage reads;
+- provider/broker/runtime calls;
+- config apply;
+- auth/session/CSRF;
+- operator actions;
+- visual/no-code builder;
+- arbitrary HTML/JS blocks;
+- copying full Tabler demo HTML;
+- external CDN/assets/scripts;
+- new dependencies unless strictly justified and package-local;
+- full ApexCharts integration unless local vetted assets already exist and tests prove no external network references.
+
+#### Block contracts
+
+##### `operator_hero`
+
+Purpose: high-level page/system/operator snapshot.
+
+Payload:
+
+```json
+{
+  "type": "operator_hero",
+  "title": "System Snapshot",
+  "subtitle": "Runtime: stopped",
+  "status": "ok",
+  "items": [
+    { "label": "Latest run", "value": "run_001", "href": "/runs/run_001" },
+    { "label": "Runtime", "value": "stopped" },
+    { "label": "Active venues", "value": "mrkt / live" }
+  ],
+  "primary_links": [{ "label": "Open latest run", "href": "/runs/run_001" }],
+  "width": 12
+}
+```
+
+##### `venue_card`
+
+Purpose: compact venue/operator summary card.
+
+Payload:
+
+```json
+{
+  "type": "venue_card",
+  "title": "MRKT",
+  "subtitle": "Live monitoring",
+  "status": "degraded",
+  "items": [
+    { "label": "Health", "value": "ok", "status": "ok" },
+    { "label": "Mode", "value": "live" },
+    { "label": "Balance", "value": "0 TON" },
+    { "label": "Profit", "value": "n/a", "status": "warning" }
+  ],
+  "alerts": [
+    { "severity": "warning", "message": "Profit unavailable: no closed trades" }
+  ],
+  "links": [
+    { "label": "Open latest run", "href": "/runs/run_001" },
+    { "label": "Open venue", "href": "/venues/mrkt" }
+  ],
+  "width": 6
+}
+```
+
+##### `kpi_grid`
+
+Purpose: responsive KPI stat cards for operator pages.
+
+Payload:
+
+```json
+{
+  "type": "kpi_grid",
+  "title": "KPI",
+  "items": [
+    {
+      "label": "Health",
+      "value": "ok",
+      "unit": "",
+      "status": "ok",
+      "hint": "Latest tick health"
+    }
+  ],
+  "width": 12
+}
+```
+
+##### `state_grid`
+
+Purpose: dense key/value state section.
+
+Payload:
+
+```json
+{
+  "type": "state_grid",
+  "title": "Current State",
+  "items": [
+    { "label": "Health", "value": "ok", "status": "ok" },
+    { "label": "Tick", "value": "5 / 5" },
+    { "label": "Started", "value": "2026-06-05T04:34:54Z" }
+  ],
+  "width": 12
+}
+```
+
+##### `quick_links`
+
+Purpose: grouped internal operator links.
+
+Payload:
+
+```json
+{
+  "type": "quick_links",
+  "title": "Quick Links",
+  "items": [
+    { "label": "Latest Run Detail", "href": "/runs/run_001" },
+    { "label": "All Runs", "href": "/runs" }
+  ],
+  "width": 12
+}
+```
+
+##### `run_table`
+
+Purpose: operator run/event/artifact table.
+
+Payload:
+
+```json
+{
+  "type": "run_table",
+  "title": "Recent Runs",
+  "columns": [
+    "Run",
+    "Mode",
+    "Venue",
+    "Symbol",
+    "TF",
+    "Started UTC",
+    "Health",
+    "Event Time UTC",
+    "Event",
+    "Severity",
+    "Events",
+    "Artifact"
+  ],
+  "rows": [
+    {
+      "run_id": "run_001",
+      "run_href": "/runs/run_001",
+      "mode": "live",
+      "venue": "mrkt",
+      "symbol": "TONNFT",
+      "timeframe": "1m",
+      "started_utc": "2026-06-05 04:34:54",
+      "health": "ok",
+      "event_time_utc": "2026-06-05 04:35:36",
+      "event": "venues/mrkt/lifecycle",
+      "severity": "info",
+      "events": "9",
+      "artifact": "lifecycle.jsonl",
+      "artifact_href": "/runs/run_001/artifacts/lifecycle_jsonl"
+    }
+  ],
+  "filters": true,
+  "width": 12
+}
+```
+
+#### Deliverable
+
+BeeUI exposes a product-neutral operator console block set that is sufficient for BeeCap read-only parity without adding BeeCap-specific templates or logic to BeeUI.
+
+Expected result:
+
+- dashboard can render system snapshot, KPI cards, venue cards and modes;
+- venue pages can render operator hero, KPI grid, current state, venue state, attention and quick links;
+- runs page can render a dense run/event/artifact table;
+- all blocks use local Tabler-compatible markup;
+- unsupported/malformed blocks degrade safely;
+- adapter text is escaped;
+- adapter links are internal-only.
+
+#### Checks
+
+- `uv run pytest -q`;
+- `./start.sh doctor`;
+- `./start.sh routes`;
+- `./start.sh web --host 127.0.0.1 --port 8780`;
+
+Automated checks:
+
+- each new block renders through `render_layout`;
+- each new block renders through fake adapter HTML route;
+- unsafe text is escaped;
+- external links are not rendered as active links;
+- missing values render `n/a`;
+- malformed payloads degrade without `500`;
+- `run_table` renders required columns;
+- `mode_cards` supports count/latest/latest_href/href safely;
+- `chart` remains package-local and does not load external JS/CDN;
+- package template integrity test covers every include from `layout_block.html`;
+- no product-specific imports:
+  - no `beecap_module`;
+  - no `beeagent_module`;
+
+- no external references in production templates/static:
+  - no `posthog`;
+  - no `scripts.tabler.io`;
+  - no `preview.tabler.io`;
+  - no `docs.tabler.io`;
+  - no `cdn.jsdelivr`;
+  - no remote font import;
+
+- no `|safe` for adapter-provided fields.
+
+Route smoke:
+
+```text
+GET /
+GET /runs
+GET /venues/mrkt
+GET /venues/binance
+GET /static/vendor/tabler/css/...
+GET /static/css/beeui.css
+```
+
+#### DoD
+
+- new operator block contract is implemented, documented and tested;
+- BeeUI remains product-neutral;
+- BeeCap/BeeAgent semantics stay behind product adapters;
+- existing adapter-backed routes/API envelopes remain compatible;
+- no product-specific logic is introduced;
+- no direct product storage reads are introduced;
+- no provider/broker/runtime calls are introduced;
+- no external assets/scripts/tracking are introduced;
+- no secrets leak into HTML/API/logs;
+- malformed/unsupported blocks degrade visibly;
+- docs reflect the actual supported block behavior;
+- BeeCap can proceed with parity by enriching its product-side `layout[]`.
+
 ---
 
 ## Этап 6 — Config/Auth/Actions foundation

@@ -103,6 +103,26 @@ Forbidden:
 - Product-specific domain semantics in generic primitives.
 - Hidden write-side effects in GET routes.
 
+## Iteration 12.4 — Operator console block primitives
+
+Iteration 12.4 adds 6 new adapter-backed `layout[]` block types for product-neutral operator console parity:
+
+| Block type | Template | Purpose |
+|------------|----------|---------|
+| `operator_hero` | `components/layout/operator_hero.html` | System/operator snapshot with datagrid items and primary action buttons |
+| `venue_card` | `components/layout/venue_card.html` | Compact venue/operator summary card with items, severity alerts and footer links |
+| `kpi_grid` | `components/layout/kpi_grid.html` | Responsive KPI stat cards with label, value, unit, status badge and hint |
+| `state_grid` | `components/layout/state_grid.html` | Dense key/value state section using Tabler datagrid layout |
+| `quick_links` | `components/layout/quick_links.html` | List group of internal operator links |
+| `run_table` | `components/layout/run_table.html` | Operator run/event/artifact table with internal links for run_id and artifact |
+
+All block templates use Tabler-compatible markup (`card`, `card-header`, `card-body`, `datagrid`, `table table-vcenter card-table`, `list-group`, `badge`, `status-dot`, `alert`) and pass through Jinja autoescaping.
+
+Existing `mode_cards` now supports optional fields: `href`, `latest`, `latest_href`.
+Existing `attention_list` handles all severity values (`warning`, `error`, `info`, `ok`, `unknown`) and missing label/message renders as `n/a`.
+
+A new `_display_value` helper in `blocks/layout_renderer.py` ensures user-visible values never render as `None` — missing/empty values render as `n/a` by default.
+
 ## Reuse guidance
 
 When adding future pages/blocks:
