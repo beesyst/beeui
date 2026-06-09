@@ -712,3 +712,366 @@ def test_runs_layout_wrapper_preserves_list_api_contract() -> None:
     assert api.status_code == 200
     assert api.json()["data"] == [{"id": "run_safe_001", "status": "completed"}]
     assert api.json()["meta"]["count"] == 1
+
+
+# Тест: новый блок operator_hero рендерится через HTML route с 200
+def test_operator_hero_block_renders_through_layout() -> None:
+    class NewBlocksAdapter(FakeProductConsoleAdapter):
+        def get_dashboard(self) -> Any:
+            return ok_result(
+                {
+                    "layout": [
+                        {
+                            "type": "operator_hero",
+                            "title": "System Snapshot",
+                            "subtitle": "Runtime: stopped",
+                            "status": "ok",
+                            "width": 12,
+                            "items": [
+                                {
+                                    "label": "Latest run",
+                                    "value": "run_001",
+                                    "href": "/runs/run_001",
+                                },
+                                {"label": "Runtime", "value": "stopped"},
+                            ],
+                            "primary_links": [
+                                {
+                                    "label": "Open latest run",
+                                    "href": "/runs/run_001",
+                                }
+                            ],
+                        },
+                        {
+                            "type": "venue_card",
+                            "title": "MRKT",
+                            "subtitle": "Live monitoring",
+                            "status": "degraded",
+                            "width": 6,
+                            "items": [
+                                {"label": "Health", "value": "ok", "status": "ok"},
+                            ],
+                            "alerts": [
+                                {
+                                    "severity": "warning",
+                                    "message": "Profit unavailable",
+                                }
+                            ],
+                            "links": [
+                                {"label": "Open venue", "href": "/venues/mrkt"},
+                            ],
+                        },
+                        {
+                            "type": "kpi_grid",
+                            "title": "KPI",
+                            "width": 12,
+                            "items": [
+                                {
+                                    "label": "Health",
+                                    "value": "ok",
+                                    "status": "ok",
+                                }
+                            ],
+                        },
+                        {
+                            "type": "state_grid",
+                            "title": "Current State",
+                            "width": 12,
+                            "items": [
+                                {"label": "Health", "value": "ok", "status": "ok"},
+                                {"label": "Tick", "value": "5 / 5"},
+                            ],
+                        },
+                        {
+                            "type": "quick_links",
+                            "title": "Quick Links",
+                            "width": 12,
+                            "items": [
+                                {
+                                    "label": "Latest Run Detail",
+                                    "href": "/runs/run_001",
+                                },
+                                {"label": "All Runs", "href": "/runs"},
+                            ],
+                        },
+                        {
+                            "type": "run_table",
+                            "title": "Recent Runs",
+                            "width": 12,
+                            "columns": [
+                                "Run",
+                                "Mode",
+                                "Venue",
+                                "Symbol",
+                                "TF",
+                                "Started UTC",
+                                "Health",
+                                "Event Time UTC",
+                                "Event",
+                                "Severity",
+                                "Events",
+                                "Artifact",
+                            ],
+                            "rows": [
+                                {
+                                    "run_id": "run_001",
+                                    "run_href": "/runs/run_001",
+                                    "mode": "live",
+                                    "venue": "mrkt",
+                                    "symbol": "TONNFT",
+                                    "timeframe": "1m",
+                                    "started_utc": "2026-06-05 04:34:54",
+                                    "health": "ok",
+                                    "event_time_utc": "2026-06-05 04:35:36",
+                                    "event": "venues/mrkt/lifecycle",
+                                    "severity": "info",
+                                    "events": "9",
+                                    "artifact": "lifecycle.jsonl",
+                                    "artifact_href": "/runs/run_001/artifacts/lifecycle_jsonl",
+                                }
+                            ],
+                            "filters": True,
+                        },
+                    ]
+                }
+            )
+
+    response = TestClient(create_beeui_app(adapter=NewBlocksAdapter())).get("/")
+
+    assert response.status_code == 200
+    for marker in (
+        "System Snapshot",
+        "Runtime: stopped",
+        "Open latest run",
+        "MRKT",
+        "Live monitoring",
+        "degraded",
+        "Profit unavailable",
+        "Open venue",
+        "KPI",
+        "Health",
+        "Current State",
+        "Quick Links",
+        "Latest Run Detail",
+        "All Runs",
+        "Recent Runs",
+        "run_001",
+        "lifecycle.jsonl",
+    ):
+        assert marker in response.text
+
+    for forbidden in (
+        "http://",
+        "https://",
+        "None",
+        "&lt;None&gt;",
+        "undefined",
+    ):
+        assert forbidden not in response.text
+
+
+# Тест: новые блоки экранируют небезопасные значения адаптера
+def test_new_blocks_escape_unsafe_adapter_values() -> None:
+    class UnsafeNewBlocksAdapter(FakeProductConsoleAdapter):
+        def get_dashboard(self) -> Any:
+            return ok_result(
+                {
+                    "layout": [
+                        {
+                            "type": "operator_hero",
+                            "title": "<script>bad</script>",
+                            "width": 12,
+                            "items": [
+                                {
+                                    "label": "<b>label</b>",
+                                    "value": "<i>value</i>",
+                                }
+                            ],
+                            "primary_links": [
+                                {
+                                    "label": "<script>link</script>",
+                                    "href": "/runs/safe",
+                                }
+                            ],
+                        },
+                        {
+                            "type": "venue_card",
+                            "title": "Venue",
+                            "width": 6,
+                            "items": [
+                                {
+                                    "label": "Health",
+                                    "value": "<script>alert(1)</script>",
+                                }
+                            ],
+                            "alerts": [
+                                {
+                                    "severity": "error",
+                                    "message": "<img src=x onerror=alert(1)>",
+                                }
+                            ],
+                        },
+                        {
+                            "type": "kpi_grid",
+                            "title": "KPI",
+                            "width": 12,
+                            "items": [
+                                {
+                                    "label": "<script>kpi</script>",
+                                    "value": "42",
+                                }
+                            ],
+                        },
+                        {
+                            "type": "quick_links",
+                            "title": "Links",
+                            "width": 12,
+                            "items": [
+                                {
+                                    "label": "<script>link</script>",
+                                    "href": "/runs/safe",
+                                }
+                            ],
+                        },
+                        {
+                            "type": "run_table",
+                            "title": "Runs",
+                            "width": 12,
+                            "columns": [
+                                "Run",
+                                "Mode",
+                                "Venue",
+                                "Symbol",
+                                "TF",
+                                "Started UTC",
+                                "Health",
+                                "Event Time UTC",
+                                "Event",
+                                "Severity",
+                                "Events",
+                                "Artifact",
+                            ],
+                            "rows": [
+                                {
+                                    "run_id": "<script>id</script>",
+                                    "run_href": "/runs/safe",
+                                    "mode": "<script>mode</script>",
+                                    "venue": "",
+                                    "symbol": "",
+                                    "timeframe": "",
+                                    "started_utc": "",
+                                    "health": "",
+                                    "event_time_utc": "",
+                                    "event": "",
+                                    "severity": "",
+                                    "events": "",
+                                    "artifact": "<script>artifact</script>",
+                                    "artifact_href": "/runs/artifact",
+                                }
+                            ],
+                        },
+                    ]
+                }
+            )
+
+    response = TestClient(create_beeui_app(adapter=UnsafeNewBlocksAdapter())).get("/")
+
+    assert response.status_code == 200
+    assert "<script>bad</script>" not in response.text
+    assert "<b>label</b>" not in response.text
+    assert "<i>value</i>" not in response.text
+    assert "<script>link</script>" not in response.text
+    assert "<script>alert(1)</script>" not in response.text
+    assert "<img src=x onerror=alert(1)>" not in response.text
+    assert "<script>kpi</script>" not in response.text
+    assert "<script>id</script>" not in response.text
+    assert "<script>mode</script>" not in response.text
+    assert "<script>artifact</script>" not in response.text
+    assert "&lt;script&gt;" in response.text
+    assert "&lt;b&gt;label&lt;/b&gt;" in response.text
+    assert "&lt;i&gt;value&lt;/i&gt;" in response.text
+
+
+# Тест: новые блоки не содержат внешние ссылки в HTML
+def test_new_blocks_have_no_external_links() -> None:
+    class ExternalLinkAdapter(FakeProductConsoleAdapter):
+        def get_dashboard(self) -> Any:
+            return ok_result(
+                {
+                    "layout": [
+                        {
+                            "type": "operator_hero",
+                            "title": "Test",
+                            "width": 12,
+                            "items": [
+                                {
+                                    "label": "Bad",
+                                    "value": "ext",
+                                    "href": "http://evil.com",
+                                },
+                                {"label": "Good", "value": "int", "href": "/runs/1"},
+                            ],
+                            "primary_links": [
+                                {
+                                    "label": "Bad link",
+                                    "href": "https://evil.com",
+                                },
+                                {"label": "Good link", "href": "/runs/2"},
+                            ],
+                        },
+                        {
+                            "type": "venue_card",
+                            "title": "Venue",
+                            "width": 6,
+                            "links": [
+                                {
+                                    "label": "Bad",
+                                    "href": "//evil.com",
+                                },
+                                {"label": "Good", "href": "/venues/mrkt"},
+                            ],
+                        },
+                        {
+                            "type": "quick_links",
+                            "title": "Links",
+                            "width": 12,
+                            "items": [
+                                {"label": "Safe", "href": "/runs/1"},
+                                {"label": "Evil", "href": "http://evil.com"},
+                            ],
+                        },
+                    ]
+                }
+            )
+
+    response = TestClient(create_beeui_app(adapter=ExternalLinkAdapter())).get("/")
+
+    assert response.status_code == 200
+    assert 'href="http://evil.com"' not in response.text
+    assert 'href="https://evil.com"' not in response.text
+    assert 'href="//evil.com"' not in response.text
+    assert "/runs/1" in response.text
+    assert "/runs/2" in response.text
+    assert "/venues/mrkt" in response.text
+
+
+# Тест: no posthog/tabler external references in new block templates
+def test_new_block_templates_no_external_refs() -> None:
+    template_root = Path("src/beeui_module/web/templates/components/layout")
+    for name in (
+        "operator_hero.html",
+        "venue_card.html",
+        "kpi_grid.html",
+        "state_grid.html",
+        "quick_links.html",
+        "run_table.html",
+    ):
+        content = (template_root / name).read_text(encoding="utf-8").lower()
+        assert "cdn.jsdelivr" not in content, f"{name} contains cdn.jsdelivr"
+        assert "posthog" not in content, f"{name} contains posthog"
+        assert "scripts.tabler.io" not in content, f"{name} contains scripts.tabler.io"
+        assert "preview.tabler.io" not in content, f"{name} contains preview.tabler.io"
+        assert "docs.tabler.io" not in content, f"{name} contains docs.tabler.io"
+        assert "http://" not in content, f"{name} contains http://"
+        assert "https://" not in content, f"{name} contains https://"
+        assert "|safe" not in content, f"{name} contains |safe"

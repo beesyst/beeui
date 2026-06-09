@@ -1,0 +1,38 @@
+<div class="card">
+  <div class="card-header">
+    <div>
+      <h3 class="card-title mb-0">{{ block.title }}</h3>
+      {% if block.subtitle %}
+        <div class="text-secondary small">{{ block.subtitle }}</div>
+      {% endif %}
+    </div>
+    {% if block.status %}
+      <span class="badge bg-secondary-lt ms-auto">{{ block.status }}</span>
+    {% endif %}
+  </div>
+  <div class="card-body">
+    {% if block["items"] %}
+      <div class="datagrid mb-3">
+        {% for item in block["items"] %}
+          <div class="datagrid-item">
+            <div class="datagrid-title">{{ item.label }}</div>
+            <div class="datagrid-content">
+              {% if item.href %}
+                <a href="{{ url_prefix }}{{ item.href }}">{{ item.value }}</a>
+              {% else %}
+                {{ item.value }}
+              {% endif %}
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+    {% if block.primary_links %}
+      <div class="mt-auto">
+        {% for link in block.primary_links %}
+          <a href="{{ url_prefix }}{{ link.href }}" class="btn btn-outline-primary btn-sm me-1">{{ link.label }}</a>
+        {% endfor %}
+      </div>
+    {% endif %}
+  </div>
+</div>

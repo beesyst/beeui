@@ -1,0 +1,44 @@
+<div class="card">
+  <div class="card-header">
+    <div>
+      <h3 class="card-title mb-0">{{ block.title }}</h3>
+      {% if block.subtitle %}
+        <div class="text-secondary small">{{ block.subtitle }}</div>
+      {% endif %}
+    </div>
+    {% if block.status %}
+      <span class="badge bg-secondary-lt ms-auto">{{ block.status }}</span>
+    {% endif %}
+  </div>
+  <div class="card-body">
+    {% if block["items"] %}
+      <div class="datagrid mb-3">
+        {% for item in block["items"] %}
+          <div class="datagrid-item">
+            <div class="datagrid-title">{{ item.label }}</div>
+            <div class="datagrid-content">
+              {{ item.value }}
+              {% if item.status %}
+                <span class="badge bg-secondary-lt ms-1">{{ item.status }}</span>
+              {% endif %}
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+    {% if block.alerts %}
+      {% for alert in block.alerts %}
+        <div class="alert alert-{{ 'warning' if alert.severity == 'warning' else 'danger' if alert.severity == 'error' else 'info' }} mb-2" role="alert">
+          {{ alert.message }}
+        </div>
+      {% endfor %}
+    {% endif %}
+  </div>
+  {% if block.links %}
+    <div class="card-footer">
+      {% for link in block.links %}
+        <a href="{{ url_prefix }}{{ link.href }}" class="btn btn-outline-primary btn-sm me-1">{{ link.label }}</a>
+      {% endfor %}
+    </div>
+  {% endif %}
+</div>

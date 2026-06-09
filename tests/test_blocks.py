@@ -1025,3 +1025,558 @@ def test_layout_artifact_links_uses_list_group() -> None:
     assert block["items"][0]["href"] == "/runs/1/artifacts/report"
     assert block["items"][0]["content_type"] == "json"
     assert block["items"][1]["content_type"] == "text"
+
+
+# Тест: operator_hero рендерится с title, subtitle, status, items, primary_links
+def test_layout_operator_hero_renders() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "operator_hero",
+                "title": "System Snapshot",
+                "subtitle": "Runtime: stopped",
+                "status": "ok",
+                "width": 12,
+                "items": [
+                    {
+                        "label": "Latest run",
+                        "value": "run_001",
+                        "href": "/runs/run_001",
+                    },
+                    {"label": "Runtime", "value": "stopped"},
+                    {"label": "Active venues", "value": "mrkt / live"},
+                ],
+                "primary_links": [
+                    {"label": "Open latest run", "href": "/runs/run_001"}
+                ],
+            }
+        ]
+    )
+    assert len(result) == 1
+    block = result[0]
+    assert block["type"] == "operator_hero"
+    assert block["title"] == "System Snapshot"
+    assert block["subtitle"] == "Runtime: stopped"
+    assert block["status"] == "ok"
+    assert len(block["items"]) == 3
+    assert block["items"][0]["href"] == "/runs/run_001"
+    assert block["items"][1]["href"] is None
+    assert len(block["primary_links"]) == 1
+    assert block["primary_links"][0]["href"] == "/runs/run_001"
+
+
+# Тест: operator_hero с небезопасными ссылками отфильтровывается
+def test_layout_operator_hero_rejects_unsafe_links() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "operator_hero",
+                "title": "Test",
+                "width": 12,
+                "items": [
+                    {"label": "Safe", "value": "ok", "href": "/runs/1"},
+                    {"label": "Http", "value": "bad", "href": "http://evil.com"},
+                    {"label": "Https", "value": "bad", "href": "https://evil.com"},
+                ],
+                "primary_links": [
+                    {"label": "Safe", "href": "/runs/1"},
+                    {"label": "External", "href": "http://evil.com"},
+                ],
+            }
+        ]
+    )
+    block = result[0]
+    assert block["items"][0]["href"] == "/runs/1"
+    assert block["items"][1]["href"] is None
+    assert block["items"][2]["href"] is None
+    assert len(block["primary_links"]) == 1
+    assert block["primary_links"][0]["href"] == "/runs/1"
+
+
+# Тест: venue_card рендерится с items, alerts, links
+def test_layout_venue_card_renders() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "venue_card",
+                "title": "MRKT",
+                "subtitle": "Live monitoring",
+                "status": "degraded",
+                "width": 6,
+                "items": [
+                    {"label": "Health", "value": "ok", "status": "ok"},
+                    {"label": "Mode", "value": "live"},
+                    {"label": "Balance", "value": "0 TON"},
+                    {"label": "Profit", "value": "n/a", "status": "warning"},
+                ],
+                "alerts": [
+                    {
+                        "severity": "warning",
+                        "message": "Profit unavailable: no closed trades",
+                    }
+                ],
+                "links": [
+                    {"label": "Open latest run", "href": "/runs/run_001"},
+                    {"label": "Open venue", "href": "/venues/mrkt"},
+                ],
+            }
+        ]
+    )
+    assert len(result) == 1
+    block = result[0]
+    assert block["type"] == "venue_card"
+    assert block["title"] == "MRKT"
+    assert block["subtitle"] == "Live monitoring"
+    assert block["status"] == "degraded"
+    assert len(block["items"]) == 4
+    assert block["items"][0]["status"] == "ok"
+    assert block["items"][3]["status"] == "warning"
+    assert len(block["alerts"]) == 1
+    assert block["alerts"][0]["severity"] == "warning"
+    assert len(block["links"]) == 2
+    assert block["links"][0]["href"] == "/runs/run_001"
+
+
+# Тест: venue_card с небезопасными ссылками отфильтровывается
+def test_layout_venue_card_rejects_unsafe_links() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "venue_card",
+                "title": "Test",
+                "width": 6,
+                "links": [
+                    {"label": "Safe", "href": "/venues/mrkt"},
+                    {"label": "External", "href": "https://evil.com"},
+                    {"label": "Proto relative", "href": "//evil.com"},
+                ],
+            }
+        ]
+    )
+    block = result[0]
+    assert len(block["links"]) == 1
+    assert block["links"][0]["href"] == "/venues/mrkt"
+
+
+# Тест: kpi_grid рендерится с items (label/value/unit/status/hint)
+def test_layout_kpi_grid_renders() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "kpi_grid",
+                "title": "KPI",
+                "width": 12,
+                "items": [
+                    {
+                        "label": "Health",
+                        "value": "ok",
+                        "unit": "",
+                        "status": "ok",
+                        "hint": "Latest tick health",
+                    },
+                    {"label": "Runs", "value": "42"},
+                ],
+            }
+        ]
+    )
+    assert len(result) == 1
+    block = result[0]
+    assert block["type"] == "kpi_grid"
+    assert block["title"] == "KPI"
+    assert len(block["items"]) == 2
+    assert block["items"][0]["unit"] == ""
+    assert block["items"][0]["hint"] == "Latest tick health"
+    assert block["items"][1]["unit"] == ""
+    assert block["items"][1]["hint"] == ""
+
+
+# Тест: state_grid рендерится с items
+def test_layout_state_grid_renders() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "state_grid",
+                "title": "Current State",
+                "width": 12,
+                "items": [
+                    {"label": "Health", "value": "ok", "status": "ok"},
+                    {"label": "Tick", "value": "5 / 5"},
+                    {"label": "Started", "value": "2026-06-05T04:34:54Z"},
+                ],
+            }
+        ]
+    )
+    assert len(result) == 1
+    block = result[0]
+    assert block["type"] == "state_grid"
+    assert block["title"] == "Current State"
+    assert len(block["items"]) == 3
+    assert block["items"][0]["status"] == "ok"
+    assert block["items"][1]["status"] == ""
+
+
+# Тест: quick_links рендерится с items
+def test_layout_quick_links_renders() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "quick_links",
+                "title": "Quick Links",
+                "width": 12,
+                "items": [
+                    {"label": "Latest Run Detail", "href": "/runs/run_001"},
+                    {"label": "All Runs", "href": "/runs"},
+                    {"label": "No href"},
+                ],
+            }
+        ]
+    )
+    assert len(result) == 1
+    block = result[0]
+    assert block["type"] == "quick_links"
+    assert len(block["items"]) == 3
+    assert block["items"][0]["href"] == "/runs/run_001"
+    assert block["items"][1]["href"] == "/runs"
+    assert block["items"][2]["href"] is None
+
+
+# Тест: run_table рендерится с columns и rows
+def test_layout_run_table_renders() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "run_table",
+                "title": "Recent Runs",
+                "width": 12,
+                "columns": [
+                    "Run",
+                    "Mode",
+                    "Venue",
+                    "Symbol",
+                    "TF",
+                    "Started UTC",
+                    "Health",
+                    "Event Time UTC",
+                    "Event",
+                    "Severity",
+                    "Events",
+                    "Artifact",
+                ],
+                "rows": [
+                    {
+                        "run_id": "run_001",
+                        "run_href": "/runs/run_001",
+                        "mode": "live",
+                        "venue": "mrkt",
+                        "symbol": "TONNFT",
+                        "timeframe": "1m",
+                        "started_utc": "2026-06-05 04:34:54",
+                        "health": "ok",
+                        "event_time_utc": "2026-06-05 04:35:36",
+                        "event": "venues/mrkt/lifecycle",
+                        "severity": "info",
+                        "events": "9",
+                        "artifact": "lifecycle.jsonl",
+                        "artifact_href": "/runs/run_001/artifacts/lifecycle_jsonl",
+                    }
+                ],
+                "filters": True,
+            }
+        ]
+    )
+    assert len(result) == 1
+    block = result[0]
+    assert block["type"] == "run_table"
+    assert block["title"] == "Recent Runs"
+    assert len(block["columns"]) == 12
+    assert len(block["rows"]) == 1
+    assert block["rows"][0]["run_id"] == "run_001"
+    assert block["rows"][0]["run_href"] == "/runs/run_001"
+    assert (
+        block["rows"][0]["artifact_href"] == "/runs/run_001/artifacts/lifecycle_jsonl"
+    )
+    assert block["filters"] is True
+
+
+# Тест: run_table с dict rows деградирует
+def test_layout_run_table_invalid_columns_degrades() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "run_table",
+                "title": "Broken Runs",
+                "width": 12,
+                "columns": ["Run"],
+                "rows": [{"run_id": "run_001"}],
+            }
+        ]
+    )
+
+    assert len(result) == 1
+    assert result[0]["type"] == "degraded"
+
+
+# Тест: run_table с небезопасными href отфильтровывается
+def test_layout_run_table_rejects_unsafe_href() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "run_table",
+                "title": "Runs",
+                "width": 12,
+                "columns": [
+                    "Run",
+                    "Mode",
+                    "Venue",
+                    "Symbol",
+                    "TF",
+                    "Started UTC",
+                    "Health",
+                    "Event Time UTC",
+                    "Event",
+                    "Severity",
+                    "Events",
+                    "Artifact",
+                ],
+                "rows": [
+                    {
+                        "run_id": "good",
+                        "run_href": "/runs/good",
+                        "artifact": "safe.txt",
+                        "artifact_href": "/runs/good/artifacts/safe",
+                    },
+                    {
+                        "run_id": "bad",
+                        "run_href": "https://evil.com",
+                        "artifact": "bad.txt",
+                        "artifact_href": "https://evil.com/artifact",
+                    },
+                ],
+                "filters": False,
+            }
+        ]
+    )
+    block = result[0]
+    assert block["rows"][0]["run_href"] == "/runs/good"
+    assert block["rows"][0]["artifact_href"] == "/runs/good/artifacts/safe"
+    assert block["rows"][1]["run_href"] is None
+    assert block["rows"][1]["artifact_href"] is None
+    assert block["filters"] is False
+
+
+# Тест: mode_cards с optional полями href, latest, latest_href
+def test_layout_mode_cards_optional_fields() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "mode_cards",
+                "title": "Modes",
+                "width": 6,
+                "items": [
+                    {
+                        "label": "dry-run",
+                        "value": "17",
+                        "status": "warning",
+                        "latest": "run_001",
+                        "latest_href": "/runs/run_001",
+                        "href": "/dry-run",
+                    },
+                    {"label": "paper", "value": "5", "status": "ok"},
+                ],
+            }
+        ]
+    )
+    block = result[0]
+    assert block["type"] == "mode_cards"
+    assert block["items"][0]["label"] == "dry-run"
+    assert block["items"][0]["href"] == "/dry-run"
+    assert block["items"][0]["latest"] == "run_001"
+    assert block["items"][0]["latest_href"] == "/runs/run_001"
+    assert block["items"][1]["latest"] == "n/a"
+    assert block["items"][1]["href"] is None
+    assert block["items"][1]["latest_href"] is None
+
+
+# Тест: mode_cards не ломается при отсутствии optional полей
+def test_layout_mode_cards_missing_optionals() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "mode_cards",
+                "title": "Modes",
+                "width": 6,
+                "items": [
+                    {"label": "paper", "value": "5"},
+                ],
+            }
+        ]
+    )
+    block = result[0]
+    assert block["type"] == "mode_cards"
+    assert block["items"][0]["href"] is None
+    assert block["items"][0]["latest"] == "n/a"
+    assert block["items"][0]["latest_href"] is None
+
+
+# Тест: attention_list обрабатывает отсутствующие label/message
+def test_layout_attention_list_missing_fields() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "attention_list",
+                "title": "Alerts",
+                "width": 6,
+                "items": [
+                    {"severity": "error"},
+                    {"label": "Disk", "severity": "warning"},
+                    {"label": "Memory", "message": "80%", "severity": "info"},
+                    {"label": "Health", "message": "ok", "severity": "ok"},
+                    {"label": "Unknown", "message": "?", "severity": "unknown"},
+                ],
+            }
+        ]
+    )
+    block = result[0]
+    assert block["items"][0]["label"] == "n/a"
+    assert block["items"][0]["message"] == "n/a"
+    assert block["items"][1]["message"] == "n/a"
+    assert block["items"][3]["severity"] == "ok"
+    assert block["items"][4]["severity"] == "unknown"
+
+
+# Тест: _display_value helper возвращает default для None/null/empty
+def test_display_value_helper() -> None:
+    from beeui_module.blocks.layout_renderer import _display_value
+
+    assert _display_value(None) == "n/a"
+    assert _display_value("") == "n/a"
+    assert _display_value("  ") == "n/a"
+    assert _display_value("none") == "n/a"
+    assert _display_value("None") == "n/a"
+    assert _display_value("null") == "n/a"
+    assert _display_value(0) == "0"
+    assert _display_value(42) == "42"
+    assert _display_value(True) == "True"
+    assert _display_value("hello") == "hello"
+    assert _display_value("hello", default="---") == "hello"
+    assert _display_value(None, default="---") == "---"
+    assert _display_value([1, 2]) == "n/a"
+
+
+# Тест: операторные блоки с None значениями items рендерятся как n/a
+def test_layout_operator_blocks_none_values() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "operator_hero",
+                "title": "Test",
+                "subtitle": None,
+                "width": 12,
+                "items": [
+                    {"label": None, "value": None},
+                ],
+            },
+            {
+                "type": "state_grid",
+                "title": "State",
+                "width": 12,
+                "items": [
+                    {"label": "Missing", "value": None},
+                ],
+            },
+            {
+                "type": "quick_links",
+                "title": "Links",
+                "width": 12,
+                "items": [
+                    {"label": None},
+                ],
+            },
+        ]
+    )
+    assert result[0]["type"] == "operator_hero"
+    assert result[0]["subtitle"] == "n/a"
+    assert result[0]["items"][0]["label"] == "n/a"
+    assert result[0]["items"][0]["value"] == "n/a"
+    assert result[2]["items"][0]["label"] == "n/a"
+
+
+# Тест: все 6 новых типов блоков рендерятся в render_layout без degraded
+def test_layout_all_new_block_types_render() -> None:
+    layout = [
+        {
+            "type": "operator_hero",
+            "title": "OH",
+            "width": 12,
+            "items": [{"label": "L", "value": "V"}],
+        },
+        {
+            "type": "venue_card",
+            "title": "VC",
+            "width": 6,
+            "items": [{"label": "L", "value": "V"}],
+        },
+        {
+            "type": "kpi_grid",
+            "title": "KG",
+            "width": 12,
+            "items": [{"label": "L", "value": "V"}],
+        },
+        {
+            "type": "state_grid",
+            "title": "SG",
+            "width": 12,
+            "items": [{"label": "L", "value": "V"}],
+        },
+        {
+            "type": "quick_links",
+            "title": "QL",
+            "width": 12,
+            "items": [{"label": "L", "href": "/runs/1"}],
+        },
+        {
+            "type": "run_table",
+            "title": "RT",
+            "width": 12,
+            "columns": [
+                "Run",
+                "Mode",
+                "Venue",
+                "Symbol",
+                "TF",
+                "Started UTC",
+                "Health",
+                "Event Time UTC",
+                "Event",
+                "Severity",
+                "Events",
+                "Artifact",
+            ],
+            "rows": [{"run_id": "r1"}],
+        },
+    ]
+    result = render_layout(layout)
+    assert len(result) == 6
+    for block in result:
+        assert block["type"] != "degraded", f"Block type {block.get('type')} degraded"
+
+
+# Тест: run_table template существует в package
+def test_layout_run_table_template_exists() -> None:
+    assert Path(
+        "src/beeui_module/web/templates/components/layout/run_table.html"
+    ).is_file()
+
+
+# Тест: все новые layout templates существуют
+def test_layout_new_templates_exist() -> None:
+    for name in (
+        "operator_hero",
+        "venue_card",
+        "kpi_grid",
+        "state_grid",
+        "quick_links",
+        "run_table",
+    ):
+        path = Path(f"src/beeui_module/web/templates/components/layout/{name}.html")
+        assert path.is_file(), f"Missing template: {path}"

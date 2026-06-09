@@ -110,11 +110,17 @@ Adapter-backed payloads (`dashboard`, `run`, `venue dashboard`, optionally `runs
 | `hero_snapshot` | Card с title/subtitle/status, списком items (label+value+опциональный href) и links |
 | `metric_card` | Compact card с title, value, status badge и hint |
 | `kpi_strip` | Горизонтальная полоса KPI items (label+value+status) |
+| `kpi_grid` | Responsive KPI stat cards с label/value/unit/status/hint |
 | `venue_summary_grid` | Card c grid layout venue summary items |
-| `mode_cards` | Cards для режимов (label+value+status) |
+| `venue_card` | Compact venue summary card с items, alerts и links |
+| `mode_cards` | Cards для режимов (label+value+status+опциональный href/latest/latest_href) |
+| `operator_hero` | High-level system/operator snapshot с title/subtitle/status, datagrid items и primary_links |
+| `state_grid` | Dense key/value state section с datagrid layout и опциональным status badge |
+| `quick_links` | List group internal operator links |
+| `run_table` | Operator run/event/artifact table с columns и dict rows (run_href, artifact_href) |
 | `status_table` | Table с columns/rows |
 | `event_table` | Table с columns/rows для событий |
-| `attention_list` | List group с severity-dot indicators |
+| `attention_list` | List group с severity-dot indicators (severity: warning/error/info/ok/unknown) |
 | `artifact_links` | List group artifact links с content_type badge |
 | `raw_json_panel` | Card c raw JSON data |
 | `chart` | Server-rendered chart placeholder (no external JS); adapter-provided title/subtitle/status/symbol/timeframe/series/points/candles; empty state when no data |

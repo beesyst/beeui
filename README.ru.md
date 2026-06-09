@@ -2,21 +2,29 @@
 
 **BeeUI** — общий UI-фреймворк на Python для Bee-продуктов: `beecap`, `beeagent` и будущих модулей экосистемы Bee.
 
-## Iteration 12.2
+## Iteration 12.4
 
-Текущий результат — усиление визуального соответствия Tabler для продуктовой
-консоли на основе адаптера. BeeUI поставляет локально скомпилированные CSS/JS
-из `@tabler/core@1.4.0` и небольшой слой переопределений, специфичный для BeeUI.
-Все 10 типов layout-блоков рендерятся с классами Tabler, а полоса KPI использует
-статистические карточки вместо строчного текста. Консоль оператора уровня Tabler
-доступна для:
+Текущий результат — расширение adapter-backed `layout[]` contract для
+product-neutral operator console parity. BeeUI теперь поддерживает 17
+adapter-backed типов блоков и отдельный `degraded` fallback.
 
-- `GET /` — панели со сводкой, полосой KPI, таблицами и списком требующих внимания событий;
-- `GET /runs` — списка запусков с layout-блоками или резервной таблицей;
-- `GET /runs/{run_id}` — деталей запуска со сводкой, состоянием площадок, событиями и ссылками на артефакты;
-- `GET /venues/{venue_id}` — панели площадки со снимком, метриками и состоянием цикла.
+В Iteration 12.4 добавлены:
 
-Полный объём Iteration 12.2 описан в `docs/ROADMAP.md`.
+- `operator_hero`;
+- `venue_card`;
+- `kpi_grid`;
+- `state_grid`;
+- `quick_links`;
+- `run_table`.
+
+Также обновлены:
+
+- `mode_cards` — optional `href`, `latest`, `latest_href`;
+- `attention_list` — severity `warning`, `error`, `info`, `ok`, `unknown`;
+- `_display_value()` — безопасное отображение user-visible значений без `None`;
+- `run_table` — строгий 12-column operator contract.
+
+Полный объём Iteration 12.4 описан в `docs/ROADMAP.md`.
 
 Уже работает:
 
@@ -73,7 +81,17 @@
 - валидация mount path (безопасный путь, без path traversal);
 - проверка коллизии маршрутов при mount;
 - embedded API тесты в `tests/test_embedded.py`;
-- generic adapter-backed layout[] block renderer c 10 block types и degraded fallback;
+- generic adapter-backed layout[] block renderer c 17 block types и degraded fallback;
+- расширенный набор adapter-backed layout блоков (Iteration 12.4):
+  - `operator_hero` — системный snapshot с datagrid и primary links;
+  - `venue_card` — компактная карточка площадки с items, alerts и links;
+  - `kpi_grid` — responsive KPI stat cards с unit и hint;
+  - `state_grid` — dense key/value state section;
+  - `quick_links` — list group internal operator links;
+  - `run_table` — операторская таблица с run/event/artifact columns;
+  - расширенный `mode_cards` с optional href/latest/latest_href;
+  - улучшенный `attention_list` с поддержкой всех severity и n/a fallback;
+  - helper `_display_value` для отображения значений без None;
 - реальные локальные скомпилированные ресурсы ядра Tabler `@tabler/core@1.4.0`;
 - локальные `tabler.min.css` / `tabler.min.js` без CDN, ресурсов предпросмотра и демонстрационных ресурсов, а также без отслеживания;
 - вертикальная оболочка Tabler с локальным контекстом тёмной темы для боковой панели;
@@ -90,16 +108,27 @@ BeeUI сейчас поддерживает два разных block contract.
 
 Используются в `config/schema.yml` для demo/schema mode и declarative pages.
 
-Поддерживаемые типы:
+Поддерживаемые adapter-backed `layout[]` типы:
 
+- `hero_snapshot`;
 - `metric_card`;
+- `kpi_strip`;
+- `venue_summary_grid`;
+- `mode_cards`;
+- `status_table`;
+- `event_table`;
+- `attention_list`;
+- `artifact_links`;
+- `raw_json_panel`;
+- `chart`;
+- `operator_hero`;
+- `venue_card`;
 - `kpi_grid`;
-- `status_card`;
-- `table_card`;
-- `links_card`;
-- `alert_card`;
-- `text_card`;
-- `progress_card`.
+- `state_grid`;
+- `quick_links`;
+- `run_table`.
+
+`degraded` используется как fallback для malformed или unsupported blocks.
 
 Эти blocks объявляются в top-level `blocks` и размещаются через `pages[].blocks[]`.
 
@@ -275,7 +304,7 @@ MVP не пытается сразу стать полноценным Retool/We
 
 ## Что BeeUI делает
 
-В текущем состоянии после Iteration 12.2 BeeUI отвечает за:
+В текущем состоянии после Iteration 12.4 BeeUI отвечает за:
 
 - FastAPI app factory;
 - Jinja2 templates;
@@ -1615,6 +1644,8 @@ Iteration 11 — Generic artifact browser v1
 Iteration 12 — Adapter-backed Product Console routes/API MVP
 Iteration 12.1 — Adapter-backed Tabler dashboard blocks renderer
 Iteration 12.2 — Усиление визуального соответствия Tabler для продуктовой консоли на основе адаптера
+Iteration 12.3 — Chart layout block package/rendering integrity
+Iteration 12.4 — Operator console block primitives parity
 BeeCap UI-25 — BeeUI Console parity MVP
 BeeCap UI-26 — BeeUI default route switch with legacy fallback
 ```
@@ -1781,7 +1812,7 @@ Visual builder later.
 Текущий статус:
 
 ```text
-Iteration 12.2 — Усиление визуального соответствия Tabler для продуктовой консоли на основе адаптера — ЗАВЕРШЕНО
+Iteration 12.4 — Operator console block primitives parity — ЗАВЕРШЕНО
 ```
 
 Работает:
