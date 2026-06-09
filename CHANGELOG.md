@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.16.0](https://github.com/beesyst/beeui/compare/beeui-v0.15.2...beeui-v0.16.0) (2026-06-09)
+
+
+### Features
+
+* **blocks:** add operator console block primitives ([#51](https://github.com/beesyst/beeui/issues/51)) ([bfed033](https://github.com/beesyst/beeui/commit/bfed03356093893acc775447c4cc3901ed330e95))
+
 ## [0.15.2](https://github.com/beesyst/beeui/compare/beeui-v0.15.1...beeui-v0.15.2) (2026-06-08)
 
 
