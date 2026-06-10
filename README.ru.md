@@ -132,6 +132,11 @@ BeeUI сейчас поддерживает два разных block contract.
 
 Эти blocks объявляются в top-level `blocks` и размещаются через `pages[].blocks[]`.
 
+`pages[].blocks[]` поддерживает два формата (Iteration 12.5):
+
+- `{block, width}` — placement с указанием ширины (колонки 1–12);
+- `{id, enabled?}` — page block reference без ширины (по умолчанию col-12).
+
 #### 2. Adapter-backed `layout[]` blocks
 
 Используются в product console mode, когда product adapter возвращает optional поле `layout`.

@@ -471,3 +471,291 @@ def test_load_beeui_config_rejects_reserved_static_prefix(tmp_path: Path) -> Non
         assert str(exc) == "navigation[0].children[1].path uses a reserved path"
     else:
         raise AssertionError("load_beeui_config must reject reserved /static/... path")
+
+
+# Тест: pages[].blocks[] принимает {id, enabled} page block ref
+def test_page_block_ref_id_enabled_accepted(tmp_path: Path) -> None:
+    config_path = _write_config(
+        tmp_path,
+        _base_config().replace(
+            "      - block: latest_run\n        width: 3\n",
+            "      - id: latest_run\n        enabled: true\n",
+            1,
+        ),
+    )
+
+    config = load_beeui_config(config_path)
+
+    assert len(config.pages) == 2
+    dashboard = config.pages[0]
+    assert len(dashboard.blocks) == 8
+    assert dashboard.blocks[0].block_id == "latest_run"
+    assert dashboard.blocks[0].width == 12
+
+
+# Тест: pages[].blocks[] принимает {id} без enabled
+def test_page_block_ref_id_only_accepted(tmp_path: Path) -> None:
+    config_path = _write_config(
+        tmp_path,
+        _base_config().replace(
+            "      - block: latest_run\n        width: 3\n",
+            "      - id: latest_run\n",
+            1,
+        ),
+    )
+
+    config = load_beeui_config(config_path)
+
+    assert len(config.pages) == 2
+    dashboard = config.pages[0]
+    assert len(dashboard.blocks) == 8
+    assert dashboard.blocks[0].block_id == "latest_run"
+    assert dashboard.blocks[0].width == 12
+
+
+# Тест: pages[].blocks[] отвергает неизвестные ключи в {id, enabled}
+def test_page_block_ref_extra_key_rejected(tmp_path: Path) -> None:
+    config_path = _write_config(
+        tmp_path,
+        _base_config().replace(
+            "      - block: latest_run\n        width: 3\n",
+            "      - id: latest_run\n        enabled: true\n        width: 6\n",
+            1,
+        ),
+    )
+
+    try:
+        load_beeui_config(config_path)
+    except ValueError as exc:
+        assert (
+            "must not mix placement keys (block, width) with reference keys (id, enabled)"
+            in str(exc)
+        )
+    else:
+        raise AssertionError(
+            "load_beeui_config must reject page block ref with extra key"
+        )
+
+
+# Тест: pages[].blocks[] отвергает не-string id
+def test_page_block_ref_non_string_id_rejected(tmp_path: Path) -> None:
+    config_path = _write_config(
+        tmp_path,
+        _base_config().replace(
+            "      - block: latest_run\n        width: 3\n",
+            "      - id: 42\n        enabled: true\n",
+            1,
+        ),
+    )
+
+    try:
+        load_beeui_config(config_path)
+    except ValueError as exc:
+        assert str(exc) == "pages[0].blocks[0].id must be a non-empty string"
+    else:
+        raise AssertionError(
+            "load_beeui_config must reject page block ref with non-string id"
+        )
+
+
+# Тест: pages[].blocks[] отвергает не-bool enabled
+def test_page_block_ref_non_bool_enabled_rejected(tmp_path: Path) -> None:
+    config_path = _write_config(
+        tmp_path,
+        _base_config().replace(
+            "      - block: latest_run\n        width: 3\n",
+            '      - id: latest_run\n        enabled: "yes"\n',
+            1,
+        ),
+    )
+
+    try:
+        load_beeui_config(config_path)
+    except ValueError as exc:
+        assert str(exc) == "pages[0].blocks[0].enabled must be a boolean"
+    else:
+        raise AssertionError(
+            "load_beeui_config must reject page block ref with non-bool enabled"
+        )
+
+
+# Тест: pages[].blocks[] принимает {id} без top-level block definition
+def test_page_block_ref_unknown_product_id_is_accepted(tmp_path: Path) -> None:
+    config_path = _write_config(
+        tmp_path,
+        _base_config().replace(
+            "      - block: latest_run\n        width: 3\n",
+            "      - id: system_snapshot\n        enabled: true\n",
+            1,
+        ),
+    )
+
+    config = load_beeui_config(config_path)
+
+    assert len(config.pages) == 2
+    dashboard = config.pages[0]
+    assert len(dashboard.blocks) == 8
+    assert dashboard.blocks[0].block_id == "system_snapshot"
+    assert dashboard.blocks[0].width == 12
+
+
+# Тест: pages[].blocks[] отвергает небезопасный id
+def test_page_block_ref_unsafe_id_rejected(tmp_path: Path) -> None:
+    config_path = _write_config(
+        tmp_path,
+        _base_config().replace(
+            "      - block: latest_run\n        width: 3\n",
+            "      - id: ../../evil\n        enabled: true\n",
+            1,
+        ),
+    )
+
+    try:
+        load_beeui_config(config_path)
+    except ValueError as exc:
+        assert str(exc) == "pages[0].blocks[0].id must be a safe identifier"
+    else:
+        raise AssertionError(
+            "load_beeui_config must reject page block ref with unsafe id"
+        )
+
+
+# Тест: regression — исходная ошибка pages[0].blocks[0] содержит unsupported keys: enabled, id
+def test_page_block_ref_regression_original_error(tmp_path: Path) -> None:
+    config_content = _base_config().replace(
+        "      - block: latest_run\n        width: 3\n",
+        "      - id: latest_run\n        enabled: true\n",
+        1,
+    )
+    config_path = _write_config(tmp_path, config_content)
+
+    config = load_beeui_config(config_path)
+
+    assert len(config.pages) == 2
+    dashboard = config.pages[0]
+    assert len(dashboard.blocks) == 8
+    assert dashboard.blocks[0].block_id == "latest_run"
+
+
+# Тест: существующий {block, width} placement всё ещё работает
+def test_existing_block_width_placement_still_works(tmp_path: Path) -> None:
+    config_path = _write_config(
+        tmp_path,
+        _base_config(),
+    )
+
+    config = load_beeui_config(config_path)
+
+    assert len(config.pages) == 2
+    dashboard = config.pages[0]
+    assert len(dashboard.blocks) >= 1
+    assert dashboard.blocks[0].block_id == "latest_run"
+    assert dashboard.blocks[0].width == 3
+
+
+# Тест: source config file content не меняется после load_beeui_config
+def test_page_block_ref_does_not_mutate_source_config(tmp_path: Path) -> None:
+    config_content = _base_config().replace(
+        "      - block: latest_run\n        width: 3\n",
+        "      - id: latest_run\n        enabled: true\n",
+        1,
+    )
+    config_path = _write_config(tmp_path, config_content)
+    original_content = config_path.read_text(encoding="utf-8")
+
+    load_beeui_config(config_path)
+
+    assert config_path.read_text(encoding="utf-8") == original_content
+
+
+# Тест: .beeui_sanitized.yml не создаётся
+def test_page_block_ref_no_sanitized_yml_created(tmp_path: Path) -> None:
+    config_content = _base_config().replace(
+        "      - block: latest_run\n        width: 3\n",
+        "      - id: latest_run\n        enabled: true\n",
+        1,
+    )
+    config_path = _write_config(tmp_path, config_content)
+
+    load_beeui_config(config_path)
+
+    sanitized = tmp_path / ".beeui_sanitized.yml"
+    assert not sanitized.exists()
+
+
+# Тест: app factory стартует с config содержащим {id, enabled} page blocks
+def test_app_factory_starts_with_id_enabled_page_block_refs(tmp_path: Path) -> None:
+    from beeui_module.core.paths import settings_path
+    from beeui_module.core.settings import load_settings
+    from beeui_module.web.app import create_beeui_app
+
+    settings = load_settings(settings_path())
+    config_content = _base_config().replace(
+        "      - block: latest_run\n        width: 3\n",
+        "      - id: latest_run\n        enabled: true\n",
+        1,
+    )
+    config_path = _write_config(tmp_path, config_content)
+    ui_config = load_beeui_config(config_path)
+
+    app = create_beeui_app(settings=settings, ui_config=ui_config)
+
+    assert app is not None
+
+
+# Тест: BeeCap-like config с product page refs и пустым blocks: {}
+def test_page_block_ref_beecap_like_config(tmp_path: Path) -> None:
+    config_content = (
+        "app:\n"
+        "  title: BeeCap\n"
+        "  product: beecap\n"
+        "  logo_text: BeeCap\n"
+        "  theme:\n"
+        "    mode: dark\n"
+        "    primary: green\n"
+        "    base: gray\n"
+        "    font: sans-serif\n"
+        "    radius: 1\n"
+        "    density: default\n"
+        "  layout:\n"
+        "    type: vertical\n"
+        "    container: xl\n"
+        "    sidebar:\n"
+        "      variant: dark\n"
+        "      collapsed: false\n"
+        "    navbar:\n"
+        "      enabled: false\n"
+        "      variant: default\n"
+        "      sticky: false\n"
+        "\n"
+        "navigation:\n"
+        "  - title: BeeCap\n"
+        "    children:\n"
+        "      - title: Dashboard\n"
+        "        path: /\n"
+        "        icon: dashboard\n"
+        "\n"
+        "pages:\n"
+        "  - id: dashboard\n"
+        "    path: /\n"
+        "    title: Dashboard\n"
+        "    subtitle: BeeCap operator dashboard\n"
+        "    blocks:\n"
+        "      - id: system_snapshot\n"
+        "        enabled: true\n"
+        "      - id: venue_cards\n"
+        "        enabled: true\n"
+        "\n"
+        "blocks: {}\n"
+    )
+    config_path = _write_config(tmp_path, config_content)
+
+    config = load_beeui_config(config_path)
+
+    assert config.app_title == "BeeCap"
+    assert config.product == "beecap"
+    assert len(config.pages) == 1
+    dashboard = config.pages[0]
+    assert len(dashboard.blocks) == 2
+    assert dashboard.blocks[0].block_id == "system_snapshot"
+    assert dashboard.blocks[1].block_id == "venue_cards"

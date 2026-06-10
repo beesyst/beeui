@@ -353,6 +353,49 @@ app = create_beeui_app(settings=settings, ui_config=ui_config)
 
 Generic `ProductUiAdapter` contract существует в `src/beeui_module/adapters/`. Adapter можно передать в `create_beeui_app(...)`; после Iteration 12 product console routes вызывают `get_dashboard()`, `list_runs()`, `get_run(run_id)` и optional `get_venue_dashboard(venue_id)`, а artifact browser routes продолжают вызывать `list_artifacts(run_id)` и `read_artifact(run_id, artifact_id)`.
 
+### Schema/demo block placement contract (Iteration 12.5)
+
+`config/schema.yml` (и product-side `beeui.yml`) содержит секцию `pages`, где
+каждая страница может иметь `blocks[]`.
+
+Поддерживаются два формата для элементов `pages[].blocks[]`:
+
+#### 1. Block placement (существующий формат)
+
+```yaml
+pages:
+  - id: dashboard
+    path: /
+    blocks:
+      - block: latest_run
+        width: 3
+```
+
+- `block` (required, string): ссылка на ID объявленного top-level `blocks[]`.
+  Проверяется against registry: `Unknown block reference` при отсутствии.
+- `width` (required, int, 1–12): ширина блока в колонках Tabler grid.
+
+#### 2. Page block reference (Iteration 12.5)
+
+```yaml
+pages:
+  - id: dashboard
+    path: /
+    blocks:
+      - id: system_snapshot
+        enabled: true
+```
+
+- `id` (required, string): safe identifier. Является product-side page/layout reference,
+  **не обязан** существовать в top-level `blocks[]`. Product adapter/read_model
+  владеет семантикой этих id.
+- `enabled` (optional, bool, default `true`): если `false`, блок не рендерится.
+- Ширина блока по умолчанию — `12` (полная ширина колонки).
+- Неизвестные ключи отклоняются fail-fast.
+- `id` валидируется как safe identifier (reject path traversal, unsafe chars).
+
+Оба формата не могут быть смешаны в одном элементе. Source config не мутируется.
+
 ### Layout block rendering (Iteration 12.1 + 12.2)
 
 Этот contract отличается от schema/demo blocks из `config/schema.yml`.
