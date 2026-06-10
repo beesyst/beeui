@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.16.1](https://github.com/beesyst/beeui/compare/beeui-v0.16.0...beeui-v0.16.1) (2026-06-10)
+
+
+### Bug Fixes
+
+* **config:** allow page block references with id and enabled ([#54](https://github.com/beesyst/beeui/issues/54)) ([dd40eb1](https://github.com/beesyst/beeui/commit/dd40eb16252dbdb6a9cd4538efc54b07d2597a9d))
+
 ## [0.16.0](https://github.com/beesyst/beeui/compare/beeui-v0.15.2...beeui-v0.16.0) (2026-06-09)
 
 
