@@ -2803,6 +2803,155 @@ GET /static/css/beeui.css
 - docs reflect the actual supported block behavior;
 - BeeCap can proceed with parity by enriching its product-side `layout[]`.
 
+### Итерация 12.5 — Page block reference schema compatibility hotfix
+
+**Статус:** DONE
+
+#### Goal
+
+Исправить BeeUI embedded startup compatibility для product-side `beeui.yml`, чтобы `pages[].blocks[]` поддерживал page-level block reference objects вида `{id: str, enabled?: bool}` наряду с существующим block placement format, без sanitizing, без мутации config и без fallback в product legacy UI.
+
+#### Почему это нужно
+
+После Iteration 12.4 BeeUI имеет достаточный набор operator-console blocks, но BeeCap canonical BeeUI startup может падать на schema validation до рендера adapter-backed pages:
+
+```text
+pages[0].blocks[0] contains unsupported keys: enabled, id
+```
+
+Из-за этого BeeCap root app включает legacy fallback, `/` снова отдаёт legacy templates, а BeeUI navigation/route parity не проверяется.
+
+Это не проблема BeeCap read-model или layout renderer. Это несовместимость BeeUI schema validator с product-side page block reference format, который BeeCap использует для фильтрации/упорядочивания generated `layout[]`.
+
+#### Change level
+
+**runtime-risk**
+
+Причина:
+
+- меняется BeeUI UI schema/config validation;
+- embedded app startup behavior меняется с fallback/fail на successful BeeUI initialization;
+- route behavior product canonical UI зависит от успешной загрузки `beeui.yml`;
+- operator-facing root routes должны перестать падать в legacy fallback.
+
+Security-sensitive checks required for:
+
+- config validation boundaries;
+- no arbitrary keys in `pages[].blocks[]`;
+- no config mutation/sanitizing;
+- no secrets in logs;
+- no hidden fallback paths;
+- no unsafe links introduced.
+
+#### Scope
+
+**Включено:**
+
+- расширить BeeUI schema validation для `pages[].blocks[]`, чтобы поддерживались block reference objects:
+
+```yaml
+pages:
+  - id: dashboard
+    path: /
+    blocks:
+      - id: system_snapshot
+        enabled: true
+```
+
+- сохранить существующий supported placement format, если он уже есть, например:
+
+```yaml
+pages:
+  - id: dashboard
+    path: /
+    blocks:
+      - block: latest_run
+        width: 3
+```
+
+- `id` должен быть safe identifier / block reference string;
+- `enabled` optional, boolean, default behavior equivalent to enabled;
+- неизвестные ключи в page block reference должны продолжать fail-fast;
+- invalid `id` / invalid `enabled` должны fail-fast;
+- не strip-ить `pages[].blocks`;
+- не генерировать `.beeui_sanitized.yml`;
+- не мутировать `config/beeui.yml`;
+- BeeUI должен стартовать напрямую с product-side `config/beeui.yml`;
+- добавить regression tests на ошибку:
+
+```text
+pages[0].blocks[0] contains unsupported keys: enabled, id
+```
+
+- обновить docs:
+  - `docs/ROADMAP.md`;
+  - `docs/API_CONTRACT.md` или `docs/WEB_UI.md`, где описан page/block config contract;
+  - `README.ru.md`, если там перечислен поддерживаемый embedded config behavior.
+
+**Не включено:**
+
+- BeeCap-specific metrics/calculations;
+- изменение BeeCap `read_model.py`;
+- возврат sanitizing-заглушки `_page["blocks"] = []`;
+- генерация sanitized config;
+- legacy removal;
+- auth/session/config apply/operator actions;
+- новые block renderers;
+- provider/broker/runtime calls;
+- новые dependencies;
+- изменение `pyproject.toml.version`.
+
+#### Deliverable
+
+BeeUI accepts product-side `beeui.yml` with page block references shaped as `{id: str, enabled?: bool}` and starts successfully in embedded mode without falling back to legacy-only UI.
+
+#### Checks
+
+- `uv run pytest -q`;
+- `./start.sh doctor`;
+- `./start.sh routes`;
+- `./start.sh web --host 127.0.0.1 --port 8780`;
+
+Regression tests:
+
+- valid `pages[].blocks[]` entry with `{id, enabled}` loads;
+- valid `{id}` without `enabled` loads;
+- valid existing `{block, width}` placement still loads;
+- invalid extra key in `{id, enabled}` fails fast;
+- invalid non-string `id` fails fast;
+- invalid non-bool `enabled` fails fast;
+- config loader does not mutate source config;
+- no sanitized config file is created.
+
+Embedded BeeCap verification after dependency update:
+
+```text
+GET /
+GET /modes/live
+GET /modes/paper
+GET /modes/dry-run
+GET /venues/binance
+GET /venues/mrkt
+```
+
+Expected:
+
+- BeeUI initialization succeeds;
+- no new `BeeUI initialization failed` entry in logs;
+- BeeUI root HTML contains no `/legacy` links;
+- `/legacy` may remain mounted only as explicit compatibility fallback.
+
+#### DoD
+
+- `pages[].blocks[]` schema contract is compatible with product-side BeeUI config;
+- BeeUI startup no longer fails on `{id, enabled}` block references;
+- existing schema block placement contract remains backward-compatible;
+- invalid block reference objects still fail fast;
+- no config mutation/sanitizing is introduced;
+- BeeUI remains product-neutral;
+- BeeCap can continue using product-side `read_model.py` to interpret `id/enabled`;
+- tests and docs reflect the actual supported config behavior.
+
 ---
 
 ## Этап 6 — Config/Auth/Actions foundation

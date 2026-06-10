@@ -38,7 +38,7 @@ def parse_blocks_registry(
     return blocks
 
 
-# Чтение pages[].blocks[] и чек ссылки на уже объявленные block ids
+# Чтение pages[].blocks[]: static placements и product-side page refs
 def parse_page_block_placements(
     *,
     page_blocks: Any,
@@ -55,29 +55,98 @@ def parse_page_block_placements(
                 f"pages[{page_index}].blocks[{block_index}] must be a mapping"
             )
 
-        unknown_keys = sorted(set(item) - {"block", "width"})
-        if unknown_keys:
+        keys = set(item)
+        has_placement_keys = bool(keys & {"block", "width"})
+        has_ref_keys = bool(keys & {"id", "enabled"})
+
+        if has_placement_keys and has_ref_keys:
             raise ValueError(
-                f"pages[{page_index}].blocks[{block_index}] contains unsupported keys: {', '.join(unknown_keys)}"
+                f"pages[{page_index}].blocks[{block_index}] must not mix placement keys (block, width) with reference keys (id, enabled)"
             )
 
-        block_id = item.get("block")
-        if not isinstance(block_id, str) or not block_id.strip():
-            raise ValueError(
-                f"pages[{page_index}].blocks[{block_index}].block must be a non-empty string"
+        if has_ref_keys:
+            _validate_page_block_ref(
+                item,
+                page_index=page_index,
+                block_index=block_index,
+                placements=placements,
             )
-        if block_id not in available_block_ids:
-            raise ValueError(f"Unknown block reference: {block_id}")
-
-        width = item.get("width")
-        if not isinstance(width, int) or width < 1 or width > 12:
-            raise ValueError(
-                f"pages[{page_index}].blocks[{block_index}].width must be an integer in range 1..12"
+        else:
+            _validate_block_placement(
+                item,
+                page_index=page_index,
+                block_index=block_index,
+                available_block_ids=available_block_ids,
+                placements=placements,
             )
-
-        placements.append(BlockPlacement(block_id=block_id, width=width))
 
     return placements
+
+
+# Валидация page block reference
+def _validate_page_block_ref(
+    item: dict[str, Any],
+    *,
+    page_index: int,
+    block_index: int,
+    placements: list[BlockPlacement],
+) -> None:
+    unknown_keys = sorted(set(item) - {"id", "enabled"})
+    if unknown_keys:
+        raise ValueError(
+            f"pages[{page_index}].blocks[{block_index}] contains unsupported keys: {', '.join(unknown_keys)}"
+        )
+
+    block_id = item.get("id")
+    if not isinstance(block_id, str) or not block_id.strip():
+        raise ValueError(
+            f"pages[{page_index}].blocks[{block_index}].id must be a non-empty string"
+        )
+    if not _SAFE_IDENTIFIER_RE.fullmatch(block_id):
+        raise ValueError(
+            f"pages[{page_index}].blocks[{block_index}].id must be a safe identifier"
+        )
+
+    enabled = item.get("enabled", True)
+    if not isinstance(enabled, bool):
+        raise ValueError(
+            f"pages[{page_index}].blocks[{block_index}].enabled must be a boolean"
+        )
+
+    if enabled:
+        placements.append(BlockPlacement(block_id=block_id, width=12))
+
+
+# Валидация block placement: {block, width}
+def _validate_block_placement(
+    item: dict[str, Any],
+    *,
+    page_index: int,
+    block_index: int,
+    available_block_ids: set[str],
+    placements: list[BlockPlacement],
+) -> None:
+    unknown_keys = sorted(set(item) - {"block", "width"})
+    if unknown_keys:
+        raise ValueError(
+            f"pages[{page_index}].blocks[{block_index}] contains unsupported keys: {', '.join(unknown_keys)}"
+        )
+
+    block_id = item.get("block")
+    if not isinstance(block_id, str) or not block_id.strip():
+        raise ValueError(
+            f"pages[{page_index}].blocks[{block_index}].block must be a non-empty string"
+        )
+    if block_id not in available_block_ids:
+        raise ValueError(f"Unknown block reference: {block_id}")
+
+    width = item.get("width")
+    if not isinstance(width, int) or width < 1 or width > 12:
+        raise ValueError(
+            f"pages[{page_index}].blocks[{block_index}].width must be an integer in range 1..12"
+        )
+
+    placements.append(BlockPlacement(block_id=block_id, width=width))
 
 
 # Коннект placement и definition в модель, которую можно передать в template
