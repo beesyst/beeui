@@ -2956,36 +2956,30 @@ Expected:
 
 ## Этап 6 — Config/Auth/Actions foundation
 
-### Итерация 13 — Config/Auth/Actions foundation MVP
+### Итерация 13 — Auth/session/CSRF boundary for config/action routes MVP
 
-**Статус:** PLANNED
+**Статус:** DONE
 
 #### Goal
 
-Добавить минимальный reusable foundation для config read/preview/apply, auth/session/CSRF and bounded operator actions.
-
-Эта итерация заменяет старые отдельные planned-итерации:
-
-```text
-It15 — Config read-model and validation preview v1
-It16 — Bounded config apply and audit v1
-It17 — Bounded operator actions v1
-It18 — Auth/session/RBAC v0
-```
+Добавить минимальный reusable auth/session/CSRF boundary для BeeUI config/action POST routes, чтобы product-owned config apply and operator action callbacks нельзя было вызвать без явной operator authentication, role check and CSRF protection.
 
 #### Почему это нужно
 
-Config apply, admin actions and operator controls нельзя развивать отдельно от auth/session/CSRF boundary.
+После BeeCap UI-28 BeeUI/BeeCap config/admin/action parity достигла local MVP: config preview/apply and action preview/execute идут через product adapter callbacks, с validation, backup and audit on product side.
 
-Правильный порядок:
+Но POST routes без auth/session/CSRF нельзя считать customer/public-safe:
 
 ```text
-read-only product console first
-then route switch
-then config/auth/actions foundation
+POST /api/config/preview
+POST /api/config/apply
+POST /api/actions/preview
+POST /api/actions/execute
 ```
 
-Эта итерация не должна блокировать BeeCap read-only MVP. Она нужна после того, как BeeUI уже доказал себя как canonical read-only console.
+Даже если product callback остаётся bounded, сам transport boundary должен быть защищён в BeeUI, потому что BeeUI владеет generic web shell, browser routes, session model and CSRF checks.
+
+Эта итерация закрывает security gap между local/operator-only MVP and remotely exposed operator console.
 
 #### Change level
 
@@ -2994,190 +2988,132 @@ then config/auth/actions foundation
 Причина:
 
 - auth/session boundary;
-- CSRF;
+- signed cookies/session handling;
+- CSRF protection;
 - POST routes;
-- config mutation;
-- operator action execution callbacks;
-- audit handoff;
-- secrets redaction;
 - role-aware access;
-- product callback authority boundary.
+- config mutation callbacks;
+- operator action callbacks;
+- secret/token handling;
+- HTML/API exposure.
 
 #### Scope
 
 **Включено:**
 
-- config read-model routes:
+- minimal BeeUI auth/session service;
+- explicit auth-disabled local/dev mode;
+- auth-enabled token/session mode;
+- login/logout routes;
+- signed session cookie;
+- role model:
+  - `viewer`;
+  - `operator`;
+  - `admin`;
 
-```text
-GET /config
-GET /api/config/read-model
-```
+- CSRF token generation and validation for browser/API POST routes;
+- fail-fast startup validation when auth is enabled but required secret/token env vars are missing;
+- protection for:
+  - `POST /api/config/preview`;
+  - `POST /api/config/apply`;
+  - `POST /api/actions/preview`;
+  - `POST /api/actions/execute`;
 
-- config preview/apply routes:
+- role checks:
+  - `viewer`: read-only only;
+  - `operator`: action preview/execute only when product callback allows;
+  - `admin`: config preview/apply and admin/config flows;
 
-```text
-POST /api/config/preview
-POST /api/config/apply
-```
+- safe unauthenticated responses:
+  - HTML redirect or `401`;
+  - API `401` envelope;
 
-- action routes:
+- safe unauthorized responses:
+  - API `403` envelope;
 
-```text
-GET /actions
-GET /api/actions
-POST /api/actions/{action_id}/preview
-POST /api/actions/{action_id}/execute
-```
-
-- adapter callbacks:
-
-```python
-get_config_read_model()
-validate_config_candidate(candidate)
-apply_config_candidate(candidate, expected_hash, actor)
-
-list_actions()
-preview_action(action_id, payload)
-execute_action(action_id, payload, actor)
-```
-
-- minimal auth/session layer:
-  - explicit local/dev auth-disabled mode;
-  - token/session mode;
-  - signed session cookie;
-  - login route;
-  - logout route;
-  - role model:
-    - `viewer`;
-    - `operator`;
-    - `admin`;
-
-- CSRF protection for browser POST routes;
-
-- no default password/token/session secret in repository;
-
-- fail-fast validation when auth is enabled but required secret/token config is missing;
-
-- security headers baseline:
-  - `Cache-Control: no-store` for HTML/auth/config/action pages;
-  - `X-Content-Type-Options`;
-  - frame protection header where practical;
-
-- config read-model rendering:
-  - editable fields;
-  - non-editable fields;
-  - redacted secrets;
-  - config hash / version token where product provides it;
-  - product-provided allowlist;
-
-- config preview:
-  - no mutation;
-  - product validation callback only;
-  - explicit rejection reasons;
-
-- config apply:
-  - product callback only;
-  - expected hash / stale guard support;
-  - product-owned backup/audit behavior or audit hook;
-  - no arbitrary YAML editor;
-
-- action framework:
-  - list actions;
-  - preview action;
-  - execute action through product callback only;
-  - allowed/blocked/denied/unavailable states;
-  - confirmation-ready response model;
-  - audit hook convention;
-
+- security headers baseline for auth/config/action pages;
+- no default secrets in repository;
+- no secrets in HTML/API/logs;
+- tests for auth disabled/enabled modes, login/logout, CSRF, role denial, allowed flows and callback dispatch;
 - docs update:
+  - `docs/ROADMAP.md`;
   - `docs/SECURITY.md`;
   - `docs/API_CONTRACT.md`;
   - `docs/WEB_UI.md`;
   - `docs/INTEGRATION.md`;
-  - `docs/ROADMAP.md`.
+  - `README.ru.md`.
 
-#### Не включено
+**Не включено:**
 
 - OAuth;
 - SSO;
 - user database;
 - password reset;
-- multi-tenant model;
+- multi-tenant auth;
 - SQLAdmin;
 - arbitrary YAML editor;
-- secrets editing;
-- direct runtime execution in BeeUI;
+- direct runtime execution;
 - direct broker/provider/manual order controls;
-- background jobs;
-- process supervisor;
-- standalone service;
-- public SaaS auth model.
+- product-specific auth logic;
+- standalone SaaS auth model;
+- changing BeeCap config/action semantics;
+- moving product validation/audit into BeeUI.
 
 #### Deliverable
 
-BeeUI can host product-owned config/admin/action workflows safely through callbacks, without owning runtime authority.
+BeeUI protects config/action POST routes with reusable auth/session/CSRF checks while keeping product authority behind adapter callbacks.
 
-Products define:
+Expected behavior:
 
-- config read-model;
-- editable allowlist;
-- validation;
-- apply behavior;
-- backup/audit artifacts;
-- available actions;
-- action preview/execute behavior.
-
-BeeUI provides:
-
-- rendering;
-- auth/session shell;
-- CSRF protection;
-- role checks;
-- callback dispatch;
-- stable HTML/API envelopes.
+- auth disabled works only when explicitly configured as local/dev mode;
+- auth enabled without required secret/token config fails fast;
+- unauthenticated POST is rejected;
+- missing/invalid CSRF is rejected;
+- viewer cannot mutate config or execute actions;
+- admin/operator roles are enforced;
+- product callbacks remain the only execution boundary;
+- no secrets leak to HTML/API/logs;
+- BeeCap web console can move from local/operator-only toward customer-safe deployment after adopting this BeeUI version.
 
 #### Checks
 
 - `uv run pytest -q`;
 - `./start.sh doctor`;
 - `./start.sh routes`;
-- auth disabled only when explicitly configured;
-- auth enabled with missing token/session secret fails fast;
+- `./start.sh web --host 127.0.0.1 --port 8780`;
+
+Automated checks:
+
+- auth disabled mode must be explicit;
+- auth enabled without session secret fails fast;
+- auth enabled without operator/admin token fails fast;
 - login success;
 - login failure;
-- logout;
-- unauthenticated POST rejected when auth enabled;
-- CSRF missing rejected;
-- CSRF invalid rejected;
-- viewer denied config apply/action execute;
-- operator allowed action where adapter allows;
-- admin access works for admin/config routes;
-- config read-model renders redacted fields;
-- config preview does not mutate;
-- config apply calls adapter only;
-- forbidden config key rejected by adapter;
-- stale hash rejected when product reports stale candidate;
-- action list renders;
-- action preview calls adapter only;
-- action execute calls adapter only;
-- denied action returns explicit reason;
-- no session/token secret leakage;
+- logout clears session;
+- unauthenticated POST rejected;
+- missing CSRF rejected;
+- invalid CSRF rejected;
+- valid CSRF accepted;
+- viewer denied config apply;
+- viewer denied action execute;
+- admin allowed config preview/apply if adapter allows;
+- operator allowed action preview/execute if adapter allows;
+- adapter denial still returns explicit denied envelope;
+- no product callback called when auth/CSRF fails;
 - no secrets in HTML/API/logs;
-- no arbitrary YAML editor;
-- no direct product execution in BeeUI;
 - no provider/broker/runtime calls from BeeUI.
 
 #### DoD
 
 - BeeUI owns reusable auth/session/CSRF shell;
-- BeeUI does not execute product logic directly;
-- config/action flows go through product callbacks;
-- mutation requires product validation and product-owned audit/backup handoff;
-- local unauthenticated mode is explicit and documented;
-- role semantics are ready for product usage;
-- no hidden write/control path is introduced;
-- docs describe the authority boundary.
+- config/action POST routes are protected before product callbacks are called;
+- auth-disabled local mode is explicit and documented;
+- auth-enabled mode fails fast without required secrets;
+- role checks work;
+- CSRF checks work;
+- product callbacks remain source of business authority;
+- no product-specific logic is introduced into BeeUI;
+- docs clearly distinguish local/operator-only mode from customer/public-safe mode.
 
 ---
 

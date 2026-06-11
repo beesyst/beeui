@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import os
+import re
 from pathlib import Path
 from typing import Any
 
 import yaml
 
 VALID_LOG_LEVELS = {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}
+_ENV_REF_RE = re.compile(r"^\$\{([A-Z0-9_]+)\}$")
 
 
 # Загрузка YAML-настроек BeeUI с минимальной fail-fast валидацией
@@ -21,6 +24,7 @@ def load_settings(config_path: Path) -> dict[str, Any]:
     _validate_web(payload)
     _validate_logging(payload)
     _validate_security(payload)
+    _validate_auth(payload)
     _validate_features(payload)
     _validate_product(payload)
     _validate_storage(payload)
@@ -109,6 +113,55 @@ def _validate_security(settings: dict[str, Any]) -> None:
         raise ValueError("security.html_autoescape must be true")
     if not isinstance(security_cfg["assets_ext"], bool):
         raise ValueError("security.assets_ext must be a boolean")
+
+
+# Валидация секции auth
+def _validate_auth(settings: dict[str, Any]) -> None:
+    auth_cfg = settings.get("auth")
+    if auth_cfg is None:
+        return
+
+    if not isinstance(auth_cfg, dict):
+        raise ValueError("auth must be a mapping")
+
+    if "enabled" not in auth_cfg:
+        raise ValueError("Missing required key: auth.enabled")
+
+    if not isinstance(auth_cfg["enabled"], bool):
+        raise ValueError("auth.enabled must be a boolean")
+
+    if auth_cfg["enabled"]:
+        if "cookie_secure" not in auth_cfg:
+            raise ValueError(
+                "Missing required key: auth.cookie_secure when auth.enabled=true"
+            )
+        if not isinstance(auth_cfg["cookie_secure"], bool):
+            raise ValueError("auth.cookie_secure must be a boolean")
+
+        for key in ("session_secret", "operator_token", "admin_token"):
+            if key not in auth_cfg:
+                raise ValueError(
+                    f"Missing required key: auth.{key} when auth.enabled=true"
+                )
+
+            resolved_value = _resolve_env_ref(auth_cfg[key])
+            if not isinstance(resolved_value, str) or not resolved_value.strip():
+                raise ValueError(
+                    f"auth.{key} must resolve to a non-empty string when auth.enabled=true"
+                )
+
+
+# Разрешение ссылок на переменные окружения в виде ${ENV_VAR} для чувствительных данных
+def _resolve_env_ref(value: Any) -> Any:
+    if not isinstance(value, str):
+        return value
+
+    match = _ENV_REF_RE.fullmatch(value.strip())
+    if match is None:
+        return value
+
+    env_name = match.group(1)
+    return os.environ.get(env_name)
 
 
 # Валидация секции features с проверкой наличия ключей и типов значений

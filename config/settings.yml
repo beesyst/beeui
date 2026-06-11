@@ -23,6 +23,13 @@ security:
   html_autoescape: true
   assets_ext: false
 
+auth:
+  enabled: false
+  session_secret: ${BEEUI_SESSION_SECRET}
+  operator_token: ${BEEUI_OPERATOR_TOKEN}
+  admin_token: ${BEEUI_ADMIN_TOKEN}
+  cookie_secure: false
+
 product:
   mode: demo
   id: demo

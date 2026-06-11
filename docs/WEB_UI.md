@@ -10,7 +10,7 @@
 - `beeagent`;
 - будущие Bee-продукты.
 
-Текущая реализованная основа после Iteration 12.2 включает:
+Текущая реализованная основа после Iteration 13 включает:
 
 - веб-приложение FastAPI;
 - шаблоны Jinja2;
@@ -44,10 +44,15 @@
 `features.browser_artifact` включает/отключает Iteration 11 artifact browser HTML/API routes.
 `features.api` остаётся зарезервированным для будущего stable BeeUI API contract и не отключает artifact browser API routes.
 
+Реализованные обязанности:
+
+- bounded config/admin/operator controls (protected POST route stubs);
+- auth/session/CSRF layer (Iteration 13):
+  - signed session cookie with configurable `Secure` flag (`cookie_secure`);
+  - security headers baseline: `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`.
+
 Запланированные обязанности:
 
-- bounded config/admin/operator controls;
-- auth/session layer;
 - foundation для будущего no-code dashboard builder.
 
 `beeui` не является runtime engine.
@@ -200,7 +205,7 @@ src/beeui_module/
   adapters/              # generic adapter contract v0 + BeeCap fixture/reference adapter
   artifacts/             # Iteration 11: artifact browser (models, preview, redaction, routes)
   api/                   # текущий helper для product console envelope
-  auth/                  # будущий module
+  auth/                  # Iteration 13: auth/session/CSRF boundary
   config_ui/             # будущий module
   theme/                 # будущий module
 ```
@@ -830,7 +835,7 @@ JSON routes:
 
 Не все routes должны существовать в MVP.
 
-Текущий набор маршрутов MVP после Iteration 12.2:
+Текущий набор маршрутов MVP после Iteration 13:
 
 - `/`
 - `/runs`
@@ -850,18 +855,21 @@ JSON routes:
 - `/api/runs`
 - `/api/runs/{run_id}`
 - `/api/venues/{venue_id}/dashboard`
+- `/login`
+- `/logout`
+- `/api/auth/csrf`
 - `/runs/{run_id}/artifacts`
 - `/runs/{run_id}/artifacts/{artifact_id}`
 - `/api/runs/{run_id}/artifacts`
 - `/api/runs/{run_id}/artifacts/{artifact_id}`
 
-При наличии adapter product console routes владеют `/` и `/runs`. Без adapter сохраняется schema/demo mode. Config/action routes остаются future scope.
+При наличии adapter product console routes владеют `/` и `/runs`. Без adapter сохраняется schema/demo mode.
 
 Маршрут `/components/plugins` содержит только инертные заглушки каталога
 компонентов. Полноценная интеграция плагинов и дополнений остаётся будущей
-задачей. Интерфейс настройки темы, аутентификация, вход, восстановление пароля
-и верхняя горизонтальная навигация также не реализованы и относятся к будущим
-итерациям.
+задачей. Интерфейс настройки темы и верхняя горизонтальная навигация остаются
+будущими задачами. Auth/session/CSRF boundary и login/logout уже реализованы в
+Iteration 13.
 
 ## Read-only model
 
@@ -893,14 +901,14 @@ X-BeeCap-Read-Only: true
 
 ## Bounded write actions
 
-BeeUI may later support bounded mutating POST paths.
+BeeUI уже поддерживает bounded mutating POST transport stubs для config/action routes.
 
-Examples:
+Реализованные protected POST routes:
 
-- `POST /api/config/preview` — non-mutating validation preview;
-- `POST /api/config/apply` — bounded config apply;
-- `POST /api/actions/{action_id}` — bounded product action;
-- `POST /api/index/rebuild` — optional read-model index rebuild.
+- `POST /api/config/preview` — protected preview transport stub;
+- `POST /api/config/apply` — protected apply transport stub;
+- `POST /api/actions/preview` — protected action preview transport stub;
+- `POST /api/actions/execute` — protected action execute transport stub.
 
 Правила:
 
@@ -912,6 +920,7 @@ Examples:
 - every accepted/rejected write attempt must be auditable;
 - product callback must own domain validation;
 - BeeUI must not bypass product validation.
+- BeeUI защищает transport boundary, а product adapter владеет config/action semantics.
 
 ## Текущий product console API и будущий frontend API
 
@@ -1429,13 +1438,13 @@ JSONL response:
 
 ## Config read-model
 
-Config read-model UI/API routes запланированы для следующих config iterations. Optional adapter method contract существует, но Iteration 11 не реализует config/action routes.
+Config read-model UI/API routes запланированы для следующих config iterations. Iteration 13 уже реализует auth/session/CSRF boundary и protected POST stubs, но полноценный config read-model остаётся отдельной задачей.
 
 BeeUI can provide generic config read-model UI if product adapter supports it.
 
 ## Будущий config UI
 
-Config UI и перечисленные ниже config routes ещё не реализованы.
+Config UI и `GET` read-model routes ниже ещё не реализованы как полный product-facing UI.
 
 ### `GET /config`
 
@@ -1476,7 +1485,7 @@ Response:
 
 ### `POST /api/config/preview`
 
-Non-mutating validation preview.
+Protected non-mutating validation preview transport stub.
 
 Правила:
 
@@ -1486,10 +1495,11 @@ Non-mutating validation preview.
 - delegates validation to product adapter;
 - forbidden keys rejected;
 - secrets rejected.
+- BeeUI не определяет domain semantics preview.
 
 ### `POST /api/config/apply`
 
-Bounded config apply.
+Protected bounded config apply transport stub.
 
 Правила:
 
@@ -1500,6 +1510,7 @@ Bounded config apply.
 - no secrets editing;
 - no arbitrary YAML editor;
 - no hidden runtime restart.
+- BeeUI не реализует product apply semantics самостоятельно.
 
 Suggested audit artifact shape:
 
@@ -1554,7 +1565,7 @@ Planned routes:
 
 ## Actions
 
-Action rendering/execution запланированы для следующих bounded action iterations. Optional adapter method contract существует, но Iteration 11 не реализует config/action routes.
+Action rendering/catalog UI остаются задачей следующих bounded action iterations. Iteration 13 уже реализует protected POST stubs для preview/execute, но каталог действий и execution semantics остаются на product side.
 
 BeeUI can render bounded actions only if product adapter exposes them.
 
@@ -1636,8 +1647,8 @@ BeeUI must follow these rules:
 - safe ID validation;
 - bounded allowlist for artifact fetch;
 - bounded product callbacks for write paths;
-- CSRF protection for POST routes once auth is enabled;
-- secure session cookies once auth is enabled;
+- CSRF protection for protected POST routes;
+- secure session cookies when `auth.enabled: true`;
 - no arbitrary template execution from config;
 - no Jinja expressions from user config;
 - no arbitrary YAML editor;
@@ -1645,13 +1656,19 @@ BeeUI must follow these rules:
 
 ## Auth model
 
-Auth is not required for the current MVP, but BeeUI must be designed for it.
+Auth/session/CSRF layer реализован в Iteration 13.
 
-Planned auth modes:
+Текущие режимы:
 
-- `disabled_local_dev`;
-- `local_users`;
-- future external auth.
+- `auth.enabled: false` для explicit local/dev mode;
+- `auth.enabled: true` для token/session mode.
+
+Текущий contract:
+
+- login/logout routes существуют;
+- protected POST routes требуют auth role и CSRF;
+- `cookie_secure` управляет флагом `Secure` у session cookie;
+- session secret и role tokens передаются через runtime settings/env.
 
 Roles:
 
@@ -1662,10 +1679,9 @@ Roles:
 Правила:
 
 - auth disabled must be explicit;
-- write routes require authenticated role;
-- POST routes require CSRF token;
-- no default admin password committed to repo;
-- password hashes only;
+- protected write routes require authenticated role;
+- protected POST routes require CSRF token;
+- no default tokens committed to repo;
 - session secret from env/config outside repo.
 
 ## What BeeUI is not
@@ -1804,7 +1820,7 @@ visual editor
 
 ## MVP route contract
 
-Текущий MVP route contract Iteration 12:
+Текущий MVP route contract Iteration 13:
 
 - `GET /`
 - `GET /runs`
@@ -1824,12 +1840,21 @@ visual editor
 - `GET /api/runs`
 - `GET /api/runs/{run_id}`
 - `GET /api/venues/{venue_id}/dashboard`
+- `GET /login`
+- `POST /login`
+- `POST /logout`
+- `GET /api/auth/csrf`
 - `GET /runs/{run_id}/artifacts` (HTML artifact list — requires adapter)
 - `GET /runs/{run_id}/artifacts/{artifact_id}` (HTML artifact preview — requires adapter)
 - `GET /api/runs/{run_id}/artifacts` (JSON artifact list — requires adapter)
 - `GET /api/runs/{run_id}/artifacts/{artifact_id}` (JSON artifact preview — requires adapter)
+- `POST /api/config/preview` (protected transport stub — requires feature flag and product callback)
+- `POST /api/config/apply` (protected transport stub — requires feature flag and product callback)
+- `POST /api/actions/preview` (protected transport stub — requires feature flag and product callback)
+- `POST /api/actions/execute` (protected transport stub — requires feature flag and product callback)
 
 Product console routes требуют adapter в `app.state.beeui_adapter` для adapter-backed mode. Без adapter BeeUI остаётся в schema/demo mode. Artifact routes по-прежнему требуют adapter и без него возвращают 503 с explicit unavailable state.
+BeeUI реализует auth/session/CSRF boundary и transport stubs. Product adapter остаётся владельцем config/action domain semantics.
 
 Stable read-only API envelope for product console routes:
 

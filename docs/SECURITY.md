@@ -475,6 +475,13 @@ Roles:
 - `operator` — bounded operator actions;
 - `admin` — admin/config/support functions.
 
+Session cookie behaviour:
+
+- `auth.cookie_secure` controls the `Secure` flag on the session cookie.
+- Local/dev: set `cookie_secure: false` (HTTP allowed).
+- Remote/customer-safe: set `cookie_secure: true` (HTTPS required).
+- When `auth.enabled=true`, `auth.cookie_secure` is required.
+
 Auth is not required in the first MVP, but when added, it must not be partial or decorative.
 
 ## Static asset security rules

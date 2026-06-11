@@ -2,6 +2,8 @@
 
 ## Область действия
 
+Iteration 13 добавляет auth error envelopes, login/logout/CSRF routes и защищённые POST transport stubs.
+
 Iteration 12 определяет стабильный read-only envelope для adapter-backed
 маршрутов product console:
 
@@ -64,6 +66,95 @@ Artifact API routes сохраняют существующий contract Iterati
 - Route prefix и embedded mount сохраняют тот же envelope.
 - Artifact API routes не переводятся на `beeui.v0` и сохраняют contract
   Iteration 11.
+
+## Auth/error envelopes (Iteration 13)
+
+Auth-disabled mode используется при `auth.enabled: false`. В этом режиме
+все routes доступны без аутентификации.
+
+Auth-enabled mode (`auth.enabled: true`) требует аутентификации для
+POST routes на config/action endpoints.
+
+BeeUI реализует transport/security boundary. Product adapter остаётся
+владельцем config/action semantics.
+
+### Unauthenticated (401)
+
+```json
+{
+  "ok": false,
+  "api": "beeui.v0",
+  "read_only": true,
+  "error": {
+    "code": "unauthenticated",
+    "message": "Authentication required"
+  },
+  "warnings": [],
+  "meta": {}
+}
+```
+
+### Forbidden (403)
+
+```json
+{
+  "ok": false,
+  "api": "beeui.v0",
+  "read_only": true,
+  "error": {
+    "code": "forbidden",
+    "message": "Insufficient role: viewer"
+  },
+  "warnings": [],
+  "meta": {}
+}
+```
+
+### CSRF failed (403)
+
+```json
+{
+  "ok": false,
+  "api": "beeui.v0",
+  "read_only": true,
+  "error": {
+    "code": "csrf_failed",
+    "message": "CSRF validation failed"
+  },
+  "warnings": [],
+  "meta": {}
+}
+```
+
+### Auth login failure (401)
+
+```json
+{
+  "ok": false,
+  "api": "beeui.v0",
+  "read_only": true,
+  "error": {
+    "code": "authentication_failed",
+    "message": "Invalid credentials"
+  },
+  "warnings": [],
+  "meta": {}
+}
+```
+
+### Protected POST routes
+
+| Route | Required role | CSRF | Feature flag |
+|-------|--------------|------|-------------|
+| `POST /api/config/preview` | admin | required | `features.config_preview` |
+| `POST /api/config/apply` | admin | required | `features.config_apply` |
+| `POST /api/actions/preview` | operator | required | `features.operator_actions` |
+| `POST /api/actions/execute` | operator | required | `features.operator_actions` |
+
+Product callbacks are not invoked before auth and CSRF pass.
+These routes are protected transport stubs: BeeUI validates session, role,
+CSRF and request shape, while product adapter owns validation/apply/action
+domain behavior.
 
 ## Layout block contract (Iteration 12.1)
 

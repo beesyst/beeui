@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en" data-bs-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Login — BeeUI</title>
+    <link rel="stylesheet" href="{{ route_prefix }}/static/vendor/tabler/css/tabler.min.css" />
+    <link rel="stylesheet" href="{{ route_prefix }}/static/css/beeui.css" />
+  </head>
+  <body class="border-top-wide border-primary d-flex flex-column">
+    <div class="page page-center">
+      <div class="container container-tight py-4">
+        <div class="text-center mb-4">
+          <h1 class="h2">BeeUI</h1>
+          <p class="text-muted">Operator console login</p>
+        </div>
+
+        {% if auth_disabled %}
+        <div class="alert alert-warning" role="alert">
+          Auth is disabled (local/dev mode).
+        </div>
+        <div class="text-center mt-3">
+          <a href="{{ route_prefix }}/" class="btn btn-primary">Continue to dashboard</a>
+        </div>
+        {% else %}
+
+        {% if error %}
+        <div class="alert alert-danger" role="alert">
+          {{ error }}
+        </div>
+        {% endif %}
+
+        <form method="POST" action="{{ route_prefix }}/auth/login" class="card card-md">
+          <div class="card-body">
+            <div class="mb-3">
+              <label class="form-label" for="user_id">User ID</label>
+              <input
+                type="text"
+                id="user_id"
+                name="user_id"
+                class="form-control"
+                placeholder="operator"
+                autocomplete="username"
+                required
+              />
+            </div>
+            <div class="mb-3">
+              <label class="form-label" for="token">Token</label>
+              <input
+                type="password"
+                id="token"
+                name="token"
+                class="form-control"
+                placeholder="Your operator/admin token"
+                autocomplete="current-password"
+                required
+              />
+            </div>
+            <div class="form-footer">
+              <button type="submit" class="btn btn-primary w-100">Sign in</button>
+            </div>
+          </div>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+  </body>
+</html>
