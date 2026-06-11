@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.17.0](https://github.com/beesyst/beeui/compare/beeui-v0.16.1...beeui-v0.17.0) (2026-06-11)
+
+
+### Features
+
+* **auth:** add session csrf boundary for protected routes ([#57](https://github.com/beesyst/beeui/issues/57)) ([ef9cb1c](https://github.com/beesyst/beeui/commit/ef9cb1c308b1cb73f39e93b551fdbfc9364e0be5))
+
 ## [0.16.1](https://github.com/beesyst/beeui/compare/beeui-v0.16.0...beeui-v0.16.1) (2026-06-10)
 
 
