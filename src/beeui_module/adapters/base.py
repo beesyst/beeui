@@ -34,6 +34,13 @@ class ProductUiAdapter(Protocol):
         self, candidate: dict[str, Any]
     ) -> AdapterResult | AdapterErrorResult: ...
 
+    def apply_config_candidate(
+        self,
+        candidate: dict[str, Any],
+        expected_hash: str | None = None,
+        actor: dict[str, str] | None = None,
+    ) -> AdapterResult | AdapterErrorResult: ...
+
     def list_actions(self) -> AdapterResult | AdapterErrorResult: ...
 
     def preview_action(
@@ -41,7 +48,10 @@ class ProductUiAdapter(Protocol):
     ) -> AdapterResult | AdapterErrorResult: ...
 
     def execute_action(
-        self, action_id: str, payload: dict[str, Any]
+        self,
+        action_id: str,
+        payload: dict[str, Any],
+        actor: dict[str, str] | None = None,
     ) -> AdapterResult | AdapterErrorResult: ...
 
 
@@ -88,6 +98,16 @@ class ProductUiAdapterBase(ABC):
             "Optional method validate_config_candidate is unavailable"
         )
 
+    def apply_config_candidate(
+        self,
+        candidate: dict[str, Any],
+        expected_hash: str | None = None,
+        actor: dict[str, str] | None = None,
+    ) -> AdapterResult | AdapterErrorResult:
+        raise UnavailableError(
+            "Optional method apply_config_candidate is unavailable"
+        )
+
     def list_actions(self) -> AdapterResult | AdapterErrorResult:
         raise UnavailableError("Optional method list_actions is unavailable")
 
@@ -97,6 +117,9 @@ class ProductUiAdapterBase(ABC):
         raise UnavailableError("Optional method preview_action is unavailable")
 
     def execute_action(
-        self, action_id: str, payload: dict[str, Any]
+        self,
+        action_id: str,
+        payload: dict[str, Any],
+        actor: dict[str, str] | None = None,
     ) -> AdapterResult | AdapterErrorResult:
         raise UnavailableError("Optional method execute_action is unavailable")

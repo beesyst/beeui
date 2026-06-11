@@ -11,6 +11,10 @@ from fastapi.templating import Jinja2Templates
 from beeui_module.adapters.base import ProductUiAdapter
 from beeui_module.adapters.envelopes import AdapterMetadata
 from beeui_module.artifacts.routes import register_artifact_routes
+from beeui_module.auth.dependencies import require_csrf, require_role
+from beeui_module.auth.models import UserRole
+from beeui_module.auth.routes import register_auth_routes
+from beeui_module.auth.service import AuthService
 from beeui_module.core.paths import schema_path, settings_path
 from beeui_module.core.settings import load_settings
 from beeui_module.core.version import get_version
@@ -151,6 +155,33 @@ def create_beeui_app(
 
     app = FastAPI(title="BeeUI", docs_url=None, redoc_url=None, openapi_url=None)
 
+    from starlette.exceptions import HTTPException as StarletteHTTPException
+    from starlette.responses import JSONResponse as StarletteJSONResponse
+
+    @app.exception_handler(StarletteHTTPException)
+    async def beeui_http_exception_handler(
+        request: Request, exc: StarletteHTTPException
+    ):
+        detail = exc.detail
+        if isinstance(detail, dict) and detail.get("api") == "beeui.v0":
+            return StarletteJSONResponse(
+                content=detail,
+                status_code=exc.status_code,
+                headers=getattr(exc, "headers", None) or {},
+            )
+        return StarletteJSONResponse(
+            content={
+                "ok": False,
+                "api": "beeui.v0",
+                "read_only": True,
+                "error": {"code": "error", "message": str(detail)},
+                "warnings": [],
+                "meta": {},
+            },
+            status_code=exc.status_code,
+            headers=getattr(exc, "headers", None) or {},
+        )
+
     templates = Jinja2Templates(directory=str(_resolve_templates_dir()))
     templates.env.autoescape = bool(security_cfg["html_autoescape"])
 
@@ -170,14 +201,40 @@ def create_beeui_app(
 
     app.state.beeui_adapter = adapter
     app.state.beeui_product = product_meta
+    auth_cfg = dict(resolved_settings.get("auth", {}))
+
+    from beeui_module.core.settings import _resolve_env_ref, _validate_auth
+
+    _validate_auth({"auth": auth_cfg})
+
+    for key in ("session_secret", "operator_token", "admin_token"):
+        if key in auth_cfg:
+            auth_cfg[key] = _resolve_env_ref(auth_cfg[key])
+
+    auth_service = AuthService(auth_cfg)
+    auth_service.validate_startup()
+    app.state.beeui_auth_service = auth_service
+
+    register_auth_routes(
+        app=app,
+        templates=templates,
+        route_prefix=route_prefix,
+    )
 
     @app.middleware("http")
     async def add_read_only_headers(request: Request, call_next):
         response = await call_next(request)
+
+        response.headers.setdefault("X-Content-Type-Options", "nosniff")
+        response.headers.setdefault("X-Frame-Options", "DENY")
+
         if request.method == "GET":
             response.headers["X-BeeUI-Read-Only"] = "true"
 
-            if request.url.path == f"{route_prefix}/health":
+            csrf_path = f"{route_prefix}/auth/csrf" if route_prefix else "/auth/csrf"
+            health_path = f"{route_prefix}/health" if route_prefix else "/health"
+
+            if request.url.path in {health_path, csrf_path}:
                 response.headers["Cache-Control"] = "no-store"
             elif request.url.path.startswith(f"{static_path}/"):
                 response.headers["Cache-Control"] = (
@@ -187,6 +244,13 @@ def create_beeui_app(
                 response.headers["Cache-Control"] = "no-store"
 
         return response
+
+    _register_protected_post_routes(
+        app=app,
+        route_prefix=route_prefix,
+        features_cfg=features_cfg,
+        adapter=adapter,
+    )
 
     health_path = f"{route_prefix}/health" if route_prefix else "/health"
 
@@ -274,6 +338,264 @@ def mount_beeui(
     )
 
     return app
+
+
+# Регистрация защищенных config/action POST routes
+def _register_protected_post_routes(
+    *,
+    app: FastAPI,
+    route_prefix: str,
+    features_cfg: dict[str, Any],
+    adapter: ProductUiAdapter | None,
+) -> None:
+    from fastapi import Depends
+    from fastapi.responses import JSONResponse
+
+    from beeui_module.adapters.envelopes import (
+        AdapterErrorResult,
+        AdapterResult,
+        error_result_from_exception,
+    )
+    from beeui_module.api.envelopes import api_error_envelope
+    from beeui_module.auth.dependencies import require_session
+
+    config_preview_enabled = features_cfg.get("config_preview", False)
+    config_apply_enabled = features_cfg.get("config_apply", False)
+    actions_enabled = features_cfg.get("operator_actions", False)
+
+    def _adapter_unavailable() -> JSONResponse:
+        return JSONResponse(
+            api_error_envelope("adapter_unavailable", "Adapter is not available"),
+            status_code=503,
+        )
+
+    async def _read_json_object(
+        request: Request,
+    ) -> tuple[dict[str, Any] | None, JSONResponse | None]:
+        try:
+            body = await request.json()
+        except Exception:
+            return None, JSONResponse(
+                api_error_envelope("invalid_input", "Invalid JSON body"),
+                status_code=400,
+            )
+        if not isinstance(body, dict):
+            return None, JSONResponse(
+                api_error_envelope("invalid_input", "JSON body must be an object"),
+                status_code=400,
+            )
+        return body, None
+
+    def _extract_candidate(
+        body: dict[str, Any],
+    ) -> tuple[dict[str, Any] | None, str | None, JSONResponse | None]:
+        candidate = body.get("candidate", body)
+        if not isinstance(candidate, dict):
+            return (
+                None,
+                None,
+                JSONResponse(
+                    api_error_envelope("invalid_input", "candidate must be an object"),
+                    status_code=400,
+                ),
+            )
+        expected_hash = body.get("expected_hash")
+        if expected_hash is not None and not isinstance(expected_hash, str):
+            return (
+                None,
+                None,
+                JSONResponse(
+                    api_error_envelope(
+                        "invalid_input", "expected_hash must be a string"
+                    ),
+                    status_code=400,
+                ),
+            )
+        return candidate, expected_hash, None
+
+    def _extract_action_payload(
+        body: dict[str, Any],
+    ) -> tuple[str | None, dict[str, Any] | None, JSONResponse | None]:
+        action_id = body.get("action_id")
+        if not isinstance(action_id, str) or not action_id.strip():
+            return (
+                None,
+                None,
+                JSONResponse(
+                    api_error_envelope(
+                        "invalid_input", "action_id must be a non-empty string"
+                    ),
+                    status_code=400,
+                ),
+            )
+        payload = body.get("payload", {})
+        if not isinstance(payload, dict):
+            return (
+                None,
+                None,
+                JSONResponse(
+                    api_error_envelope("invalid_input", "payload must be an object"),
+                    status_code=400,
+                ),
+            )
+        return action_id, payload, None
+
+    def _call_adapter_safe(method, *args, read_only: bool) -> JSONResponse:
+        try:
+            result = method(*args)
+        except Exception as exc:
+            from beeui_module.adapters.errors import UnavailableError
+
+            if isinstance(exc, UnavailableError):
+                return JSONResponse(
+                    api_error_envelope(
+                        "feature_unavailable",
+                        str(exc),
+                    ),
+                    status_code=501,
+                )
+            result = error_result_from_exception(exc)
+
+        if isinstance(result, AdapterErrorResult):
+            code = str(result.error.get("code", "adapter_error"))
+            status = 501 if code == "unavailable" else 502
+            return JSONResponse(
+                api_error_envelope(
+                    code,
+                    str(result.error.get("message", "Adapter error")),
+                ),
+                status_code=status,
+            )
+
+        data = result.data if isinstance(result, AdapterResult) else {}
+        return JSONResponse(
+            {
+                "ok": True,
+                "api": "beeui.v0",
+                "read_only": read_only,
+                "data": data,
+                "warnings": [],
+                "meta": {},
+            },
+            status_code=200,
+        )
+
+    if config_preview_enabled:
+        p = (
+            f"{route_prefix}/api/config/preview"
+            if route_prefix
+            else "/api/config/preview"
+        )
+
+        @app.post(p, include_in_schema=False)
+        async def config_preview(
+            request: Request,
+            _admin=Depends(require_role(UserRole.admin)),
+            _csrf=Depends(require_csrf),
+        ) -> JSONResponse:
+            if adapter is None:
+                return _adapter_unavailable()
+            body, error_response = await _read_json_object(request)
+            if error_response is not None:
+                return error_response
+            assert body is not None
+            candidate, _expected_hash, error_response = _extract_candidate(body)
+            if error_response is not None:
+                return error_response
+            return _call_adapter_safe(
+                adapter.validate_config_candidate,
+                candidate,
+                read_only=True,
+            )
+
+    if config_apply_enabled:
+        p = f"{route_prefix}/api/config/apply" if route_prefix else "/api/config/apply"
+
+        @app.post(p, include_in_schema=False)
+        async def config_apply(
+            request: Request,
+            _admin=Depends(require_role(UserRole.admin)),
+            _csrf=Depends(require_csrf),
+        ) -> JSONResponse:
+            if adapter is None:
+                return _adapter_unavailable()
+            body, error_response = await _read_json_object(request)
+            if error_response is not None:
+                return error_response
+            assert body is not None
+            candidate, expected_hash_val, error_response = _extract_candidate(body)
+            if error_response is not None:
+                return error_response
+            session = require_session(request)
+            actor_msg = {"user_id": session.user_id, "role": session.role.value}
+            return _call_adapter_safe(
+                adapter.apply_config_candidate,
+                candidate,
+                expected_hash_val,
+                actor_msg,
+                read_only=False,
+            )
+
+    if actions_enabled:
+        p = (
+            f"{route_prefix}/api/actions/preview"
+            if route_prefix
+            else "/api/actions/preview"
+        )
+
+        @app.post(p, include_in_schema=False)
+        async def actions_preview(
+            request: Request,
+            _op=Depends(require_role(UserRole.operator)),
+            _csrf=Depends(require_csrf),
+        ) -> JSONResponse:
+            if adapter is None:
+                return _adapter_unavailable()
+            body, error_response = await _read_json_object(request)
+            if error_response is not None:
+                return error_response
+            assert body is not None
+            action_id, action_payload, error_response = _extract_action_payload(body)
+            if error_response is not None:
+                return error_response
+            return _call_adapter_safe(
+                adapter.preview_action,
+                action_id,
+                action_payload,
+                read_only=True,
+            )
+
+    if actions_enabled:
+        p = (
+            f"{route_prefix}/api/actions/execute"
+            if route_prefix
+            else "/api/actions/execute"
+        )
+
+        @app.post(p, include_in_schema=False)
+        async def actions_execute(
+            request: Request,
+            _op=Depends(require_role(UserRole.operator)),
+            _csrf=Depends(require_csrf),
+        ) -> JSONResponse:
+            if adapter is None:
+                return _adapter_unavailable()
+            body, error_response = await _read_json_object(request)
+            if error_response is not None:
+                return error_response
+            assert body is not None
+            action_id, action_payload, error_response = _extract_action_payload(body)
+            if error_response is not None:
+                return error_response
+            session = require_session(request)
+            actor_msg = {"user_id": session.user_id, "role": session.role.value}
+            return _call_adapter_safe(
+                adapter.execute_action,
+                action_id,
+                action_payload,
+                actor_msg,
+                read_only=False,
+            )
 
 
 # Чек на коллизию маршрутов в родительском приложении

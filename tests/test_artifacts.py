@@ -659,10 +659,14 @@ class TestArtifactSecurity:
         adapter = ArtifactTestAdapter()
         app = create_beeui_app(adapter=adapter)
 
+        allowed_post_paths = {"/auth/login", "/auth/logout"}
+
         for route in app.routes:
             methods = getattr(route, "methods", set()) or set()
             route_path = getattr(route, "path", "<unknown>")
             if methods and "GET" not in methods:
+                if route_path in allowed_post_paths:
+                    continue
                 raise AssertionError(
                     f"Unexpected non-GET route: {route_path} methods={methods}"
                 )

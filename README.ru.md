@@ -2,6 +2,35 @@
 
 **BeeUI** — общий UI-фреймворк на Python для Bee-продуктов: `beecap`, `beeagent` и будущих модулей экосистемы Bee.
 
+## Iteration 13 — Auth/session/CSRF boundary for config/action routes MVP
+
+Текущий результат — auth/session/CSRF boundary для config/action POST routes.
+
+В Iteration 13 добавлены:
+
+- auth-disabled local/dev mode;
+- auth-enabled token/session mode;
+- login/logout HTML и API routes;
+- signed session cookie (HMAC + stdlib);
+- role model: `viewer`, `operator`, `admin`;
+- CSRF token generation and validation;
+- fail-fast startup validation when auth enabled but secrets missing;
+- protected POST route stubs for:
+  - `POST /api/config/preview` (admin + CSRF);
+  - `POST /api/config/apply` (admin + CSRF);
+  - `POST /api/actions/preview` (operator + CSRF);
+  - `POST /api/actions/execute` (operator + CSRF);
+- stable API error envelopes for `unauthenticated` (401), `forbidden` (403), `csrf_failed` (403);
+- no product callback invocation when auth/CSRF fails;
+- no secrets in HTML/API/logs;
+- `config/settings.yml` — auth section;
+- `auth.cookie_secure` — configurable Secure flag on session cookie (false for local/dev, true for remote);
+- security headers baseline: `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`;
+- `src/beeui_module/auth/` — auth package (models, sessions, csrf, service, dependencies, routes);
+- `src/beeui_module/web/templates/login.html` — login form template;
+- `tests/test_security.py` — 60+ тестов;
+- docs update.
+
 ## Iteration 12.4
 
 Текущий результат — расширение adapter-backed `layout[]` contract для
@@ -198,7 +227,26 @@ Malformed или unsupported blocks рендерятся как `degraded` block
 - `GET /ui/api/runs/{run_id}/artifacts`
 - `GET /ui/api/runs/{run_id}/artifacts/{artifact_id}`
 
-При наличии adapter product console routes владеют `/` и `/runs`; без adapter сохраняется demo/schema mode. Config/actions остаются future scope.
+При наличии adapter product console routes владеют `/` и `/runs`; без adapter сохраняется demo/schema mode.
+
+Уже реализовано в Iteration 13:
+
+- auth/session/CSRF boundary;
+- login/logout/CSRF routes;
+- protected config/action POST route stubs;
+- role checks;
+- stable auth error envelopes.
+
+Остаётся product-side scope:
+
+- реальные config semantics;
+- product validation;
+- config apply;
+- backup/audit artifacts;
+- action catalog;
+- action preview/execute semantics.
+
+BeeUI защищает transport boundary. Product adapter принимает domain-решения.
 
 Shell и dashboard рендерятся через component templates:
 
@@ -224,9 +272,8 @@ Navigation, theme и layout shell options (title/subtitle/paths/logo_text/theme/
 Пока не входит в scope:
 
 - production BeeCap/BeeAgent adapters;
-- stable BeeUI API для config/actions;
-- auth/session;
-- config UI;
+- отдельный stable BeeUI API для внешнего frontend поверх текущего embedded surface;
+- полноценный config UI read-model;
 - no-code builder.
 
 Проект нужен, чтобы не писать заново в каждом продукте:
@@ -309,7 +356,7 @@ MVP не пытается сразу стать полноценным Retool/We
 
 ## Что BeeUI делает
 
-В текущем состоянии после Iteration 12.4 BeeUI отвечает за:
+В текущем состоянии после Iteration 13 BeeUI отвечает за:
 
 - FastAPI app factory;
 - Jinja2 templates;
@@ -332,18 +379,27 @@ MVP не пытается сразу стать полноценным Retool/We
 - product console — HTML/JSON dashboard, runs, run detail и venue dashboard через adapter;
 - artifact browser — HTML/JSON list and preview через adapter;
 - JSON/JSONL/text bounded preview с malformed handling, preview limits и redaction;
-- stable read-only API envelope для product console routes и read-only API routes для артефактов.
+- stable read-only API envelope для product console routes и read-only API routes для артефактов;
+- auth/session/CSRF boundary для protected POST routes;
+- login/logout/CSRF routes;
+- role checks (`viewer`, `operator`, `admin`);
+- protected transport stubs для config/action POST routes;
+- stable auth error envelopes.
 
 Запланированные обязанности:
 
 - source artifact links;
 - config read-model;
-- config preview/apply framework;
-- bounded operator actions;
-- auth/session layer;
 - theme customization;
 - stable JSON API для будущего frontend;
 - standalone mode.
+
+Product-side scope остаётся в продукте:
+
+- config semantics и validation;
+- config apply, backups и audit artifacts;
+- action catalog;
+- action preview/execute semantics.
 
 ## Чего BeeUI не делает
 
@@ -435,16 +491,9 @@ MVP: embedded.
 
 ## Как подключать к BeeCap
 
-На этапе разработки `beeui` лежит рядом:
+BeeUI опубликован в PyPI. Для BeeCap предпочтителен dependency через PyPI.
 
-```text
-~/Projects/
-  beecap/
-  beeagent/
-  beeui/
-```
-
-В `beecap/pyproject.toml` для локальной разработки:
+Если в `beecap/pyproject.toml` всё ещё используется local/path dependency:
 
 ```toml
 dependencies = [
@@ -452,18 +501,11 @@ dependencies = [
 ]
 ```
 
-Или временно:
-
-```bash
-cd ~/Projects/beecap
-uv pip install -e ../beeui
-```
-
-Целевой вариант после стабилизации:
+её нужно заменить на PyPI dependency, например:
 
 ```toml
 dependencies = [
-    "beeui @ git+ssh://git@github.com/beesyst/beeui.git@v0.1.0",
+    "beeui>=0.16.1,<0.17.0",
 ]
 ```
 
@@ -489,6 +531,104 @@ BeeCap adapter отвечает за:
 - bounded action callbacks.
 
 BeeUI не должен напрямую знать внутреннюю trading-логику BeeCap.
+
+### Обновление BeeUI в BeeCap из PyPI
+
+Если BeeCap уже использует PyPI dependency:
+
+```bash
+cd ~/Projects/beecap
+uv lock --upgrade-package beeui
+./start.sh
+uv pip show beeui
+
+git add uv.lock
+git commit -m "chore(deps): update beeui"
+git push
+```
+
+Если BeeCap всё ещё использует local/path dependency:
+
+```toml
+"beeui @ file:///home/bee/Projects/beeui"
+```
+
+заменить на PyPI dependency:
+
+```toml
+"beeui>=0.16.1,<0.17.0"
+```
+
+после этого:
+
+```bash
+uv lock --upgrade-package beeui
+./start.sh
+uv pip show beeui
+
+git add pyproject.toml uv.lock
+git commit -m "chore(deps): update beeui"
+git push
+```
+
+### Auth/session/CSRF в BeeCap
+
+Для local/dev режима ключи окружения не нужны:
+
+```yaml
+auth:
+  enabled: false
+  session_secret: ${BEEUI_SESSION_SECRET}
+  operator_token: ${BEEUI_OPERATOR_TOKEN}
+  admin_token: ${BEEUI_ADMIN_TOKEN}
+  cookie_secure: false
+```
+
+Для защищённого режима:
+
+```yaml
+auth:
+  enabled: true
+  session_secret: ${BEEUI_SESSION_SECRET}
+  operator_token: ${BEEUI_OPERATOR_TOKEN}
+  admin_token: ${BEEUI_ADMIN_TOKEN}
+  cookie_secure: true
+```
+
+Для локального HTTP можно оставить:
+
+```yaml
+cookie_secure: false
+```
+
+Для remote/HTTPS:
+
+```yaml
+cookie_secure: true
+```
+
+Переменные окружения:
+
+```bash
+export BEEUI_SESSION_SECRET="long-random-session-secret"
+export BEEUI_OPERATOR_TOKEN="long-random-operator-token"
+export BEEUI_ADMIN_TOKEN="long-random-admin-token"
+```
+
+Сгенерировать значения можно так:
+
+```bash
+python - <<'PY'
+import secrets
+for name in ("BEEUI_SESSION_SECRET", "BEEUI_OPERATOR_TOKEN", "BEEUI_ADMIN_TOKEN"):
+    print(f'{name}="{secrets.token_urlsafe(48)}"')
+PY
+```
+
+Если BeeCap передаёт в `create_beeui_app(settings=...)` свой settings dict, в этом dict должна быть секция `auth`. Это runtime/security settings, а не `config/beeui.yml`.
+
+`config/beeui.yml` отвечает за layout/pages/navigation.
+`auth` относится к runtime settings.
 
 ## Как подключать к BeeAgent
 
@@ -552,7 +692,7 @@ BeeUI не должен получать прямую authority на tools/MCP/r
 
 Продукт импортирует BeeUI и монтирует его в своём web process.
 
-Текущий статус после Iteration 12.2:
+Текущий статус после Iteration 13:
 
 - generic adapter contract существует;
 - BeeCap fixture/reference adapter существует для contract validation;
@@ -564,7 +704,9 @@ BeeUI не должен получать прямую authority на tools/MCP/r
 - product console routes используют adapter для `get_dashboard()`, `list_runs()`, `get_run()` и optional `get_venue_dashboard()`;
 - artifact browser routes уже используют adapter для `list_artifacts()` и `read_artifact()`;
 - `/api/runs/{run_id}/artifacts*` routes доступны при `features.browser_artifact: true`;
-- при наличии adapter routes `/`, `/runs`, `/runs/{run_id}` и `/venues/{venue_id}` работают в product console mode.
+- при наличии adapter routes `/`, `/runs`, `/runs/{run_id}` и `/venues/{venue_id}` работают в product console mode;
+- auth/session/CSRF boundary и login/logout routes реализованы;
+- protected config/action POST stubs есть в BeeUI, но product semantics остаются за product adapter.
 
 Embedded example:
 
@@ -862,7 +1004,7 @@ GET /api/runs/{run_id}/artifacts/{artifact_id}
 
 ## Config UI
 
-BeeUI должен дать reusable config UI layer, но не владеть config source of truth.
+BeeUI даёт reusable transport/UI layer для config routes, но не владеет config source of truth.
 
 Source of truth остаётся в продукте:
 
@@ -871,7 +1013,7 @@ beecap/config/settings.yml
 beeagent/config/settings.yml
 ```
 
-BeeUI config UI работает через product adapter.
+BeeUI config UI работает через product adapter. BeeUI защищает transport boundary, а product adapter остаётся владельцем config semantics.
 
 ### Read-model
 
@@ -897,10 +1039,12 @@ POST /api/config/preview
 
 Semantics:
 
-- build candidate config in memory;
-- call product validation callback;
-- return diff + validation result;
-- no file writes.
+- BeeUI принимает защищённый POST request;
+- проверяет auth/role/CSRF boundary;
+- передаёт candidate в product validation callback;
+- возвращает diff + validation result;
+- сам не определяет product semantics;
+- сам не пишет файлы.
 
 ### Apply
 
@@ -910,12 +1054,10 @@ POST /api/config/apply
 
 Semantics:
 
-- only allowlisted keys;
-- stale config hash guard;
-- validate candidate through product validation callback;
-- backup current config;
-- write canonical product config;
-- create audit artifact;
+- BeeUI принимает защищённый POST request;
+- проверяет auth/role/CSRF boundary;
+- пропускает только bounded transport stub;
+- product определяет allowlist, validation, apply, backup и audit semantics;
 - no secrets in audit;
 - no runtime restart hidden behind apply.
 
@@ -928,7 +1070,7 @@ storage/interfaces/config_changes/<change_id>/audit.json
 
 ## Operator actions
 
-BeeUI can show bounded operator actions, but action execution belongs to the product.
+BeeUI может показывать bounded operator actions и принимать защищённые POST requests, но execution semantics принадлежат продукту.
 
 Example actions:
 
@@ -957,7 +1099,7 @@ storage/interfaces/operator_actions/<action_id>.json
 
 ## Auth and roles
 
-BeeUI auth layer запланирован после MVP dashboard integration.
+BeeUI auth layer уже реализован в Iteration 13.
 
 Initial roles:
 
@@ -971,7 +1113,7 @@ Security rules:
 
 - auth disabled only explicitly for local/dev;
 - no default admin password in repo;
-- password hash only;
+- token/session boundary for current MVP;
 - signed session cookies;
 - CSRF protection for POST routes;
 - no secrets in logs;
@@ -1575,13 +1717,8 @@ GET /api/runs/{run_id}/artifacts/{artifact_id}
 ```text
 GET /config
 GET /admin
-GET /login
-GET /logout
 GET /api/config/read-model
-POST /api/config/preview
-POST /api/config/apply
 GET /api/actions
-POST /api/actions/{action_id}
 ```
 
 Routes can be mounted under prefix:
@@ -1767,7 +1904,7 @@ container: beeagent-api
 
 - BeeUI API contracts;
 - product APIs;
-- auth/session model;
+- auth/runtime security settings;
 - deployment model.
 
 ## Важно
@@ -1817,7 +1954,7 @@ Visual builder later.
 Текущий статус:
 
 ```text
-Iteration 12.4 — Operator console block primitives parity — ЗАВЕРШЕНО
+Iteration 13 — Auth/session/CSRF boundary for config/action routes MVP — ЗАВЕРШЕНО
 ```
 
 Работает:

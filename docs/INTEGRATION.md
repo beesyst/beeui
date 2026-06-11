@@ -187,3 +187,17 @@ mount_beeui(
 - Artifact API routes сохраняют существующий contract Iteration 11.
 - Secrets не должны пересекать adapter boundary и попадать в BeeUI.
 - Write/action adapter methods недоступны по умолчанию.
+
+### Auth/session/CSRF (Iteration 13)
+
+- Auth-disabled mode (`auth.enabled: false`) — local/dev только.
+- Auth-enabled mode требует:
+  - `BEEUI_SESSION_SECRET` — для подписи session cookie;
+  - `BEEUI_OPERATOR_TOKEN` — для operator role;
+  - `BEEUI_ADMIN_TOKEN` — для admin role.
+- Login создаёт signed session cookie (HMAC-SHA256, 24h expiry).
+- CSRF token хранится в session cookie; передаётся через `X-CSRF-Token` header
+  (API) или `csrf_token` form field (HTML).
+- POST routes на config/action endpoints защищены auth + CSRF + role check.
+- Product callbacks не вызываются до прохождения auth/CSRF.
+- Secrets из `config/settings.yml` не попадают в HTML/API/logs.
