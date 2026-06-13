@@ -21,6 +21,7 @@ from beeui_module.pages.models import (
     BeeUiNavigationItem,
     BeeUiPage,
     LayoutConfig,
+    LocaleConfig,
     NavbarConfig,
     SidebarConfig,
     ThemeConfig,
@@ -74,13 +75,43 @@ def load_beeui_config(config_path: Path) -> BeeUiConfig:
         raise ValueError("Missing required key: app")
     _validate_exact_keys(
         app_cfg,
-        {"title", "product", "logo_text", "theme", "layout"},
+        {"title", "product", "logo_text", "locale", "theme", "layout"},
         "app",
     )
 
     app_title = _required_non_empty_string(app_cfg, "title", "app")
     product = _required_non_empty_string(app_cfg, "product", "app")
     logo_text = _required_non_empty_string(app_cfg, "logo_text", "app")
+
+    locale_cfg = app_cfg.get("locale")
+    if locale_cfg is not None:
+        if not isinstance(locale_cfg, dict):
+            raise ValueError("app.locale must be a mapping")
+        _validate_exact_keys(
+            locale_cfg,
+            {"default", "available"},
+            "app.locale",
+        )
+        locale_default = _required_non_empty_string(
+            locale_cfg, "default", "app.locale"
+        )
+        available_raw = locale_cfg.get("available")
+        if not isinstance(available_raw, list) or not available_raw:
+            raise ValueError("app.locale.available must be a non-empty list")
+        available: list[str] = []
+        for idx, lang in enumerate(available_raw):
+            if not isinstance(lang, str) or not lang.strip():
+                raise ValueError(
+                    f"app.locale.available[{idx}] must be a non-empty string"
+                )
+            available.append(lang.strip())
+        if locale_default not in available:
+            raise ValueError(
+                f"app.locale.default ({locale_default}) must be in app.locale.available"
+            )
+        locale = LocaleConfig(default=locale_default, available=tuple(available))
+    else:
+        locale = LocaleConfig()
 
     theme_cfg = app_cfg.get("theme")
     if not isinstance(theme_cfg, dict):
@@ -245,6 +276,7 @@ def load_beeui_config(config_path: Path) -> BeeUiConfig:
         app_title=app_title,
         product=product,
         logo_text=logo_text,
+        locale=locale,
         theme=theme,
         layout=layout,
         navigation=navigation,

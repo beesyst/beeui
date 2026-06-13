@@ -83,8 +83,10 @@ endblock %} {% block content %}
       </div>
 
       <div class="col-12">
-        <div class="card">
-          <div class="card-header"><h3 class="card-title">Details</h3></div>
+        <details class="card">
+          <summary class="card-header cursor-pointer">
+            <h3 class="card-title">Technical details</h3>
+          </summary>
           <div class="card-body">
             {% if dashboard %}
             <pre
@@ -94,7 +96,7 @@ endblock %} {% block content %}
             <div class="text-secondary">No dashboard payload available.</div>
             {% endif %}
           </div>
-        </div>
+        </details>
       </div>
     </div>
     {% endif %}

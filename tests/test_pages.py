@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from dataclasses import replace
 from pathlib import Path
 
@@ -333,7 +334,7 @@ def test_dark_sidebar_renders_dark_theme_attribute() -> None:
     assert response.status_code == 200
     assert (
         'class="navbar navbar-vertical navbar-expand-lg beeui-sidebar '
-        'beeui-sidebar-variant-dark '
+        "beeui-sidebar-variant-dark "
         '"\n  data-bs-theme="dark"'
     ) in response.text
 
@@ -495,3 +496,135 @@ def test_component_primitives_template_avoids_safe_filter() -> None:
     ).read_text(encoding="utf-8")
 
     assert "|safe" not in template_text
+
+
+# Тест: locale разрешается из config default
+def test_locale_resolved_from_config() -> None:
+    settings = load_settings(settings_path())
+    ui_config = load_beeui_config(settings_path().parent / "schema.yml")
+    app = create_beeui_app(settings=settings, ui_config=ui_config)
+    client = TestClient(app)
+
+    response = client.get("/")
+    assert response.status_code == 200
+
+
+# Тест: ?lang= override разрешается только если allowlist содержит
+def test_locale_lang_query_updates_html_lang() -> None:
+    settings = load_settings(settings_path())
+    ui_config = load_beeui_config(settings_path().parent / "schema.yml")
+    app = create_beeui_app(settings=settings, ui_config=ui_config)
+    client = TestClient(app)
+
+    response = client.get("/?lang=ru")
+
+    assert response.status_code == 200
+    assert '<html lang="ru"' in response.text
+
+
+# Тест: ?lang= override игнорируется если allowlist не содержит
+def test_locale_invalid_lang_falls_back_to_default_html_lang() -> None:
+    settings = load_settings(settings_path())
+    ui_config = load_beeui_config(settings_path().parent / "schema.yml")
+    app = create_beeui_app(settings=settings, ui_config=ui_config)
+    client = TestClient(app)
+
+    response = client.get("/?lang=bad")
+
+    assert response.status_code == 200
+    assert '<html lang="en"' in response.text
+
+
+# Тест: locale не падает без locale в config (fallback default)
+def test_locale_missing_uses_default(tmp_path: Path) -> None:
+    ui_cfg_path = tmp_path / "schema.yml"
+    ui_cfg_path.write_text(
+        "app:\n"
+        "  title: BeeUI Demo\n"
+        "  product: demo\n"
+        "  logo_text: BeeUI\n"
+        "  theme:\n"
+        "    mode: dark\n"
+        "    primary: blue\n"
+        "    base: gray\n"
+        "    font: sans-serif\n"
+        "    radius: 1\n"
+        "    density: default\n"
+        "  layout:\n"
+        "    type: vertical\n"
+        "    container: xl\n"
+        "    sidebar:\n"
+        "      variant: dark\n"
+        "      collapsed: false\n"
+        "    navbar:\n"
+        "      enabled: false\n"
+        "      variant: default\n"
+        "      sticky: false\n"
+        "\n"
+        "navigation:\n"
+        "  - title: Dashboard\n"
+        "    path: /\n"
+        "    icon: dashboard\n"
+        "\n"
+        "blocks: {}\n"
+        "data_sources: {}\n"
+        "pages:\n"
+        "  - id: dashboard\n"
+        "    path: /\n"
+        "    title: Dashboard\n"
+        "    subtitle: Demo\n"
+        "    blocks: []\n"
+    )
+    settings = load_settings(settings_path())
+    ui_config = load_beeui_config(ui_cfg_path)
+    app = create_beeui_app(settings=settings, ui_config=ui_config)
+    client = TestClient(app)
+
+    response = client.get("/")
+    assert response.status_code == 200
+
+
+# Тест: URL-driven tabs в каталоге используют ?tab= для active
+def test_component_catalog_url_tabs_use_query_active_state() -> None:
+    settings = load_settings(settings_path())
+    ui_config = load_beeui_config(settings_path().parent / "schema.yml")
+    app = create_beeui_app(settings=settings, ui_config=ui_config)
+    client = TestClient(app)
+
+    response = client.get("/components/interface?tab=overview")
+
+    assert response.status_code == 200
+    assert 'nav nav-tabs card-header-tabs' in response.text
+    overview_active = re.search(
+        r'href="[^"]*\?tab=overview"[^>]*class="[^"]*nav-link[^"]*active[^"]*"[^>]*aria-current="page"',
+        response.text,
+    )
+    assert overview_active is not None, (
+        "Overview tab must be active with aria-current when ?tab=overview"
+    )
+    details_not_active = re.search(
+        r'href="[^"]*\?tab=details"[^>]*class="nav-link[^"]*"[^>]*aria-current="page"',
+        response.text,
+    )
+    assert details_not_active is None, (
+        "Details tab must NOT have aria-current when ?tab=overview"
+    )
+
+
+# Тест: невалидный ?tab= fallback к default
+def test_component_catalog_url_tabs_invalid_tab_falls_back() -> None:
+    settings = load_settings(settings_path())
+    ui_config = load_beeui_config(settings_path().parent / "schema.yml")
+    app = create_beeui_app(settings=settings, ui_config=ui_config)
+    client = TestClient(app)
+
+    response = client.get("/components/interface?tab=nonexistent")
+
+    assert response.status_code == 200
+    details_active = re.search(
+        r'href="[^"]*\?tab=details"[^>]*class="[^"]*nav-link[^"]*active[^"]*"[^>]*aria-current="page"',
+        response.text,
+    )
+    assert details_active is not None, (
+        "Details tab must be active when ?tab=nonexistent"
+    )

@@ -7,7 +7,23 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
 from beeui_module.blocks.registry import resolve_page_blocks
-from beeui_module.pages.models import BeeUiConfig, BeeUiNavigationItem, BeeUiPage
+from beeui_module.pages.models import (
+    BeeUiConfig,
+    BeeUiNavigationItem,
+    BeeUiPage,
+    LocaleConfig,
+)
+
+
+# Разрешение локали: default из config, ?lang= override если allowlist содержит
+def resolve_locale(
+    request: Request,
+    locale_cfg: LocaleConfig,
+) -> str:
+    lang = request.query_params.get("lang")
+    if lang and lang in locale_cfg.available:
+        return lang
+    return locale_cfg.default
 
 
 # Регистрация HTML routes из declarative pages config
@@ -40,6 +56,7 @@ def register_configured_pages(
                 registry=ui_config.blocks,
                 data_sources=ui_config.data_sources,
             )
+            locale = resolve_locale(request, ui_config.locale)
             return templates.TemplateResponse(
                 request=request,
                 name="page.html",
@@ -49,6 +66,7 @@ def register_configured_pages(
                     "product_id": product_id,
                     "app_title": ui_config.app_title,
                     "logo_text": ui_config.logo_text,
+                    "locale": locale,
                     "theme": theme,
                     "layout": layout,
                     "page": _page,

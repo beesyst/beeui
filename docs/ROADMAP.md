@@ -3115,6 +3115,217 @@ Automated checks:
 - no product-specific logic is introduced into BeeUI;
 - docs clearly distinguish local/operator-only mode from customer/public-safe mode.
 
+### Итерация 13.1 — Dashboard layout primitives, URL tabs and locale seed
+
+**Статус:** DONE
+
+#### Goal
+
+Добавить минимальные reusable BeeUI primitives для customer-friendly product dashboards: декларативные размеры блоков, URL-driven Tabler tabs, locale/i18n seed и более чистый generic dashboard fallback без raw JSON как primary UX.
+
+#### Почему это нужно
+
+После Iteration 12.x BeeUI уже умеет рендерить adapter-backed `layout[]` и operator-console blocks, а после Iteration 13 имеет auth/session/CSRF boundary. Но для BeeAgent UI-5 и будущих BeeCap/BeeScan dashboards не хватает небольшого reusable presentation foundation:
+
+- продукты хотят управлять размерами blocks без ручного копирования Tabler classes;
+- run switcher и similar navigation нужны как generic Tabler URL tabs, а не product-owned HTML;
+- pages должны получать resolved locale, чтобы продукты могли рендерить RU/EN labels без собственной routing glue;
+- generic dashboard fallback не должен выглядеть как debug/raw JSON page.
+
+Эта итерация закрывает reusable BeeUI UI primitives перед BeeAgent integration/polish, не добавляя product-specific semantics.
+
+Главное правило сохраняется:
+
+```text
+BeeUI renders.
+Product decides.
+```
+
+#### Change level
+
+**runtime-risk**
+
+Причина:
+
+- меняется schema/block placement contract;
+- меняется adapter-backed layout block normalization/rendering;
+- меняется template/context rendering behavior;
+- добавляется locale resolution from query params;
+- меняется operator-facing generic dashboard fallback;
+- docs/tests must reflect updated UI contract.
+
+Security-sensitive checks required for:
+
+- HTML escaping;
+- safe internal links in tabs;
+- invalid schema values;
+- malformed adapter payload degradation;
+- no external CDN/scripts/tracking;
+- no secrets in HTML/API/logs;
+- no mutation from GET routes.
+
+#### Scope
+
+**Включено:**
+
+- добавить reusable block layout sizing contract for schema/demo page placements:
+  - existing `width: 1..12` remains supported;
+  - optional `span: 1..12`;
+  - optional `size: S|M|L|XL`;
+  - invalid values fail fast;
+  - conflicting layout keys in schema placements fail fast;
+  - existing configs remain backward-compatible;
+
+- добавить layout sizing support for adapter-backed `layout[]` blocks:
+  - existing `width` remains supported;
+  - optional `span`;
+  - optional `size`;
+  - invalid/malformed adapter values degrade safely to `col-12`, not `500`;
+
+- supported size mapping:
+
+```text
+S  -> span 4  -> col-12 col-md-6 col-lg-4
+M  -> span 6  -> col-12 col-lg-6
+L  -> span 8  -> col-12 col-lg-8
+XL -> span 12 -> col-12
+```
+
+- centralize width/span/size mapping in a product-neutral helper so templates do not duplicate mapping logic;
+
+- add reusable Tabler-compatible URL tabs primitive/helper:
+  - `ul.nav.nav-tabs.card-header-tabs`;
+  - `li.nav-item`;
+  - `a.nav-link`;
+  - active item support;
+  - normal `href` links;
+  - optional overflow dropdown for older items;
+  - safe internal links only;
+  - no JS-only tab panes required;
+
+- add locale/i18n seed to UI schema:
+
+```yaml
+locale:
+  default: en
+  available:
+    - en
+    - ru
+```
+
+- locale behavior:
+  - default locale comes from UI config;
+  - query param `lang` can override locale only if allowlisted;
+  - invalid `lang` falls back to default;
+  - resolved locale is exposed to templates/context;
+  - no persistence;
+  - no user settings;
+  - no database;
+  - BeeUI does not translate product-specific strings;
+
+- generic dashboard cleanup:
+  - when structured dashboard fields exist, render summary cards/sections first;
+  - raw/debug technical payload is shown only inside clearly separated/collapsible `Technical details`;
+  - API responses remain unchanged;
+  - fallback remains useful if adapter does not provide `layout[]`;
+
+- docs update:
+  - `docs/ROADMAP.md`;
+  - `docs/WEB_UI.md`;
+  - `docs/COMPONENTS.md`;
+  - `docs/API_CONTRACT.md` if block/layout contract is documented there;
+  - `README.ru.md`.
+
+**Не включено:**
+
+- BeeAgent-specific ROP labels;
+- BeeCap-specific metrics/calculations;
+- MRKT/Binance/ROP/capability-specific logic;
+- full i18n translation catalog;
+- persisted user language preferences;
+- auth changes;
+- config apply;
+- operator actions;
+- standalone service;
+- visual/no-code builder;
+- drag-and-drop layout;
+- charts/ApexCharts;
+- external CDN/assets/scripts;
+- new dependencies unless strictly justified.
+
+#### Deliverable
+
+BeeUI provides product-neutral dashboard layout primitives that products can reuse for polished dashboards without copying Tabler templates or hardcoding layout behavior.
+
+Expected behavior:
+
+- schema/demo pages can use `width`, `span` or `size` for block placement;
+- adapter-backed `layout[]` blocks can use `width`, `span` or `size`;
+- invalid schema layout values fail fast;
+- malformed adapter layout values degrade visibly without crashing;
+- URL-driven Tabler nav-tabs can render active links and optional overflow dropdown;
+- resolved locale is available in request/template context;
+- `?lang=ru` works when `ru` is allowlisted;
+- invalid `lang` falls back safely;
+- generic dashboard fallback no longer shows raw JSON as the primary UX;
+- raw technical payload, when present, is separated into `Technical details`.
+
+#### Checks
+
+- `uv run pytest -q`;
+- `./start.sh doctor`;
+- `./start.sh routes`;
+- `./start.sh web --host 127.0.0.1 --port 8780`;
+
+Automated checks:
+
+- valid `size: S|M|L|XL` renders expected responsive classes;
+- valid `span: 4|6|8|12` renders expected responsive classes;
+- existing `width` placements remain backward-compatible;
+- invalid schema `size` fails fast;
+- invalid schema `span` fails fast;
+- conflicting schema layout keys fail fast;
+- malformed adapter-backed `layout[]` size/span/width degrades to safe full-width rendering;
+- URL-driven tabs render Tabler nav-tabs markup;
+- active tab receives `.active`;
+- overflow dropdown renders when overflow items are provided;
+- unsafe/external tab links are not rendered as active links;
+- locale default resolves from config;
+- `?lang=ru` resolves to `ru` when allowlisted;
+- invalid `?lang=bad` falls back to default;
+- resolved locale is available in template context;
+- generic dashboard primary HTML does not expose raw JSON/debug details as the main visible section;
+- technical details are separated/collapsible if raw payload is still rendered;
+- no product-specific imports:
+  - no `beecap_module`;
+  - no `beeagent_module`;
+- no external references:
+  - no `posthog`;
+  - no `scripts.tabler.io`;
+  - no `preview.tabler.io`;
+  - no `docs.tabler.io`;
+  - no `cdn.jsdelivr`;
+- no unsafe `|safe` for adapter/config-provided fields;
+- no mutation from GET routes;
+- no secrets in HTML/API/logs.
+
+#### DoD
+
+- layout size primitives are implemented, documented and tested;
+- existing `width` config remains backward-compatible;
+- schema invalid values fail fast;
+- adapter malformed values degrade safely;
+- URL tab primitive is product-neutral and safe-link aware;
+- locale seed is config-driven and query-param override is allowlisted;
+- BeeUI does not translate product-specific strings;
+- generic dashboard primary UX is customer-friendly, not raw/debug-first;
+- API envelopes remain backward-compatible;
+- no product-specific logic is introduced;
+- no direct product storage reads are introduced;
+- no provider/broker/runtime calls are introduced;
+- no external CDN/scripts/tracking are introduced;
+- docs reflect the updated layout/tabs/locale contract.
+
 ---
 
 ## Этап 7 — BeeAgent integration

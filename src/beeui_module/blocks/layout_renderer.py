@@ -11,7 +11,14 @@ _WIDTH_MAP: dict[int, str] = {
     3: "col-12 col-sm-6 col-lg-3",
     2: "col-12 col-sm-6 col-lg-2",
 }
+_SIZE_MAP: dict[str, int] = {
+    "S": 4,
+    "M": 6,
+    "L": 8,
+    "XL": 12,
+}
 _DEFAULT_WIDTH_CLASS = "col-12"
+_SIZE_SIZE_KEYS = {"width", "span", "size"}
 _SUPPORTED_BLOCK_TYPES: set[str] = {
     "hero_snapshot",
     "metric_card",
@@ -52,6 +59,32 @@ def _resolve_width_class(width: Any) -> str:
     if isinstance(width, int) and width in _WIDTH_MAP:
         return _WIDTH_MAP[width]
     return _DEFAULT_WIDTH_CLASS
+
+
+# Разрешение CSS-класса колонки из span или size для adapter-backed layout[]
+def _resolve_block_width_class(raw: dict[str, Any]) -> str:
+    has_width = "width" in raw
+    has_span = "span" in raw
+    has_size = "size" in raw
+
+    count = sum([has_width, has_span, has_size])
+    if count > 1:
+        return _DEFAULT_WIDTH_CLASS
+
+    if has_span:
+        span = raw["span"]
+        if isinstance(span, int) and span in _WIDTH_MAP:
+            return _WIDTH_MAP[span]
+        return _DEFAULT_WIDTH_CLASS
+
+    if has_size:
+        size = raw["size"]
+        if isinstance(size, str) and size.upper() in _SIZE_MAP:
+            span = _SIZE_MAP[size.upper()]
+            return _WIDTH_MAP[span]
+        return _DEFAULT_WIDTH_CLASS
+
+    return _resolve_width_class(raw.get("width"))
 
 
 # Валидация и нормализация ссылок для блоков, которые поддерживают ссылки
@@ -178,16 +211,16 @@ def _render_block(raw: Any) -> dict[str, Any]:
     block_type = raw.get("type")
     if not isinstance(block_type, str) or not block_type:
         return _degraded_block(
-            "Block type is missing or invalid", width=raw.get("width")
+            "Block type is missing or invalid", width=raw
         )
 
     if block_type not in _SUPPORTED_BLOCK_TYPES:
         return _degraded_block(
             f"Unsupported block type: {block_type}",
-            width=raw.get("width"),
+            width=raw,
         )
 
-    width_class = _resolve_width_class(raw.get("width"))
+    width_class = _resolve_block_width_class(raw)
 
     try:
         renderer = _BLOCK_RENDERERS[block_type]
@@ -195,15 +228,19 @@ def _render_block(raw: Any) -> dict[str, Any]:
     except Exception:
         return _degraded_block(
             f"Failed to render block type: {block_type}",
-            width=raw.get("width"),
+            width=raw,
         )
 
 
 # Генерация "degraded" блока с сообщением об ошибке для случаев, когда рендеринг блока невозможен из-за ошибок в данных
 def _degraded_block(reason: str, width: Any = None) -> dict[str, Any]:
+    if isinstance(width, dict):
+        width_class = _resolve_block_width_class(width)
+    else:
+        width_class = _resolve_width_class(width)
     return {
         "type": "degraded",
-        "width_class": _resolve_width_class(width),
+        "width_class": width_class,
         "reason": _safe_str(reason),
         "title": "Unavailable block",
     }

@@ -3,52 +3,46 @@
   <h4 class="alert-title">{{ title }}</h4>
   <div class="text-secondary">{{ message }}</div>
 </div>
-{% endmacro %}
-
-{% macro badge(text, tone='secondary') %}
-<span class="badge bg-{{ tone }} text-{{ 'white' if tone in ['danger', 'primary', 'dark'] else 'dark' }}">
+{% endmacro %} {% macro badge(text, tone='secondary') %}
+<span
+  class="badge bg-{{ tone }} text-{{ 'white' if tone in ['danger', 'primary', 'dark'] else 'dark' }}"
+>
   {{ text }}
 </span>
-{% endmacro %}
-
-{% macro breadcrumb(items) %}
+{% endmacro %} {% macro breadcrumb(items) %}
 <nav aria-label="Breadcrumb">
   <ol class="breadcrumb">
     {% for item in items %}
     <li
       class="breadcrumb-item{% if not item.href %} active{% endif %}"
-      {% if not item.href %}aria-current="page"{% endif %}
+      {%
+      if
+      not
+      item.href
+      %}aria-current="page"
+      {%
+      endif
+      %}
     >
       {% if item.href %}
       <a href="{{ item.href }}">{{ item.title }}</a>
-      {% else %}
-      {{ item.title }}
-      {% endif %}
+      {% else %} {{ item.title }} {% endif %}
     </li>
     {% endfor %}
   </ol>
 </nav>
-{% endmacro %}
-
-{% macro button(label, tone='primary', button_type='button') %}
+{% endmacro %} {% macro button(label, tone='primary', button_type='button') %}
 <button type="{{ button_type }}" class="btn btn-{{ tone }}">{{ label }}</button>
-{% endmacro %}
-
-{% macro button_group(labels) %}
+{% endmacro %} {% macro button_group(labels) %}
 <div class="btn-group" role="group" aria-label="Button group">
-  {% for label in labels %}
-  {{ button(label=label, tone='outline-primary') }}
-  {% endfor %}
+  {% for label in labels %} {{ button(label=label, tone='outline-primary') }} {%
+  endfor %}
 </div>
-{% endmacro %}
-
-{% macro card(body) %}
+{% endmacro %} {% macro card(body) %}
 <div class="card">
   <div class="card-body">{{ body }}</div>
 </div>
-{% endmacro %}
-
-{% macro card_header(title, subtitle='') %}
+{% endmacro %} {% macro card_header(title, subtitle='') %}
 <div class="card-header">
   <div>
     <h3 class="card-title mb-0">{{ title }}</h3>
@@ -57,9 +51,7 @@
     {% endif %}
   </div>
 </div>
-{% endmacro %}
-
-{% macro dropdown(label, items) %}
+{% endmacro %} {% macro dropdown(label, items) %}
 <div class="dropdown">
   <button
     class="btn btn-outline-secondary dropdown-toggle"
@@ -79,16 +71,12 @@
     {% endfor %}
   </div>
 </div>
-{% endmacro %}
-
-{% macro empty_state(title, subtitle) %}
+{% endmacro %} {% macro empty_state(title, subtitle) %}
 <div class="empty beeui-empty-state" role="status" aria-live="polite">
   <div class="empty-header">{{ title }}</div>
   <p class="empty-subtitle text-secondary">{{ subtitle }}</p>
 </div>
-{% endmacro %}
-
-{% macro modal_shell(title, body) %}
+{% endmacro %} {% macro modal_shell(title, body) %}
 <div
   class="modal beeui-catalog-modal-shell"
   role="dialog"
@@ -107,9 +95,7 @@
     </div>
   </div>
 </div>
-{% endmacro %}
-
-{% macro tabs(items, active_id) %}
+{% endmacro %} {% macro tabs(items, active_id) %}
 <ul class="nav nav-tabs" role="tablist">
   {% for tab in items %}
   <li class="nav-item" role="presentation">
@@ -123,9 +109,23 @@
   </li>
   {% endfor %}
 </ul>
-{% endmacro %}
-
-{% macro table(columns, rows) %}
+{% endmacro %} {% macro url_tabs(items, active_id, base_url='') %}
+<ul class="nav nav-tabs card-header-tabs" role="tablist">
+  {% for tab in items %}
+  <li class="nav-item" role="presentation">
+    <a
+      href="{{ base_url }}?tab={{ tab.id }}"
+      class="nav-link{% if tab.id == active_id %} active{% endif %}"
+      role="tab"
+      aria-selected="{{ 'true' if tab.id == active_id else 'false' }}"
+      {% if tab.id == active_id %}aria-current="page"{% endif %}
+    >
+      {{ tab.title }}
+    </a>
+  </li>
+  {% endfor %}
+</ul>
+{% endmacro %} {% macro table(columns, rows) %}
 <div class="table-responsive">
   <table class="table table-vcenter card-table">
     <thead>
@@ -146,9 +146,7 @@
     </tbody>
   </table>
 </div>
-{% endmacro %}
-
-{% macro data_grid(columns, rows) %}
+{% endmacro %} {% macro data_grid(columns, rows) %}
 <div class="table-responsive">
   <table class="table table-striped table-hover" aria-label="Data grid">
     <thead>
@@ -169,9 +167,8 @@
     </tbody>
   </table>
 </div>
-{% endmacro %}
-
-{% macro form_input(label, value='', input_type='text', placeholder='') %}
+{% endmacro %} {% macro form_input(label, value='', input_type='text',
+placeholder='') %}
 <div class="mb-3">
   <label class="form-label">{{ label }}</label>
   <input
@@ -182,9 +179,7 @@
     readonly
   />
 </div>
-{% endmacro %}
-
-{% macro form_select(label, options) %}
+{% endmacro %} {% macro form_select(label, options) %}
 <div class="mb-3">
   <label class="form-label">{{ label }}</label>
   <select class="form-select" aria-label="{{ label }}" disabled>
@@ -193,41 +188,43 @@
     {% endfor %}
   </select>
 </div>
-{% endmacro %}
-
-{% macro form_checkbox(label, checked=False) %}
+{% endmacro %} {% macro form_checkbox(label, checked=False) %}
 <label class="form-check mb-2">
   <input
     class="form-check-input"
     type="checkbox"
-    {% if checked %}checked{% endif %}
+    {%
+    if
+    checked
+    %}checked{%
+    endif
+    %}
     disabled
   />
   <span class="form-check-label">{{ label }}</span>
 </label>
-{% endmacro %}
-
-{% macro form_radio(name, label, checked=False) %}
+{% endmacro %} {% macro form_radio(name, label, checked=False) %}
 <label class="form-check mb-2">
   <input
     class="form-check-input"
     type="radio"
     name="{{ name }}"
-    {% if checked %}checked{% endif %}
+    {%
+    if
+    checked
+    %}checked{%
+    endif
+    %}
     disabled
   />
   <span class="form-check-label">{{ label }}</span>
 </label>
-{% endmacro %}
-
-{% macro form_textarea(label, value='') %}
+{% endmacro %} {% macro form_textarea(label, value='') %}
 <div class="mb-3">
   <label class="form-label">{{ label }}</label>
   <textarea class="form-control" rows="3" readonly>{{ value }}</textarea>
 </div>
-{% endmacro %}
-
-{% macro form_selectgroup(options) %}
+{% endmacro %} {% macro form_selectgroup(options) %}
 <div class="form-selectgroup">
   {% for option in options %}
   <label class="form-selectgroup-item">
@@ -236,9 +233,7 @@
   </label>
   {% endfor %}
 </div>
-{% endmacro %}
-
-{% macro pagination(page, total_pages) %}
+{% endmacro %} {% macro pagination(page, total_pages) %}
 <ul class="pagination">
   <li class="page-item{% if page <= 1 %} disabled{% endif %}">
     <span class="page-link">Prev</span>
@@ -253,9 +248,7 @@
     <span class="page-link">Next</span>
   </li>
 </ul>
-{% endmacro %}
-
-{% macro progress(value, label='') %}
+{% endmacro %} {% macro progress(value, label='') %}
 <div class="mb-2">
   {% if label %}
   <div class="text-secondary small mb-1">{{ label }}</div>
@@ -265,31 +258,22 @@
   </progress>
   <div class="beeui-progress-value">{{ value }}%</div>
 </div>
-{% endmacro %}
-
-{% macro status_dot(status, label='') %}
+{% endmacro %} {% macro status_dot(status, label='') %}
 <span
   class="status-dot status-dot-animated{% if status in ['ok', 'success'] %} bg-success{% elif status in ['warning', 'degraded', 'partial'] %} bg-yellow{% else %} bg-red{% endif %}"
 ></span>
 {% if label %}
 <span class="ms-1">{{ label }}</span>
-{% endif %}
-{% endmacro %}
-
-{% macro avatar_placeholder(text) %}
+{% endif %} {% endmacro %} {% macro avatar_placeholder(text) %}
 <span class="avatar bg-azure-lt">{{ text }}</span>
-{% endmacro %}
-
-{% macro toast_placeholder(title, message) %}
+{% endmacro %} {% macro toast_placeholder(title, message) %}
 <div class="toast show beeui-catalog-toast" role="status" aria-live="polite">
   <div class="toast-header">
     <strong class="me-auto">{{ title }}</strong>
   </div>
   <div class="toast-body">{{ message }}</div>
 </div>
-{% endmacro %}
-
-{% macro offcanvas_shell(title, body) %}
+{% endmacro %} {% macro offcanvas_shell(title, body) %}
 <div
   class="offcanvas offcanvas-end show beeui-catalog-offcanvas"
   tabindex="-1"
@@ -302,9 +286,7 @@
   </div>
   <div class="offcanvas-body">{{ body }}</div>
 </div>
-{% endmacro %}
-
-{% macro chart_container(title) %}
+{% endmacro %} {% macro chart_container(title) %}
 <div
   class="beeui-plugin-placeholder"
   data-plugin="chart"
@@ -315,9 +297,7 @@
     Inert placeholder. No runtime chart library is loaded.
   </p>
 </div>
-{% endmacro %}
-
-{% macro map_container(title) %}
+{% endmacro %} {% macro map_container(title) %}
 <div
   class="beeui-plugin-placeholder"
   data-plugin="map"
@@ -328,9 +308,7 @@
     Inert placeholder. No external maps provider is loaded.
   </p>
 </div>
-{% endmacro %}
-
-{% macro datatable_container(title) %}
+{% endmacro %} {% macro datatable_container(title) %}
 <div
   class="beeui-plugin-placeholder"
   data-plugin="datatable"

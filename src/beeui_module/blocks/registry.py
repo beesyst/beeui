@@ -117,7 +117,7 @@ def _validate_page_block_ref(
         placements.append(BlockPlacement(block_id=block_id, width=12))
 
 
-# Валидация block placement: {block, width}
+# Валидация block placement: {block, width} | {block, span} | {block, size}
 def _validate_block_placement(
     item: dict[str, Any],
     *,
@@ -126,7 +126,7 @@ def _validate_block_placement(
     available_block_ids: set[str],
     placements: list[BlockPlacement],
 ) -> None:
-    unknown_keys = sorted(set(item) - {"block", "width"})
+    unknown_keys = sorted(set(item) - {"block", "width", "span", "size"})
     if unknown_keys:
         raise ValueError(
             f"pages[{page_index}].blocks[{block_index}] contains unsupported keys: {', '.join(unknown_keys)}"
@@ -140,13 +140,54 @@ def _validate_block_placement(
     if block_id not in available_block_ids:
         raise ValueError(f"Unknown block reference: {block_id}")
 
-    width = item.get("width")
-    if not isinstance(width, int) or width < 1 or width > 12:
+    sizing_keys = {"width", "span", "size"}
+    present = sizing_keys & set(item)
+    if len(present) > 1:
         raise ValueError(
-            f"pages[{page_index}].blocks[{block_index}].width must be an integer in range 1..12"
+            f"pages[{page_index}].blocks[{block_index}] must not mix sizing keys: {', '.join(sorted(present))}"
         )
 
-    placements.append(BlockPlacement(block_id=block_id, width=width))
+    width = item.get("width")
+    if width is not None:
+        if not isinstance(width, int) or width < 1 or width > 12:
+            raise ValueError(
+                f"pages[{page_index}].blocks[{block_index}].width must be an integer in range 1..12"
+            )
+        placements.append(BlockPlacement(block_id=block_id, width=width))
+        return
+
+    span = item.get("span")
+    if span is not None:
+        if not isinstance(span, int) or span < 1 or span > 12:
+            raise ValueError(
+                f"pages[{page_index}].blocks[{block_index}].span must be an integer in range 1..12"
+            )
+        placements.append(BlockPlacement(block_id=block_id, span=span))
+        return
+
+    size = item.get("size")
+    if size is not None:
+        if not isinstance(size, str) or size.upper() not in {"S", "M", "L", "XL"}:
+            raise ValueError(
+                f"pages[{page_index}].blocks[{block_index}].size must be one of S, M, L, XL"
+            )
+        placements.append(BlockPlacement(block_id=block_id, size=size.upper()))
+        return
+
+    # Нет sizing key — default width 12
+    placements.append(BlockPlacement(block_id=block_id, width=12))
+
+
+# Разрешение effective width из placement, поддерживающего span и size
+_SIZE_TO_WIDTH: dict[str, int] = {"S": 4, "M": 6, "L": 8, "XL": 12}
+
+
+def _resolve_placement_width(placement: BlockPlacement) -> int:
+    if placement.span is not None:
+        return placement.span
+    if placement.size is not None:
+        return _SIZE_TO_WIDTH.get(placement.size, 12)
+    return placement.width
 
 
 # Коннект placement и definition в модель, которую можно передать в template
@@ -163,7 +204,7 @@ def resolve_page_blocks(
         rendered.append(
             render_block(
                 _resolve_block_definition(block, resolver),
-                placement.width,
+                _resolve_placement_width(placement),
             )
         )
     return rendered

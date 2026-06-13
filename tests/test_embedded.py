@@ -224,6 +224,7 @@ class TestCreateBeeuiAppWithConfigPath:
             app_title="Explicit Config",
             product=explicit_config.product,
             logo_text=explicit_config.logo_text,
+            locale=explicit_config.locale,
             theme=explicit_config.theme,
             layout=explicit_config.layout,
             navigation=explicit_config.navigation,

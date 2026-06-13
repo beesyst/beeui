@@ -10,7 +10,7 @@
 - `beeagent`;
 - будущие Bee-продукты.
 
-Текущая реализованная основа после Iteration 13 включает:
+Текущая реализованная основа после Iteration 13.1 включает:
 
 - веб-приложение FastAPI;
 - шаблоны Jinja2;
@@ -50,6 +50,28 @@
 - auth/session/CSRF layer (Iteration 13):
   - signed session cookie with configurable `Secure` flag (`cookie_secure`);
   - security headers baseline: `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`.
+- block sizing primitives (Iteration 13.1):
+  - `width: 1..12` остаётся backward-compatible;
+  - `span: 1..12` — прямой column span;
+  - `size: S|M|L|XL` — именованный размер с заранее заданным mapping;
+  - invalid значения в schema fail-fast;
+  - malformed adapter-backed значения degrade to `col-12`.
+- URL-driven Tabler tabs (Iteration 13.1):
+  - `url_tabs` Jinja macro в `catalog_primitives.html`;
+  - обычные `<a>` links с `href`;
+  - active tab через query param `?tab=`;
+  - invalid tab fallback к default item;
+  - только safe internal links.
+- locale seed (Iteration 13.1):
+  - `locale.default` и `locale.available` в `config/schema.yml`;
+  - `?lang=XX` override применяется только при allowlist;
+  - invalid lang возвращается к default;
+  - resolved `locale` пробрасывается в Jinja templates/context;
+  - `<html lang="{{ locale|default('en') }}">`;
+  - BeeUI не переводит product-specific строки.
+- generic dashboard fallback cleanup (Iteration 13.1):
+  - raw/debug technical payload in collapsible `<details>` «Technical details»;
+  - primary UX shows summary cards/KPIs/structured fields first.
 
 Запланированные обязанности:
 
@@ -801,8 +823,7 @@ Contract boundary:
 
 ## Surface model
 
-Generic BeeUI surface ниже описывает запланированные route families. Текущий MVP route contract отдельно зафиксирован в разделе `MVP route contract`.
-Route families ниже являются общей моделью surface. Текущий MVP route contract отдельно зафиксирован в разделе `MVP route contract`.
+Ниже описана общая модель route families для BeeUI. Текущий фактический MVP route contract отдельно зафиксирован в разделе `MVP route contract`.
 
 HTML routes:
 
@@ -835,7 +856,7 @@ JSON routes:
 
 Не все routes должны существовать в MVP.
 
-Текущий набор маршрутов MVP после Iteration 13:
+Текущий набор маршрутов MVP после Iteration 13.1:
 
 - `/`
 - `/runs`
@@ -1042,7 +1063,7 @@ Allowed severity:
 
 ## Pages
 
-Pages are declarative.
+Pages декларативны.
 
 Page config after Iteration 7:
 
@@ -1072,8 +1093,12 @@ pages:
 - page path must be safe;
 - page cannot define arbitrary HTML;
 - `pages[].blocks` is a list of placements;
-- each placement must reference an existing top-level `blocks` entry;
-- each placement width must be an integer from `1` to `12`;
+- placement поддерживает `width`, `span`, `size`;
+- `width` и `span` должны быть `1..12`;
+- `size` должен быть `S|M|L|XL`;
+- mixed sizing keys rejected fail-fast;
+- placement с `block` должен ссылаться на существующий top-level `blocks` entry;
+- `{id, enabled?}` page block refs поддерживаются для product-side references;
 - pages with an empty `blocks` list render the shared empty state.
 
 ## Blocks
@@ -1163,6 +1188,9 @@ Implemented block types after Iteration 7:
 - no Jinja expressions from config are evaluated;
 - no arbitrary HTML/JS/CSS-like fields are accepted.
 
+`url_tabs` — это template primitive для Tabler-compatible URL navigation, а не schema block type.
+Schema block type `tabs` сейчас не реализован.
+
 Запланированные block families:
 
 - `artifact_table`
@@ -1170,7 +1198,6 @@ Implemented block types after Iteration 7:
 - `chart_card`
 - `action_card`
 - `config_form`
-- `tabs`
 
 Они требуют следующих adapter, artifact, config или action итераций и намеренно исключены из Iteration 7.
 
@@ -1746,7 +1773,7 @@ visual editor
 
 ## Typical operator scenarios
 
-Текущий сценарий после Iteration 12:
+Текущий сценарий после Iteration 13.1:
 
 ```text
 1. BeeUI loads config/settings.yml.
@@ -1763,7 +1790,7 @@ visual editor
 
 ### 1. Open product dashboard
 
-Текущий сценарий Iteration 12.
+Текущий сценарий Iteration 13.1.
 
 1. Product starts embedded BeeUI web app.
 2. Operator opens `/`.
@@ -1772,7 +1799,7 @@ visual editor
 
 ### 2. Inspect runs
 
-Текущий сценарий Iteration 12.
+Текущий сценарий Iteration 13.1.
 
 1. Open `/runs`.
 2. BeeUI calls product adapter `list_runs()`.
@@ -1781,7 +1808,7 @@ visual editor
 
 ### 3. Inspect venue dashboard
 
-Текущий optional сценарий Iteration 12.
+Текущий optional сценарий Iteration 13.1.
 
 1. Open `/venues/{venue_id}` or `/api/venues/{venue_id}/dashboard`.
 2. BeeUI calls optional `get_venue_dashboard(venue_id)`.
@@ -1820,7 +1847,7 @@ visual editor
 
 ## MVP route contract
 
-Текущий MVP route contract Iteration 13:
+Текущий MVP route contract после Iteration 13.1:
 
 - `GET /`
 - `GET /runs`
@@ -1871,12 +1898,10 @@ Stable read-only API envelope for product console routes:
 
 Позже:
 
-- `/config`
-- `/admin`
-- `/api/config/*`
-- `/api/actions/*`
-- `/login`
-- `/logout`
+- полноценные `GET /config` и config read-model routes;
+- полноценный action catalog UI/API;
+- `/admin` support center;
+- stable frontend API v1.
 
 ## Связанные документы
 

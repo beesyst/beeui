@@ -2,6 +2,11 @@ app:
   title: BeeUI Demo
   product: demo
   logo_text: BeeUI
+  locale:
+    default: en
+    available:
+      - en
+      - ru
   theme:
     mode: dark
     primary: blue
