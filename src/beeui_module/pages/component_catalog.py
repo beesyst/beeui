@@ -13,9 +13,28 @@ from beeui_module.pages.router import (
     build_shell_classes,
     build_theme_context,
     prefixed_path,
+    resolve_locale,
 )
 
 _CATALOG_SECTION_ORDER = ["interface", "forms", "layout", "extra", "plugins"]
+
+
+# Разрешение активного таба в демонстрационных примерах каталога компонентов через ?tab= с fallback на default и безопасной проверкой allowlist
+def _resolve_url_tab(
+    request: Request,
+    tabs: list[dict[str, str]],
+    *,
+    default: str,
+) -> str:
+    allowed_ids = {
+        item["id"] for item in tabs if isinstance(item.get("id"), str) and item["id"]
+    }
+    candidate = request.query_params.get("tab")
+    if candidate in allowed_ids:
+        return candidate
+    if default in allowed_ids:
+        return default
+    return next(iter(allowed_ids), "")
 
 
 # Регистрация маршрутов для компонентного каталога и их рендеринг
@@ -39,6 +58,13 @@ def register_component_catalog_routes(
     registered_routes.append(index_route)
 
     async def render_catalog_index(request: Request) -> HTMLResponse:
+        locale = resolve_locale(request, ui_config.locale)
+        samples = _catalog_samples(route_prefix)
+        samples["active_url_tab"] = _resolve_url_tab(
+            request,
+            samples["tabs"],
+            default="details",
+        )
         return templates.TemplateResponse(
             request=request,
             name="components/catalog/index.html",
@@ -48,6 +74,7 @@ def register_component_catalog_routes(
                 "product_id": product_id,
                 "app_title": ui_config.app_title,
                 "logo_text": ui_config.logo_text,
+                "locale": locale,
                 "theme": theme,
                 "layout": layout,
                 "page": {
@@ -61,7 +88,7 @@ def register_component_catalog_routes(
                 ),
                 "shell_classes": shell_classes,
                 "catalog_sections": sections,
-                "samples": _catalog_samples(route_prefix),
+                "samples": samples,
             },
         )
 
@@ -80,6 +107,13 @@ def register_component_catalog_routes(
         async def render_catalog_section(
             request: Request, _section: dict[str, str] = section
         ) -> HTMLResponse:
+            locale = resolve_locale(request, ui_config.locale)
+            samples = _catalog_samples(route_prefix)
+            samples["active_url_tab"] = _resolve_url_tab(
+                request,
+                samples["tabs"],
+                default="details",
+            )
             return templates.TemplateResponse(
                 request=request,
                 name="components/catalog/page.html",
@@ -89,6 +123,7 @@ def register_component_catalog_routes(
                     "product_id": product_id,
                     "app_title": ui_config.app_title,
                     "logo_text": ui_config.logo_text,
+                    "locale": locale,
                     "theme": theme,
                     "layout": layout,
                     "page": {
@@ -103,7 +138,7 @@ def register_component_catalog_routes(
                     "shell_classes": shell_classes,
                     "catalog_sections": sections,
                     "catalog_section": _section,
-                    "samples": _catalog_samples(route_prefix),
+                    "samples": samples,
                 },
             )
 
@@ -280,6 +315,7 @@ def _catalog_samples(route_prefix: str) -> dict[str, Any]:
             {"ID": "run_002", "Owner": "demo", "Stage": "ready"},
         ],
         "select_options": ["Alpha", "Beta", "Gamma"],
+        "interface_url": prefixed_path(route_prefix, "/components/interface"),
         "tabs": [
             {"id": "overview", "title": "Overview"},
             {"id": "details", "title": "Details"},

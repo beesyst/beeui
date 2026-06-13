@@ -6,6 +6,13 @@ from beeui_module.blocks.models import BlockDefinition, BlockPlacement
 from beeui_module.data.models import DataSourceDefinition
 
 
+# Локаль: default locale и список доступных локалей
+@dataclass(frozen=True)
+class LocaleConfig:
+    default: str = "en"
+    available: tuple[str, ...] = ("en",)
+
+
 # Настройки темы, прошедшие schema validation
 @dataclass(frozen=True)
 class ThemeConfig:
@@ -67,6 +74,7 @@ class BeeUiConfig:
     app_title: str
     product: str
     logo_text: str
+    locale: LocaleConfig
     theme: ThemeConfig
     layout: LayoutConfig
     navigation: list[BeeUiNavigationItem]

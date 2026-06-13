@@ -217,17 +217,33 @@ Adapter-backed payloads (`dashboard`, `run`, `venue dashboard`, optionally `runs
 | `chart` | Server-rendered chart placeholder (no external JS); adapter-provided title/subtitle/status/symbol/timeframe/series/points/candles; empty state when no data |
 | `degraded` | Fallback для malformed/unsupported blocks |
 
-### Width mapping
+### Width/span/size mapping
 
-| width | Column class |
-|-------|-------------|
-| 12 | `col-12` |
-| 8 | `col-12 col-lg-8` |
-| 6 | `col-12 col-lg-6` |
-| 4 | `col-12 col-md-6 col-lg-4` |
-| 3 | `col-12 col-sm-6 col-lg-3` |
-| 2 | `col-12 col-sm-6 col-lg-2` |
-| other/invalid | `col-12` (default) |
+`width` (1..12), `span` (1..12) and `size` (S/M/L/XL) are mutually exclusive.
+Only one sizing key may be present per block placement.
+
+| Key | Value | Column class |
+|-----|-------|-------------|
+| `width` | 12 | `col-12` |
+| `width` | 8 | `col-12 col-lg-8` |
+| `width` | 6 | `col-12 col-lg-6` |
+| `width` | 4 | `col-12 col-md-6 col-lg-4` |
+| `width` | 3 | `col-12 col-sm-6 col-lg-3` |
+| `width` | 2 | `col-12 col-sm-6 col-lg-2` |
+| `span` | 12 | `col-12` |
+| `span` | 8 | `col-12 col-lg-8` |
+| `span` | 6 | `col-12 col-lg-6` |
+| `span` | 4 | `col-12 col-md-6 col-lg-4` |
+| `span` | 3 | `col-12 col-sm-6 col-lg-3` |
+| `span` | 2 | `col-12 col-sm-6 col-lg-2` |
+| `size` | XL | `col-12` |
+| `size` | L | `col-12 col-lg-8` |
+| `size` | M | `col-12 col-lg-6` |
+| `size` | S | `col-12 col-md-6 col-lg-4` |
+| other/invalid | — | `col-12` (default) |
+
+For schema/demo placements: invalid or conflicting sizing keys fail fast.
+For adapter-backed `layout[]`: invalid or conflicting sizing keys degrade to `col-12`.
 
 ### Security rules
 

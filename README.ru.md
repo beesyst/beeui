@@ -31,6 +31,19 @@
 - `tests/test_security.py` — 60+ тестов;
 - docs update.
 
+## Iteration 13.1 — Dashboard layout primitives, URL tabs and locale seed
+
+Текущий результат — reusable dashboard layout primitives для customer-friendly product dashboards.
+
+В Iteration 13.1 добавлены:
+
+- block sizing: `width` (1..12), `span` (1..12), `size` (S/M/L/XL);
+- schema invalid values fail fast; adapter malformed values degrade to `col-12`;
+- URL-driven Tabler tabs (`url_tabs` Jinja macro с `<a>` links и `?tab=` active state);
+- locale seed (`app.locale.default` + `app.locale.available`; `?lang=` override при allowlist);
+- resolved locale (`locale`) в template context для всех HTML-страниц;
+- generic dashboard fallback: raw JSON в collapsible «Technical details», primary UX — summary/KPIs.
+
 ## Iteration 12.4
 
 Текущий результат — расширение adapter-backed `layout[]` contract для
@@ -137,40 +150,39 @@ BeeUI сейчас поддерживает два разных block contract.
 
 Используются в `config/schema.yml` для demo/schema mode и declarative pages.
 
-Поддерживаемые adapter-backed `layout[]` типы:
+Поддерживаемые top-level block types:
 
-- `hero_snapshot`;
 - `metric_card`;
-- `kpi_strip`;
-- `venue_summary_grid`;
-- `mode_cards`;
-- `status_table`;
-- `event_table`;
-- `attention_list`;
-- `artifact_links`;
-- `raw_json_panel`;
-- `chart`;
-- `operator_hero`;
-- `venue_card`;
 - `kpi_grid`;
-- `state_grid`;
-- `quick_links`;
-- `run_table`.
-
-`degraded` используется как fallback для malformed или unsupported blocks.
+- `status_card`;
+- `table_card`;
+- `links_card`;
+- `alert_card`;
+- `text_card`;
+- `progress_card`.
 
 Эти blocks объявляются в top-level `blocks` и размещаются через `pages[].blocks[]`.
 
-`pages[].blocks[]` поддерживает два формата (Iteration 12.5):
+Поддерживаемые placement formats:
 
-- `{block, width}` — placement с указанием ширины (колонки 1–12);
-- `{id, enabled?}` — page block reference без ширины (по умолчанию col-12).
+- `{block, width}`;
+- `{block, span}`;
+- `{block, size}`;
+- `{id, enabled?}`.
+
+Правила:
+
+- `width` и `span`: integer `1..12`;
+- `size`: `S|M|L|XL`;
+- в одном placement нельзя смешивать `width`, `span`, `size`;
+- schema invalid values fail-fast;
+- `{id, enabled?}` — product-side page block reference и не обязан ссылаться на top-level `blocks`.
 
 #### 2. Adapter-backed `layout[]` blocks
 
 Используются в product console mode, когда product adapter возвращает optional поле `layout`.
 
-Поддерживаемые типы:
+Поддерживаемые adapter-backed `layout[]` типы после Iteration 12.4/13.1:
 
 - `hero_snapshot`;
 - `metric_card`;
@@ -182,10 +194,22 @@ BeeUI сейчас поддерживает два разных block contract.
 - `attention_list`;
 - `artifact_links`;
 - `raw_json_panel`.
+- `chart`;
+- `operator_hero`;
+- `venue_card`;
+- `kpi_grid`;
+- `state_grid`;
+- `quick_links`;
+- `run_table`.
 
-Malformed или unsupported blocks рендерятся как `degraded` block, а не ломают страницу.
+Правила:
 
-Текущая web surface после Iteration 12.2:
+- `width`, `span`, `size` поддерживаются;
+- malformed или unsupported blocks рендерятся как `degraded`;
+- malformed sizing деградирует в `col-12`, не ломая страницу;
+- BeeUI не вычисляет product metrics, а только рендерит product-provided layout.
+
+Текущая web surface после Iteration 13.1:
 
 - `GET /`
 - `GET /runs`
@@ -356,7 +380,7 @@ MVP не пытается сразу стать полноценным Retool/We
 
 ## Что BeeUI делает
 
-В текущем состоянии после Iteration 13 BeeUI отвечает за:
+В текущем состоянии после Iteration 13.1 BeeUI отвечает за:
 
 - FastAPI app factory;
 - Jinja2 templates;
@@ -364,9 +388,15 @@ MVP не пытается сразу стать полноценным Retool/We
 - global navigation;
 - reusable blocks;
 - dashboard rendering for schema/demo mode and adapter-backed product console mode;
+- `pages[].blocks[]` с поддержкой `width`, `span`, `size` и product-side `{id, enabled?}` references;
 - adapter-backed `layout[]` rendering для product console pages через generic Tabler blocks;
+- adapter-backed `layout[]` с поддержкой `width`, `span`, `size` и graceful fallback к `col-12`;
 - declarative pages/navigation/theme/layout;
 - static/literal and resolver-backed dashboard blocks from `config/schema.yml`;
+- `app.locale` в `config/schema.yml` и resolved `locale` в template context;
+- allowlist override через `?lang=` с fallback к default locale;
+- `url_tabs` в component catalog как Jinja primitive для `nav nav-tabs card-header-tabs`;
+- generic dashboard fallback с collapsible `Technical details`;
 - generic product adapter contract v0 in `src/beeui_module/adapters/`;
 - BeeCap-compatible fixture/reference adapter for contract validation;
 - embedded app factory `create_beeui_app(...)`;
@@ -505,7 +535,7 @@ dependencies = [
 
 ```toml
 dependencies = [
-    "beeui>=0.16.1,<0.17.0",
+    "beeui>=0.17.0,<0.18.0",
 ]
 ```
 
@@ -556,7 +586,7 @@ git push
 заменить на PyPI dependency:
 
 ```toml
-"beeui>=0.16.1,<0.17.0"
+"beeui>=0.17.0,<0.18.0"
 ```
 
 после этого:
@@ -692,7 +722,7 @@ BeeUI не должен получать прямую authority на tools/MCP/r
 
 Продукт импортирует BeeUI и монтирует его в своём web process.
 
-Текущий статус после Iteration 13:
+Текущий статус после Iteration 13.1:
 
 - generic adapter contract существует;
 - BeeCap fixture/reference adapter существует для contract validation;
@@ -706,6 +736,11 @@ BeeUI не должен получать прямую authority на tools/MCP/r
 - `/api/runs/{run_id}/artifacts*` routes доступны при `features.browser_artifact: true`;
 - при наличии adapter routes `/`, `/runs`, `/runs/{run_id}` и `/venues/{venue_id}` работают в product console mode;
 - auth/session/CSRF boundary и login/logout routes реализованы;
+- `app.locale.default` / `app.locale.available` поддерживаются в schema;
+- `?lang=` применяет locale только если значение входит в allowlist;
+- resolved `locale` пробрасывается в HTML templates и в `<html lang="{{ locale|default('en') }}">`;
+- `url_tabs` работает через обычные `<a href>` и active state по `?tab=`;
+- generic dashboard fallback показывает summary/KPIs/structured cards, а raw/debug payload уходит в collapsible `Technical details`;
 - protected config/action POST stubs есть в BeeUI, но product semantics остаются за product adapter.
 
 Embedded example:
@@ -749,7 +784,7 @@ pages:
     subtitle: Demo operator dashboard
     blocks:
       - block: latest_run
-        width: 3
+        size: S
 ```
 
 Текущие declarative page rules:
@@ -759,8 +794,12 @@ pages:
 - `navigation[].path` must reference declared page path;
 - reserved paths `/health`, `/static`, `/static/...` are rejected;
 - `blocks` in page config is a list of block placements;
-- each placement references a top-level block id;
-- `width` must be an integer from `1` to `12`;
+- placement может использовать `width`, `span` или `size`;
+- `width` и `span` должны быть integer `1..12`;
+- `size` должен быть `S|M|L|XL`;
+- mixed sizing keys rejected fail-fast;
+- placement c `block` ссылается на top-level block id;
+- placement `{id, enabled?}` используется для product-side page block references;
 - unknown block references are rejected fail-fast.
 
 ### Blocks
@@ -1275,7 +1314,7 @@ uv run --frozen --extra dev python config/start.py web
 
 ## Целевая структура проекта
 
-Актуальные ключевые файлы после Iteration 12.2:
+Актуальные ключевые файлы после Iteration 13.1:
 
 ```text
 config/
@@ -1615,7 +1654,7 @@ src/beeui_module/config_ui/
 
 ### 7. Auth layer
 
-Planned layer.
+Реализованный слой после Iteration 13.
 
 ```text
 src/beeui_module/auth/
@@ -1955,6 +1994,7 @@ Visual builder later.
 
 ```text
 Iteration 13 — Auth/session/CSRF boundary for config/action routes MVP — ЗАВЕРШЕНО
+Iteration 13.1 — Dashboard layout primitives, URL tabs and locale seed — ЗАВЕРШЕНО
 ```
 
 Работает:
@@ -1969,6 +2009,10 @@ uv run pytest -q
 - `/` рендерит literal и resolver-backed dashboard blocks from schema;
 - `/runs` рендерит empty state для страницы без block placements;
 - `/components*` рендерит internal read-only catalog of controlled primitives;
+- `pages[].blocks[]` поддерживает `width`, `span`, `size`;
+- adapter-backed `layout[]` поддерживает `width`, `span`, `size`;
+- schema invalid `span` / `size` / mixed sizing keys fail-fast;
+- malformed adapter-backed sizing degrade to `col-12`, не ломая страницу;
 - resolver-backed blocks читают значения из controlled read-only `demo` / `static` sources;
 - missing selector data рендерит degraded/error block state вместо падения страницы;
 - generic `ProductUiAdapter` contract доступен в `src/beeui_module/adapters/`;
@@ -1985,7 +2029,11 @@ uv run pytest -q
 - product console HTML/API routes работают через adapter when adapter is present;
 - adapter-backed `layout[]` blocks рендерятся на `/`, `/runs`, `/runs/{run_id}`, `/venues/{venue_id}`;
 - malformed/unsupported layout blocks рендерятся как degraded state;
-- layout links валидируются как safe internal links и учитывают route prefix / embedded mount path.
+- layout links валидируются как safe internal links и учитывают route prefix / embedded mount path;
+- `app.locale` доступен в `config/schema.yml`;
+- `?lang=` работает как allowlist override и invalid `lang` fallback к default;
+- `url_tabs` доступны в component catalog;
+- generic dashboard fallback отделяет raw/debug payload в collapsible `Technical details`;
 - реальные локальные скомпилированные CSS/JS из `@tabler/core@1.4.0` поставляются как локальные статические ресурсы пакета;
 - самодельный слой совместимости `tabler-compatible` удалён из текущей runtime-поверхности;
 - CSS BeeUI используется как контролируемый слой оформления продукта поверх Tabler, а не как второй CSS-фреймворк;

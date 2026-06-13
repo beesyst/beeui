@@ -26,12 +26,13 @@ from beeui_module.api.envelopes import (
 )
 from beeui_module.blocks.layout_renderer import render_layout
 from beeui_module.artifacts.redaction import redact_value
-from beeui_module.pages.models import BeeUiConfig
+from beeui_module.pages.models import BeeUiConfig, LocaleConfig
 from beeui_module.pages.router import (
     build_layout_context,
     build_navigation,
     build_shell_classes,
     build_theme_context,
+    resolve_locale,
 )
 
 
@@ -353,6 +354,9 @@ def _with_request_context(
         request,
         str(context.get("route_prefix", "")),
     )
+    locale_cfg = context.get("locale_cfg")
+    if isinstance(locale_cfg, LocaleConfig):
+        context["locale"] = resolve_locale(request, locale_cfg)
     return context
 
 
@@ -371,6 +375,7 @@ def _build_page_context(
         "product_title": product_title,
         "product_id": product_id,
         "logo_text": ui_config.logo_text,
+        "locale_cfg": ui_config.locale,
         "theme": theme,
         "layout": layout,
         "ui_navigation": ui_config.navigation,

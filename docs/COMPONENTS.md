@@ -45,6 +45,7 @@ Primitives:
 - `empty_state`
 - `modal_shell`
 - `tabs`
+- `url_tabs` (URL-driven variant with `<a>` links and `?tab=` active state)
 - `table`
 - `data_grid`
 - `form_input`

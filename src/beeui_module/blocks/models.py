@@ -21,7 +21,9 @@ ALLOWED_BLOCK_STATES = {"normal", "empty", "degraded", "error"}
 @dataclass(frozen=True)
 class BlockPlacement:
     block_id: str
-    width: int
+    width: int = 12
+    span: int | None = None
+    size: str | None = None
 
 
 # Валидированное описание блока из schema.yml

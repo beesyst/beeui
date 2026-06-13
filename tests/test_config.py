@@ -759,3 +759,192 @@ def test_page_block_ref_beecap_like_config(tmp_path: Path) -> None:
     assert len(dashboard.blocks) == 2
     assert dashboard.blocks[0].block_id == "system_snapshot"
     assert dashboard.blocks[1].block_id == "venue_cards"
+
+
+# Тест: span в schema placement работает
+def test_schema_accepts_span_placement(tmp_path: Path) -> None:
+    content = _base_config().replace(
+        "      - block: latest_run\n        width: 3\n",
+        "      - block: latest_run\n        span: 4\n",
+        1,
+    )
+    config = load_beeui_config(_write_config(tmp_path, content))
+    dashboard = config.pages[0]
+    assert dashboard.blocks[0].span == 4
+    assert dashboard.blocks[0].width == 12
+
+
+# Тест: size в schema placement работает
+def test_schema_accepts_size_placement(tmp_path: Path) -> None:
+    content = _base_config().replace(
+        "      - block: latest_run\n        width: 3\n",
+        "      - block: latest_run\n        size: L\n",
+        1,
+    )
+    config = load_beeui_config(_write_config(tmp_path, content))
+    dashboard = config.pages[0]
+    assert dashboard.blocks[0].size == "L"
+
+
+# Тест: size case-insensitive в schema
+def test_schema_accepts_size_lowercase(tmp_path: Path) -> None:
+    content = _base_config().replace(
+        "      - block: latest_run\n        width: 3\n",
+        "      - block: latest_run\n        size: xl\n",
+        1,
+    )
+    config = load_beeui_config(_write_config(tmp_path, content))
+    dashboard = config.pages[0]
+    assert dashboard.blocks[0].size == "XL"
+
+
+# Тест: конфликтующие sizing keys в schema placement fail fast
+def test_schema_rejects_conflicting_sizing_keys(tmp_path: Path) -> None:
+    content = _base_config().replace(
+        "      - block: latest_run\n        width: 3\n",
+        "      - block: latest_run\n        width: 6\n        span: 12\n",
+        1,
+    )
+    try:
+        load_beeui_config(_write_config(tmp_path, content))
+    except ValueError as exc:
+        assert "must not mix sizing keys" in str(exc)
+    else:
+        raise AssertionError("load_beeui_config must reject conflicting sizing keys")
+
+
+# Тест: невалидный span в schema placement fail fast
+def test_schema_rejects_invalid_span(tmp_path: Path) -> None:
+    content = _base_config().replace(
+        "      - block: latest_run\n        width: 3\n",
+        "      - block: latest_run\n        span: 99\n",
+        1,
+    )
+    try:
+        load_beeui_config(_write_config(tmp_path, content))
+    except ValueError as exc:
+        assert "span must be an integer in range 1..12" in str(exc)
+    else:
+        raise AssertionError("load_beeui_config must reject invalid span")
+
+
+# Тест: невалидный size в schema placement fail fast
+def test_schema_rejects_invalid_size(tmp_path: Path) -> None:
+    content = _base_config().replace(
+        "      - block: latest_run\n        width: 3\n",
+        "      - block: latest_run\n        size: XXL\n",
+        1,
+    )
+    try:
+        load_beeui_config(_write_config(tmp_path, content))
+    except ValueError as exc:
+        assert "size must be one of S, M, L, XL" in str(exc)
+    else:
+        raise AssertionError("load_beeui_config must reject invalid size")
+
+
+# Тест: locale default en без config
+def test_schema_locale_default() -> None:
+    config = load_beeui_config(Path("config/schema.yml"))
+    assert config.locale.default == "en"
+    assert "ru" in config.locale.available
+
+
+# Тест: locale config работает
+def test_schema_locale_custom(tmp_path: Path) -> None:
+    content = (
+        "app:\n"
+        "  title: Test\n"
+        "  product: test\n"
+        "  logo_text: Test\n"
+        "  locale:\n"
+        "    default: ru\n"
+        "    available:\n"
+        "      - ru\n"
+        "      - en\n"
+        "  theme:\n"
+        "    mode: dark\n"
+        "    primary: blue\n"
+        "    base: gray\n"
+        "    font: sans-serif\n"
+        "    radius: 1\n"
+        "    density: default\n"
+        "  layout:\n"
+        "    type: vertical\n"
+        "    container: xl\n"
+        "    sidebar:\n"
+        "      variant: dark\n"
+        "      collapsed: false\n"
+        "    navbar:\n"
+        "      enabled: false\n"
+        "      variant: default\n"
+        "      sticky: false\n"
+        "\n"
+        "navigation:\n"
+        "  - title: Dashboard\n"
+        "    path: /\n"
+        "    icon: dashboard\n"
+        "\n"
+        "data_sources: {}\n"
+        "blocks: {}\n"
+        "pages:\n"
+        "  - id: dashboard\n"
+        "    path: /\n"
+        "    title: Dashboard\n"
+        "    subtitle: Demo\n"
+        "    blocks: []\n"
+    )
+    config = load_beeui_config(_write_config(tmp_path, content))
+    assert config.locale.default == "ru"
+    assert config.locale.available == ("ru", "en")
+
+
+# Тест: locale default вне available fail fast
+def test_schema_locale_default_not_in_available(tmp_path: Path) -> None:
+    content = (
+        "app:\n"
+        "  title: Test\n"
+        "  product: test\n"
+        "  logo_text: Test\n"
+        "  locale:\n"
+        "    default: de\n"
+        "    available:\n"
+        "      - en\n"
+        "  theme:\n"
+        "    mode: dark\n"
+        "    primary: blue\n"
+        "    base: gray\n"
+        "    font: sans-serif\n"
+        "    radius: 1\n"
+        "    density: default\n"
+        "  layout:\n"
+        "    type: vertical\n"
+        "    container: xl\n"
+        "    sidebar:\n"
+        "      variant: dark\n"
+        "      collapsed: false\n"
+        "    navbar:\n"
+        "      enabled: false\n"
+        "      variant: default\n"
+        "      sticky: false\n"
+        "\n"
+        "navigation:\n"
+        "  - title: Dashboard\n"
+        "    path: /\n"
+        "    icon: dashboard\n"
+        "\n"
+        "data_sources: {}\n"
+        "blocks: {}\n"
+        "pages:\n"
+        "  - id: dashboard\n"
+        "    path: /\n"
+        "    title: Dashboard\n"
+        "    subtitle: Demo\n"
+        "    blocks: []\n"
+    )
+    try:
+        load_beeui_config(_write_config(tmp_path, content))
+    except ValueError as exc:
+        assert "must be in app.locale.available" in str(exc)
+    else:
+        raise AssertionError("load_beeui_config must reject locale default not in available")

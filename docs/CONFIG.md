@@ -4,24 +4,26 @@
 
 `beeui` использует два разных уровня конфигурации:
 
-1. `config/settings.yml` — runtime-настройки самого `beeui`:
+1. `config/settings.yml` — runtime/security config самого `beeui`:
    - web host/port;
    - logging;
    - storage;
    - security;
-   - product adapter mode.
-   - future auth/session settings after auth iteration.
+   - auth/session/CSRF settings;
+   - product mode/metadata;
+   - feature flags.
 
-2. `config/schema.yml` — current demo/MVP declarative UI schema:
-   - название приложения;
+2. `config/schema.yml` — текущая demo/MVP UI schema:
+   - app display metadata;
+   - locale seed;
    - theme;
-   - navigation;
    - layout;
+   - navigation;
+   - data sources;
+   - reusable blocks registry;
+   - pages and block placements.
 
-- pages;
-- reusable blocks registry.
-
-`config/beeui.yml` — planned/future naming for product integration after adapter/block/data-source iterations. It is not the current CLI contract.
+`config/beeui.yml` — целевое/future naming для product integration после adapter/block/data-source итераций. Это не текущий CLI contract.
 
 Главное правило:
 
@@ -44,7 +46,7 @@ Bee-продукты остаются source of truth для:
 
 ## Файлы конфигурации
 
-Current Iteration 7 demo/MVP structure:
+Текущая demo/MVP структура:
 
 ```text
 beeui/
@@ -53,21 +55,21 @@ beeui/
     schema.yml
 ```
 
-Future/product integration naming after adapter/block/data-source iterations:
+Целевое naming для product integration:
 
 ```text
 config/settings.yml
 config/beeui.yml
 ```
 
-Current web command:
+Текущая web-команда:
 
 ```bash
 ./start.sh web --host 127.0.0.1 --port 8780
 ```
 
-Current CLI supports `--host` and `--port` for `web`.
-It does not support:
+Текущий CLI поддерживает `--host` и `--port` для `web`.
+Он не поддерживает:
 
 ```bash
 ./start.sh web --config config/beeui.yml --settings config/settings.yml
@@ -81,7 +83,7 @@ It does not support:
 
 Он не должен описывать торговые стратегии, MRKT lifecycle, BeeAgent modules или product-specific business logic.
 
-## Минимальный пример `settings.yml` v0
+## Минимальный пример `settings.yml`
 
 ```yaml
 app:
@@ -109,6 +111,13 @@ security:
   html_autoescape: true
   assets_ext: false
 
+auth:
+  enabled: false
+  session_secret: ${BEEUI_SESSION_SECRET}
+  operator_token: ${BEEUI_OPERATOR_TOKEN}
+  admin_token: ${BEEUI_ADMIN_TOKEN}
+  cookie_secure: false
+
 product:
   mode: demo
   id: demo
@@ -132,6 +141,7 @@ features:
 | `logging.*`  | Логи `beeui`                                                           |
 | `storage.*`  | Локальный storage для audit/config/action artifacts, если они включены |
 | `security.*` | Базовые security defaults                                              |
+| `auth.*`     | Auth/session/CSRF runtime settings                                     |
 | `product.*`  | Какой product adapter используется                                     |
 | `features.*` | Feature flags для UI capabilities                                      |
 
@@ -155,7 +165,7 @@ app:
 - `app.name` не должен быть пустым.
 - `app.environment=prod` должен использовать более строгие security defaults:
   - `auth.enabled=true`;
-  - `auth.session.secure_cookie=true`;
+  - `auth.cookie_secure=true`;
   - `security.assets_ext=false`.
 
 ## `web.*`
@@ -279,47 +289,41 @@ security:
 
 ## `auth.*`
 
-Planned/future schema after auth/product-adapter iterations.
-Not implemented in current Iteration 4 runtime.
+Текущий contract после Iteration 13.
 
 ```yaml
 auth:
   enabled: false
-  session:
-    cookie_name: beeui_session
-    secret_env: BEEUI_SESSION_SECRET
-    secure_cookie: false
-    same_site: lax
-  users:
-    source: local_file
-    file: config/users.yml
+  session_secret: ${BEEUI_SESSION_SECRET}
+  operator_token: ${BEEUI_OPERATOR_TOKEN}
+  admin_token: ${BEEUI_ADMIN_TOKEN}
+  cookie_secure: false
 ```
 
 ### Назначение
 
-Auth нужен для internal operator/admin UI.
-
-В MVP auth может быть выключен для local/dev, но архитектурно должен быть предусмотрен.
+Auth/session/CSRF layer защищает internal operator/admin UI и protected POST routes.
 
 ### Поля
 
-| Ключ                         | Тип    | Обязательный | Описание                        |
-| ---------------------------- | ------ | ------------ | ------------------------------- |
-| `auth.enabled`               | bool   | да           | Включить auth                   |
-| `auth.session.cookie_name`   | string | да           | Имя cookie                      |
-| `auth.session.secret_env`    | string | да           | Env-переменная с session secret |
-| `auth.session.secure_cookie` | bool   | да           | Secure cookie flag              |
-| `auth.session.same_site`     | string | да           | `lax`, `strict`, `none`         |
-| `auth.users.source`          | string | да           | Источник users                  |
-| `auth.users.file`            | string | да           | Файл users для local auth       |
+| Ключ                  | Тип    | Обязательный | Описание                                 |
+| --------------------- | ------ | ------------ | ---------------------------------------- |
+| `auth.enabled`        | bool   | да           | Включить auth/session mode               |
+| `auth.session_secret` | string | да*          | Session secret из env или runtime config |
+| `auth.operator_token` | string | да*          | Operator token из env или runtime config |
+| `auth.admin_token`    | string | да*          | Admin token из env или runtime config    |
+| `auth.cookie_secure`  | bool   | да           | Secure flag для signed session cookie    |
+
+`*` — обязательно при `auth.enabled=true`.
 
 ### Правила
 
-- При `auth.enabled=true` env из `auth.session.secret_env` обязателен.
-- Пароли нельзя хранить plaintext.
-- Write routes требуют role + CSRF.
-- В `prod` auth должен быть включён.
-- `secure_cookie=true` обязателен для HTTPS/prod.
+- `auth.enabled=false` допустим только для explicit local/dev mode.
+- При `auth.enabled=true` обязательны `session_secret`, `operator_token`, `admin_token`.
+- Tokens/secrets должны приходить из env или внешнего runtime config и не должны коммититься как raw secrets.
+- `cookie_secure=false` допустим для local HTTP.
+- `cookie_secure=true` обязателен для remote/HTTPS.
+- Protected POST routes требуют role + CSRF.
 
 ## `product.*`
 
@@ -436,11 +440,11 @@ features:
   - `config_apply=false`;
   - `operator_actions=false`.
 
-# 2. Current `config/schema.yml`
+# 2. Текущий `config/schema.yml`
 
 ## Назначение
 
-`config/schema.yml` is the current demo/MVP UI schema file used by the Iteration 7 runtime and CLI.
+`config/schema.yml` — текущий demo/MVP UI schema-файл, используемый runtime и CLI после Iteration 13.1.
 
 `config/beeui.yml` is future/product integration naming, not the current CLI contract.
 
@@ -454,13 +458,18 @@ features:
 
 Он не должен содержать secrets и product runtime logic.
 
-## Current Iteration 7 example
+## Текущий пример `config/schema.yml`
 
 ```yaml
 app:
   title: BeeUI Demo
   product: demo
   logo_text: BeeUI
+  locale:
+    default: en
+    available:
+      - en
+      - ru
   theme:
     mode: dark
     primary: blue
@@ -545,6 +554,11 @@ app:
   title: BeeUI Demo
   product: demo
   logo_text: BeeUI
+  locale:
+    default: en
+    available:
+      - en
+      - ru
   theme:
     mode: dark
     primary: blue
@@ -568,11 +582,16 @@ app:
 
 | Ключ            | Тип    | Обязательный | Описание                   |
 | --------------- | ------ | ------------ | -------------------------- |
-| `app.title`     | string | да           | Display title              |
-| `app.product`   | string | да           | Product key                |
-| `app.logo_text` | string | да           | Sidebar/header logo text   |
-| `app.theme`     | dict   | да           | Controlled theme settings  |
-| `app.layout`    | dict   | да           | Controlled layout settings |
+| `app.title`            | string       | да           | Display title                                      |
+| `app.product`          | string       | да           | Product key                                        |
+| `app.logo_text`        | string       | да           | Sidebar/header logo text                           |
+| `app.locale`           | dict         | нет          | Настройки locale seed                              |
+| `app.locale.default`   | string       | да*          | Default locale code                                |
+| `app.locale.available` | list[string] | да*          | Allowlisted locale codes                           |
+| `app.theme`            | dict         | да           | Controlled theme settings                          |
+| `app.layout`           | dict         | да           | Controlled layout settings                         |
+
+`*` — обязательно, если задан `app.locale`.
 
 ### Theme fields
 
@@ -601,6 +620,11 @@ app:
 
 - Theme values must be allowlisted.
 - `theme.mode: auto` is a controlled schema token for future runtime/browser preference integration. In the current implementation it renders as `data-bs-theme="auto"` and `beeui-theme-mode-auto`; it does not persist or mutate theme client-side.
+- Если `app.locale` отсутствует, используется default `en`.
+- `app.locale.default` должен входить в `app.locale.available`.
+- `?lang=` применяется только если значение есть в `app.locale.available`.
+- Invalid `?lang` делает fallback к `default`.
+- BeeUI не переводит product-specific строки.
 - Нельзя принимать arbitrary CSS из config.
 - Layout values must be allowlisted.
 - Font key должен ссылаться на known safe font mode.
@@ -644,7 +668,7 @@ navigation:
 
 ## `data_sources.*`
 
-Current Iteration 7 contract.
+Текущий contract после Iteration 13.1.
 
 ```yaml
 data_sources:
@@ -659,11 +683,11 @@ data_sources:
 
 ### Supported source types
 
-| Type      | Назначение                                | MVP   |
-| --------- | ----------------------------------------- | ----- |
-| `demo`    | Controlled built-in demo payload          | да    |
-| `static`  | Controlled YAML/JSON fixture-like payload | да    |
-| `adapter` | Product adapter method                    | позже |
+| Type      | Назначение                                | MVP |
+| --------- | ----------------------------------------- | --- |
+| `demo`    | Controlled built-in demo payload          | да  |
+| `static`  | Controlled YAML/JSON fixture-like payload | да  |
+| `adapter` | Product adapter method                    | нет |
 
 ### Demo source
 
@@ -708,6 +732,7 @@ data_sources:
 - `data_sources` is not a second source of truth: product truth still belongs to product config/artifacts/API, while BeeUI only reads controlled demo/static payloads in Iteration 7.
 - `type: demo` has no extra keys.
 - `type: static` requires `format` (`yaml` or `json`) and a safe relative `path`.
+- Текущий runtime Iteration 13.1 не поддерживает `data_sources.type: adapter` в `schema.yml`.
 - Static source paths must stay under the BeeUI project root and may not use absolute paths or `..`.
 - Source results are normalized to a stable envelope with `status`, `data`, `warnings` and `source`.
 - Missing selectors return `partial` and should degrade block rendering instead of crashing the page.
@@ -732,7 +757,7 @@ pages:
 | `path`     | string | да           | Route                                    |
 | `title`    | string | да           | Page title                               |
 | `subtitle` | string | нет          | Page subtitle                            |
-| `blocks`   | list   | да           | Block placement list (`block` + `width`) |
+| `blocks`   | list   | да           | Block placement list: `{block, width|span|size}` или `{id, enabled?}` |
 
 ### Правила
 
@@ -740,9 +765,12 @@ pages:
 - `path` должен начинаться с `/`.
 - Duplicate page ids/paths запрещены.
 - `blocks` must be a list.
-- Каждый placement обязан иметь `block` и `width`.
-- `block` должен ссылаться на существующий top-level block id.
-- `width` должен быть integer `1..12`.
+- `{block, width}` / `{block, span}` / `{block, size}` ссылаются на top-level block id.
+- `{id, enabled?}` — product-side page block reference.
+- `width` и `span` должны быть integer `1..12`.
+- `size` должен быть `S|M|L|XL`.
+- Нельзя смешивать `width`, `span`, `size` в одном placement.
+- Schema invalid placement fail-fast.
 
 ## `blocks.*`
 
@@ -759,7 +787,7 @@ blocks:
 
 ### Common block fields
 
-Current Iteration 7 contract supports both existing literal fields and optional resolver-backed fields:
+Текущий contract поддерживает и существующие literal fields, и optional resolver-backed fields:
 
 - `source` is optional and references `data_sources.*`;
 - selector fields are optional and block-type-specific;
@@ -973,8 +1001,7 @@ Expected data:
 
 # 3. Product adapter config examples
 
-Planned/future schema after block/data-source/product-adapter iterations.
-Not implemented in current Iteration 4 runtime.
+Примеры ниже являются целевыми/future examples. Текущий Iteration 13.1 runtime не поддерживает `data_sources.type: adapter` в `schema.yml`; product console сейчас получает данные через injected `ProductUiAdapter`, а не через schema data source adapter.
 
 ## BeeCap embedded example
 
@@ -1008,14 +1035,10 @@ security:
 
 auth:
   enabled: false
-  session:
-    cookie_name: beeui_session
-    secret_env: BEEUI_SESSION_SECRET
-    secure_cookie: false
-    same_site: lax
-  users:
-    source: local_file
-    file: config/users.yml
+  session_secret: ${BEEUI_SESSION_SECRET}
+  operator_token: ${BEEUI_OPERATOR_TOKEN}
+  admin_token: ${BEEUI_ADMIN_TOKEN}
+  cookie_secure: false
 
 product:
   mode: embedded
@@ -1233,14 +1256,10 @@ security:
 
 auth:
   enabled: false
-  session:
-    cookie_name: beeui_session
-    secret_env: BEEUI_SESSION_SECRET
-    secure_cookie: false
-    same_site: lax
-  users:
-    source: local_file
-    file: config/users.yml
+  session_secret: ${BEEUI_SESSION_SECRET}
+  operator_token: ${BEEUI_OPERATOR_TOKEN}
+  admin_token: ${BEEUI_ADMIN_TOKEN}
+  cookie_secure: false
 
 product:
   mode: embedded
@@ -1437,7 +1456,7 @@ BEEUI_HTTP_TOKEN=
 
 ## Fail-fast validation
 
-Current Iteration 4 fail-fast validation:
+Текущая fail-fast validation после Iteration 13.1:
 
 - `settings.yml` отсутствует;
 - `settings.yml` не YAML dict;
@@ -1445,16 +1464,21 @@ Current Iteration 4 fail-fast validation:
 - `web.port` вне диапазона;
 - `security.html_autoescape=false`;
 - `features.config_apply=true`, но `features.config_preview=false`;
+- `auth.enabled=true`, но отсутствует `session_secret`, `operator_token` или `admin_token`;
 - `schema.yml` отсутствует;
 - `schema.yml` не YAML dict;
 - invalid app/theme/layout/navigation/page fields;
+- invalid `app.locale`;
 - duplicate page ids/paths;
 - duplicate nav paths;
 - external nav links rejected;
 - reserved paths rejected;
-- `pages[].blocks` must be a list.
+- `pages[].blocks` must be a list;
+- invalid `pages[].blocks[].span`;
+- invalid `pages[].blocks[].size`;
+- mixed sizing keys в одном placement rejected.
 
-Planned/future fail-fast validation after block/data-source/adapter iterations:
+Future/product-side validation примеры:
 
 - `config/beeui.yml` as product integration schema;
 - unknown block references;
@@ -1472,7 +1496,8 @@ Planned/future fail-fast validation after block/data-source/adapter iterations:
 - artifact missing;
 - artifact corrupted;
 - JSONL row malformed;
-- optional block data unavailable.
+- optional block data unavailable;
+- adapter-backed `layout[]` содержит malformed sizing.
 
 В этих случаях UI должен показывать:
 
@@ -1480,6 +1505,8 @@ Planned/future fail-fast validation after block/data-source/adapter iterations:
 - degraded state;
 - warnings;
 - source artifact link, если доступен.
+
+Для adapter-backed `layout[]` malformed sizing должен degrade to `col-12`, а не вызывать fail-fast ошибку на всю страницу.
 
 # 6. Security rules
 
@@ -1564,8 +1591,7 @@ app = create_beeui_app(
     product_id="beecap",
     product_title="BeeCap",
     adapter=ProductUiAdapter(...),
-    settings_path="config/settings.yml",
-    ui_config_path="config/beeui.yml",
+    config_path="config/beeui.yml",
 )
 ```
 
@@ -1624,6 +1650,13 @@ security:
   html_autoescape: true
   assets_ext: false
 
+auth:
+  enabled: false
+  session_secret: ${BEEUI_SESSION_SECRET}
+  operator_token: ${BEEUI_OPERATOR_TOKEN}
+  admin_token: ${BEEUI_ADMIN_TOKEN}
+  cookie_secure: false
+
 product:
   mode: demo
   id: demo
@@ -1645,6 +1678,11 @@ app:
   title: BeeUI Demo
   product: demo
   logo_text: BeeUI
+  locale:
+    default: en
+    available:
+      - en
+      - ru
   theme:
     mode: dark
     primary: blue

@@ -1,10 +1,13 @@
 <!doctype html>
-<html lang="en" data-bs-theme="{{ theme.mode }}">
+<html lang="{{ locale|default('en') }}" data-bs-theme="{{ theme.mode }}">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{% block title %}BeeUI{% endblock %}</title>
-    <link rel="stylesheet" href="{{ route_prefix }}/static/vendor/tabler/css/tabler.min.css" />
+    <link
+      rel="stylesheet"
+      href="{{ route_prefix }}/static/vendor/tabler/css/tabler.min.css"
+    />
     <link rel="stylesheet" href="{{ route_prefix }}/static/css/beeui.css" />
   </head>
   <body class="{{ shell_classes }}">
@@ -12,9 +15,8 @@
 
     <div class="page beeui-page {{ layout.type_class }}">
       <div class="page-wrapper">
-        {% if layout.navbar_enabled %}
-        {% include "components/navbar.html" %}
-        {% endif %}
+        {% if layout.navbar_enabled %} {% include "components/navbar.html" %} {%
+        endif %}
 
         <main class="page-body" aria-label="Main content">
           {% block content %}{% endblock %}

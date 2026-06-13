@@ -1580,3 +1580,107 @@ def test_layout_new_templates_exist() -> None:
     ):
         path = Path(f"src/beeui_module/web/templates/components/layout/{name}.html")
         assert path.is_file(), f"Missing template: {path}"
+
+
+# Тест: span в adapter-backed layout рендерит правильный класс ширины
+def test_layout_span_sizing() -> None:
+    result = render_layout(
+        [
+            {"type": "metric_card", "title": "A", "value": "1", "span": 12},
+            {"type": "metric_card", "title": "B", "value": "2", "span": 6},
+            {"type": "metric_card", "title": "C", "value": "3", "span": 4},
+            {"type": "metric_card", "title": "D", "value": "4", "span": 3},
+        ]
+    )
+    assert result[0]["width_class"] == "col-12"
+    assert result[1]["width_class"] == "col-12 col-lg-6"
+    assert result[2]["width_class"] == "col-12 col-md-6 col-lg-4"
+    assert result[3]["width_class"] == "col-12 col-sm-6 col-lg-3"
+
+
+# Тест: size в adapter-backed layout рендерит правильный класс ширины
+def test_layout_size_sizing() -> None:
+    result = render_layout(
+        [
+            {"type": "metric_card", "title": "A", "value": "1", "size": "S"},
+            {"type": "metric_card", "title": "B", "value": "2", "size": "M"},
+            {"type": "metric_card", "title": "C", "value": "3", "size": "L"},
+            {"type": "metric_card", "title": "D", "value": "4", "size": "XL"},
+        ]
+    )
+    assert result[0]["width_class"] == "col-12 col-md-6 col-lg-4"  # S -> 4
+    assert result[1]["width_class"] == "col-12 col-lg-6"  # M -> 6
+    assert result[2]["width_class"] == "col-12 col-lg-8"  # L -> 8
+    assert result[3]["width_class"] == "col-12"  # XL -> 12
+
+
+# Тест: size case-insensitive
+def test_layout_size_case_insensitive() -> None:
+    result = render_layout(
+        [
+            {"type": "metric_card", "title": "A", "value": "1", "size": "s"},
+            {"type": "metric_card", "title": "B", "value": "2", "size": "m"},
+            {"type": "metric_card", "title": "C", "value": "3", "size": "l"},
+            {"type": "metric_card", "title": "D", "value": "4", "size": "xl"},
+        ]
+    )
+    assert result[0]["width_class"] == "col-12 col-md-6 col-lg-4"
+    assert result[1]["width_class"] == "col-12 col-lg-6"
+    assert result[2]["width_class"] == "col-12 col-lg-8"
+    assert result[3]["width_class"] == "col-12"
+
+
+# Тест: невалидный span в adapter-backed layout деградирует к default
+def test_layout_invalid_span_degrades() -> None:
+    result = render_layout(
+        [
+            {"type": "metric_card", "title": "A", "value": "1", "span": 99},
+            {"type": "metric_card", "title": "B", "value": "1", "span": "bad"},
+        ]
+    )
+    assert result[0]["width_class"] == "col-12"
+    assert result[1]["width_class"] == "col-12"
+
+
+# Тест: невалидный size в adapter-backed layout деградирует к default
+def test_layout_invalid_size_degrades() -> None:
+    result = render_layout(
+        [
+            {"type": "metric_card", "title": "A", "value": "1", "size": "XXL"},
+            {"type": "metric_card", "title": "B", "value": "1", "size": 1},
+        ]
+    )
+    assert result[0]["width_class"] == "col-12"
+    assert result[1]["width_class"] == "col-12"
+
+
+# Тест: конфликтующие sizing keys в adapter-backed layout деградируют к default
+def test_layout_conflicting_sizing_keys_degrades() -> None:
+    result = render_layout(
+        [
+            {"type": "metric_card", "title": "A", "value": "1", "width": 6, "span": 12},
+            {
+                "type": "metric_card",
+                "title": "B",
+                "value": "1",
+                "width": 3,
+                "size": "XL",
+            },
+            {"type": "metric_card", "title": "C", "value": "1", "span": 6, "size": "L"},
+        ]
+    )
+    assert result[0]["width_class"] == "col-12"
+    assert result[1]["width_class"] == "col-12"
+    assert result[2]["width_class"] == "col-12"
+
+
+# Тест: existing width remains backward-compatible
+def test_layout_width_backward_compatible() -> None:
+    result = render_layout(
+        [
+            {"type": "metric_card", "title": "A", "value": "1", "width": 12},
+            {"type": "metric_card", "title": "B", "value": "2", "width": 6},
+        ]
+    )
+    assert result[0]["width_class"] == "col-12"
+    assert result[1]["width_class"] == "col-12 col-lg-6"
