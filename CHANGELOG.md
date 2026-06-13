@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.18.0](https://github.com/beesyst/beeui/compare/beeui-v0.17.0...beeui-v0.18.0) (2026-06-13)
+
+
+### Features
+
+* **ui:** add dashboard layout primitives and locale seed ([#60](https://github.com/beesyst/beeui/issues/60)) ([e149aec](https://github.com/beesyst/beeui/commit/e149aec9966904a3f49a181f7115e86b6b971847))
+
 ## [0.17.0](https://github.com/beesyst/beeui/compare/beeui-v0.16.1...beeui-v0.17.0) (2026-06-11)
 
 
