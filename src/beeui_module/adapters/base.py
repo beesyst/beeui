@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, Protocol
+from typing import Any, Mapping, Protocol
 
 from beeui_module.adapters.envelopes import (
     AdapterErrorResult,
@@ -77,6 +77,13 @@ class ProductUiAdapterBase(ABC):
             UnavailableError("Venue dashboard is unavailable")
         )
 
+    def get_page(
+        self, page_id: str, query: Mapping[str, str]
+    ) -> AdapterResult | AdapterErrorResult:
+        return error_result_from_exception(
+            UnavailableError(f"Page {page_id} is unavailable")
+        )
+
     @abstractmethod
     def list_artifacts(self, run_id: str) -> AdapterResult | AdapterErrorResult:
         raise NotImplementedError
@@ -104,9 +111,7 @@ class ProductUiAdapterBase(ABC):
         expected_hash: str | None = None,
         actor: dict[str, str] | None = None,
     ) -> AdapterResult | AdapterErrorResult:
-        raise UnavailableError(
-            "Optional method apply_config_candidate is unavailable"
-        )
+        raise UnavailableError("Optional method apply_config_candidate is unavailable")
 
     def list_actions(self) -> AdapterResult | AdapterErrorResult:
         raise UnavailableError("Optional method list_actions is unavailable")

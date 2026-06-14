@@ -594,7 +594,8 @@ def test_component_catalog_url_tabs_use_query_active_state() -> None:
     response = client.get("/components/interface?tab=overview")
 
     assert response.status_code == 200
-    assert 'nav nav-tabs card-header-tabs' in response.text
+    assert 'class="nav' in response.text
+    assert "nav-tabs card-header-tabs" in response.text
     overview_active = re.search(
         r'href="[^"]*\?tab=overview"[^>]*class="[^"]*nav-link[^"]*active[^"]*"[^>]*aria-current="page"',
         response.text,
@@ -628,3 +629,671 @@ def test_component_catalog_url_tabs_invalid_tab_falls_back() -> None:
     assert details_active is not None, (
         "Details tab must be active when ?tab=nonexistent"
     )
+
+
+# Тест: generic dashboard technical details использует accordion, а не raw <details>
+def test_technical_details_uses_accordion_instead_of_details(tmp_path: Path) -> None:
+    from beeui_module.adapters.base import ProductUiAdapterBase
+    from beeui_module.adapters.envelopes import AdapterMetadata, ok_result
+    from beeui_module.web.app import create_beeui_app
+
+    class AccordionTestAdapter(ProductUiAdapterBase):
+        def __init__(self):
+            super().__init__(
+                AdapterMetadata(
+                    product_id="test",
+                    title="Test",
+                    version="1.0.0",
+                    capabilities=("dashboard",),
+                )
+            )
+
+        def get_dashboard(self):
+            return ok_result(
+                {
+                    "latest_run": {"id": "run_1", "status": "ok"},
+                    "summary": {"mode": "test"},
+                }
+            )
+
+        def list_runs(self):
+            return ok_result([])
+
+        def get_run(self, run_id):
+            return ok_result({"id": run_id})
+
+        def list_artifacts(self, run_id):
+            return ok_result([])
+
+        def read_artifact(self, run_id, artifact_id):
+            return ok_result({})
+
+        def get_config_read_model(self):
+            return ok_result({})
+
+    app = create_beeui_app(adapter=AccordionTestAdapter())
+    client = TestClient(app)
+    response = client.get("/")
+
+    assert response.status_code == 200
+    assert "<details" not in response.text
+    assert 'id="technical-details-accordion"' in response.text
+    assert 'class="accordion' in response.text
+    assert 'id="technical-details-accordion"' in response.text
+    assert 'class="accordion' in response.text
+    assert "Technical details" in response.text
+
+
+# Тест: generic dashboard technical details наследует accordion variant из config
+def test_technical_details_uses_configured_accordion_variant(tmp_path: Path) -> None:
+    from beeui_module.adapters.base import ProductUiAdapterBase
+    from beeui_module.adapters.envelopes import AdapterMetadata, ok_result
+    from beeui_module.pages.config import load_beeui_config
+    from beeui_module.web.app import create_beeui_app
+
+    class AccordionVariantAdapter(ProductUiAdapterBase):
+        def __init__(self):
+            super().__init__(
+                AdapterMetadata(
+                    product_id="test",
+                    title="Test",
+                    version="1.0.0",
+                    capabilities=("dashboard",),
+                )
+            )
+
+        def get_dashboard(self):
+            return ok_result(
+                {"latest_run": {"id": "run_1", "status": "ok"}, "summary": {}}
+            )
+
+        def list_runs(self):
+            return ok_result([])
+
+        def get_run(self, run_id):
+            return ok_result({"id": run_id})
+
+        def list_artifacts(self, run_id):
+            return ok_result([])
+
+        def read_artifact(self, run_id, artifact_id):
+            return ok_result({})
+
+        def get_config_read_model(self):
+            return ok_result({})
+
+    schema_path = tmp_path / "schema.yml"
+    schema_path.write_text(
+        Path("config/schema.yml")
+        .read_text(encoding="utf-8")
+        .replace(
+            "data_sources:\n  demo_dashboard:\n    type: demo\n\n",
+            "components:\n  accordion:\n    variant: flush\n\ndata_sources:\n  demo_dashboard:\n    type: demo\n\n",
+            1,
+        ),
+        encoding="utf-8",
+    )
+
+    ui_config = load_beeui_config(schema_path)
+    app = create_beeui_app(ui_config=ui_config, adapter=AccordionVariantAdapter())
+    client = TestClient(app)
+
+    response = client.get("/")
+
+    assert response.status_code == 200
+    assert 'class="accordion accordion-flush"' in response.text
+
+
+# Тест: custom page, объявленная в schema с path, рендерится через adapter get_page
+def _custom_page_schema(tmp_path: Path, custom_path: str) -> Path:
+    schema_path = tmp_path / "schema.yml"
+    schema_path.write_text(
+        "app:\n"
+        "  title: Test\n"
+        "  product: test\n"
+        "  logo_text: Test\n"
+        "  theme:\n"
+        "    mode: dark\n"
+        "    primary: blue\n"
+        "    base: gray\n"
+        "    font: sans-serif\n"
+        "    radius: 1\n"
+        "    density: default\n"
+        "  layout:\n"
+        "    type: vertical\n"
+        "    container: xl\n"
+        "    sidebar:\n"
+        "      variant: dark\n"
+        "      collapsed: false\n"
+        "    navbar:\n"
+        "      enabled: true\n"
+        "      variant: default\n"
+        "      sticky: false\n"
+        "\n"
+        "navigation:\n"
+        "  - title: Dashboard\n"
+        "    path: /\n"
+        "    icon: dashboard\n"
+        f"  - title: Custom\n"
+        f"    path: {custom_path}\n"
+        "    icon: file\n"
+        "\n"
+        "data_sources: {}\n"
+        "blocks: {}\n"
+        "pages:\n"
+        "  - id: dashboard\n"
+        "    path: /\n"
+        "    title: Dashboard\n"
+        "    subtitle: Demo\n"
+        "    blocks: []\n"
+        f"  - id: custom_page\n"
+        f"    path: {custom_path}\n"
+        "    title: Custom Page\n"
+        "    subtitle: Adapter-backed\n"
+        "    blocks: []\n",
+        encoding="utf-8",
+    )
+    return schema_path
+
+
+# Тест: custom page, объявленная в schema с path, рендерится через adapter get_page
+def test_custom_adapter_page_renders_through_adapter(tmp_path: Path) -> None:
+    from beeui_module.adapters.base import ProductUiAdapterBase
+    from beeui_module.adapters.envelopes import AdapterMetadata, ok_result
+    from beeui_module.web.app import create_beeui_app
+
+    class CustomPageTestAdapter(ProductUiAdapterBase):
+        def __init__(self):
+            super().__init__(
+                AdapterMetadata(
+                    product_id="test",
+                    title="Test",
+                    version="1.0.0",
+                    capabilities=("dashboard", "runs", "custom_pages"),
+                )
+            )
+
+        def get_dashboard(self):
+            return ok_result({})
+
+        def list_runs(self):
+            return ok_result([])
+
+        def get_run(self, run_id):
+            return ok_result({"id": run_id})
+
+        def list_artifacts(self, run_id):
+            return ok_result([])
+
+        def read_artifact(self, run_id, artifact_id):
+            return ok_result({})
+
+        def get_config_read_model(self):
+            return ok_result({})
+
+        def get_page(self, page_id, query):
+            return ok_result(
+                {
+                    "layout": [
+                        {
+                            "type": "metric_card",
+                            "title": "Custom Metric",
+                            "value": "42",
+                            "width": 6,
+                        },
+                    ]
+                }
+            )
+
+    ui_cfg_path = _custom_page_schema(tmp_path, "/rop")
+    app = create_beeui_app(
+        config_path=str(ui_cfg_path),
+        adapter=CustomPageTestAdapter(),
+    )
+    client = TestClient(app)
+    response = client.get("/rop")
+
+    assert response.status_code == 200
+    assert "Custom Page" in response.text
+    assert "Custom Metric" in response.text
+    assert "42" in response.text
+
+
+# Тест: если get_page возвращает ошибку, рендерится degraded/empty state для страницы
+def test_custom_adapter_page_unavailable_degraded(tmp_path: Path) -> None:
+    from beeui_module.adapters.base import ProductUiAdapterBase
+    from beeui_module.adapters.envelopes import AdapterMetadata, error_result, ok_result
+    from beeui_module.web.app import create_beeui_app
+
+    class DegradedPageTestAdapter(ProductUiAdapterBase):
+        def __init__(self):
+            super().__init__(
+                AdapterMetadata(
+                    product_id="test",
+                    title="Test",
+                    version="1.0.0",
+                )
+            )
+
+        def get_dashboard(self):
+            return ok_result({})
+
+        def list_runs(self):
+            return ok_result([])
+
+        def get_run(self, run_id):
+            return ok_result({"id": run_id})
+
+        def list_artifacts(self, run_id):
+            return ok_result([])
+
+        def read_artifact(self, run_id, artifact_id):
+            return ok_result({})
+
+        def get_config_read_model(self):
+            return ok_result({})
+
+        def get_page(self, page_id, query):
+            return error_result("unavailable", f"Page {page_id} is not available")
+
+    ui_cfg_path = _custom_page_schema(tmp_path, "/rop")
+    app = create_beeui_app(
+        config_path=str(ui_cfg_path),
+        adapter=DegradedPageTestAdapter(),
+    )
+    client = TestClient(app)
+    response = client.get("/rop")
+
+    assert response.status_code in (200, 503)
+    assert "Custom Page" in response.text
+
+
+# Тест: конфликты маршрутов с зарезервированными путями не допускаются для пользовательских страниц
+def test_custom_page_route_collision_reserved_rejected(tmp_path: Path) -> None:
+    ui_cfg_path = _custom_page_schema(tmp_path, "/health")
+
+    try:
+        load_beeui_config(ui_cfg_path)
+    except ValueError as exc:
+        assert str(exc) == "navigation[1].path uses a reserved path"
+    else:
+        raise AssertionError("load_beeui_config must reject reserved /health path")
+
+
+# Тест: GET пользовательской страницы не должен мутировать исходный конфиг (например, через resolver с side effect)
+def test_custom_page_get_does_not_mutate_config(tmp_path: Path) -> None:
+    from beeui_module.adapters.base import ProductUiAdapterBase
+    from beeui_module.adapters.envelopes import AdapterMetadata, ok_result
+    from beeui_module.web.app import create_beeui_app
+
+    class NoCustomPagesAdapter(ProductUiAdapterBase):
+        def __init__(self):
+            super().__init__(
+                AdapterMetadata(
+                    product_id="test",
+                    title="Test",
+                    version="1.0.0",
+                )
+            )
+
+        def get_dashboard(self):
+            return ok_result({})
+
+        def list_runs(self):
+            return ok_result([])
+
+        def get_run(self, run_id):
+            return ok_result({"id": run_id})
+
+        def list_artifacts(self, run_id):
+            return ok_result([])
+
+        def read_artifact(self, run_id, artifact_id):
+            return ok_result({})
+
+        def get_config_read_model(self):
+            return ok_result({})
+
+    ui_cfg_path = _custom_page_schema(tmp_path, "/rop")
+    original_content = ui_cfg_path.read_text(encoding="utf-8")
+
+    app = create_beeui_app(
+        config_path=str(ui_cfg_path),
+        adapter=NoCustomPagesAdapter(),
+    )
+    client = TestClient(app)
+    client.get("/rop")
+
+    assert ui_cfg_path.read_text(encoding="utf-8") == original_content
+
+
+# Тест: page tabs рендерятся с разметкой nav nav-tabs card-header-tabs
+def test_page_tabs_render_in_html(tmp_path: Path) -> None:
+    from beeui_module.web.app import create_beeui_app
+
+    schema_path = tmp_path / "schema.yml"
+    schema_path.write_text(
+        "app:\n"
+        "  title: Test\n"
+        "  product: test\n"
+        "  logo_text: Test\n"
+        "  theme:\n"
+        "    mode: dark\n"
+        "    primary: blue\n"
+        "    base: gray\n"
+        "    font: sans-serif\n"
+        "    radius: 1\n"
+        "    density: default\n"
+        "  layout:\n"
+        "    type: vertical\n"
+        "    container: xl\n"
+        "    sidebar:\n"
+        "      variant: dark\n"
+        "      collapsed: false\n"
+        "    navbar:\n"
+        "      enabled: true\n"
+        "      variant: default\n"
+        "      sticky: false\n"
+        "\n"
+        "navigation:\n"
+        "  - title: Dashboard\n"
+        "    path: /\n"
+        "    icon: dashboard\n"
+        "\n"
+        "data_sources: {}\n"
+        "blocks: {}\n"
+        "pages:\n"
+        "  - id: dashboard\n"
+        "    path: /\n"
+        "    title: Dashboard\n"
+        "    subtitle: Demo\n"
+        "    blocks: []\n"
+        "    tabs:\n"
+        "      variant: fill\n"
+        "      active_param: tab\n"
+        "      items:\n"
+        "        - id: overview\n"
+        "          title: Overview\n"
+        "          href: /?tab=overview\n"
+        "        - id: details\n"
+        "          title: Details\n"
+        "          href: /?tab=details\n",
+        encoding="utf-8",
+    )
+    ui_config = load_beeui_config(schema_path)
+    settings = load_settings(settings_path())
+    app = create_beeui_app(settings=settings, ui_config=ui_config)
+    client = TestClient(app)
+
+    response = client.get("/")
+    assert response.status_code == 200
+    assert "nav nav-tabs card-header-tabs nav-fill" in response.text
+    assert 'href="/?tab=overview"' in response.text
+    assert 'href="/?tab=details"' in response.text
+    overview_active = re.search(
+        r'href="/\?tab=overview"[^>]*class="[^"]*nav-link[^"]*active[^"]*"[^>]*aria-current="page"',
+        response.text,
+    )
+    details_active = re.search(
+        r'href="/\?tab=details"[^>]*class="[^"]*nav-link[^"]*active[^"]*"[^>]*aria-current="page"',
+        response.text,
+    )
+    assert overview_active is not None
+    assert details_active is None
+
+
+def test_page_tabs_disabled_query_falls_back_to_first_enabled(tmp_path: Path) -> None:
+    from beeui_module.web.app import create_beeui_app
+
+    schema_path = tmp_path / "schema.yml"
+    schema_path.write_text(
+        "app:\n"
+        "  title: Test\n"
+        "  product: test\n"
+        "  logo_text: Test\n"
+        "  theme:\n"
+        "    mode: dark\n"
+        "    primary: blue\n"
+        "    base: gray\n"
+        "    font: sans-serif\n"
+        "    radius: 1\n"
+        "    density: default\n"
+        "  layout:\n"
+        "    type: vertical\n"
+        "    container: xl\n"
+        "    sidebar:\n"
+        "      variant: dark\n"
+        "      collapsed: false\n"
+        "    navbar:\n"
+        "      enabled: true\n"
+        "      variant: default\n"
+        "      sticky: false\n"
+        "\n"
+        "navigation:\n"
+        "  - title: Dashboard\n"
+        "    path: /\n"
+        "    icon: dashboard\n"
+        "\n"
+        "data_sources: {}\n"
+        "blocks: {}\n"
+        "pages:\n"
+        "  - id: dashboard\n"
+        "    path: /\n"
+        "    title: Dashboard\n"
+        "    subtitle: Demo\n"
+        "    blocks: []\n"
+        "    tabs:\n"
+        "      variant: fill\n"
+        "      active_param: tab\n"
+        "      items:\n"
+        "        - id: overview\n"
+        "          title: Overview\n"
+        "          href: /?tab=overview\n"
+        "        - id: disabled_tab\n"
+        "          title: Disabled\n"
+        "          href: /?tab=disabled_tab\n"
+        "          disabled: true\n",
+        encoding="utf-8",
+    )
+    ui_config = load_beeui_config(schema_path)
+    settings = load_settings(settings_path())
+    app = create_beeui_app(settings=settings, ui_config=ui_config)
+    client = TestClient(app)
+
+    response = client.get("/?tab=disabled_tab")
+
+    assert response.status_code == 200
+    overview_active = re.search(
+        r'href="/\?tab=overview"[^>]*class="[^"]*nav-link[^"]*active[^"]*"[^>]*aria-current="page"',
+        response.text,
+    )
+    disabled_active = re.search(
+        r">\s*Disabled\s*</a>",
+        response.text,
+    )
+    disabled_span = re.search(
+        r'<span class="nav-link disabled" role="tab" aria-disabled="true">\s*Disabled\s*</span>',
+        response.text,
+    )
+    assert overview_active is not None
+    assert disabled_active is None
+    assert disabled_span is not None
+
+
+# Тест: page tabs href должен учитывать route_prefix из settings
+def test_page_tabs_href_respects_route_prefix(tmp_path: Path) -> None:
+    schema_path = tmp_path / "schema.yml"
+    schema_path.write_text(
+        "app:\n"
+        "  title: Test\n"
+        "  product: test\n"
+        "  logo_text: Test\n"
+        "  theme:\n"
+        "    mode: dark\n"
+        "    primary: blue\n"
+        "    base: gray\n"
+        "    font: sans-serif\n"
+        "    radius: 1\n"
+        "    density: default\n"
+        "  layout:\n"
+        "    type: vertical\n"
+        "    container: xl\n"
+        "    sidebar:\n"
+        "      variant: dark\n"
+        "      collapsed: false\n"
+        "    navbar:\n"
+        "      enabled: true\n"
+        "      variant: default\n"
+        "      sticky: false\n"
+        "\n"
+        "navigation:\n"
+        "  - title: Custom\n"
+        "    path: /rop\n"
+        "    icon: file\n"
+        "\n"
+        "data_sources: {}\n"
+        "blocks: {}\n"
+        "pages:\n"
+        "  - id: custom_page\n"
+        "    path: /rop\n"
+        "    title: Custom Page\n"
+        "    subtitle: Adapter-backed\n"
+        "    blocks: []\n"
+        "    tabs:\n"
+        "      active_param: tab\n"
+        "      items:\n"
+        "        - id: overview\n"
+        "          title: Overview\n"
+        "          href: /rop?tab=overview\n"
+        "        - id: details\n"
+        "          title: Details\n"
+        "          href: /rop?tab=details\n",
+        encoding="utf-8",
+    )
+    ui_config = load_beeui_config(schema_path)
+    settings = load_settings(settings_path())
+    prefixed_settings = {
+        **settings,
+        "web": {**settings["web"], "route_prefix": "/ui"},
+    }
+    app = create_beeui_app(settings=prefixed_settings, ui_config=ui_config)
+    client = TestClient(app)
+
+    response = client.get("/ui/rop")
+
+    assert response.status_code == 200
+    assert 'href="/ui/rop?tab=overview"' in response.text
+    assert 'href="/ui/rop?tab=details"' in response.text
+    assert 'href="/rop?tab=overview"' not in response.text
+
+
+# Тест: если get_page возвращает malformed payload, рендерится degraded/empty state для страницы
+def test_custom_adapter_page_malformed_payload_degrades(tmp_path: Path) -> None:
+    from beeui_module.adapters.base import ProductUiAdapterBase
+    from beeui_module.adapters.envelopes import AdapterMetadata, ok_result
+    from beeui_module.web.app import create_beeui_app
+
+    class MalformedPageAdapter(ProductUiAdapterBase):
+        def __init__(self):
+            super().__init__(
+                AdapterMetadata(
+                    product_id="test",
+                    title="Test",
+                    version="1.0.0",
+                    capabilities=("dashboard", "custom_pages"),
+                )
+            )
+
+        def get_dashboard(self):
+            return ok_result({})
+
+        def list_runs(self):
+            return ok_result([])
+
+        def get_run(self, run_id):
+            return ok_result({"id": run_id})
+
+        def list_artifacts(self, run_id):
+            return ok_result([])
+
+        def read_artifact(self, run_id, artifact_id):
+            return ok_result({})
+
+        def get_config_read_model(self):
+            return ok_result({})
+
+        def get_page(self, page_id, query):
+            return ok_result(["bad"])
+
+    ui_cfg_path = _custom_page_schema(tmp_path, "/rop")
+    app = create_beeui_app(
+        config_path=str(ui_cfg_path),
+        adapter=MalformedPageAdapter(),
+    )
+    client = TestClient(app)
+
+    response = client.get("/rop")
+
+    assert response.status_code == 502
+    assert "Adapter returned malformed payload" in response.text
+
+
+# Тест: если get_page возвращает payload с секретными данными, они редактируются перед рендером
+def test_custom_adapter_page_redacts_payload_before_render(tmp_path: Path) -> None:
+    from beeui_module.adapters.base import ProductUiAdapterBase
+    from beeui_module.adapters.envelopes import AdapterMetadata, ok_result
+    from beeui_module.web.app import create_beeui_app
+
+    class RedactedPageAdapter(ProductUiAdapterBase):
+        def __init__(self):
+            super().__init__(
+                AdapterMetadata(
+                    product_id="test",
+                    title="Test",
+                    version="1.0.0",
+                    capabilities=("dashboard", "custom_pages"),
+                )
+            )
+
+        def get_dashboard(self):
+            return ok_result({})
+
+        def list_runs(self):
+            return ok_result([])
+
+        def get_run(self, run_id):
+            return ok_result({"id": run_id})
+
+        def list_artifacts(self, run_id):
+            return ok_result([])
+
+        def read_artifact(self, run_id, artifact_id):
+            return ok_result({})
+
+        def get_config_read_model(self):
+            return ok_result({})
+
+        def get_page(self, page_id, query):
+            return ok_result(
+                {
+                    "layout": [
+                        {
+                            "type": "raw_json_panel",
+                            "title": "Debug",
+                            "data": {"api_key": "secret-value"},
+                        }
+                    ]
+                }
+            )
+
+    ui_cfg_path = _custom_page_schema(tmp_path, "/rop")
+    app = create_beeui_app(
+        config_path=str(ui_cfg_path),
+        adapter=RedactedPageAdapter(),
+    )
+    client = TestClient(app)
+
+    response = client.get("/rop")
+
+    assert response.status_code == 200
+    assert "secret-value" not in response.text

@@ -44,6 +44,33 @@
 - resolved locale (`locale`) в template context для всех HTML-страниц;
 - generic dashboard fallback: raw JSON в collapsible «Technical details», primary UX — summary/KPIs.
 
+## Iteration 13.2 — Generic adapter pages and configurable Tabler primitives
+
+Текущий результат — generic adapter-backed custom pages и configurable Tabler primitives для перехода BeeAgent/BeeCap на схему «BeeUI renders, Product decides».
+
+В Iteration 13.2 добавлены:
+
+- `components.tabs.variant` и `components.accordion.variant` в declarative UI schema;
+- fail-fast validation для component variants;
+- numeric aliases для variants с нормализацией в canonical string values;
+- page-level `pages[].tabs` config:
+  - `variant`;
+  - `active_param`;
+  - `items[]`;
+  - safe internal `href`;
+  - disabled tabs;
+  - duplicate tab id rejection;
+- route-prefix-aware tab href rendering;
+- `url_tabs` macro с variant classes, explicit `href`, active state, disabled state и `aria-current`;
+- `accordion` macro с deterministic ids и Tabler/Bootstrap-compatible markup;
+- generic dashboard `Technical details` через BeeUI accordion вместо raw `<details>`;
+- optional adapter method `get_page(page_id, query)`;
+- generic adapter-backed custom pages for non-reserved config pages;
+- adapter custom page payload redaction before HTML rendering;
+- malformed custom page payload degraded state;
+- reserved route collision protection, включая `/auth` namespace;
+- тестовое покрытие config validation, rendering, custom pages, degraded states и security constraints.
+
 ## Iteration 12.4
 
 Текущий результат — расширение adapter-backed `layout[]` contract для
@@ -122,6 +149,18 @@ adapter-backed типов блоков и отдельный `degraded` fallback
 - runtime-валидация adapter на соответствие минимальному протоколу `ProductUiAdapter`;
 - валидация mount path (безопасный путь, без path traversal);
 - проверка коллизии маршрутов при mount;
+- configurable component defaults:
+  - `components.tabs.variant`;
+  - `components.accordion.variant`;
+- page-level URL tabs через `pages[].tabs`;
+- safe internal tab href validation;
+- disabled tab fallback;
+- route-prefix-aware tab href rendering;
+- reusable `accordion` primitive;
+- generic adapter-backed custom pages через optional `adapter.get_page(page_id, query)`;
+- redaction adapter-backed custom page payloads before render;
+- malformed custom page payload degrades to explicit unavailable/error state;
+- reserved route protection for `/auth`;
 - embedded API тесты в `tests/test_embedded.py`;
 - generic adapter-backed layout[] block renderer c 17 block types и degraded fallback;
 - расширенный набор adapter-backed layout блоков (Iteration 12.4):
@@ -209,7 +248,7 @@ BeeUI сейчас поддерживает два разных block contract.
 - malformed sizing деградирует в `col-12`, не ломая страницу;
 - BeeUI не вычисляет product metrics, а только рендерит product-provided layout.
 
-Текущая web surface после Iteration 13.1:
+Текущая web surface после Iteration 13.2:
 
 - `GET /`
 - `GET /runs`
@@ -222,6 +261,10 @@ BeeUI сейчас поддерживает два разных block contract.
 - `GET /components/extra`
 - `GET /components/plugins`
 - `GET /health`
+- `GET /login`
+- `POST /login`
+- `POST /logout`
+- `GET /auth/csrf`
 - `GET /static/...`
 - `GET /static/vendor/tabler/css/tabler.min.css`
 - `GET /static/vendor/tabler/js/tabler.min.js`
@@ -233,11 +276,17 @@ BeeUI сейчас поддерживает два разных block contract.
 - `GET /runs/{run_id}/artifacts/{artifact_id}`
 - `GET /api/runs/{run_id}/artifacts`
 - `GET /api/runs/{run_id}/artifacts/{artifact_id}`
+- `GET /<configured-custom-page>`
+- `GET /<configured-custom-page>?tab=<tab_id>`
 
 При использовании `mount_beeui(parent, path="/ui")` маршруты доступны под `/ui/`:
 
 - `GET /ui/`
 - `GET /ui/health`
+- `GET /ui/login`
+- `POST /ui/login`
+- `POST /ui/logout`
+- `GET /ui/auth/csrf`
 - `GET /ui/static/...`
 - `GET /ui/runs`
 - `GET /ui/runs/{run_id}`
@@ -250,8 +299,11 @@ BeeUI сейчас поддерживает два разных block contract.
 - `GET /ui/runs/{run_id}/artifacts/{artifact_id}`
 - `GET /ui/api/runs/{run_id}/artifacts`
 - `GET /ui/api/runs/{run_id}/artifacts/{artifact_id}`
+- `GET /ui/<configured-custom-page>`
+- `GET /ui/<configured-custom-page>?tab=<tab_id>`
 
 При наличии adapter product console routes владеют `/` и `/runs`; без adapter сохраняется demo/schema mode.
+Generic custom page routes регистрируются только для non-reserved page paths, только при наличии adapter, и рендерятся через `adapter.get_page(page_id, query)`.
 
 Уже реализовано в Iteration 13:
 
@@ -380,7 +432,7 @@ MVP не пытается сразу стать полноценным Retool/We
 
 ## Что BeeUI делает
 
-В текущем состоянии после Iteration 13.1 BeeUI отвечает за:
+В текущем состоянии после Iteration 13.2 BeeUI отвечает за:
 
 - FastAPI app factory;
 - Jinja2 templates;
@@ -395,8 +447,12 @@ MVP не пытается сразу стать полноценным Retool/We
 - static/literal and resolver-backed dashboard blocks from `config/schema.yml`;
 - `app.locale` в `config/schema.yml` и resolved `locale` в template context;
 - allowlist override через `?lang=` с fallback к default locale;
+- configurable component defaults через `components.tabs.variant` и `components.accordion.variant`;
+- page-level URL tabs через `pages[].tabs`;
+- safe internal tab href validation, disabled tab fallback и route-prefix-aware tab href rendering;
 - `url_tabs` в component catalog как Jinja primitive для `nav nav-tabs card-header-tabs`;
-- generic dashboard fallback с collapsible `Technical details`;
+- reusable `accordion` primitive;
+- generic dashboard fallback отделяет raw/debug payload в BeeUI accordion `Technical details`;
 - generic product adapter contract v0 in `src/beeui_module/adapters/`;
 - BeeCap-compatible fixture/reference adapter for contract validation;
 - embedded app factory `create_beeui_app(...)`;
@@ -407,6 +463,10 @@ MVP не пытается сразу стать полноценным Retool/We
 - сохранение product metadata в `app.state.beeui_product`;
 - проверку mount path и route collision guard;
 - product console — HTML/JSON dashboard, runs, run detail и venue dashboard через adapter;
+- generic adapter-backed custom pages через optional `adapter.get_page(page_id, query)`;
+- redaction adapter-backed custom page payloads before render;
+- malformed custom page payload degraded state;
+- reserved route protection for `/auth`;
 - artifact browser — HTML/JSON list and preview через adapter;
 - JSON/JSONL/text bounded preview с malformed handling, preview limits и redaction;
 - stable read-only API envelope для product console routes и read-only API routes для артефактов;
@@ -722,7 +782,7 @@ BeeUI не должен получать прямую authority на tools/MCP/r
 
 Продукт импортирует BeeUI и монтирует его в своём web process.
 
-Текущий статус после Iteration 13.1:
+Текущий статус после Iteration 13.2:
 
 - generic adapter contract существует;
 - BeeCap fixture/reference adapter существует для contract validation;
@@ -739,8 +799,16 @@ BeeUI не должен получать прямую authority на tools/MCP/r
 - `app.locale.default` / `app.locale.available` поддерживаются в schema;
 - `?lang=` применяет locale только если значение входит в allowlist;
 - resolved `locale` пробрасывается в HTML templates и в `<html lang="{{ locale|default('en') }}">`;
+- configurable component defaults через `components.tabs.variant` и `components.accordion.variant`;
+- page-level URL tabs через `pages[].tabs`;
+- safe internal tab href validation, disabled tab fallback и route-prefix-aware tab href rendering;
 - `url_tabs` работает через обычные `<a href>` и active state по `?tab=`;
-- generic dashboard fallback показывает summary/KPIs/structured cards, а raw/debug payload уходит в collapsible `Technical details`;
+- reusable `accordion` primitive используется и в generic dashboard fallback;
+- generic dashboard fallback показывает summary/KPIs/structured cards, а raw/debug payload уходит в BeeUI accordion `Technical details`;
+- generic adapter-backed custom pages используют optional `get_page(page_id, query)` и рендерят только возвращённый `layout[]`;
+- adapter-backed custom page payload redaction выполняется до HTML render;
+- malformed custom page payload деgrades to explicit unavailable/error state;
+- reserved route protection включает `/auth`;
 - protected config/action POST stubs есть в BeeUI, но product semantics остаются за product adapter.
 
 Embedded example:
@@ -792,7 +860,8 @@ pages:
 - `page.id` must be unique;
 - `page.path` must be unique;
 - `navigation[].path` must reference declared page path;
-- reserved paths `/health`, `/static`, `/static/...` are rejected;
+- reserved paths `/health`, `/api`, `/auth`, `/venues`, `/login`, `/logout`, `/static`, `/components` are rejected;
+- reserved prefixes `/api/`, `/auth/`, `/venues/`, `/static/`, `/components/` are rejected;
 - `blocks` in page config is a list of block placements;
 - placement может использовать `width`, `span` или `size`;
 - `width` и `span` должны быть integer `1..12`;
@@ -801,6 +870,40 @@ pages:
 - placement c `block` ссылается на top-level block id;
 - placement `{id, enabled?}` используется для product-side page block references;
 - unknown block references are rejected fail-fast.
+
+Пример page-level URL tabs:
+
+```yaml
+pages:
+  - id: rop_dashboard
+    path: /rop
+    title: ROP Dashboard
+    subtitle: ROP operator dashboard
+    blocks: []
+    tabs:
+      variant: fill
+      active_param: tab
+      items:
+        - id: overview
+          title: Overview
+          href: /rop?tab=overview
+        - id: queue
+          title: Queue
+          href: /rop?tab=queue
+        - id: disabled
+          title: Disabled
+          href: /rop?tab=disabled
+          disabled: true
+```
+
+Правила для `pages[].tabs`:
+
+- `href` только safe internal link;
+- external/protocol-relative/javascript/mailto links rejected fail-fast;
+- duplicate tab ids rejected fail-fast;
+- invalid active query falls back to first enabled tab;
+- disabled tab cannot become active;
+- route prefix applies automatically during render.
 
 ### Blocks
 
@@ -966,9 +1069,11 @@ Iteration 12.1 добавляет optional presentation contract:
 - product adapter остаётся владельцем product semantics;
 - при отсутствии `layout[]` используется generic fallback renderer.
 
-Текущий contract v0 после Iteration 12:
+Текущий contract v0 после Iteration 13.2:
 
 ```python
+from typing import Mapping
+
 class ProductUiAdapter:
   # required read-only
   def get_dashboard(self) -> AdapterResult | AdapterErrorResult: ...
@@ -987,6 +1092,11 @@ class ProductUiAdapter:
       self,
       venue_id: str,
   ) -> AdapterResult | AdapterErrorResult: ...
+  def get_page(
+      self,
+      page_id: str,
+      query: Mapping[str, str],
+  ) -> AdapterResult | AdapterErrorResult: ...
   def validate_config_candidate(
       self,
       candidate: dict,
@@ -1004,8 +1114,10 @@ class ProductUiAdapter:
   ) -> AdapterResult | AdapterErrorResult: ...
 ```
 
-После Iteration 12 BeeUI вызывает adapter через embedded mount/app factory layer
-для product console и artifact browser routes.
+`get_page()` optional: default `ProductUiAdapterBase.get_page()` возвращает unavailable, существующие adapters не обязаны реализовывать метод, product adapter владеет domain semantics страницы, а BeeUI только рендерит returned `layout[]`.
+
+После Iteration 13.2 BeeUI вызывает adapter через embedded mount/app factory layer
+для product console, generic custom pages и artifact browser routes.
 
 Product adapter решает, что можно читать/делать.
 
@@ -1314,7 +1426,7 @@ uv run --frozen --extra dev python config/start.py web
 
 ## Целевая структура проекта
 
-Актуальные ключевые файлы после Iteration 13.1:
+Актуальные ключевые файлы после Iteration 13.2:
 
 ```text
 config/
@@ -1995,6 +2107,7 @@ Visual builder later.
 ```text
 Iteration 13 — Auth/session/CSRF boundary for config/action routes MVP — ЗАВЕРШЕНО
 Iteration 13.1 — Dashboard layout primitives, URL tabs and locale seed — ЗАВЕРШЕНО
+Iteration 13.2 — Generic adapter pages and configurable Tabler primitives — ЗАВЕРШЕНО
 ```
 
 Работает:
@@ -2032,8 +2145,16 @@ uv run pytest -q
 - layout links валидируются как safe internal links и учитывают route prefix / embedded mount path;
 - `app.locale` доступен в `config/schema.yml`;
 - `?lang=` работает как allowlist override и invalid `lang` fallback к default;
-- `url_tabs` доступны в component catalog;
-- generic dashboard fallback отделяет raw/debug payload в collapsible `Technical details`;
+- `components.tabs.variant` и `components.accordion.variant` доступны в declarative UI schema;
+- `pages[].tabs` поддерживает variant, active_param, explicit internal href и disabled tabs;
+- `url_tabs` доступны в component catalog и page-level tabs;
+- tab href валидируются как safe internal links и автоматически учитывают route prefix;
+- disabled tab не становится active и invalid query fallback идёт к first enabled tab;
+- generic dashboard fallback отделяет raw/debug payload в BeeUI accordion `Technical details`;
+- reusable `accordion` primitive используется в generic dashboard fallback и configurable UI primitives;
+- generic adapter-backed custom pages работают через optional `adapter.get_page(page_id, query)`;
+- payload custom pages редактируется до HTML render, malformed payload рендерится как explicit unavailable/error state;
+- reserved route protection включает `/auth`, а custom adapter pages не shadowed для `/` и `/runs` при наличии adapter;
 - реальные локальные скомпилированные CSS/JS из `@tabler/core@1.4.0` поставляются как локальные статические ресурсы пакета;
 - самодельный слой совместимости `tabler-compatible` удалён из текущей runtime-поверхности;
 - CSS BeeUI используется как контролируемый слой оформления продукта поверх Tabler, а не как второй CSS-фреймворк;

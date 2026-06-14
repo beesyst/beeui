@@ -48,6 +48,91 @@ class LayoutConfig:
     navbar: NavbarConfig
 
 
+# Оформления для Tabs и Accordion
+TABS_VARIANTS = frozenset(
+    {"default", "reverse", "fill", "icons", "fill_icons", "dropdown"}
+)
+ACCORDION_VARIANTS = frozenset(
+    {"default", "flush", "tabs", "inverted", "inverted_plus", "icons"}
+)
+TABS_VARIANT_NUMERIC: dict[int, str] = {
+    1: "default",
+    2: "reverse",
+    3: "icons",
+    4: "dropdown",
+    5: "fill",
+    6: "fill_icons",
+}
+ACCORDION_VARIANT_NUMERIC: dict[int, str] = {
+    1: "default",
+    2: "flush",
+    3: "tabs",
+    4: "inverted",
+    5: "inverted_plus",
+    6: "icons",
+}
+
+
+# Нормализация вариантов оформления для Tabs и Accordion, поддерживающая как строковые, так и числовые варианты
+def normalize_tabs_variant(variant: str | int) -> str:
+    if isinstance(variant, int):
+        if variant not in TABS_VARIANT_NUMERIC:
+            raise ValueError(f"Invalid tabs variant: {variant}")
+        return TABS_VARIANT_NUMERIC[variant]
+    if variant not in TABS_VARIANTS:
+        raise ValueError(f"Invalid tabs variant: {variant}")
+    return variant
+
+
+# Аналогичная функция для Accordion
+def normalize_accordion_variant(variant: str | int) -> str:
+    if isinstance(variant, int):
+        if variant not in ACCORDION_VARIANT_NUMERIC:
+            raise ValueError(f"Invalid accordion variant: {variant}")
+        return ACCORDION_VARIANT_NUMERIC[variant]
+    if variant not in ACCORDION_VARIANTS:
+        raise ValueError(f"Invalid accordion variant: {variant}")
+    return variant
+
+
+# Конфигурация для переиспользуемых компонентов, таких как Tabs и Accordion, с нормализацией вариантов оформления
+@dataclass(frozen=True)
+class TabsComponentConfig:
+    variant: str = "default"
+
+
+# Конфигурация для Accordion компонента, с нормализацией вариантов оформления
+@dataclass(frozen=True)
+class AccordionComponentConfig:
+    variant: str = "default"
+
+
+# Общая конфигурация для всех переиспользуемых компонентов, с дефолтными настройками для Tabs и Accordion
+@dataclass(frozen=True)
+class ComponentConfig:
+    tabs: TabsComponentConfig = field(default_factory=TabsComponentConfig)
+    accordion: AccordionComponentConfig = field(
+        default_factory=AccordionComponentConfig
+    )
+
+
+# Элемент конфигурации таба на странице
+@dataclass(frozen=True)
+class PageTabsItem:
+    tab_id: str
+    title: str
+    href: str
+    disabled: bool = False
+
+
+# Конфигурация табов на странице, с дефолтным вариантом оформления и параметром для определения активного таба через query param
+@dataclass(frozen=True)
+class PageTabsConfig:
+    variant: str = "default"
+    active_param: str = "tab"
+    items: tuple[PageTabsItem, ...] = field(default_factory=tuple)
+
+
 # Элемент навигации: либо ссылка на страницу, либо группа children
 @dataclass(frozen=True)
 class BeeUiNavigationItem:
@@ -66,6 +151,7 @@ class BeeUiPage:
     title: str
     subtitle: str | None
     blocks: list[BlockPlacement]
+    tabs: PageTabsConfig | None = None
 
 
 # Полная read-only конфигурация BeeUI, собранная из schema.yml
@@ -81,3 +167,4 @@ class BeeUiConfig:
     data_sources: dict[str, DataSourceDefinition]
     blocks: dict[str, BlockDefinition]
     pages: list[BeeUiPage]
+    components: ComponentConfig = field(default_factory=ComponentConfig)

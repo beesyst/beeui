@@ -376,23 +376,66 @@ def test_load_beeui_config_rejects_external_links_in_links_card(tmp_path: Path) 
         )
 
 
-# Тест: /health зарезервирован и не может быть page/navigation path
-def test_load_beeui_config_rejects_reserved_health_path(tmp_path: Path) -> None:
-    config_path = _write_config(
-        tmp_path,
-        _base_config().replace(
-            "        path: /runs\n        icon: runs\n",
-            "        path: /health\n        icon: runs\n",
-            1,
-        ),
-    )
+# Тест: reserved internal routes отклоняются fail-fast уже на validation
+def test_load_beeui_config_rejects_reserved_navigation_paths(tmp_path: Path) -> None:
+    for reserved_path in (
+        "/health",
+        "/api",
+        "/auth",
+        "/venues",
+        "/login",
+        "/logout",
+        "/static",
+        "/components",
+    ):
+        config_path = _write_config(
+            tmp_path,
+            _base_config().replace(
+                "        path: /runs\n        icon: runs\n",
+                f"        path: {reserved_path}\n        icon: runs\n",
+                1,
+            ),
+        )
 
-    try:
-        load_beeui_config(config_path)
-    except ValueError as exc:
-        assert str(exc) == "navigation[0].children[1].path uses a reserved path"
-    else:
-        raise AssertionError("load_beeui_config must reject reserved /health path")
+        try:
+            load_beeui_config(config_path)
+        except ValueError as exc:
+            assert str(exc) == "navigation[0].children[1].path uses a reserved path"
+        else:
+            raise AssertionError(
+                f"load_beeui_config must reject reserved path {reserved_path}"
+            )
+
+
+# Тест: reserved internal routes для страниц отклоняются fail-fast уже на validation
+def test_load_beeui_config_rejects_reserved_page_paths(tmp_path: Path) -> None:
+    for reserved_path in (
+        "/health",
+        "/api",
+        "/auth",
+        "/venues",
+        "/login",
+        "/logout",
+        "/static",
+        "/components",
+    ):
+        config_path = _write_config(
+            tmp_path,
+            _base_config().replace(
+                "  - id: runs\n    path: /runs\n",
+                f"  - id: runs\n    path: {reserved_path}\n",
+                1,
+            ),
+        )
+
+        try:
+            load_beeui_config(config_path)
+        except ValueError as exc:
+            assert str(exc) == "pages[1].path uses a reserved path"
+        else:
+            raise AssertionError(
+                f"load_beeui_config must reject reserved page path {reserved_path}"
+            )
 
 
 # Тест: /components зарезервирован для internal component catalog
@@ -471,6 +514,25 @@ def test_load_beeui_config_rejects_reserved_static_prefix(tmp_path: Path) -> Non
         assert str(exc) == "navigation[0].children[1].path uses a reserved path"
     else:
         raise AssertionError("load_beeui_config must reject reserved /static/... path")
+
+
+# Тест: /auth/... зарезервирован для BeeUI auth routes
+def test_load_beeui_config_rejects_reserved_auth_prefix(tmp_path: Path) -> None:
+    config_path = _write_config(
+        tmp_path,
+        _base_config().replace(
+            "        path: /runs\n        icon: runs\n",
+            "        path: /auth/csrf\n        icon: runs\n",
+            1,
+        ),
+    )
+
+    try:
+        load_beeui_config(config_path)
+    except ValueError as exc:
+        assert str(exc) == "navigation[0].children[1].path uses a reserved path"
+    else:
+        raise AssertionError("load_beeui_config must reject reserved /auth/... path")
 
 
 # Тест: pages[].blocks[] принимает {id, enabled} page block ref
@@ -947,4 +1009,340 @@ def test_schema_locale_default_not_in_available(tmp_path: Path) -> None:
     except ValueError as exc:
         assert "must be in app.locale.available" in str(exc)
     else:
-        raise AssertionError("load_beeui_config must reject locale default not in available")
+        raise AssertionError(
+            "load_beeui_config must reject locale default not in available"
+        )
+
+
+# Тест: components.tabs.variant принимает valid value
+def _minimal_schema() -> str:
+    return (
+        "app:\n"
+        "  title: Test\n"
+        "  product: test\n"
+        "  logo_text: Test\n"
+        "  theme:\n"
+        "    mode: dark\n"
+        "    primary: blue\n"
+        "    base: gray\n"
+        "    font: sans-serif\n"
+        "    radius: 1\n"
+        "    density: default\n"
+        "  layout:\n"
+        "    type: vertical\n"
+        "    container: xl\n"
+        "    sidebar:\n"
+        "      variant: dark\n"
+        "      collapsed: false\n"
+        "    navbar:\n"
+        "      enabled: true\n"
+        "      variant: default\n"
+        "      sticky: false\n"
+        "\n"
+        "navigation:\n"
+        "  - title: Dashboard\n"
+        "    path: /\n"
+        "    icon: dashboard\n"
+        "\n"
+        "data_sources: {}\n"
+        "blocks: {}\n"
+        "pages:\n"
+        "  - id: dashboard\n"
+        "    path: /\n"
+        "    title: Dashboard\n"
+        "    subtitle: Demo\n"
+        "    blocks: []\n"
+    )
+
+
+# Тест: components.tabs.variant принимает valid value
+def test_components_tabs_variant_valid(tmp_path: Path) -> None:
+    content = _minimal_schema().replace(
+        "data_sources: {}\n",
+        "components:\n  tabs:\n    variant: fill\n\ndata_sources: {}\n",
+        1,
+    )
+    cfg = load_beeui_config(_write_config(tmp_path, content))
+    assert cfg.components.tabs.variant == "fill"
+
+
+# Тест: components.tabs.variant принимает numeric alias и нормализуется
+def test_components_tabs_variant_numeric_alias_normalizes(tmp_path: Path) -> None:
+    content = _minimal_schema().replace(
+        "data_sources: {}\n",
+        "components:\n  tabs:\n    variant: 4\n\ndata_sources: {}\n",
+        1,
+    )
+    cfg = load_beeui_config(_write_config(tmp_path, content))
+    assert cfg.components.tabs.variant == "dropdown"
+
+
+# Тест: components.tabs.variant с невалидным значением отклоняется с ошибкой
+def test_components_tabs_variant_invalid_fails_fast(tmp_path: Path) -> None:
+    content = _minimal_schema().replace(
+        "data_sources: {}\n",
+        "components:\n  tabs:\n    variant: bogus\n\ndata_sources: {}\n",
+        1,
+    )
+    try:
+        load_beeui_config(_write_config(tmp_path, content))
+    except ValueError as exc:
+        assert "bogus" in str(exc)
+    else:
+        raise AssertionError("load_beeui_config must reject invalid tabs variant")
+
+
+# Тест: components.tabs.variant с невалидным numeric alias отклоняется с ошибкой
+def test_components_tabs_variant_invalid_numeric_fails_fast(tmp_path: Path) -> None:
+    content = _minimal_schema().replace(
+        "data_sources: {}\n",
+        "components:\n  tabs:\n    variant: 99\n\ndata_sources: {}\n",
+        1,
+    )
+    try:
+        load_beeui_config(_write_config(tmp_path, content))
+    except ValueError as exc:
+        assert "99" in str(exc)
+    else:
+        raise AssertionError(
+            "load_beeui_config must reject invalid numeric tabs variant"
+        )
+
+
+# Тест: components.accordion.variant принимает valid value
+def test_components_accordion_variant_valid(tmp_path: Path) -> None:
+    content = _minimal_schema().replace(
+        "data_sources: {}\n",
+        "components:\n  accordion:\n    variant: flush\n\ndata_sources: {}\n",
+        1,
+    )
+    cfg = load_beeui_config(_write_config(tmp_path, content))
+    assert cfg.components.accordion.variant == "flush"
+
+
+# Тест: components.accordion.variant принимает numeric alias и нормализуется
+def test_components_accordion_variant_numeric_alias_normalizes(tmp_path: Path) -> None:
+    content = _minimal_schema().replace(
+        "data_sources: {}\n",
+        "components:\n  accordion:\n    variant: 2\n\ndata_sources: {}\n",
+        1,
+    )
+    cfg = load_beeui_config(_write_config(tmp_path, content))
+    assert cfg.components.accordion.variant == "flush"
+
+
+# Тест: components.accordion.variant с невалидным значением отклоняется с ошибкой
+def test_components_accordion_variant_invalid_fails_fast(tmp_path: Path) -> None:
+    content = _minimal_schema().replace(
+        "data_sources: {}\n",
+        "components:\n  accordion:\n    variant: bogus\n\ndata_sources: {}\n",
+        1,
+    )
+    try:
+        load_beeui_config(_write_config(tmp_path, content))
+    except ValueError as exc:
+        assert "bogus" in str(exc)
+    else:
+        raise AssertionError("load_beeui_config must reject invalid accordion variant")
+
+
+# Тест: components.accordion.variant с невалидным numeric alias отклоняется с ошибкой
+def test_components_accordion_variant_invalid_numeric_fails_fast(
+    tmp_path: Path,
+) -> None:
+    content = _minimal_schema().replace(
+        "data_sources: {}\n",
+        "components:\n  accordion:\n    variant: 99\n\ndata_sources: {}\n",
+        1,
+    )
+    try:
+        load_beeui_config(_write_config(tmp_path, content))
+    except ValueError as exc:
+        assert "99" in str(exc)
+    else:
+        raise AssertionError(
+            "load_beeui_config must reject invalid numeric accordion variant"
+        )
+
+
+# Тест: components без указания variant использует дефолтные значения
+def test_components_missing_uses_defaults(tmp_path: Path) -> None:
+    cfg = load_beeui_config(_write_config(tmp_path, _minimal_schema()))
+    assert cfg.components.tabs.variant == "default"
+    assert cfg.components.accordion.variant == "default"
+
+
+# Тест: page.tabs с valid config загружается корректно
+def _schema_with_page_tabs(page_tabs_yaml: str) -> str:
+    return (
+        "app:\n"
+        "  title: Test\n"
+        "  product: test\n"
+        "  logo_text: Test\n"
+        "  theme:\n"
+        "    mode: dark\n"
+        "    primary: blue\n"
+        "    base: gray\n"
+        "    font: sans-serif\n"
+        "    radius: 1\n"
+        "    density: default\n"
+        "  layout:\n"
+        "    type: vertical\n"
+        "    container: xl\n"
+        "    sidebar:\n"
+        "      variant: dark\n"
+        "      collapsed: false\n"
+        "    navbar:\n"
+        "      enabled: true\n"
+        "      variant: default\n"
+        "      sticky: false\n"
+        "\n"
+        "navigation:\n"
+        "  - title: Dashboard\n"
+        "    path: /\n"
+        "    icon: dashboard\n"
+        "\n"
+        "data_sources: {}\n"
+        "blocks: {}\n"
+        "pages:\n"
+        "  - id: dashboard\n"
+        "    path: /\n"
+        "    title: Dashboard\n"
+        "    subtitle: Demo\n"
+        "    blocks: []\n"
+        f"{page_tabs_yaml}\n"
+    )
+
+
+# Тест: page.tabs с valid config загружается корректно
+def test_page_tabs_valid_config(tmp_path: Path) -> None:
+    content = _schema_with_page_tabs(
+        "  - id: rop\n"
+        "    path: /rop\n"
+        "    title: ROP\n"
+        "    subtitle: ROP dashboard\n"
+        "    blocks: []\n"
+        "    tabs:\n"
+        "      variant: fill\n"
+        "      active_param: tab\n"
+        "      items:\n"
+        "        - id: overview\n"
+        "          title: Overview\n"
+        "          href: /rop?tab=overview\n"
+        "        - id: queue\n"
+        "          title: Queue\n"
+        "          href: /rop?tab=queue\n"
+    )
+    cfg = load_beeui_config(_write_config(tmp_path, content))
+    rop_page = cfg.pages[1]
+    assert rop_page.tabs is not None
+    assert rop_page.tabs.variant == "fill"
+    assert rop_page.tabs.active_param == "tab"
+    assert len(rop_page.tabs.items) == 2
+    assert rop_page.tabs.items[0].tab_id == "overview"
+    assert rop_page.tabs.items[1].href == "/rop?tab=queue"
+
+
+# Тест: page.tabs.variant принимает numeric alias и нормализуется
+def test_page_tabs_numeric_variant_alias_normalizes(tmp_path: Path) -> None:
+    content = _schema_with_page_tabs(
+        "  - id: rop\n"
+        "    path: /rop\n"
+        "    title: ROP\n"
+        "    subtitle: ROP dashboard\n"
+        "    blocks: []\n"
+        "    tabs:\n"
+        "      variant: 5\n"
+        "      items:\n"
+        "        - id: overview\n"
+        "          title: Overview\n"
+        "          href: /rop?tab=overview\n"
+    )
+    cfg = load_beeui_config(_write_config(tmp_path, content))
+    assert cfg.pages[1].tabs is not None
+    assert cfg.pages[1].tabs.variant == "fill"
+
+
+# Тест: page.tabs с duplicate tab ids fail fast
+def test_page_tabs_duplicate_ids_fail_fast(tmp_path: Path) -> None:
+    content = _schema_with_page_tabs(
+        "  - id: rop\n"
+        "    path: /rop\n"
+        "    title: ROP\n"
+        "    subtitle: ROP dashboard\n"
+        "    blocks: []\n"
+        "    tabs:\n"
+        "      items:\n"
+        "        - id: overview\n"
+        "          title: Overview\n"
+        "          href: /rop?tab=overview\n"
+        "        - id: overview\n"
+        "          title: Queue\n"
+        "          href: /rop?tab=queue\n"
+    )
+    try:
+        load_beeui_config(_write_config(tmp_path, content))
+    except ValueError as exc:
+        assert "Duplicate tab id" in str(exc)
+    else:
+        raise AssertionError("load_beeui_config must reject duplicate tab ids")
+
+
+# Тест: page.tabs.variant с невалидным numeric alias отклоняется с ошибкой
+def test_page_tabs_invalid_numeric_variant_fails_fast(tmp_path: Path) -> None:
+    content = _schema_with_page_tabs(
+        "  - id: rop\n"
+        "    path: /rop\n"
+        "    title: ROP\n"
+        "    subtitle: ROP dashboard\n"
+        "    blocks: []\n"
+        "    tabs:\n"
+        "      variant: 99\n"
+        "      items:\n"
+        "        - id: overview\n"
+        "          title: Overview\n"
+        "          href: /rop?tab=overview\n"
+    )
+    try:
+        load_beeui_config(_write_config(tmp_path, content))
+    except ValueError as exc:
+        assert "99" in str(exc)
+    else:
+        raise AssertionError(
+            "load_beeui_config must reject invalid numeric page tabs variant"
+        )
+
+
+# Тест: page.tabs с небезопасным href отклоняется с ошибкой
+def test_page_tabs_unsafe_href_rejected(tmp_path: Path) -> None:
+    for unsafe_href in (
+        "http://evil.com",
+        "https://evil.com",
+        "//evil.com",
+        "javascript:alert(1)",
+        "mailto:test@test.com",
+    ):
+        content = _schema_with_page_tabs(
+            "  - id: rop\n"
+            "    path: /rop\n"
+            "    title: ROP\n"
+            "    subtitle: ROP dashboard\n"
+            "    blocks: []\n"
+            "    tabs:\n"
+            "      items:\n"
+            "        - id: overview\n"
+            "          title: Overview\n"
+            f"          href: {unsafe_href}\n"
+        )
+        try:
+            load_beeui_config(_write_config(tmp_path, content))
+        except ValueError as exc:
+            assert (
+                "href must not" in str(exc)
+                or "href must start" in str(exc)
+                or "href must be an internal link" in str(exc)
+            )
+        else:
+            raise AssertionError(
+                f"load_beeui_config must reject unsafe href: {unsafe_href}"
+            )

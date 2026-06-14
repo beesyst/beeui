@@ -22,7 +22,10 @@ from beeui_module.pages.component_catalog import register_component_catalog_rout
 from beeui_module.pages.config import load_beeui_config
 from beeui_module.pages.models import BeeUiConfig
 from beeui_module.pages.product_console import register_product_console_routes
-from beeui_module.pages.router import register_configured_pages
+from beeui_module.pages.router import (
+    register_adapter_custom_pages,
+    register_configured_pages,
+)
 
 
 # Нормализация route_prefix для корректного формирования маршрутов
@@ -254,7 +257,10 @@ def create_beeui_app(
 
     health_path = f"{route_prefix}/health" if route_prefix else "/health"
 
+    from beeui_module.pages.router import RESERVED_CUSTOM_PAGE_PATHS
+
     excluded_paths: set[str] = set()
+    adapter_custom_paths: set[str] = set()
     if adapter is not None:
         register_product_console_routes(
             app=app,
@@ -266,6 +272,16 @@ def create_beeui_app(
         )
         excluded_paths = {"/", "/runs"}
 
+        for page in resolved_ui_config.pages:
+            if page.path in excluded_paths:
+                continue
+            if page.path in RESERVED_CUSTOM_PAGE_PATHS:
+                continue
+            adapter_custom_paths.add(page.path)
+
+    always_excluded = RESERVED_CUSTOM_PAGE_PATHS - {"/", "/runs"}
+    merged_excluded = excluded_paths | adapter_custom_paths | always_excluded
+
     register_configured_pages(
         app=app,
         templates=templates,
@@ -273,8 +289,19 @@ def create_beeui_app(
         ui_config=resolved_ui_config,
         product_title=product_meta["title"],
         product_id=product_meta["id"],
-        excluded_paths=excluded_paths,
+        excluded_paths=merged_excluded,
     )
+
+    if adapter is not None and adapter_custom_paths:
+        register_adapter_custom_pages(
+            app=app,
+            templates=templates,
+            route_prefix=route_prefix,
+            ui_config=resolved_ui_config,
+            product_title=product_meta["title"],
+            product_id=product_meta["id"],
+            excluded_paths=excluded_paths,
+        )
 
     register_component_catalog_routes(
         app=app,

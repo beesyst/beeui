@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 from typing import Any
+from urllib.parse import unquote, urlsplit
 
 import yaml
 
@@ -17,20 +18,27 @@ from beeui_module.data.models import (
     DataSourceDefinition,
 )
 from beeui_module.pages.models import (
+    ACCORDION_VARIANTS,
+    TABS_VARIANTS,
+    AccordionComponentConfig,
     BeeUiConfig,
     BeeUiNavigationItem,
     BeeUiPage,
+    ComponentConfig,
     LayoutConfig,
     LocaleConfig,
     NavbarConfig,
+    PageTabsConfig,
+    PageTabsItem,
     SidebarConfig,
+    TabsComponentConfig,
     ThemeConfig,
+    normalize_accordion_variant,
+    normalize_tabs_variant,
 )
 
 _SAFE_IDENTIFIER_RE = re.compile(r"^[a-z][a-z0-9_-]*$")
 _SAFE_SEGMENT_RE = re.compile(r"^[a-z0-9][a-z0-9._-]*$")
-_RESERVED_PATHS = {"/health", "/static", "/components"}
-_RESERVED_PREFIXES = ("/static/", "/components/")
 _THEME_MODES = {"light", "dark", "auto"}
 _THEME_PRIMARYS = {
     "blue",
@@ -53,6 +61,23 @@ _LAYOUT_TYPES = {"vertical"}
 _LAYOUT_CONTAINERS = {"xl", "fluid"}
 _LAYOUT_SIDEBAR_VARIANTS = {"default", "dark"}
 _LAYOUT_NAVBAR_VARIANTS = {"default", "dark"}
+_RESERVED_PATHS = {
+    "/health",
+    "/api",
+    "/auth",
+    "/venues",
+    "/login",
+    "/logout",
+    "/static",
+    "/components",
+}
+_RESERVED_PREFIXES = (
+    "/api/",
+    "/auth/",
+    "/venues/",
+    "/static/",
+    "/components/",
+)
 
 
 # Загрузка schema.yml и сбор валидированной BeeUiConfig
@@ -66,7 +91,7 @@ def load_beeui_config(config_path: Path) -> BeeUiConfig:
 
     _validate_exact_keys(
         payload,
-        {"app", "navigation", "data_sources", "blocks", "pages"},
+        {"app", "navigation", "data_sources", "blocks", "pages", "components"},
         "root",
     )
 
@@ -92,9 +117,7 @@ def load_beeui_config(config_path: Path) -> BeeUiConfig:
             {"default", "available"},
             "app.locale",
         )
-        locale_default = _required_non_empty_string(
-            locale_cfg, "default", "app.locale"
-        )
+        locale_default = _required_non_empty_string(locale_cfg, "default", "app.locale")
         available_raw = locale_cfg.get("available")
         if not isinstance(available_raw, list) or not available_raw:
             raise ValueError("app.locale.available must be a non-empty list")
@@ -200,6 +223,8 @@ def load_beeui_config(config_path: Path) -> BeeUiConfig:
         available_source_ids=set(data_sources),
     )
 
+    components = _parse_components(payload.get("components"))
+
     navigation: list[BeeUiNavigationItem] = []
     seen_nav_paths: set[str] = set()
     for index, item in enumerate(navigation_cfg):
@@ -227,7 +252,7 @@ def load_beeui_config(config_path: Path) -> BeeUiConfig:
             raise ValueError(f"pages[{index}] must be a mapping")
         _validate_exact_keys(
             item,
-            {"id", "path", "title", "subtitle", "blocks"},
+            {"id", "path", "title", "subtitle", "blocks", "tabs"},
             f"pages[{index}]",
         )
 
@@ -259,6 +284,8 @@ def load_beeui_config(config_path: Path) -> BeeUiConfig:
             available_block_ids=set(blocks),
         )
 
+        page_tabs = _parse_page_tabs(item.get("tabs"), page_id)
+
         pages.append(
             BeeUiPage(
                 page_id=page_id,
@@ -266,6 +293,7 @@ def load_beeui_config(config_path: Path) -> BeeUiConfig:
                 title=page_title,
                 subtitle=subtitle,
                 blocks=placements,
+                tabs=page_tabs,
             )
         )
 
@@ -283,6 +311,7 @@ def load_beeui_config(config_path: Path) -> BeeUiConfig:
         data_sources=data_sources,
         blocks=blocks,
         pages=pages,
+        components=components,
     )
 
 
@@ -358,6 +387,173 @@ def parse_data_sources(
         )
 
     return data_sources
+
+
+# Парсинг components конфига
+def _parse_components(payload: Any) -> ComponentConfig:
+    if payload is None:
+        return ComponentConfig()
+
+    if not isinstance(payload, dict):
+        raise ValueError("components must be a mapping")
+    _validate_exact_keys(payload, {"tabs", "accordion"}, "components")
+
+    tabs = TabsComponentConfig()
+    if "tabs" in payload:
+        tabs_cfg = payload["tabs"]
+        if not isinstance(tabs_cfg, dict):
+            raise ValueError("components.tabs must be a mapping")
+        _validate_exact_keys(tabs_cfg, {"variant"}, "components.tabs")
+        variant_raw = tabs_cfg.get("variant", "default")
+        try:
+            variant = normalize_tabs_variant(variant_raw)
+        except ValueError as exc:
+            raise ValueError(
+                f"components.tabs.variant must be one of {sorted(TABS_VARIANTS)}, got: {variant_raw}"
+            ) from exc
+        tabs = TabsComponentConfig(variant=variant)
+
+    accordion = AccordionComponentConfig()
+    if "accordion" in payload:
+        acc_cfg = payload["accordion"]
+        if not isinstance(acc_cfg, dict):
+            raise ValueError("components.accordion must be a mapping")
+        _validate_exact_keys(acc_cfg, {"variant"}, "components.accordion")
+        variant_raw = acc_cfg.get("variant", "default")
+        try:
+            variant = normalize_accordion_variant(variant_raw)
+        except ValueError as exc:
+            raise ValueError(
+                f"components.accordion.variant must be one of {sorted(ACCORDION_VARIANTS)}, got: {variant_raw}"
+            ) from exc
+        accordion = AccordionComponentConfig(variant=variant)
+
+    return ComponentConfig(tabs=tabs, accordion=accordion)
+
+
+# Парсинг page-level tabs config
+def _parse_page_tabs(payload: Any, page_id: str) -> PageTabsConfig | None:
+    if payload is None:
+        return None
+
+    if not isinstance(payload, dict):
+        raise ValueError(f"pages.{page_id}.tabs must be a mapping")
+    _validate_exact_keys(
+        payload, {"variant", "active_param", "items"}, f"pages.{page_id}.tabs"
+    )
+
+    variant_raw = payload.get("variant", "default")
+    try:
+        variant = normalize_tabs_variant(variant_raw)
+    except ValueError as exc:
+        raise ValueError(
+            f"pages.{page_id}.tabs.variant must be one of {sorted(TABS_VARIANTS)}, got: {variant_raw}"
+        ) from exc
+
+    active_param = payload.get("active_param", "tab")
+    if (
+        not isinstance(active_param, str)
+        or not active_param.strip()
+        or not _SAFE_IDENTIFIER_RE.fullmatch(active_param.strip())
+    ):
+        raise ValueError(
+            f"pages.{page_id}.tabs.active_param must be a safe query parameter"
+        )
+    active_param = active_param.strip()
+
+    items_raw = payload.get("items")
+    if not isinstance(items_raw, list):
+        raise ValueError(f"pages.{page_id}.tabs.items must be a list")
+
+    items: list[PageTabsItem] = []
+    seen_ids: set[str] = set()
+    for idx, item_raw in enumerate(items_raw):
+        if not isinstance(item_raw, dict):
+            raise ValueError(f"pages.{page_id}.tabs.items[{idx}] must be a mapping")
+        _validate_exact_keys(
+            item_raw,
+            {"id", "title", "href", "disabled"},
+            f"pages.{page_id}.tabs.items[{idx}]",
+        )
+
+        tab_id = item_raw.get("id")
+        if not isinstance(tab_id, str) or not tab_id.strip():
+            raise ValueError(
+                f"pages.{page_id}.tabs.items[{idx}].id must be a non-empty string"
+            )
+        if not _SAFE_IDENTIFIER_RE.fullmatch(tab_id):
+            raise ValueError(
+                f"pages.{page_id}.tabs.items[{idx}].id must be a safe identifier"
+            )
+        if tab_id in seen_ids:
+            raise ValueError(f"Duplicate tab id in page {page_id}: {tab_id}")
+        seen_ids.add(tab_id)
+
+        title = item_raw.get("title")
+        if not isinstance(title, str) or not title.strip():
+            raise ValueError(
+                f"pages.{page_id}.tabs.items[{idx}].title must be a non-empty string"
+            )
+
+        href = _validate_tab_href(item_raw.get("href"), page_id, idx)
+
+        disabled = item_raw.get("disabled", False)
+        if not isinstance(disabled, bool):
+            raise ValueError(
+                f"pages.{page_id}.tabs.items[{idx}].disabled must be a boolean"
+            )
+
+        items.append(
+            PageTabsItem(tab_id=tab_id, title=title, href=href, disabled=disabled)
+        )
+
+    return PageTabsConfig(
+        variant=variant, active_param=active_param, items=tuple(items)
+    )
+
+
+# Валидация tab href — только safe internal links
+def _validate_tab_href(href: Any, page_id: str, idx: int) -> str:
+    if not isinstance(href, str) or not href.strip():
+        raise ValueError(
+            f"pages.{page_id}.tabs.items[{idx}].href must be a non-empty string"
+        )
+
+    value = href.strip()
+    parsed = urlsplit(value)
+
+    if parsed.scheme or parsed.netloc or value.startswith("//"):
+        raise ValueError(
+            f"pages.{page_id}.tabs.items[{idx}].href must be an internal link"
+        )
+    if parsed.fragment:
+        raise ValueError(
+            f"pages.{page_id}.tabs.items[{idx}].href must not contain fragment"
+        )
+    if not parsed.path.startswith("/"):
+        raise ValueError(f"pages.{page_id}.tabs.items[{idx}].href must start with '/'")
+
+    decoded_value = unquote(value)
+    decoded_path = unquote(parsed.path)
+
+    if "\\" in value or "\\" in decoded_value:
+        raise ValueError(
+            f"pages.{page_id}.tabs.items[{idx}].href must be a safe internal link"
+        )
+    if any(ord(char) < 32 for char in value + decoded_value):
+        raise ValueError(
+            f"pages.{page_id}.tabs.items[{idx}].href contains control characters"
+        )
+    if "//" in parsed.path:
+        raise ValueError(
+            f"pages.{page_id}.tabs.items[{idx}].href must be a safe internal link"
+        )
+    if any(segment in {".", ".."} for segment in decoded_path.split("/")):
+        raise ValueError(
+            f"pages.{page_id}.tabs.items[{idx}].href must not contain traversal"
+        )
+
+    return value
 
 
 # Разрешение блока из реестра по его id и сбор модели для передачи в template, включая разрешение селекторов данных
