@@ -1674,7 +1674,7 @@ def test_layout_conflicting_sizing_keys_degrades() -> None:
     assert result[2]["width_class"] == "col-12"
 
 
-# Тест: existing width remains backward-compatible
+# Тест: существующая width остается обратно совместимой
 def test_layout_width_backward_compatible() -> None:
     result = render_layout(
         [
@@ -1684,3 +1684,64 @@ def test_layout_width_backward_compatible() -> None:
     )
     assert result[0]["width_class"] == "col-12"
     assert result[1]["width_class"] == "col-12 col-lg-6"
+
+
+# Тест: adapter-backed layout span
+def test_layout_span_supported() -> None:
+    result = render_layout(
+        [
+            {"type": "metric_card", "title": "A", "value": "1", "span": 6},
+        ]
+    )
+    assert result[0]["width_class"] == "col-12 col-lg-6"
+
+
+# Тест: adapter-backed layout size
+def test_layout_size_supported() -> None:
+    result = render_layout(
+        [
+            {"type": "metric_card", "title": "A", "value": "1", "size": "M"},
+        ]
+    )
+    assert result[0]["width_class"] == "col-12 col-lg-6"
+
+
+# Тест: adapter-backed layout size S
+def test_layout_size_s() -> None:
+    result = render_layout(
+        [
+            {"type": "metric_card", "title": "A", "value": "1", "size": "S"},
+        ]
+    )
+    assert result[0]["width_class"] == "col-12 col-md-6 col-lg-4"
+
+
+# Тест: malformed adapter sizing degrades to col-12
+def test_layout_malformed_sizing_degrades() -> None:
+    result = render_layout(
+        [
+            {"type": "metric_card", "title": "A", "value": "1", "width": "bogus"},
+            {"type": "metric_card", "title": "B", "value": "2", "span": "bogus"},
+            {"type": "metric_card", "title": "C", "value": "3", "size": "bogus"},
+            {"type": "metric_card", "title": "D", "value": "4", "width": -1},
+            {"type": "metric_card", "title": "E", "value": "5", "width": 99},
+        ]
+    )
+    for block in result:
+        assert block["width_class"] == "col-12", (
+            f"Expected col-12 for malformed sizing, got {block['width_class']}"
+        )
+
+
+# Тест: conflicting sizing keys degrade to col-12
+def test_layout_conflicting_sizing_degrades() -> None:
+    result = render_layout(
+        [
+            {"type": "metric_card", "title": "A", "value": "1", "width": 6, "span": 8},
+            {"type": "metric_card", "title": "B", "value": "2", "span": 6, "size": "L"},
+        ]
+    )
+    for block in result:
+        assert block["width_class"] == "col-12", (
+            f"Expected col-12 for conflicting sizing, got {block['width_class']}"
+        )

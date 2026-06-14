@@ -10,7 +10,7 @@
 - `beeagent`;
 - будущие Bee-продукты.
 
-Текущая реализованная основа после Iteration 13.1 включает:
+Текущая реализованная основа после Iteration 13.2 включает:
 
 - веб-приложение FastAPI;
 - шаблоны Jinja2;
@@ -70,8 +70,31 @@
   - `<html lang="{{ locale|default('en') }}">`;
   - BeeUI не переводит product-specific строки.
 - generic dashboard fallback cleanup (Iteration 13.1):
-  - raw/debug technical payload in collapsible `<details>` «Technical details»;
+  - raw/debug technical payload in BeeUI accordion «Technical details»;
   - primary UX shows summary cards/KPIs/structured fields first.
+- configurable component defaults (Iteration 13.2):
+  - `components.tabs.variant` — global Tabler tabs variant (`default`, `reverse`, `fill`, `icons`, `fill_icons`, `dropdown`);
+  - `components.accordion.variant` — global accordion variant (`default`, `flush`, `tabs`, `inverted`, `inverted_plus`, `icons`);
+  - invalid variants fail fast; missing config uses safe defaults.
+- page-level URL tabs (Iteration 13.2):
+  - optional `pages[].tabs` config with variant, active_param, items;
+  - URL-driven tab links with safe href validation;
+  - active tab resolved from query param with allowlist fallback;
+  - duplicate/unsafe tab items rejected during config validation.
+- accordion primitive (Iteration 13.2):
+  - `accordion` Jinja macro in `catalog_primitives.html`;
+  - deterministic safe accordion ids;
+  - Tabler/Bootstrap-compatible markup `accordion`, `accordion-item`, `accordion-button`, `accordion-collapse`;
+  - variant class mapping centralized in Python;
+  - technical details fallback uses accordion instead of raw `<details>`.
+- generic adapter-backed custom pages (Iteration 13.2):
+  - non-reserved page paths from config register as adapter-backed GET routes;
+  - `adapter.get_page(page_id, query)` called when adapter present;
+  - returned `layout[]` rendered through existing generic layout renderer;
+  - unavailable adapter renders explicit degraded state;
+  - config validation rejects BeeUI-owned reserved paths like `/health`, `/api`, `/auth`, `/venues`, `/login`, `/logout`, `/static`, `/components`;
+  - adapter-backed custom page registration additionally does not shadow `/` and `/runs`, because product console owns them when adapter is present;
+  - route collisions rejected during registration.
 
 Запланированные обязанности:
 
@@ -240,7 +263,7 @@ src/beeui_module/
 - Product-specific domain logic must not live in generic BeeUI renderers.
 - `src/beeui_module/__init__.py` should stay lightweight.
 
-## Public embedded API после Iteration 12
+## Public embedded API после Iteration 13.2
 
 ### `create_beeui_app()`
 
@@ -270,7 +293,19 @@ app = create_beeui_app(
 
 Adapter сохраняется в `app.state.beeui_adapter`. Product metadata сохраняется в `app.state.beeui_product`.
 
-**Поведение:** adapter принимается и валидируется. При наличии adapter product console routes владеют `/` и `/runs`, а также включают read-only API routes для dashboard/runs/run detail/venue dashboard. Без adapter BeeUI остаётся backward-compatible и продолжает рендерить schema/demo pages.
+**Поведение:** adapter принимается и валидируется. При наличии adapter product console routes владеют `/` и `/runs`, а также включают read-only API routes для dashboard/runs/run detail/venue dashboard и generic custom pages для non-reserved config paths. Без adapter BeeUI остаётся backward-compatible и продолжает рендерить schema/demo pages.
+
+После Iteration 13.2 product adapter может опционально реализовать:
+
+```python
+from typing import Mapping
+
+def get_page(
+    self,
+    page_id: str,
+    query: Mapping[str, str],
+) -> AdapterResult | AdapterErrorResult: ...
+```
 
 ### `mount_beeui()`
 
@@ -313,6 +348,8 @@ Mount helper выполняет:
 /ui/runs
 /ui/runs/{run_id}
 /ui/venues/{venue_id}
+/ui/auth/csrf
+/ui/<configured-custom-page>
 /ui/api/dashboard
 /ui/api/runs
 /ui/api/runs/{run_id}
@@ -523,9 +560,11 @@ mount_beeui(
 
 ### Product adapter contract
 
-Текущий adapter contract после Iteration 12:
+Текущий adapter contract после Iteration 13.2:
 
 ```python
+from typing import Mapping
+
 class ProductUiAdapter:
     metadata: AdapterMetadata
 
@@ -539,6 +578,11 @@ class ProductUiAdapter:
 
     # optional methods, unavailable by default in ProductUiAdapterBase
     def get_venue_dashboard(self, venue_id: str) -> AdapterResult | AdapterErrorResult: ...
+    def get_page(
+        self,
+        page_id: str,
+        query: Mapping[str, str],
+    ) -> AdapterResult | AdapterErrorResult: ...
     def validate_config_candidate(self, candidate: dict) -> AdapterResult | AdapterErrorResult: ...
     def list_actions(self) -> AdapterResult | AdapterErrorResult: ...
     def preview_action(self, action_id: str, payload: dict) -> AdapterResult | AdapterErrorResult: ...
@@ -551,6 +595,8 @@ Iteration 10 добавляет adapter injection в app factory и `mount_beeui
 Iteration 11 добавляет adapter-backed artifact browser routes.
 Iteration 12 добавляет adapter-backed dashboard, runs, run detail, optional venue
 dashboard и product console API envelope `beeui.v0`.
+Iteration 13.2 добавляет optional `get_page(page_id, query)` для generic
+adapter-backed custom pages.
 Config apply/write, action execution и production BeeCap/BeeAgent adapters
 остаются future scope.
 
@@ -566,6 +612,11 @@ Required read-only methods:
 Optional write/config/action methods are unavailable by default unless a product explicitly implements them later.
 `get_venue_dashboard` также optional и при отсутствии возвращает explicit
 unavailable state.
+`get_page()` используется только для generic adapter-backed custom pages.
+`ProductUiAdapterBase.get_page()` по умолчанию возвращает unavailable.
+BeeUI трактует возвращённый payload как read-model, рендерит только `layout[]`,
+редактирует payload перед HTML render и переводит malformed payload в degraded
+state.
 
 ## BeeUI config
 
@@ -641,6 +692,11 @@ app:
       enabled: false
       variant: default
       sticky: false
+components:
+  tabs:
+    variant: fill
+  accordion:
+    variant: flush
 
 navigation:
   - title: Workspace
@@ -689,6 +745,21 @@ pages:
     title: Runs
     subtitle: Placeholder page for future run overview
     blocks: []
+  - id: rop_dashboard
+    path: /rop
+    title: ROP Dashboard
+    subtitle: ROP operator dashboard
+    blocks: []
+    tabs:
+      variant: fill
+      active_param: tab
+      items:
+        - id: overview
+          title: Overview
+          href: /rop?tab=overview
+        - id: queue
+          title: Queue
+          href: /rop?tab=queue
 ```
 
 В Iteration 7 block values могут быть static/literal, а representative blocks
@@ -704,7 +775,16 @@ scope и не относятся к уже реализованным product co
 - page `id` must be safe and unique;
 - page paths must be unique;
 - navigation paths must reference known page paths;
-- reserved paths `/health`, `/static`, `/static/...` are rejected;
+- allowed tabs variants: `default`, `reverse`, `fill`, `icons`, `fill_icons`, `dropdown`;
+- allowed accordion variants: `default`, `flush`, `tabs`, `inverted`, `inverted_plus`, `icons`;
+- invalid variant values fail-fast; missing config uses safe defaults;
+- `pages[].tabs` supports `variant`, `active_param`, `items[]`, safe internal `href` and disabled tabs;
+- duplicate tab ids rejected fail-fast;
+- invalid active query falls back to first enabled tab;
+- disabled tab cannot become active;
+- route prefix applies automatically during render;
+- reserved paths `/health`, `/api`, `/auth`, `/venues`, `/login`, `/logout`, `/static`, `/components` are rejected;
+- reserved prefixes `/api/`, `/auth/`, `/venues/`, `/static/`, `/components/` are rejected;
 - no arbitrary HTML/JS in config;
 - top-level `blocks` is required and validated as mapping;
 - top-level `data_sources` is optional and validated as mapping when present;
@@ -856,7 +936,7 @@ JSON routes:
 
 Не все routes должны существовать в MVP.
 
-Текущий набор маршрутов MVP после Iteration 13.1:
+Текущий набор маршрутов MVP после Iteration 13.2:
 
 - `/`
 - `/runs`
@@ -878,11 +958,12 @@ JSON routes:
 - `/api/venues/{venue_id}/dashboard`
 - `/login`
 - `/logout`
-- `/api/auth/csrf`
+- `/auth/csrf`
 - `/runs/{run_id}/artifacts`
 - `/runs/{run_id}/artifacts/{artifact_id}`
 - `/api/runs/{run_id}/artifacts`
 - `/api/runs/{run_id}/artifacts/{artifact_id}`
+- `/<configured-custom-page>` (adapter-backed custom page — requires adapter and non-reserved page path)
 
 При наличии adapter product console routes владеют `/` и `/runs`. Без adapter сохраняется schema/demo mode.
 
@@ -1773,7 +1854,7 @@ visual editor
 
 ## Typical operator scenarios
 
-Текущий сценарий после Iteration 13.1:
+Текущий сценарий после Iteration 13.2:
 
 ```text
 1. BeeUI loads config/settings.yml.
@@ -1782,10 +1863,11 @@ visual editor
 4. Product may pass adapter into create_beeui_app(...) or mount_beeui(...).
 5. Adapter is validated and stored in app.state.beeui_adapter.
 6. Product metadata is stored in app.state.beeui_product.
-7. If adapter is present, product console routes call `get_dashboard()`, `list_runs()`, `get_run()` and optional `get_venue_dashboard()` through adapter.
-8. Artifact routes call `list_artifacts()` and `read_artifact()` through adapter.
-9. If adapter is absent, dashboard/runs continue to render schema/demo/static pages.
-10. No product runtime/action/config mutation happens.
+7. If adapter is present, product console routes call `get_dashboard()`, `list_runs()`, `get_run()` and optional `get_venue_dashboard()`.
+8. Non-reserved configured custom pages call optional `get_page(page_id, query)` and render returned `layout[]`.
+9. Artifact routes call `list_artifacts()` and `read_artifact()`.
+10. If adapter is absent, dashboard/runs continue to render schema/demo/static pages.
+11. No product runtime/action/config mutation happens.
 ```
 
 ### 1. Open product dashboard
@@ -1813,6 +1895,18 @@ visual editor
 1. Open `/venues/{venue_id}` or `/api/venues/{venue_id}/dashboard`.
 2. BeeUI calls optional `get_venue_dashboard(venue_id)`.
 3. Если метод не реализован, BeeUI возвращает explicit unavailable state.
+
+### Open adapter-backed custom page
+
+Текущий сценарий Iteration 13.2.
+
+1. Product declares a non-reserved page in `beeui.yml`.
+2. Operator opens `/rop` or another configured page path.
+3. BeeUI resolves optional page tabs from config.
+4. BeeUI calls `adapter.get_page(page_id, query)`.
+5. Product adapter returns read-model with optional `layout[]`.
+6. BeeUI redacts payload and renders `layout[]` through generic layout renderer.
+7. If adapter method is unavailable or payload is malformed, BeeUI renders explicit degraded state.
 
 ### 4. Inspect artifact
 
@@ -1847,7 +1941,7 @@ visual editor
 
 ## MVP route contract
 
-Текущий MVP route contract после Iteration 13.1:
+Текущий MVP route contract после Iteration 13.2:
 
 - `GET /`
 - `GET /runs`
@@ -1870,11 +1964,12 @@ visual editor
 - `GET /login`
 - `POST /login`
 - `POST /logout`
-- `GET /api/auth/csrf`
+- `GET /auth/csrf`
 - `GET /runs/{run_id}/artifacts` (HTML artifact list — requires adapter)
 - `GET /runs/{run_id}/artifacts/{artifact_id}` (HTML artifact preview — requires adapter)
 - `GET /api/runs/{run_id}/artifacts` (JSON artifact list — requires adapter)
 - `GET /api/runs/{run_id}/artifacts/{artifact_id}` (JSON artifact preview — requires adapter)
+- `GET /<configured-custom-page>` (adapter-backed custom page — requires adapter and non-reserved page path)
 - `POST /api/config/preview` (protected transport stub — requires feature flag and product callback)
 - `POST /api/config/apply` (protected transport stub — requires feature flag and product callback)
 - `POST /api/actions/preview` (protected transport stub — requires feature flag and product callback)

@@ -45,7 +45,8 @@ Primitives:
 - `empty_state`
 - `modal_shell`
 - `tabs`
-- `url_tabs` (URL-driven variant with `<a>` links and `?tab=` active state)
+- `url_tabs` (URL-driven variant with `<a>` links and `?tab=` active state; supports `tab_class`, `active_param`, `disabled` items)
+- `accordion` (Tabler/Bootstrap-compatible collapsible; deterministic ids; supports `accordion_class` for variant)
 - `table`
 - `data_grid`
 - `form_input`

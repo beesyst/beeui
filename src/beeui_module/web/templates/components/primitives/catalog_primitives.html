@@ -109,12 +109,18 @@
   </li>
   {% endfor %}
 </ul>
-{% endmacro %} {% macro url_tabs(items, active_id, base_url='') %}
-<ul class="nav nav-tabs card-header-tabs" role="tablist">
+{% endmacro %} {% macro url_tabs(items, active_id, base_url='', tab_class='nav nav-tabs card-header-tabs', active_param='tab') %}
+<ul class="{{ tab_class }}" role="tablist">
   {% for tab in items %}
+  {% set tab_href = tab.href if tab.href else (base_url ~ '?' ~ active_param ~ '=' ~ tab.id) %}
   <li class="nav-item" role="presentation">
+    {% if tab.disabled %}
+    <span class="nav-link disabled" role="tab" aria-disabled="true">
+      {{ tab.title }}
+    </span>
+    {% else %}
     <a
-      href="{{ base_url }}?tab={{ tab.id }}"
+      href="{{ tab_href }}"
       class="nav-link{% if tab.id == active_id %} active{% endif %}"
       role="tab"
       aria-selected="{{ 'true' if tab.id == active_id else 'false' }}"
@@ -122,6 +128,7 @@
     >
       {{ tab.title }}
     </a>
+    {% endif %}
   </li>
   {% endfor %}
 </ul>
@@ -318,5 +325,41 @@ placeholder='') %}
   <p class="text-secondary mb-0">
     Inert placeholder. No external datatable plugin is loaded.
   </p>
+</div>
+{% endmacro %} {% macro accordion(items, accordion_id,
+accordion_class='accordion') %}
+<div class="{{ accordion_class }}" id="{{ accordion_id }}">
+  {% for item in items %}
+  <div class="accordion-item">
+    <h2
+      class="accordion-header"
+      id="{{ accordion_id }}-heading-{{ loop.index }}"
+    >
+      <button
+        class="accordion-button{% if not item.open %} collapsed{% endif %}"
+        type="button"
+        data-bs-toggle="collapse"
+        data-bs-target="#{{ accordion_id }}-collapse-{{ loop.index }}"
+        aria-expanded="{{ 'true' if item.open else 'false' }}"
+        aria-controls="{{ accordion_id }}-collapse-{{ loop.index }}"
+      >
+        {{ item.title }}
+      </button>
+    </h2>
+    <div
+      id="{{ accordion_id }}-collapse-{{ loop.index }}"
+      class="accordion-collapse collapse{% if item.open %} show{% endif %}"
+      aria-labelledby="{{ accordion_id }}-heading-{{ loop.index }}"
+      data-bs-parent="#{{ accordion_id }}"
+    >
+      <div class="accordion-body">
+        {% if caller is defined %} {{ caller(item) }} {% elif item.body %} {{
+        item.body }} {% else %}
+        <p class="text-secondary">No content available.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% endfor %}
 </div>
 {% endmacro %}

@@ -3326,6 +3326,302 @@ Automated checks:
 - no external CDN/scripts/tracking are introduced;
 - docs reflect the updated layout/tabs/locale contract.
 
+## ROADMAP insert
+
+### Итерация 13.2 — Generic adapter pages and configurable Tabler primitives
+
+**Статус:** DONE
+
+#### Goal
+
+Добавить в BeeUI generic adapter-backed custom pages и configurable Tabler-compatible `tabs` / `accordion` primitives, чтобы BeeAgent/BeeCap могли строить product dashboards через `beeui.yml` + adapter read-model/layout без product-owned Jinja templates.
+
+#### Почему это нужно
+
+После Iteration 13.1 BeeUI уже имеет sizing primitives, URL tabs seed and locale seed, но BeeAgent UI-5 показала архитектурный gap:
+
+```text
+BeeAgent начал создавать собственные Jinja templates/manual HTML dashboard.
+```
+
+Это ломает целевое правило:
+
+```text
+BeeUI renders.
+Product decides.
+```
+
+BeeUI должен владеть shell, templates, tabs, accordion, dashboard layout, artifact viewer and generic pages. Product должен отдавать только adapter/read-model/layout/artifact allowlist/domain data.
+
+Дополнительно Tabler examples показывают несколько safe визуальных вариантов `tabs` and `accordion`, но BeeUI не должен копировать Tabler preview pages целиком и не должен тянуть demo scripts, PostHog, remote fonts, sponsor blocks or external assets.
+
+#### Change level
+
+**runtime-risk**
+
+Причина:
+
+- меняется UI schema/config contract;
+- добавляются configurable component variants;
+- добавляются generic adapter-backed custom routes;
+- расширяется optional adapter page read-model boundary;
+- меняется HTML rendering для dashboard technical details;
+- operator-facing GET routes влияют на dashboard UX.
+
+Security-sensitive checks required for:
+
+- HTML escaping;
+- safe internal links in tabs;
+- deterministic/safe accordion ids;
+- route collision validation;
+- invalid schema fail-fast;
+- malformed adapter payload degradation;
+- no external CDN/scripts/tracking;
+- no secrets in HTML/API/logs;
+- no mutation from GET routes.
+
+#### Scope
+
+**Включено:**
+
+- добавить configurable URL tabs primitive v1:
+  - `ul.nav.nav-tabs.card-header-tabs`;
+  - URL-driven links only;
+  - active state from allowlisted query param;
+  - safe internal links only;
+  - optional disabled items;
+  - optional dropdown/overflow items;
+  - no JS-only hidden panes;
+  - no arbitrary HTML labels;
+  - no unsafe `|safe`;
+
+- поддержать safe tab variants by canonical names:
+
+```text
+default
+reverse
+fill
+icons
+fill_icons
+dropdown
+```
+
+- если реализуются numeric aliases, они должны нормализоваться в canonical names:
+
+```text
+1 -> default
+2 -> reverse
+3 -> icons
+4 -> dropdown
+5 -> fill
+6 -> fill_icons
+```
+
+Canonical docs/config examples must use names, not numbers.
+
+- добавить configurable accordion/collapsible primitive v1:
+  - deterministic ids;
+  - collapsed/open initial state;
+  - single-open mode through `data-bs-parent`;
+  - multi-open mode if simple and safe;
+  - safe escaped titles/body;
+  - no arbitrary HTML body from adapter/config;
+  - no full Tabler preview copy;
+
+- поддержать accordion variants by canonical names:
+
+```text
+default
+flush
+tabs
+inverted
+inverted_plus
+icons
+```
+
+- если реализуются numeric aliases, они должны нормализоваться в canonical names:
+
+```text
+1 -> default
+2 -> flush
+3 -> tabs
+4 -> inverted
+5 -> inverted_plus
+6 -> icons
+```
+
+Canonical docs/config examples must use names, not numbers.
+
+- добавить optional component config defaults, for example:
+
+```yaml
+components:
+  tabs:
+    variant: default
+  accordion:
+    variant: default
+```
+
+- добавить optional page-level tabs config, for example:
+
+```yaml
+pages:
+  - id: rop_dashboard
+    path: /rop
+    title: ROP Dashboard
+    subtitle: ROP operator dashboard
+    tabs:
+      variant: fill
+      active_param: tab
+      items:
+        - id: overview
+          title: Overview
+          href: /rop?tab=overview
+        - id: queue
+          title: Queue
+          href: /rop?tab=queue
+```
+
+- invalid component/page tab config fails fast;
+
+- missing component config uses documented safe defaults;
+
+- unknown component variant fails fast;
+
+- unsafe/external tab links fail fast for config and degrade for adapter-provided payloads;
+
+- replace generic dashboard fallback `Technical details` from raw `<details>` to BeeUI accordion/collapsible primitive;
+
+- confirm or harden adapter-backed `layout[]` sizing:
+  - `width: 1..12`;
+  - `span: 1..12`;
+  - `size: S|M|L|XL`;
+  - invalid schema sizing fails fast;
+  - malformed adapter sizing degrades to `col-12`;
+
+- добавить generic adapter-backed custom pages v0:
+  - product declares page in `beeui.yml`;
+  - BeeUI registers safe GET route;
+  - route must not conflict with reserved routes;
+  - BeeUI calls optional adapter method, for example:
+
+```python
+get_page(page_id: str, query: Mapping[str, str])
+```
+
+- if method unavailable, render explicit unavailable/degraded state;
+
+- default base adapter returns unavailable;
+
+- returned `layout[]` renders through existing generic layout renderer;
+
+- BeeUI must not know ROP/MRKT/Binance/Bitrix semantics;
+
+- Artifact viewer remains BeeUI-owned:
+  - HTML artifact browser remains generic BeeUI route;
+  - API artifact route remains BeeUI-owned JSON envelope;
+  - product adapter owns allowlist/content.
+
+- update docs:
+  - `docs/ROADMAP.md`;
+  - `docs/WEB_UI.md`;
+  - `docs/COMPONENTS.md`;
+  - `docs/API_CONTRACT.md`;
+  - `docs/INTEGRATION.md`;
+  - `README.ru.md` if user-facing config examples changed.
+
+**Не включено:**
+
+- BeeAgent-specific ROP labels;
+- BeeCap-specific metrics/calculations;
+- MRKT/Binance/ROP/Bitrix semantics;
+- full i18n catalog;
+- persisted user preferences;
+- auth/session/CSRF changes;
+- config apply;
+- operator actions;
+- POST routes;
+- no-code builder;
+- drag-and-drop;
+- charts/ApexCharts;
+- arbitrary HTML/JS blocks;
+- full Tabler demo page copy;
+- PostHog/demo scripts/sponsor blocks/remote fonts/external CDN;
+- new dependencies unless strictly justified;
+- `pyproject.toml.version` change.
+
+#### Deliverable
+
+BeeUI can render custom product pages such as `/rop` through `beeui.yml` + adapter read-model/layout, with reusable configurable Tabler-compatible tabs and accordion primitives, without any product-owned HTML templates.
+
+Expected behavior:
+
+```text
+config/beeui.yml declares /rop
+BeeAgent adapter returns page read-model/layout
+BeeUI registers /rop
+BeeUI renders shell/page/tabs/accordion/cards/tables/artifacts
+BeeAgent owns only domain data and artifact allowlist
+```
+
+#### Checks
+
+- `uv run pytest -q`;
+- `uv run pytest -q -W error::UserWarning`;
+- `./start.sh doctor`;
+- `./start.sh routes`;
+- `./start.sh web --host 127.0.0.1 --port 8780`;
+
+Automated checks:
+
+- tabs primitive renders `nav nav-tabs card-header-tabs`;
+- each supported tab variant renders expected safe classes;
+- invalid tabs variant fails fast in config;
+- numeric aliases, if supported, normalize to canonical names;
+- active tab is selected only from allowlisted `active_param`;
+- invalid active tab falls back safely;
+- unsafe/external tab href is rejected or rendered inert;
+- accordion primitive renders local Tabler/Bootstrap markup;
+- each supported accordion variant renders expected safe classes;
+- invalid accordion variant fails fast;
+- deterministic accordion ids are generated safely;
+- `Technical details` uses accordion, not raw `<details>`;
+- schema block `width/span/size` works;
+- invalid schema sizing fails fast;
+- malformed adapter sizing degrades to `col-12`;
+- configured custom page `/rop` renders through adapter page method;
+- unavailable adapter page renders degraded/empty state;
+- route collision/reserved paths rejected;
+- GET custom pages do not mutate storage/source config;
+- no product-specific strings/imports in BeeUI generic renderer;
+- no external references:
+  - `posthog`;
+  - `scripts.tabler.io`;
+  - `preview.tabler.io`;
+  - `docs.tabler.io`;
+  - `cdn.jsdelivr`;
+  - remote font imports;
+
+- no unsafe `|safe` for adapter/config-provided fields;
+- no secrets in HTML/API/logs.
+
+#### DoD
+
+- configurable tabs primitive is implemented, documented and tested;
+- configurable accordion primitive is implemented, documented and tested;
+- technical details fallback uses BeeUI accordion;
+- custom adapter-backed pages work through BeeUI generic page renderer;
+- adapter page method is optional and backward-compatible;
+- existing ProductUiAdapter implementations do not break;
+- route collisions are rejected fail-fast;
+- invalid config fails fast;
+- malformed adapter payload degrades visibly;
+- BeeUI remains product-neutral;
+- Artifact viewer remains BeeUI-owned;
+- no external assets/scripts/tracking are introduced;
+- no GET route mutates product storage/config/artifacts;
+- docs reflect actual config/component/page contracts.
+
 ---
 
 ## Этап 7 — BeeAgent integration

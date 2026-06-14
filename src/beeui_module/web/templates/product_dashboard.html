@@ -1,5 +1,6 @@
-{% extends "base.html" %} {% block title %}{{ page_title }} · {{ app_title }}{%
-endblock %} {% block content %}
+{% extends "base.html" %} {% from
+"components/primitives/catalog_primitives.html" import accordion %} {% block
+title %}{{ page_title }} · {{ app_title }}{% endblock %} {% block content %}
 <div class="page-header d-print-none">
   <div class="{{ layout.container_class }}">
     <div class="row g-2 align-items-center">
@@ -13,9 +14,7 @@ endblock %} {% block content %}
 
 <div class="page-body">
   <div class="{{ layout.container_class }}">
-    {% include "components/product_console_state.html" %}
-
-    {% if has_layout %}
+    {% include "components/product_console_state.html" %} {% if has_layout %}
     <div class="row row-deck row-cards g-3">
       {% for block in layout_blocks %}
       <div class="{{ block.width_class }}">
@@ -83,20 +82,14 @@ endblock %} {% block content %}
       </div>
 
       <div class="col-12">
-        <details class="card">
-          <summary class="card-header cursor-pointer">
-            <h3 class="card-title">Technical details</h3>
-          </summary>
-          <div class="card-body">
-            {% if dashboard %}
-            <pre
-              class="mb-0"
-            ><code>{{ dashboard | tojson(indent=2) }}</code></pre>
-            {% else %}
-            <div class="text-secondary">No dashboard payload available.</div>
-            {% endif %}
-          </div>
-        </details>
+        {% set technical_details_items = [{'title': 'Technical details', 'open':
+        false}] %} {% call(item) accordion( items=technical_details_items,
+        accordion_id='technical-details-accordion',
+        accordion_class=components.accordion_class ) %} {% if dashboard %}
+        <pre class="mb-0"><code>{{ dashboard | tojson(indent=2) }}</code></pre>
+        {% else %}
+        <div class="text-secondary">No dashboard payload available.</div>
+        {% endif %} {% endcall %}
       </div>
     </div>
     {% endif %}

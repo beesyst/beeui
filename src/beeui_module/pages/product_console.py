@@ -28,6 +28,7 @@ from beeui_module.blocks.layout_renderer import render_layout
 from beeui_module.artifacts.redaction import redact_value
 from beeui_module.pages.models import BeeUiConfig, LocaleConfig
 from beeui_module.pages.router import (
+    build_components_context,
     build_layout_context,
     build_navigation,
     build_shell_classes,
@@ -378,6 +379,7 @@ def _build_page_context(
         "locale_cfg": ui_config.locale,
         "theme": theme,
         "layout": layout,
+        "components": build_components_context(ui_config.components),
         "ui_navigation": ui_config.navigation,
         "navigation": build_navigation(
             route_prefix=route_prefix,

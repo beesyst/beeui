@@ -1,13 +1,28 @@
-{% extends "base.html" %}
-
-{% block title %}{{ page.title }} · {{ app_title }}{% endblock %}
-
-{% block content %}
-{% include "components/page_header.html" %}
+{% extends "base.html" %} {% from
+"components/primitives/catalog_primitives.html" import url_tabs %} {% block
+title %}{{ page.title }} · {{ app_title }}{% endblock %} {% block content %} {%
+include "components/page_header.html" %}
 
 <div class="{{ layout.container_class }}">
+  {% if page_tabs %}
+  <div class="card mb-3">
+    <div class="card-header p-2">
+      {{ url_tabs( items=page_tabs.tab_items, active_id=page_tabs.active_id,
+      tab_class=page_tabs.tabs_class, active_param=page_tabs.active_param ) }}
+    </div>
+  </div>
+  {% endif %}
+
   <section aria-label="Page blocks">
-    {% if has_blocks %}
+    {% if has_layout %}
+    <div class="row row-deck row-cards g-3">
+      {% for block in layout_blocks %}
+      <div class="{{ block.width_class }}">
+        {% include "components/layout_block.html" %}
+      </div>
+      {% endfor %}
+    </div>
+    {% elif has_blocks %}
     <div class="row row-deck row-cards beeui-block-grid">
       {% for block in rendered_blocks %}
       <div class="col-12 col-md-{{ block.width }}">
@@ -15,9 +30,12 @@
       </div>
       {% endfor %}
     </div>
-    {% else %}
-    {% include "components/empty_state.html" %}
-    {% endif %}
+    {% elif error %}
+    <div class="alert alert-warning" role="alert">
+      <h4 class="alert-title">{{ page.title }}</h4>
+      <div class="text-secondary">{{ error }}</div>
+    </div>
+    {% else %} {% include "components/empty_state.html" %} {% endif %}
   </section>
 </div>
 {% endblock %}
