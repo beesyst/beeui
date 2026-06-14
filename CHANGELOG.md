@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.19.0](https://github.com/beesyst/beeui/compare/beeui-v0.18.0...beeui-v0.19.0) (2026-06-14)
+
+
+### Features
+
+* **beeui:** add generic adapter pages and ui primitives ([#63](https://github.com/beesyst/beeui/issues/63)) ([9852001](https://github.com/beesyst/beeui/commit/9852001190c201af02294c4fe22b279474dccda3))
+
 ## [0.18.0](https://github.com/beesyst/beeui/compare/beeui-v0.17.0...beeui-v0.18.0) (2026-06-13)
 
 
