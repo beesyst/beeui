@@ -3,6 +3,8 @@
 ## Область действия
 
 Iteration 13 добавляет auth error envelopes, login/logout/CSRF routes и защищённые POST transport stubs.
+Iteration 13.4 расширяет только adapter-backed presentation contract `layout[]`:
+`kpi_grid.columns` и `type: group`. JSON API envelope, route behavior и artifact API contract не менялись.
 
 Iteration 12 определяет стабильный read-only envelope для adapter-backed
 маршрутов product console:
@@ -78,7 +80,7 @@ POST routes на config/action endpoints.
 BeeUI реализует transport/security boundary. Product adapter остаётся
 владельцем config/action semantics.
 
-### Unauthenticated (401)
+### Неаутентифицированный запрос (401)
 
 ```json
 {
@@ -94,7 +96,7 @@ BeeUI реализует transport/security boundary. Product adapter остаё
 }
 ```
 
-### Forbidden (403)
+### Доступ запрещён (403)
 
 ```json
 {
@@ -110,7 +112,7 @@ BeeUI реализует transport/security boundary. Product adapter остаё
 }
 ```
 
-### CSRF failed (403)
+### Ошибка CSRF (403)
 
 ```json
 {
@@ -126,7 +128,7 @@ BeeUI реализует transport/security boundary. Product adapter остаё
 }
 ```
 
-### Auth login failure (401)
+### Ошибка входа (401)
 
 ```json
 {
@@ -142,7 +144,7 @@ BeeUI реализует transport/security boundary. Product adapter остаё
 }
 ```
 
-### Protected POST routes
+### Защищённые POST routes
 
 | Route | Required role | CSRF | Feature flag |
 |-------|--------------|------|-------------|
@@ -156,7 +158,7 @@ These routes are protected transport stubs: BeeUI validates session, role,
 CSRF and request shape, while product adapter owns validation/apply/action
 domain behavior.
 
-## Layout block contract (Iteration 12.1)
+## Контракт layout blocks (Iteration 12.1)
 
 Это presentation contract для adapter-backed product console HTML pages.
 Он не заменяет schema block contract из `config/schema.yml`.
@@ -194,6 +196,9 @@ Adapter-backed payloads (`dashboard`, `run`, `venue dashboard`, optionally `runs
 из `layout[]` как Tabler dashboard. При отсутствии `layout` или пустом
 массиве используется generic fallback renderer.
 
+`kpi_grid.columns` и `type: group` относятся к adapter-backed `layout[]`.
+Они не добавляют новые required keys в `config/settings.yml` и не расширяют schema/demo block contract в `config/schema.yml`.
+
 ### Поддерживаемые block types
 
 | Type | Описание |
@@ -201,7 +206,7 @@ Adapter-backed payloads (`dashboard`, `run`, `venue dashboard`, optionally `runs
 | `hero_snapshot` | Card с title/subtitle/status, списком items (label+value+опциональный href) и links |
 | `metric_card` | Compact card с title, value, status badge и hint |
 | `kpi_strip` | Горизонтальная полоса KPI items (label+value+status) |
-| `kpi_grid` | Responsive KPI stat cards с label/value/unit/status/hint |
+| `kpi_grid` | Responsive KPI stat cards с label/value/unit/status/hint; optional `columns` (1..4, default 4) |
 | `venue_summary_grid` | Card c grid layout venue summary items |
 | `venue_card` | Compact venue summary card с items, alerts и links |
 | `mode_cards` | Cards для режимов (label+value+status+опциональный href/latest/latest_href) |
@@ -215,9 +220,10 @@ Adapter-backed payloads (`dashboard`, `run`, `venue dashboard`, optionally `runs
 | `artifact_links` | List group artifact links с content_type badge |
 | `raw_json_panel` | Card c raw JSON data |
 | `chart` | Server-rendered chart placeholder (no external JS); adapter-provided title/subtitle/status/symbol/timeframe/series/points/candles; empty state when no data |
+| `group` | Nested container с `direction` (vertical), `children` (list of layout blocks), bounded recursion depth 3 |
 | `degraded` | Fallback для malformed/unsupported blocks |
 
-### Width/span/size mapping
+### Mapping `width`/`span`/`size`
 
 `width` (1..12), `span` (1..12) and `size` (S/M/L/XL) are mutually exclusive.
 Only one sizing key may be present per block placement.
@@ -245,7 +251,32 @@ Only one sizing key may be present per block placement.
 For schema/demo placements: invalid or conflicting sizing keys fail fast.
 For adapter-backed `layout[]`: invalid or conflicting sizing keys degrade to `col-12`.
 
-### Security rules
+### Колонки KPI grid
+
+`kpi_grid` supports optional `columns` field:
+
+| columns | CSS classes |
+|---------|-------------|
+| 1 | `col-12` |
+| 2 | `col-12 col-sm-6` |
+| 3 | `col-12 col-sm-6 col-lg-4` |
+| 4 (default) | `col-12 col-sm-6 col-lg-3` |
+
+Missing or invalid adapter values degrade to default 4 (no 500).
+`columns` не является CSS class и не пробрасывается в HTML напрямую. BeeUI использует fixed whitelist mapping.
+
+### Layout group (`type: group`)
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `type` | string | yes | Must be `"group"` |
+| `width` | int | no | Column width 1..12 |
+| `direction` | string | no | `"vertical"` only in v1; missing/invalid value defaults to `"vertical"` |
+| `children` | array | yes | List of layout block items; missing/invalid value renders the group as `degraded` |
+
+Children render through existing BeeUI block renderer. Depth is bounded at 3 levels; exceeded depth renders as `degraded`.
+
+### Правила безопасности
 
 - Все adapter-provided text values проходят через Jinja autoescaping.
 - Ссылки (`href`) принимаются только internal: начинаются с `/` и не

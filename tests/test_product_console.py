@@ -188,6 +188,19 @@ def test_adapter_dashboard_html_and_api_work() -> None:
     assert payload["meta"]["status"] == "partial"
 
 
+# Тест: adapter-backed dashboard использует page-body/container wrapper
+def test_adapter_dashboard_uses_page_body_container_wrapper() -> None:
+    app = create_beeui_app(adapter=FakeProductConsoleAdapter())
+    client = TestClient(app)
+
+    response = client.get("/")
+
+    assert response.status_code == 200
+    body_idx = response.text.index('class="page-body"')
+    container_idx = response.text.index("container-xl", body_idx)
+    assert container_idx > body_idx
+
+
 # Тест: список запусков доступен в HTML и API с метаданными адаптера
 def test_adapter_runs_html_and_api_work() -> None:
     app = create_beeui_app(adapter=FakeProductConsoleAdapter())
@@ -1066,6 +1079,7 @@ def test_new_block_templates_no_external_refs() -> None:
         "state_grid.html",
         "quick_links.html",
         "run_table.html",
+        "group.html",
     ):
         content = (template_root / name).read_text(encoding="utf-8").lower()
         assert "cdn.jsdelivr" not in content, f"{name} contains cdn.jsdelivr"
@@ -1213,6 +1227,54 @@ def test_no_external_refs_in_affected_templates() -> None:
         if not svg_ns_only:
             assert False, f"{name} contains non-SVG http:// references: {http_refs}"
         assert "|safe" not in content, f"{name} contains |safe"
+
+
+# Тест: layout group рендерится через HTML dashboard route
+def test_layout_group_renders_through_adapter() -> None:
+    class GroupLayoutAdapter(FakeProductConsoleAdapter):
+        def get_dashboard(self) -> Any:
+            return ok_result(
+                {
+                    "layout": [
+                        {
+                            "type": "group",
+                            "width": 6,
+                            "direction": "vertical",
+                            "children": [
+                                {
+                                    "type": "metric_card",
+                                    "title": "Storage",
+                                    "value": "42",
+                                    "width": 12,
+                                },
+                                {
+                                    "type": "metric_card",
+                                    "title": "Activity Feed",
+                                    "value": "active",
+                                    "width": 12,
+                                },
+                            ],
+                        },
+                        {
+                            "type": "metric_card",
+                            "title": "Development Activity",
+                            "value": "high",
+                            "width": 6,
+                        },
+                    ],
+                    "latest_run": {"id": "run_001", "status": "ok"},
+                }
+            )
+
+    response = TestClient(create_beeui_app(adapter=GroupLayoutAdapter())).get("/")
+
+    assert response.status_code == 200
+    assert "Storage" in response.text
+    assert "Activity Feed" in response.text
+    assert "Development Activity" in response.text
+    assert "row row-cards" in response.text
+    assert "http://" not in response.text
+    assert "https://" not in response.text
 
 
 # Тест: нет импортов конкретных Bee-продуктов в затронутых исходных файлах, включая router и layout_renderer

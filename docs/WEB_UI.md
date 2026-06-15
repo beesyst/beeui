@@ -10,7 +10,7 @@
 - `beeagent`;
 - будущие Bee-продукты.
 
-Текущая реализованная основа после Iteration 13.3 включает:
+Текущая реализованная основа после Iteration 13.4 включает:
 
 - веб-приложение FastAPI;
 - шаблоны Jinja2;
@@ -41,6 +41,9 @@
 - attached page tabs card-рендеринг для страниц с `pages[].tabs`;
 - generic Tabler-compatible рендеринг accordion toggle;
 - варианты accordion управляются конфигом и используют inline SVG toggle-иконки;
+- consistent page-body spacing через единый wrapper для всех render paths (dashboard, runs, custom pages, tabs);
+- `kpi_grid.columns` — optional adapter-backed field (1..4) для compact KPI grids;
+- generic layout group v1 — adapter-backed `type: group` с `direction: vertical`, bounded recursive children и nested `row row-cards` wrapper;
 - тёмную вертикальную оболочку с локальным контекстом темы боковой панели;
 - специфичный для BeeUI слой CSS-переопределений без повторной реализации примитивов сетки, карточек и таблиц Tabler.
 
@@ -129,7 +132,7 @@ BeeUI renders.
 Product decides.
 ```
 
-### Attached page tabs card contract
+### Контракт attached page tabs card
 
 Если page содержит `pages[].tabs`, BeeUI рендерит tabs и page blocks внутри
 одной card. Tabs не выводятся отдельной standalone card перед blocks.
@@ -164,7 +167,7 @@ Product decides.
 - `?tab=` определяет active state;
 - invalid или disabled tab fallback остаётся прежним.
 
-### Accordion primitive contract
+### Контракт accordion primitive
 
 `accordion` является generic BeeUI primitive и не привязан к конкретному title
 или product-specific fallback.
@@ -197,6 +200,60 @@ Product decides.
 
 Accordion markup использует локальные inline SVG и не требует external assets,
 CDN, preview/demo Tabler scripts или tracking.
+
+### Generic layout group v1
+
+`type: group` — adapter-backed layout block для bounded nested Tabler compositions.
+
+Поддерживается только в adapter-backed `layout[]`.
+
+Payload:
+
+```json
+{
+  "type": "group",
+  "width": 6,
+  "direction": "vertical",
+  "children": [
+    {
+      "type": "metric_card",
+      "title": "Storage",
+      "value": "42",
+      "width": 12
+    }
+  ]
+}
+```
+
+Правила:
+
+- `direction` сейчас поддерживает только `vertical`;
+- missing/invalid `direction` нормализуется к `vertical`;
+- `children` должен быть list для валидного group payload;
+- missing/invalid `children` рендерится как `degraded` block;
+- children рендерятся через существующий BeeUI layout renderer;
+- group nesting bounded depth = 3;
+- exceeded depth рендерится как `degraded` block;
+- group не является schema/demo block type;
+- group не является no-code builder.
+
+### `kpi_grid.columns`
+
+`kpi_grid.columns` — optional adapter-backed field.
+
+| `columns` | CSS classes |
+| --- | --- |
+| `1` | `col-12` |
+| `2` | `col-12 col-sm-6` |
+| `3` | `col-12 col-sm-6 col-lg-4` |
+| `4` | `col-12 col-sm-6 col-lg-3` |
+
+Правила:
+
+- missing `columns` → default `4`;
+- invalid adapter value → default `4`;
+- значение не пробрасывается как CSS class напрямую;
+- field не поддерживается в schema/demo blocks.
 
 ## Source of truth
 
@@ -343,7 +400,7 @@ src/beeui_module/
 - Product-specific domain logic must not live in generic BeeUI renderers.
 - `src/beeui_module/__init__.py` should stay lightweight.
 
-## Public embedded API после Iteration 13.3
+## Public embedded API после Iteration 13.4
 
 ### `create_beeui_app()`
 
@@ -375,7 +432,7 @@ Adapter сохраняется в `app.state.beeui_adapter`. Product metadata с
 
 **Поведение:** adapter принимается и валидируется. При наличии adapter product console routes владеют `/` и `/runs`, а также включают read-only API routes для dashboard/runs/run detail/venue dashboard и generic custom pages для non-reserved config paths. Без adapter BeeUI остаётся backward-compatible и продолжает рендерить schema/demo pages.
 
-После Iteration 13.3 product adapter может опционально реализовать:
+После Iteration 13.4 product adapter может опционально реализовать:
 
 ```python
 from typing import Mapping
@@ -497,7 +554,7 @@ app = create_beeui_app(settings=settings, ui_config=ui_config)
 
 Generic `ProductUiAdapter` contract существует в `src/beeui_module/adapters/`. Adapter можно передать в `create_beeui_app(...)`; после Iteration 12 product console routes вызывают `get_dashboard()`, `list_runs()`, `get_run(run_id)` и optional `get_venue_dashboard(venue_id)`, а artifact browser routes продолжают вызывать `list_artifacts(run_id)` и `read_artifact(run_id, artifact_id)`.
 
-### Schema/demo block placement contract (Iteration 12.5)
+### Контракт размещения schema/demo blocks (Iteration 12.5)
 
 `config/schema.yml` (и product-side `beeui.yml`) содержит секцию `pages`, где
 каждая страница может иметь `blocks[]`.
@@ -540,7 +597,7 @@ pages:
 
 Оба формата не могут быть смешаны в одном элементе. Source config не мутируется.
 
-### Layout block rendering (Iteration 12.1 + 12.2)
+### Рендеринг layout blocks (Iteration 12.1 + 12.2)
 
 Этот contract отличается от schema/demo blocks из `config/schema.yml`.
 
@@ -638,9 +695,9 @@ mount_beeui(
 )
 ```
 
-### Product adapter contract
+### Контракт product adapter
 
-Текущий adapter contract после Iteration 13.3:
+Текущий adapter contract после Iteration 13.4:
 
 ```python
 from typing import Mapping
@@ -877,7 +934,7 @@ scope и не относятся к уже реализованным product co
 - static source paths must be safe relative paths under the project root;
 - no arbitrary HTML/JS/CSS-like fields are accepted in blocks.
 
-## Tabler shell policy
+## Политика Tabler shell
 
 `beeui` использует Tabler как визуальную основу.
 Shell использует реальные локальные скомпилированные ресурсы Tabler core без
@@ -1016,7 +1073,7 @@ JSON routes:
 
 Не все routes должны существовать в MVP.
 
-Текущий набор маршрутов MVP после Iteration 13.3:
+Текущий набор маршрутов MVP после Iteration 13.4:
 
 - `/`
 - `/runs`
@@ -1173,7 +1230,7 @@ Generic dashboard payload shape:
 }
 ```
 
-### KPI object shape
+### Форма KPI object
 
 ```json
 {
@@ -1205,7 +1262,7 @@ Fields:
 | `source_url`      | string/null        | UI link to source.                      |
 | `updated_at`      | string/null        | UTC timestamp, if available.            |
 
-### Attention item shape
+### Форма attention item
 
 ```json
 {
@@ -1932,9 +1989,9 @@ visual editor
   -> apply
 ```
 
-## Typical operator scenarios
+## Типовые сценарии оператора
 
-Текущий сценарий после Iteration 13.3:
+Текущий сценарий после Iteration 13.4:
 
 ```text
 1. BeeUI loads config/settings.yml.
@@ -1952,7 +2009,7 @@ visual editor
 13. No product runtime/action/config mutation happens.
 ```
 
-### 1. Open product dashboard
+### 1. Открыть product dashboard
 
 Текущий сценарий Iteration 13.1.
 
@@ -1961,7 +2018,7 @@ visual editor
 3. BeeUI calls product adapter `get_dashboard()`.
 4. BeeUI рендерит adapter-backed product dashboard.
 
-### 2. Inspect runs
+### 2. Проверить runs
 
 Текущий сценарий Iteration 13.1.
 
@@ -1970,7 +2027,7 @@ visual editor
 3. Operator opens `/runs/{run_id}`.
 4. BeeUI calls `get_run(run_id)`.
 
-### 3. Inspect venue dashboard
+### 3. Проверить venue dashboard
 
 Текущий optional сценарий Iteration 13.1.
 
@@ -1978,9 +2035,9 @@ visual editor
 2. BeeUI calls optional `get_venue_dashboard(venue_id)`.
 3. Если метод не реализован, BeeUI возвращает explicit unavailable state.
 
-### Open adapter-backed custom page
+### Открыть adapter-backed custom page
 
-Текущий сценарий Iteration 13.3.
+Текущий сценарий Iteration 13.4.
 
 1. Product declares a non-reserved page in `beeui.yml`.
 2. Operator opens `/rop` or another configured page path.
@@ -1989,10 +2046,11 @@ visual editor
 5. Product adapter returns read-model with optional `layout[]`.
 6. If tabs are configured, BeeUI renders tabs as attached card header.
 7. Returned `layout[]` renders inside the attached card body when tabs are configured.
-8. BeeUI redacts payload and renders `layout[]` through generic layout renderer.
-9. If adapter method is unavailable or payload is malformed, BeeUI renders explicit degraded state.
+8. BeeUI рендерит flat layout blocks и bounded `type: group` blocks через общий layout renderer.
+9. BeeUI redacts payload and renders `layout[]` through generic layout renderer.
+10. If adapter method is unavailable or payload is malformed, BeeUI renders explicit degraded state.
 
-### 4. Inspect artifact
+### 4. Проверить artifact
 
 Текущий сценарий Iteration 11.
 
@@ -2002,7 +2060,7 @@ visual editor
 4. BeeUI calls `read_artifact(run_id, artifact_id)`.
 5. Product adapter resolves artifact safely.
 
-### 4. Preview config change
+### 4. Предпросмотр изменения config
 
 Будущий сценарий (requires config UI iterations).
 
@@ -2012,7 +2070,7 @@ visual editor
 4. BeeUI delegates validation to product adapter.
 5. No file is written.
 
-### 5. Apply bounded config change
+### 5. Применить bounded config change
 
 Будущий сценарий (requires config apply and audit iterations).
 
@@ -2025,7 +2083,7 @@ visual editor
 
 ## MVP route contract
 
-Текущий MVP route contract после Iteration 13.3:
+Текущий MVP route contract после Iteration 13.4:
 
 - `GET /`
 - `GET /runs`

@@ -1745,3 +1745,351 @@ def test_layout_conflicting_sizing_degrades() -> None:
         assert block["width_class"] == "col-12", (
             f"Expected col-12 for conflicting sizing, got {block['width_class']}"
         )
+
+
+# Тест: kpi_grid.columns=1 рендерит col-12
+def test_layout_kpi_grid_columns_1() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "kpi_grid",
+                "title": "KPI",
+                "columns": 1,
+                "items": [{"label": "A", "value": "1"}, {"label": "B", "value": "2"}],
+            }
+        ]
+    )
+    assert result[0]["columns"] == 1
+    assert result[0]["column_classes"] == "col-12"
+
+
+# Тест: kpi_grid.columns=2 рендерит col-12 col-sm-6
+def test_layout_kpi_grid_columns_2() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "kpi_grid",
+                "title": "KPI",
+                "columns": 2,
+                "items": [{"label": "A", "value": "1"}, {"label": "B", "value": "2"}],
+            }
+        ]
+    )
+    assert result[0]["columns"] == 2
+    assert result[0]["column_classes"] == "col-12 col-sm-6"
+
+
+# Тест: kpi_grid.columns=3 рендерит col-12 col-sm-6 col-lg-4
+def test_layout_kpi_grid_columns_3() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "kpi_grid",
+                "title": "KPI",
+                "columns": 3,
+                "items": [{"label": "A", "value": "1"}],
+            }
+        ]
+    )
+    assert result[0]["columns"] == 3
+    assert result[0]["column_classes"] == "col-12 col-sm-6 col-lg-4"
+
+
+# Тест: kpi_grid.columns=4 рендерит col-12 col-sm-6 col-lg-3
+def test_layout_kpi_grid_columns_4() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "kpi_grid",
+                "title": "KPI",
+                "columns": 4,
+                "items": [{"label": "A", "value": "1"}],
+            }
+        ]
+    )
+    assert result[0]["columns"] == 4
+    assert result[0]["column_classes"] == "col-12 col-sm-6 col-lg-3"
+
+
+# Тест: kpi_grid без columns сохраняет default 4
+def test_layout_kpi_grid_columns_default() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "kpi_grid",
+                "title": "KPI",
+                "items": [{"label": "A", "value": "1"}],
+            }
+        ]
+    )
+    assert result[0]["columns"] == 4
+    assert result[0]["column_classes"] == "col-12 col-sm-6 col-lg-3"
+
+
+# Тест: kpi_grid с invalid adapter columns деградирует к default 4
+def test_layout_kpi_grid_invalid_columns_degrades() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "kpi_grid",
+                "title": "KPI",
+                "columns": 99,
+                "items": [{"label": "A", "value": "1"}],
+            },
+            {
+                "type": "kpi_grid",
+                "title": "KPI2",
+                "columns": "bad",
+                "items": [{"label": "B", "value": "2"}],
+            },
+            {
+                "type": "kpi_grid",
+                "title": "KPI3",
+                "columns": 0,
+                "items": [{"label": "C", "value": "3"}],
+            },
+        ]
+    )
+    for block in result:
+        assert block["columns"] == 4, f"Expected default 4, got {block['columns']}"
+        assert block["column_classes"] == "col-12 col-sm-6 col-lg-3"
+
+
+# Тест: generic group рендерится с children
+def test_layout_group_renders() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "group",
+                "width": 6,
+                "direction": "vertical",
+                "children": [
+                    {
+                        "type": "metric_card",
+                        "title": "Storage",
+                        "value": "42",
+                        "width": 12,
+                    },
+                    {
+                        "type": "metric_card",
+                        "title": "Activity",
+                        "value": "active",
+                        "width": 12,
+                    },
+                ],
+            }
+        ]
+    )
+    assert len(result) == 1
+    group = result[0]
+    assert group["type"] == "group"
+    assert group["width_class"] == "col-12 col-lg-6"
+    assert group["direction"] == "vertical"
+    assert len(group["children"]) == 2
+    assert group["children"][0]["type"] == "metric_card"
+    assert group["children"][0]["title"] == "Storage"
+    assert group["children"][1]["title"] == "Activity"
+
+
+# Тест: group width=6 + block width=6 рендерит две top-level columns
+def test_layout_group_and_block_as_columns() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "group",
+                "width": 6,
+                "direction": "vertical",
+                "children": [
+                    {
+                        "type": "metric_card",
+                        "title": "Storage",
+                        "value": "42",
+                        "width": 12,
+                    },
+                ],
+            },
+            {
+                "type": "metric_card",
+                "title": "Dev Activity",
+                "value": "active",
+                "width": 6,
+            },
+        ]
+    )
+    assert len(result) == 2
+    assert result[0]["type"] == "group"
+    assert result[0]["width_class"] == "col-12 col-lg-6"
+    assert result[1]["type"] == "metric_card"
+    assert result[1]["width_class"] == "col-12 col-lg-6"
+
+
+# Тест: group children с width=12 рендерят col-12 внутри nested row
+def test_layout_group_children_width_12() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "group",
+                "width": 12,
+                "children": [
+                    {
+                        "type": "metric_card",
+                        "title": "Full",
+                        "value": "1",
+                        "width": 12,
+                    },
+                ],
+            }
+        ]
+    )
+    group = result[0]
+    assert group["children"][0]["width_class"] == "col-12"
+
+
+# Тест: malformed group payload degrades to degraded
+def test_layout_group_malformed_degrades() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "group",
+                "width": 6,
+                "children": "not a list",
+            },
+            {
+                "type": "group",
+                "width": 6,
+                "children": [{"type": "metric_card", "title": "A", "value": "1"}],
+            },
+        ]
+    )
+
+    assert len(result) == 2
+    assert result[0]["type"] == "degraded"
+    assert result[0]["width_class"] == "col-12 col-lg-6"
+    assert "children" in result[0]["reason"]
+
+    assert result[1]["type"] == "group"
+    assert len(result[1]["children"]) == 1
+
+
+# Тест: group с отсутствующим direction по умолчанию vertical
+def test_layout_group_missing_direction_defaults() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "group",
+                "width": 6,
+                "children": [
+                    {"type": "metric_card", "title": "A", "value": "1"},
+                ],
+            }
+        ]
+    )
+    assert result[0]["direction"] == "vertical"
+
+
+# Тест: group с невалидным direction деградирует к vertical
+def test_layout_group_invalid_direction_degrades() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "group",
+                "width": 6,
+                "direction": "horizontal",
+                "children": [
+                    {"type": "metric_card", "title": "A", "value": "1"},
+                ],
+            }
+        ]
+    )
+    assert result[0]["direction"] == "vertical"
+
+
+# Тест: group с глубиной 4+ деградирует с reason depth exceeded
+def test_layout_group_depth_bounded() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "group",
+                "width": 12,
+                "children": [
+                    {
+                        "type": "group",
+                        "width": 12,
+                        "children": [
+                            {
+                                "type": "group",
+                                "width": 12,
+                                "children": [
+                                    {
+                                        "type": "group",
+                                        "width": 12,
+                                        "children": [
+                                            {
+                                                "type": "metric_card",
+                                                "title": "Too deep",
+                                                "value": "1",
+                                            }
+                                        ],
+                                    }
+                                ],
+                            }
+                        ],
+                    }
+                ],
+            }
+        ]
+    )
+    inner = result[0]["children"][0]["children"][0]["children"][0]
+    assert inner["type"] == "degraded"
+    assert "depth exceeded" in inner["reason"]
+
+
+# Тест: flat layout 6+3+3 рендерит ожидаемые column classes
+def test_layout_flat_6_3_3() -> None:
+    result = render_layout(
+        [
+            {"type": "metric_card", "title": "A", "value": "1", "width": 6},
+            {"type": "metric_card", "title": "B", "value": "2", "width": 3},
+            {"type": "metric_card", "title": "C", "value": "3", "width": 3},
+        ]
+    )
+    assert result[0]["width_class"] == "col-12 col-lg-6"
+    assert result[1]["width_class"] == "col-12 col-sm-6 col-lg-3"
+    assert result[2]["width_class"] == "col-12 col-sm-6 col-lg-3"
+
+
+# Тест: flat layout 3+3+3+3 рендерит col-12 col-sm-6 col-lg-3 для всех блоков
+def test_layout_flat_3_3_3_3() -> None:
+    result = render_layout(
+        [
+            {"type": "metric_card", "title": "A", "value": "1", "width": 3},
+            {"type": "metric_card", "title": "B", "value": "2", "width": 3},
+            {"type": "metric_card", "title": "C", "value": "3", "width": 3},
+            {"type": "metric_card", "title": "D", "value": "4", "width": 3},
+        ]
+    )
+    for block in result:
+        assert block["width_class"] == "col-12 col-sm-6 col-lg-3"
+
+
+# Тест: group template существует
+def test_layout_group_template_exists() -> None:
+    assert Path("src/beeui_module/web/templates/components/layout/group.html").is_file()
+
+
+# Тест: resolve_kpi_grid_columns helper
+def test_resolve_kpi_grid_columns() -> None:
+    from beeui_module.blocks.layout_renderer import resolve_kpi_grid_columns
+
+    assert resolve_kpi_grid_columns(1) == 1
+    assert resolve_kpi_grid_columns(2) == 2
+    assert resolve_kpi_grid_columns(3) == 3
+    assert resolve_kpi_grid_columns(4) == 4
+    assert resolve_kpi_grid_columns(99) == 4
+    assert resolve_kpi_grid_columns(0) == 4
+    assert resolve_kpi_grid_columns("bad") == 4
+    assert resolve_kpi_grid_columns(None) == 4
+    assert resolve_kpi_grid_columns("3") == 4
+    assert resolve_kpi_grid_columns(True) == 4
+    assert resolve_kpi_grid_columns(False) == 4
+    assert resolve_kpi_grid_columns(1.0) == 4

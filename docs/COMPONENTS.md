@@ -1,21 +1,21 @@
 # Components
 
-## Purpose
+## Назначение
 
-This document defines the internal BeeUI component catalog and reusable controlled template primitives introduced in Iteration 6.
+Этот документ описывает внутренний каталог компонентов BeeUI и переиспользуемые контролируемые template primitives, добавленные в Iteration 6.
 
-Main rule:
+Главное правило:
 
 ```text
 BeeUI renders.
 Product decides.
 ```
 
-The component catalog is read-only and internal. It is intended for visual review and safe primitive reuse by future pages and blocks.
+Каталог компонентов является internal и read-only. Он предназначен для визуальной проверки и безопасного переиспользования примитивов в будущих страницах и блоках.
 
-## Route surface
+## Поверхность маршрутов
 
-Catalog routes are internal HTML routes and are always read-only:
+Маршруты каталога являются internal HTML routes и всегда работают в read-only режиме:
 
 - `GET /components`
 - `GET /components/interface`
@@ -24,15 +24,84 @@ Catalog routes are internal HTML routes and are always read-only:
 - `GET /components/extra`
 - `GET /components/plugins`
 
-All routes are served under configured `web.route_prefix`.
+Все маршруты обслуживаются под настроенным `web.route_prefix`.
 
-## Primitives v0
+## Добавления Iteration 13.4
 
-Reusable template primitives are implemented in:
+### Layout group (`type: group`)
+
+Generic nested container для Tabler dashboard compositions.
+
+Payload адаптера:
+
+```json
+{
+  "id": "left_stack",
+  "type": "group",
+  "width": 6,
+  "direction": "vertical",
+  "children": [
+    { "type": "metric_card", "title": "Storage", "value": "42", "width": 12 },
+    { "type": "metric_card", "title": "Activity Feed", "value": "active", "width": 12 }
+  ]
+}
+```
+
+HTML-форма:
+
+```html
+<div class="row row-cards g-3">
+  <div class="col-12">...</div>
+  <div class="col-12">...</div>
+</div>
+```
+
+Ограничения:
+
+- `children` требуется для валидного group payload;
+- `direction` optional, default `vertical`;
+- invalid `direction` → `vertical`;
+- `children` рендерятся через существующий BeeUI block renderer;
+- missing/invalid `children` → `degraded`;
+- depth limit `3`; exceeded depth returns `degraded` block;
+- некорректный group payload рендерится как `degraded` block, без 500.
+
+### Колонки KPI grid
+
+`kpi_grid` поддерживает optional `columns` (1..4):
+
+| columns | CSS classes |
+|---------|-------------|
+| 1       | `col-12` |
+| 2       | `col-12 col-sm-6` |
+| 3       | `col-12 col-sm-6 col-lg-4` |
+| 4 (default) | `col-12 col-sm-6 col-lg-3` |
+
+Invalid adapter values degrade to default 4 (no 500).
+Это поле относится только к adapter-backed `layout[]` block `kpi_grid`.
+Schema/demo `kpi_grid` этим contract не расширяется.
+
+### Отступы страниц
+
+Все HTML render paths (`page.html`, `product_dashboard.html`, `product_runs.html`,
+`product_run_detail.html`, `product_venue_dashboard.html`) используют единый
+`.page-body` wrapper:
+
+```html
+<div class="page-body">
+  <div class="container-xl">...</div>
+</div>
+```
+
+Страницы с tabs рендерят blocks внутри `.card.beeui-page-tabs-card` в пределах того же page-body.
+
+## Примитивы v0
+
+Переиспользуемые template primitives реализованы в:
 
 - `src/beeui_module/web/templates/components/primitives/catalog_primitives.html`
 
-Primitives:
+Примитивы:
 
 - `alert`
 - `badge`
@@ -62,25 +131,25 @@ Primitives:
 - `toast_placeholder`
 - `offcanvas_shell`
 
-Inert plugin placeholders:
+Инертные plugin placeholders:
 
 - `chart_container`
 - `map_container`
 - `datatable_container`
 
-## Catalog templates
+## Шаблоны каталога
 
-Catalog templates are implemented in:
+Шаблоны каталога реализованы в:
 
 - `src/beeui_module/web/templates/components/catalog/index.html`
 - `src/beeui_module/web/templates/components/catalog/page.html`
 - `src/beeui_module/web/templates/components/catalog/sections/*.html`
 
-They render inside the existing BeeUI shell (`base.html`), with the same navigation/layout/theme context helpers used by configured pages.
+Они рендерятся внутри существующей BeeUI shell (`base.html`) с теми же navigation/layout/theme context helpers, что и configured pages.
 
-## Security and constraints
+## Безопасность и ограничения
 
-Required safety guarantees for primitives and catalog pages:
+Обязательные гарантии безопасности для примитивов и страниц каталога:
 
 - Jinja autoescape remains enabled.
 - No unsafe `|safe` usage for sample/config/user-like values.
@@ -89,15 +158,15 @@ Required safety guarantees for primitives and catalog pages:
 - Plugin placeholders are inert markup only.
 - No runtime/product execution authority.
 
-## Allowed and forbidden usage
+## Разрешённое и запрещённое использование
 
-Allowed:
+Разрешено:
 
 - Read-only visual previews.
 - Reuse of controlled primitives in future BeeUI templates.
 - Safe literal sample text from Python-defined context.
 
-Forbidden:
+Запрещено:
 
 - Copying full upstream Tabler demo pages.
 - Arbitrary HTML/JS/CSS from config or user input.
@@ -105,7 +174,7 @@ Forbidden:
 - Product-specific domain semantics in generic primitives.
 - Hidden write-side effects in GET routes.
 
-## Iteration 12.4 — Operator console block primitives
+## Iteration 12.4 — Примитивы блоков операторской консоли
 
 Iteration 12.4 adds 6 new adapter-backed `layout[]` block types for product-neutral operator console parity:
 
@@ -125,9 +194,9 @@ Existing `attention_list` handles all severity values (`warning`, `error`, `info
 
 A new `_display_value` helper in `blocks/layout_renderer.py` ensures user-visible values never render as `None` — missing/empty values render as `n/a` by default.
 
-## Reuse guidance
+## Рекомендации по переиспользованию
 
-When adding future pages/blocks:
+При добавлении будущих pages/blocks:
 
 1. Prefer existing primitive macros first.
 2. Add small primitive extensions only when needed.
