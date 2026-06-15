@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.19.1](https://github.com/beesyst/beeui/compare/beeui-v0.19.0...beeui-v0.19.1) (2026-06-15)
+
+
+### Bug Fixes
+
+* **beeui:** attach page tabs and harden accordion rendering ([#66](https://github.com/beesyst/beeui/issues/66)) ([f8e3eb8](https://github.com/beesyst/beeui/commit/f8e3eb830b14e8287e961130645d05ab9b28b634))
+
 ## [0.19.0](https://github.com/beesyst/beeui/compare/beeui-v0.18.0...beeui-v0.19.0) (2026-06-14)
 
 
