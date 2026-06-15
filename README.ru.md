@@ -71,6 +71,23 @@
 - reserved route collision protection, включая `/auth` namespace;
 - тестовое покрытие config validation, rendering, custom pages, degraded states и security constraints.
 
+## Iteration 13.3 — Tabler attached page tabs and generic accordion visual parity hardening
+
+Текущий результат — Tabler-compatible attached page tabs и generic configurable accordion primitive.
+
+В Iteration 13.3 добавлены:
+
+- page-level tabs attached к общей card/body;
+- удалён standalone tabs card перед page blocks;
+- `.card.beeui-page-tabs-card` для pages с `pages[].tabs`;
+- page header/title/subtitle остаются над attached tabs card;
+- pages без `pages[].tabs` продолжают рендериться как раньше, без `.beeui-page-tabs-card`;
+- `accordion` primitive рендерит Tabler-compatible toggle;
+- chevron / plus / icons рендерятся как inline SVG без external assets;
+- accordion variants остаются config-driven;
+- `Technical details` является только label/content fallback-блока product dashboard, а не product-specific special-case;
+- BeeUI остаётся product-neutral.
+
 ## Iteration 12.4
 
 Текущий результат — расширение adapter-backed `layout[]` contract для
@@ -153,10 +170,15 @@ adapter-backed типов блоков и отдельный `degraded` fallback
   - `components.tabs.variant`;
   - `components.accordion.variant`;
 - page-level URL tabs через `pages[].tabs`;
+- page-level URL tabs прикрепляются к body общей Tabler card;
+- отсутствие standalone tabs card перед page blocks;
+- `.beeui-page-tabs-card` для page-level tabs;
 - safe internal tab href validation;
 - disabled tab fallback;
 - route-prefix-aware tab href rendering;
-- reusable `accordion` primitive;
+- reusable `accordion` primitive с Tabler-compatible toggle markup;
+- варианты accordion управляются через `components.accordion.variant`;
+- inline SVG chevron/plus/icons without external assets;
 - generic adapter-backed custom pages через optional `adapter.get_page(page_id, query)`;
 - redaction adapter-backed custom page payloads before render;
 - malformed custom page payload degrades to explicit unavailable/error state;
@@ -248,7 +270,7 @@ BeeUI сейчас поддерживает два разных block contract.
 - malformed sizing деградирует в `col-12`, не ломая страницу;
 - BeeUI не вычисляет product metrics, а только рендерит product-provided layout.
 
-Текущая web surface после Iteration 13.2:
+Текущая web surface после Iteration 13.3:
 
 - `GET /`
 - `GET /runs`
@@ -432,7 +454,7 @@ MVP не пытается сразу стать полноценным Retool/We
 
 ## Что BeeUI делает
 
-В текущем состоянии после Iteration 13.2 BeeUI отвечает за:
+В текущем состоянии после Iteration 13.3 BeeUI отвечает за:
 
 - FastAPI app factory;
 - Jinja2 templates;
@@ -448,10 +470,11 @@ MVP не пытается сразу стать полноценным Retool/We
 - `app.locale` в `config/schema.yml` и resolved `locale` в template context;
 - allowlist override через `?lang=` с fallback к default locale;
 - configurable component defaults через `components.tabs.variant` и `components.accordion.variant`;
-- page-level URL tabs через `pages[].tabs`;
+- page-level URL tabs через `pages[].tabs`, рендерящиеся как attached Tabler card tabs;
 - safe internal tab href validation, disabled tab fallback и route-prefix-aware tab href rendering;
 - `url_tabs` в component catalog как Jinja primitive для `nav nav-tabs card-header-tabs`;
-- reusable `accordion` primitive;
+- reusable `accordion` primitive с Tabler variants и visible toggle;
+- BeeUI accordion не привязан к конкретному title вроде `Technical details`;
 - generic dashboard fallback отделяет raw/debug payload в BeeUI accordion `Technical details`;
 - generic product adapter contract v0 in `src/beeui_module/adapters/`;
 - BeeCap-compatible fixture/reference adapter for contract validation;
@@ -782,7 +805,7 @@ BeeUI не должен получать прямую authority на tools/MCP/r
 
 Продукт импортирует BeeUI и монтирует его в своём web process.
 
-Текущий статус после Iteration 13.2:
+Текущий статус после Iteration 13.3:
 
 - generic adapter contract существует;
 - BeeCap fixture/reference adapter существует для contract validation;
@@ -803,8 +826,9 @@ BeeUI не должен получать прямую authority на tools/MCP/r
 - page-level URL tabs через `pages[].tabs`;
 - safe internal tab href validation, disabled tab fallback и route-prefix-aware tab href rendering;
 - `url_tabs` работает через обычные `<a href>` и active state по `?tab=`;
+- page-level tabs attached к общей Tabler card/body через `.beeui-page-tabs-card`;
 - reusable `accordion` primitive используется и в generic dashboard fallback;
-- generic dashboard fallback показывает summary/KPIs/structured cards, а raw/debug payload уходит в BeeUI accordion `Technical details`;
+- generic dashboard fallback показывает summary/KPIs/structured cards, а raw/debug payload уходит в общий BeeUI accordion item с label `Technical details`;
 - generic adapter-backed custom pages используют optional `get_page(page_id, query)` и рендерят только возвращённый `layout[]`;
 - adapter-backed custom page payload redaction выполняется до HTML render;
 - malformed custom page payload деgrades to explicit unavailable/error state;
@@ -1069,7 +1093,7 @@ Iteration 12.1 добавляет optional presentation contract:
 - product adapter остаётся владельцем product semantics;
 - при отсутствии `layout[]` используется generic fallback renderer.
 
-Текущий contract v0 после Iteration 13.2:
+Текущий contract v0 после Iteration 13.3:
 
 ```python
 from typing import Mapping
@@ -1116,7 +1140,7 @@ class ProductUiAdapter:
 
 `get_page()` optional: default `ProductUiAdapterBase.get_page()` возвращает unavailable, существующие adapters не обязаны реализовывать метод, product adapter владеет domain semantics страницы, а BeeUI только рендерит returned `layout[]`.
 
-После Iteration 13.2 BeeUI вызывает adapter через embedded mount/app factory layer
+После Iteration 13.3 BeeUI вызывает adapter через embedded mount/app factory layer
 для product console, generic custom pages и artifact browser routes.
 
 Product adapter решает, что можно читать/делать.
@@ -1426,7 +1450,7 @@ uv run --frozen --extra dev python config/start.py web
 
 ## Целевая структура проекта
 
-Актуальные ключевые файлы после Iteration 13.2:
+Актуальные ключевые файлы после Iteration 13.3:
 
 ```text
 config/
@@ -1939,6 +1963,10 @@ Iteration 12.1 — Adapter-backed Tabler dashboard blocks renderer
 Iteration 12.2 — Усиление визуального соответствия Tabler для продуктовой консоли на основе адаптера
 Iteration 12.3 — Chart layout block package/rendering integrity
 Iteration 12.4 — Operator console block primitives parity
+Iteration 13 — Auth/session/CSRF boundary for config/action routes MVP
+Iteration 13.1 — Dashboard layout primitives, URL tabs and locale seed
+Iteration 13.2 — Generic adapter pages and configurable Tabler primitives
+Iteration 13.3 — Tabler attached page tabs and generic accordion visual parity hardening
 BeeCap UI-25 — BeeUI Console parity MVP
 BeeCap UI-26 — BeeUI default route switch with legacy fallback
 ```
@@ -2108,6 +2136,7 @@ Visual builder later.
 Iteration 13 — Auth/session/CSRF boundary for config/action routes MVP — ЗАВЕРШЕНО
 Iteration 13.1 — Dashboard layout primitives, URL tabs and locale seed — ЗАВЕРШЕНО
 Iteration 13.2 — Generic adapter pages and configurable Tabler primitives — ЗАВЕРШЕНО
+Iteration 13.3 — Tabler attached page tabs and generic accordion visual parity hardening — ЗАВЕРШЕНО
 ```
 
 Работает:

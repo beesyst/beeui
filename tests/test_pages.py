@@ -631,11 +631,10 @@ def test_component_catalog_url_tabs_invalid_tab_falls_back() -> None:
     )
 
 
-# Тест: generic dashboard technical details использует accordion, а не raw <details>
-def test_technical_details_uses_accordion_instead_of_details(tmp_path: Path) -> None:
+# Тест: fallback disclosure использует BeeUI accordion primitive, а не raw <details>
+def test_product_dashboard_disclosure_uses_accordion_primitive() -> None:
     from beeui_module.adapters.base import ProductUiAdapterBase
     from beeui_module.adapters.envelopes import AdapterMetadata, ok_result
-    from beeui_module.web.app import create_beeui_app
 
     class AccordionTestAdapter(ProductUiAdapterBase):
         def __init__(self):
@@ -677,15 +676,14 @@ def test_technical_details_uses_accordion_instead_of_details(tmp_path: Path) -> 
 
     assert response.status_code == 200
     assert "<details" not in response.text
-    assert 'id="technical-details-accordion"' in response.text
     assert 'class="accordion' in response.text
-    assert 'id="technical-details-accordion"' in response.text
-    assert 'class="accordion' in response.text
-    assert "Technical details" in response.text
+    assert 'class="accordion-button' in response.text
+    assert 'class="accordion-button-toggle"' in response.text
+    assert 'data-bs-toggle="collapse"' in response.text
 
 
-# Тест: generic dashboard technical details наследует accordion variant из config
-def test_technical_details_uses_configured_accordion_variant(tmp_path: Path) -> None:
+# Тест: accordion variant из config влияет на rendered class
+def test_accordion_variant_from_config_affects_rendered_class(tmp_path: Path) -> None:
     from beeui_module.adapters.base import ProductUiAdapterBase
     from beeui_module.adapters.envelopes import AdapterMetadata, ok_result
     from beeui_module.pages.config import load_beeui_config
@@ -728,7 +726,7 @@ def test_technical_details_uses_configured_accordion_variant(tmp_path: Path) -> 
         .read_text(encoding="utf-8")
         .replace(
             "data_sources:\n  demo_dashboard:\n    type: demo\n\n",
-            "components:\n  accordion:\n    variant: flush\n\ndata_sources:\n  demo_dashboard:\n    type: demo\n\n",
+            "components:\n  accordion:\n    variant: tabs\n\ndata_sources:\n  demo_dashboard:\n    type: demo\n\n",
             1,
         ),
         encoding="utf-8",
@@ -741,7 +739,7 @@ def test_technical_details_uses_configured_accordion_variant(tmp_path: Path) -> 
     response = client.get("/")
 
     assert response.status_code == 200
-    assert 'class="accordion accordion-flush"' in response.text
+    assert 'class="accordion accordion-tabs"' in response.text
 
 
 # Тест: custom page, объявленная в schema с path, рендерится через adapter get_page
@@ -1297,3 +1295,290 @@ def test_custom_adapter_page_redacts_payload_before_render(tmp_path: Path) -> No
 
     assert response.status_code == 200
     assert "secret-value" not in response.text
+
+
+# Тест: page tabs рендерятся внутри карточки и после subtitle страницы
+def test_page_tabs_renders_attached_card(tmp_path: Path) -> None:
+    from beeui_module.web.app import create_beeui_app
+
+    schema_path = tmp_path / "schema.yml"
+    schema_path.write_text(
+        "app:\n"
+        "  title: Test\n"
+        "  product: test\n"
+        "  logo_text: Test\n"
+        "  theme:\n"
+        "    mode: dark\n"
+        "    primary: blue\n"
+        "    base: gray\n"
+        "    font: sans-serif\n"
+        "    radius: 1\n"
+        "    density: default\n"
+        "  layout:\n"
+        "    type: vertical\n"
+        "    container: xl\n"
+        "    sidebar:\n"
+        "      variant: dark\n"
+        "      collapsed: false\n"
+        "    navbar:\n"
+        "      enabled: true\n"
+        "      variant: default\n"
+        "      sticky: false\n"
+        "\n"
+        "navigation:\n"
+        "  - title: Dashboard\n"
+        "    path: /\n"
+        "    icon: dashboard\n"
+        "\n"
+        "data_sources: {}\n"
+        "blocks:\n"
+        "  test_block:\n"
+        "    type: text_card\n"
+        "    title: Test Block\n"
+        "    text: Block content here\n"
+        "pages:\n"
+        "  - id: dashboard\n"
+        "    path: /\n"
+        "    title: Dashboard\n"
+        "    subtitle: Demo subtitle\n"
+        "    blocks:\n"
+        "      - block: test_block\n"
+        "        width: 6\n"
+        "    tabs:\n"
+        "      active_param: tab\n"
+        "      items:\n"
+        "        - id: overview\n"
+        "          title: Overview\n"
+        "          href: /?tab=overview\n"
+        "        - id: details\n"
+        "          title: Details\n"
+        "          href: /?tab=details\n",
+        encoding="utf-8",
+    )
+    ui_config = load_beeui_config(schema_path)
+    settings = load_settings(settings_path())
+    app = create_beeui_app(settings=settings, ui_config=ui_config)
+    client = TestClient(app)
+
+    response = client.get("/")
+
+    assert response.status_code == 200
+    assert 'class="card beeui-page-tabs-card"' in response.text
+    assert "Demo subtitle" in response.text
+
+    tabs_card_idx = response.text.index('class="card beeui-page-tabs-card"')
+    title_idx = response.text.index("Demo subtitle")
+    assert title_idx < tabs_card_idx, (
+        "Page subtitle must appear before beeui-page-tabs-card"
+    )
+
+    page_blocks_section = response.text.index(
+        '<section aria-label="Page blocks">', tabs_card_idx
+    )
+    card_body_idx = response.text.index('class="card-body"', tabs_card_idx)
+    assert page_blocks_section > card_body_idx, (
+        "Page blocks section must be inside card-body"
+    )
+
+    assert "Test Block" in response.text
+    assert "Block content here" in response.text
+    assert 'href="/?tab=overview"' in response.text
+    assert 'href="/?tab=details"' in response.text
+
+
+# Тест: page tabs nav находится внутри header той же attached card
+def test_page_tabs_nav_is_inside_attached_card_header(tmp_path: Path) -> None:
+    from beeui_module.web.app import create_beeui_app
+
+    schema_path = tmp_path / "schema.yml"
+    schema_path.write_text(
+        "app:\n"
+        "  title: Test\n"
+        "  product: test\n"
+        "  logo_text: Test\n"
+        "  theme:\n"
+        "    mode: dark\n"
+        "    primary: blue\n"
+        "    base: gray\n"
+        "    font: sans-serif\n"
+        "    radius: 1\n"
+        "    density: default\n"
+        "  layout:\n"
+        "    type: vertical\n"
+        "    container: xl\n"
+        "    sidebar:\n"
+        "      variant: dark\n"
+        "      collapsed: false\n"
+        "    navbar:\n"
+        "      enabled: true\n"
+        "      variant: default\n"
+        "      sticky: false\n"
+        "\n"
+        "navigation:\n"
+        "  - title: Dashboard\n"
+        "    path: /\n"
+        "    icon: dashboard\n"
+        "\n"
+        "data_sources: {}\n"
+        "blocks:\n"
+        "  test_block:\n"
+        "    type: text_card\n"
+        "    title: Test Block\n"
+        "    text: Block content here\n"
+        "pages:\n"
+        "  - id: dashboard\n"
+        "    path: /\n"
+        "    title: Dashboard\n"
+        "    subtitle: Demo subtitle\n"
+        "    blocks:\n"
+        "      - block: test_block\n"
+        "        width: 6\n"
+        "    tabs:\n"
+        "      active_param: tab\n"
+        "      items:\n"
+        "        - id: overview\n"
+        "          title: Overview\n"
+        "          href: /?tab=overview\n",
+        encoding="utf-8",
+    )
+
+    ui_config = load_beeui_config(schema_path)
+    settings = load_settings(settings_path())
+    app = create_beeui_app(settings=settings, ui_config=ui_config)
+    client = TestClient(app)
+
+    response = client.get("/")
+
+    assert response.status_code == 200
+
+    card_start = response.text.index('class="card beeui-page-tabs-card"')
+    card_segment = response.text[card_start:]
+
+    header_idx = card_segment.index('class="card-header"')
+    nav_idx = card_segment.index("nav nav-tabs card-header-tabs")
+    body_idx = card_segment.index('class="card-body"')
+    blocks_idx = card_segment.index('<section aria-label="Page blocks">')
+
+    assert header_idx < nav_idx < body_idx < blocks_idx
+
+
+# Тест: page tabs рендерятся без дублирующей standalone карточки с card-header-tabs
+def test_page_tabs_no_standalone_tabs_card(tmp_path: Path) -> None:
+    from beeui_module.web.app import create_beeui_app
+
+    schema_path = tmp_path / "schema.yml"
+    schema_path.write_text(
+        "app:\n"
+        "  title: Test\n"
+        "  product: test\n"
+        "  logo_text: Test\n"
+        "  theme:\n"
+        "    mode: dark\n"
+        "    primary: blue\n"
+        "    base: gray\n"
+        "    font: sans-serif\n"
+        "    radius: 1\n"
+        "    density: default\n"
+        "  layout:\n"
+        "    type: vertical\n"
+        "    container: xl\n"
+        "    sidebar:\n"
+        "      variant: dark\n"
+        "      collapsed: false\n"
+        "    navbar:\n"
+        "      enabled: true\n"
+        "      variant: default\n"
+        "      sticky: false\n"
+        "\n"
+        "navigation:\n"
+        "  - title: Dashboard\n"
+        "    path: /\n"
+        "    icon: dashboard\n"
+        "\n"
+        "data_sources: {}\n"
+        "blocks: {}\n"
+        "pages:\n"
+        "  - id: dashboard\n"
+        "    path: /\n"
+        "    title: Dashboard\n"
+        "    subtitle: Demo\n"
+        "    blocks: []\n"
+        "    tabs:\n"
+        "      active_param: tab\n"
+        "      items:\n"
+        "        - id: overview\n"
+        "          title: Overview\n"
+        "          href: /?tab=overview\n",
+        encoding="utf-8",
+    )
+    ui_config = load_beeui_config(schema_path)
+    settings = load_settings(settings_path())
+    app = create_beeui_app(settings=settings, ui_config=ui_config)
+    client = TestClient(app)
+
+    response = client.get("/")
+
+    assert response.status_code == 200
+    assert 'class="card beeui-page-tabs-card"' in response.text
+
+    tabs_card_start = response.text.index('class="card beeui-page-tabs-card"')
+    before_tabs_card = response.text[:tabs_card_start]
+    assert "card-header-tabs" not in before_tabs_card, (
+        "Must not contain standalone tabs card before beeui-page-tabs-card"
+    )
+    assert '<div class="card mb-3">' not in before_tabs_card
+
+
+# Тест: страница без tabs рендерит blocks без tabs-card и nav-tabs
+def test_page_without_tabs_renders_blocks_normally(tmp_path: Path) -> None:
+    from beeui_module.web.app import create_beeui_app
+
+    schema_path = tmp_path / "schema.yml"
+    schema_path.write_text(
+        "app:\n"
+        "  title: Test\n"
+        "  product: test\n"
+        "  logo_text: Test\n"
+        "  theme:\n"
+        "    mode: dark\n"
+        "    primary: blue\n"
+        "    base: gray\n"
+        "    font: sans-serif\n"
+        "    radius: 1\n"
+        "    density: default\n"
+        "  layout:\n"
+        "    type: vertical\n"
+        "    container: xl\n"
+        "    sidebar:\n"
+        "      variant: dark\n"
+        "      collapsed: false\n"
+        "    navbar:\n"
+        "      enabled: true\n"
+        "      variant: default\n"
+        "      sticky: false\n"
+        "\n"
+        "navigation:\n"
+        "  - title: Dashboard\n"
+        "    path: /\n"
+        "    icon: dashboard\n"
+        "\n"
+        "data_sources: {}\n"
+        "blocks: {}\n"
+        "pages:\n"
+        "  - id: dashboard\n"
+        "    path: /\n"
+        "    title: Dashboard\n"
+        "    subtitle: Demo\n"
+        "    blocks: []\n",
+        encoding="utf-8",
+    )
+    ui_config = load_beeui_config(schema_path)
+    settings = load_settings(settings_path())
+    app = create_beeui_app(settings=settings, ui_config=ui_config)
+    client = TestClient(app)
+
+    response = client.get("/")
+
+    assert response.status_code == 200
+    assert 'class="card beeui-page-tabs-card"' not in response.text
+    assert '<section aria-label="Page blocks">' in response.text

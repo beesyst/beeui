@@ -10,7 +10,7 @@
 - `beeagent`;
 - будущие Bee-продукты.
 
-Текущая реализованная основа после Iteration 13.2 включает:
+Текущая реализованная основа после Iteration 13.3 включает:
 
 - веб-приложение FastAPI;
 - шаблоны Jinja2;
@@ -38,6 +38,9 @@
 - предпросмотр JSON/JSONL/текста с ограниченными лимитами и placeholder редактирования секретов.
 - реальные локальные скомпилированные CSS/JS-ресурсы `@tabler/core@1.4.0`;
 - усиление визуального соответствия Tabler для продуктовой консоли на основе адаптера;
+- attached page tabs card-рендеринг для страниц с `pages[].tabs`;
+- generic Tabler-compatible рендеринг accordion toggle;
+- варианты accordion управляются конфигом и используют inline SVG toggle-иконки;
 - тёмную вертикальную оболочку с локальным контекстом темы боковой панели;
 - специфичный для BeeUI слой CSS-переопределений без повторной реализации примитивов сетки, карточек и таблиц Tabler.
 
@@ -81,12 +84,20 @@
   - URL-driven tab links with safe href validation;
   - active tab resolved from query param with allowlist fallback;
   - duplicate/unsafe tab items rejected during config validation.
+- attached page tabs card contract (Iteration 13.3):
+  - если page содержит `pages[].tabs`, tabs и page blocks рендерятся внутри одной `.card.beeui-page-tabs-card`;
+  - структура: `.card-header` → `ul.nav.nav-tabs.card-header-tabs` → `.card-body` → `section[aria-label="Page blocks"]`;
+  - page title/subtitle остаются снаружи card и рендерятся выше tabs;
+  - pages без tabs продолжают рендерить blocks без `.beeui-page-tabs-card`;
+  - tabs остаются URL-driven через обычные links, без JS-only pane contract.
 - accordion primitive (Iteration 13.2):
   - `accordion` Jinja macro in `catalog_primitives.html`;
   - deterministic safe accordion ids;
-  - Tabler/Bootstrap-compatible markup `accordion`, `accordion-item`, `accordion-button`, `accordion-collapse`;
+  - generic Tabler/Bootstrap-compatible markup `accordion`, `accordion-item`, `accordion-header`, `accordion-button`, `accordion-button-toggle`, `accordion-collapse`;
+  - inline SVG chevron / plus / icon toggle markup без external assets;
   - variant class mapping centralized in Python;
-  - technical details fallback uses accordion instead of raw `<details>`.
+  - generic dashboard fallback uses the same reusable accordion primitive instead of raw `<details>`;
+  - label `Technical details` относится к одному fallback item и не является отдельным BeeUI rendering contract.
 - generic adapter-backed custom pages (Iteration 13.2):
   - non-reserved page paths from config register as adapter-backed GET routes;
   - `adapter.get_page(page_id, query)` called when adapter present;
@@ -117,6 +128,75 @@
 BeeUI renders.
 Product decides.
 ```
+
+### Attached page tabs card contract
+
+Если page содержит `pages[].tabs`, BeeUI рендерит tabs и page blocks внутри
+одной card. Tabs не выводятся отдельной standalone card перед blocks.
+
+Структура:
+
+- `.card.beeui-page-tabs-card`
+- `.card-header`
+- `ul.nav.nav-tabs.card-header-tabs`
+- `.card-body`
+- `section aria-label="Page blocks"`
+
+Короткий HTML-фрагмент:
+
+```html
+<div class="card beeui-page-tabs-card">
+  <div class="card-header">
+    <ul class="nav nav-tabs card-header-tabs" role="tablist">...</ul>
+  </div>
+  <div class="card-body">
+    <section aria-label="Page blocks">...</section>
+  </div>
+</div>
+```
+
+Правила:
+
+- page title/subtitle остаются снаружи card и рендерятся выше tabs;
+- если `pages[].tabs` отсутствует, page blocks рендерятся как раньше, без tabs-card;
+- BeeUI не использует JS-only hidden panes для page tabs;
+- navigation остаётся URL-driven через обычные links;
+- `?tab=` определяет active state;
+- invalid или disabled tab fallback остаётся прежним.
+
+### Accordion primitive contract
+
+`accordion` является generic BeeUI primitive и не привязан к конкретному title
+или product-specific fallback.
+
+`Technical details` в dashboard fallback — это только label/content одного item.
+Реализация accordion не содержит special-case для этого названия.
+
+Базовая Tabler-compatible структура:
+
+- `.accordion`
+- `.accordion-item`
+- `.accordion-header`
+- `.accordion-button`
+- `.accordion-button-toggle`
+- inline SVG chevron / plus / icon
+- `data-bs-toggle="collapse"`
+- `aria-expanded`
+- deterministic ids
+
+Вариант берётся из `components.accordion.variant`.
+
+| Variant | Фактические классы / поведение |
+| --- | --- |
+| `default` | `.accordion`, стандартный chevron toggle |
+| `flush` | `.accordion.accordion-flush`, стандартный chevron toggle |
+| `tabs` | `.accordion.accordion-tabs`, стандартный chevron toggle |
+| `inverted` | `.accordion.accordion-inverted`, стандартный chevron toggle |
+| `inverted_plus` | `.accordion.accordion-inverted.accordion-plus`, plus toggle |
+| `icons` | `.accordion`, `accordion-button-icon` + стандартный chevron toggle |
+
+Accordion markup использует локальные inline SVG и не требует external assets,
+CDN, preview/demo Tabler scripts или tracking.
 
 ## Source of truth
 
@@ -263,7 +343,7 @@ src/beeui_module/
 - Product-specific domain logic must not live in generic BeeUI renderers.
 - `src/beeui_module/__init__.py` should stay lightweight.
 
-## Public embedded API после Iteration 13.2
+## Public embedded API после Iteration 13.3
 
 ### `create_beeui_app()`
 
@@ -295,7 +375,7 @@ Adapter сохраняется в `app.state.beeui_adapter`. Product metadata с
 
 **Поведение:** adapter принимается и валидируется. При наличии adapter product console routes владеют `/` и `/runs`, а также включают read-only API routes для dashboard/runs/run detail/venue dashboard и generic custom pages для non-reserved config paths. Без adapter BeeUI остаётся backward-compatible и продолжает рендерить schema/demo pages.
 
-После Iteration 13.2 product adapter может опционально реализовать:
+После Iteration 13.3 product adapter может опционально реализовать:
 
 ```python
 from typing import Mapping
@@ -560,7 +640,7 @@ mount_beeui(
 
 ### Product adapter contract
 
-Текущий adapter contract после Iteration 13.2:
+Текущий adapter contract после Iteration 13.3:
 
 ```python
 from typing import Mapping
@@ -936,7 +1016,7 @@ JSON routes:
 
 Не все routes должны существовать в MVP.
 
-Текущий набор маршрутов MVP после Iteration 13.2:
+Текущий набор маршрутов MVP после Iteration 13.3:
 
 - `/`
 - `/runs`
@@ -1854,7 +1934,7 @@ visual editor
 
 ## Typical operator scenarios
 
-Текущий сценарий после Iteration 13.2:
+Текущий сценарий после Iteration 13.3:
 
 ```text
 1. BeeUI loads config/settings.yml.
@@ -1864,10 +1944,12 @@ visual editor
 5. Adapter is validated and stored in app.state.beeui_adapter.
 6. Product metadata is stored in app.state.beeui_product.
 7. If adapter is present, product console routes call `get_dashboard()`, `list_runs()`, `get_run()` and optional `get_venue_dashboard()`.
-8. Non-reserved configured custom pages call optional `get_page(page_id, query)` and render returned `layout[]`.
-9. Artifact routes call `list_artifacts()` and `read_artifact()`.
-10. If adapter is absent, dashboard/runs continue to render schema/demo/static pages.
-11. No product runtime/action/config mutation happens.
+8. Non-reserved configured custom pages call optional `get_page(page_id, query)`.
+9. BeeUI resolves optional page tabs from config.
+10. When tabs are configured, tabs render as attached card header and returned `layout[]` renders inside the attached card body.
+11. Artifact routes call `list_artifacts()` and `read_artifact()`.
+12. If adapter is absent, dashboard/runs continue to render schema/demo/static pages.
+13. No product runtime/action/config mutation happens.
 ```
 
 ### 1. Open product dashboard
@@ -1898,15 +1980,17 @@ visual editor
 
 ### Open adapter-backed custom page
 
-Текущий сценарий Iteration 13.2.
+Текущий сценарий Iteration 13.3.
 
 1. Product declares a non-reserved page in `beeui.yml`.
 2. Operator opens `/rop` or another configured page path.
 3. BeeUI resolves optional page tabs from config.
 4. BeeUI calls `adapter.get_page(page_id, query)`.
 5. Product adapter returns read-model with optional `layout[]`.
-6. BeeUI redacts payload and renders `layout[]` through generic layout renderer.
-7. If adapter method is unavailable or payload is malformed, BeeUI renders explicit degraded state.
+6. If tabs are configured, BeeUI renders tabs as attached card header.
+7. Returned `layout[]` renders inside the attached card body when tabs are configured.
+8. BeeUI redacts payload and renders `layout[]` through generic layout renderer.
+9. If adapter method is unavailable or payload is malformed, BeeUI renders explicit degraded state.
 
 ### 4. Inspect artifact
 
@@ -1941,7 +2025,7 @@ visual editor
 
 ## MVP route contract
 
-Текущий MVP route contract после Iteration 13.2:
+Текущий MVP route contract после Iteration 13.3:
 
 - `GET /`
 - `GET /runs`
