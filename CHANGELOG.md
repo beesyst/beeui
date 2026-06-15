@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.20.0](https://github.com/beesyst/beeui/compare/beeui-v0.19.1...beeui-v0.20.0) (2026-06-15)
+
+
+### Features
+
+* **beeui:** add generic layout groups and kpi grid columns ([#69](https://github.com/beesyst/beeui/issues/69)) ([e2db085](https://github.com/beesyst/beeui/commit/e2db0851375d7390e34a293b3e3e04e6396252ad))
+
 ## [0.19.1](https://github.com/beesyst/beeui/compare/beeui-v0.19.0...beeui-v0.19.1) (2026-06-15)
 
 
