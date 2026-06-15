@@ -3622,6 +3622,249 @@ Automated checks:
 - no GET route mutates product storage/config/artifacts;
 - docs reflect actual config/component/page contracts.
 
+### Итерация 13.3 — Tabler attached tabs and accordion visual parity hardening
+
+**Статус:** PLANNED
+
+#### Goal
+
+Исправить BeeUI renderer/CSS для Tabler-compatible page tabs and accordion primitives, чтобы adapter-backed custom pages, включая BeeAgent `/rop`, рендерились без product-owned HTML templates: tabs должны быть attached к общей card/body, а `Technical details` должен выглядеть и работать как стандартный Tabler accordion с видимым chevron.
+
+#### Почему это нужно
+
+После Iteration 13.2 BeeUI умеет регистрировать generic adapter-backed custom pages и configurable `tabs` / `accordion` primitives. Но фактический BeeAgent UI-5 smoke показал visual/renderer gap:
+
+- `/rop` tabs рендерятся как отдельная card перед page blocks;
+- между active tab `Overview` и первым block `Run Overview` появляется внешний зазор;
+- tabs визуально не attached к card body, как в Tabler examples;
+- `Technical details` на dashboard выглядит как большая статичная строка;
+- chevron/accordion affordance не виден;
+- пользователь не понимает, что block раскрываемый.
+
+Это нельзя исправлять в BeeAgent через product-owned Jinja templates. BeeAgent должен отдавать только config/read-model/layout. BeeUI должен владеть shell, tabs, accordion, page renderer, CSS and Tabler-compatible primitives.
+
+Главное правило сохраняется:
+
+```text
+BeeUI renders.
+Product decides.
+```
+
+#### Change level
+
+**runtime-risk**
+
+Причина:
+
+- меняется BeeUI page renderer HTML structure;
+- меняется rendering behavior для configured page tabs;
+- меняется accordion primitive markup/CSS;
+- меняется operator-facing UI для adapter-backed product pages;
+- текущие BeeAgent UI-5 routes зависят от BeeUI renderer output.
+
+Security-sensitive checks required for:
+
+- HTML escaping;
+- safe internal links in tabs;
+- deterministic/safe accordion ids;
+- no external CDN/scripts/tracking;
+- no product-specific imports;
+- no unsafe Jinja `|safe`;
+- no mutation from GET routes;
+- no secrets in HTML/API/logs.
+
+#### Scope
+
+**Включено:**
+
+- исправить page-level tabs placement в BeeUI renderer:
+  - если page has configured tabs, tabs и page blocks должны рендериться внутри одной card;
+  - использовать Tabler-compatible structure:
+
+```html
+<div class="card beeui-page-tabs-card">
+  <div class="card-header">
+    <ul class="nav nav-tabs card-header-tabs">
+      ...
+    </ul>
+  </div>
+  <div class="card-body">
+    <section aria-label="Page blocks">...</section>
+  </div>
+</div>
+```
+
+- убрать standalone tabs card pattern перед page blocks:
+
+```html
+<div class="card mb-3">...</div>
+<section aria-label="Page blocks">...</section>
+```
+
+- page title/subtitle должны оставаться выше tabs card;
+
+- tabs не должны перекрывать subtitle;
+
+- между tabs header и page blocks не должно быть внешнего margin-gap;
+
+- нормальный `card-body` padding допустим;
+
+- между самими blocks внутри body остаётся стандартный Tabler grid gap;
+
+- active tab and disabled tab behavior должны сохраниться;
+
+- `?tab=overview|queue|sources|attachments|evidence` должен работать как раньше;
+
+- invalid tab fallback должен работать как раньше;
+
+- route prefix support должен сохраниться;
+
+- исправить `Technical details` accordion rendering:
+  - использовать стандартный Tabler-compatible accordion markup;
+  - `Technical details` должен быть `button.accordion-button collapsed`;
+  - chevron должен быть видимым справа через `.accordion-button-toggle`;
+  - использовать local inline SVG chevron или existing BeeUI icon primitive;
+  - не использовать external icon/CDN;
+  - не использовать `accordion-tabs` для technical details;
+  - размер шрифта должен соответствовать accordion button/card text, не page-title;
+  - сохранить accessibility attributes:
+    - `type="button"`;
+    - `data-bs-toggle="collapse"`;
+    - `data-bs-target`;
+    - `aria-expanded`;
+    - `aria-controls`;
+
+- добавить/обновить CSS только в BeeUI static layer, если одного Tabler markup недостаточно;
+
+- добавить regression tests for HTML structure and safety;
+
+- обновить docs:
+  - `docs/ROADMAP.md`;
+  - `docs/WEB_UI.md`;
+  - `docs/COMPONENTS.md`;
+  - `docs/API_CONTRACT.md`, если там описан tabs/accordion/page contract.
+
+**Не включено:**
+
+- BeeAgent-owned Jinja templates;
+- `src/beeagent_module/interfaces/ui/templates`;
+- package-data for BeeAgent UI templates;
+- `Jinja2Templates` inside BeeAgent UI integration;
+- `_build_rop_html`;
+- `_build_modules_html`;
+- `_build_artifact_viewer_html`;
+- `_build_shell_context`;
+- `_render_page`;
+- BeeAgent/BeeCap/MRKT/Binance/ROP-specific logic inside BeeUI;
+- new no-code builder;
+- auth/session/CSRF changes;
+- config apply;
+- operator actions;
+- POST routes;
+- arbitrary HTML/JS;
+- new dependencies;
+- external Tabler preview assets/scripts;
+- `pyproject.toml.version` change;
+- `uv.lock` change unless dependencies are explicitly changed.
+
+#### Deliverable
+
+BeeUI renders configured page tabs and technical details accordion with Tabler-compatible visual structure:
+
+```text
+/rop
+  page title/subtitle
+  single attached tabs card
+    card-header: nav-tabs
+    card-body: page blocks
+```
+
+```text
+/
+  Technical details
+    standard accordion button
+    visible chevron
+    collapsed/expandable affordance
+```
+
+BeeAgent can keep using BeeUI through `create_beeui_app(...)` and adapter-provided read-model/layout without product-owned templates.
+
+#### Checks
+
+- `uv run pytest -q`;
+- `uv run pytest -q -W error::UserWarning`;
+- `./start.sh doctor`;
+- `./start.sh routes`;
+- `./start.sh web --host 127.0.0.1 --port 8780`;
+
+Automated checks:
+
+- configured page with tabs renders `beeui-page-tabs-card`;
+- tabs and `section aria-label="Page blocks"` are inside the same card;
+- no standalone `<div class="card mb-3">` tabs card before page blocks;
+- page title renders before tabs;
+- page subtitle renders before tabs;
+- first page block renders inside `.beeui-page-tabs-card .card-body`;
+- active tab still receives `.active`;
+- disabled tab remains disabled/inert;
+- invalid tab query falls back safely;
+- `route_prefix` tab hrefs still work;
+- `Technical details` renders inside `.accordion`;
+- `Technical details` uses `.accordion-button.collapsed`;
+- `Technical details` contains `.accordion-button-toggle`;
+- `Technical details` does not use `accordion-tabs`;
+- accordion ids are deterministic and safe;
+- unsafe text remains escaped;
+- no unsafe `|safe`;
+- no external references:
+  - `posthog`;
+  - `scripts.tabler.io`;
+  - `preview.tabler.io`;
+  - `docs.tabler.io`;
+  - `cdn.jsdelivr`;
+  - remote font imports;
+
+- no product-specific imports:
+  - `beecap_module`;
+  - `beeagent_module`;
+
+- no GET route mutates storage/config/artifacts.
+
+BeeAgent embedded smoke after BeeUI update:
+
+```text
+GET /
+GET /rop
+GET /rop?tab=overview
+GET /rop?tab=queue
+GET /rop?tab=sources
+GET /rop?tab=attachments
+GET /rop?tab=evidence
+GET /modules
+```
+
+Expected:
+
+- `/rop` tabs visually attached to page blocks card;
+- no external gap between tabs header and first block container;
+- normal gap remains between blocks inside card body;
+- `Technical details` has visible chevron and normal accordion font size;
+- BeeAgent still has no product-owned HTML templates.
+
+#### DoD
+
+- page tabs attached-card renderer is implemented, documented and tested;
+- `Technical details` accordion uses Tabler-compatible markup with visible chevron;
+- BeeUI remains product-neutral;
+- BeeAgent keeps only config/read-model/layout/artifact allowlist;
+- no BeeAgent HTML templates are introduced;
+- no external assets/scripts/tracking are introduced;
+- no unsafe Jinja `|safe` is introduced;
+- no secrets leak into HTML/API/logs;
+- no GET route mutates product storage/config/artifacts;
+- docs reflect actual tabs/accordion/page rendering behavior;
+- BeeAgent UI-5 can proceed after dependency update and smoke verification.
+
 ---
 
 ## Этап 7 — BeeAgent integration

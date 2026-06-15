@@ -5,14 +5,43 @@ include "components/page_header.html" %}
 
 <div class="{{ layout.container_class }}">
   {% if page_tabs %}
-  <div class="card mb-3">
-    <div class="card-header p-2">
-      {{ url_tabs( items=page_tabs.tab_items, active_id=page_tabs.active_id,
-      tab_class=page_tabs.tabs_class, active_param=page_tabs.active_param ) }}
+  <div class="card beeui-page-tabs-card">
+    <div class="card-header">
+      {{ url_tabs(
+        items=page_tabs.tab_items,
+        active_id=page_tabs.active_id,
+        tab_class=page_tabs.tabs_class,
+        active_param=page_tabs.active_param
+      ) }}
+    </div>
+    <div class="card-body">
+      <section aria-label="Page blocks">
+        {% if has_layout %}
+        <div class="row row-deck row-cards g-3">
+          {% for block in layout_blocks %}
+          <div class="{{ block.width_class }}">
+            {% include "components/layout_block.html" %}
+          </div>
+          {% endfor %}
+        </div>
+        {% elif has_blocks %}
+        <div class="row row-deck row-cards beeui-block-grid">
+          {% for block in rendered_blocks %}
+          <div class="col-12 col-md-{{ block.width }}">
+            {% include block.template_name %}
+          </div>
+          {% endfor %}
+        </div>
+        {% elif error %}
+        <div class="alert alert-warning" role="alert">
+          <h4 class="alert-title">{{ page.title }}</h4>
+          <div class="text-secondary">{{ error }}</div>
+        </div>
+        {% else %} {% include "components/empty_state.html" %} {% endif %}
+      </section>
     </div>
   </div>
-  {% endif %}
-
+  {% else %}
   <section aria-label="Page blocks">
     {% if has_layout %}
     <div class="row row-deck row-cards g-3">
@@ -37,5 +66,6 @@ include "components/page_header.html" %}
     </div>
     {% else %} {% include "components/empty_state.html" %} {% endif %}
   </section>
+  {% endif %}
 </div>
 {% endblock %}

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import Any, cast
 
@@ -1075,3 +1076,154 @@ def test_new_block_templates_no_external_refs() -> None:
         assert "http://" not in content, f"{name} contains http://"
         assert "https://" not in content, f"{name} contains https://"
         assert "|safe" not in content, f"{name} contains |safe"
+
+
+# Тест: базовый accordion рендерит Tabler-compatible chevron toggle
+def test_accordion_renders_chevron_toggle_svg() -> None:
+    app = create_beeui_app(adapter=FakeProductConsoleAdapter())
+    client = TestClient(app)
+
+    response = client.get("/")
+
+    assert response.status_code == 200
+    assert 'class="accordion-button-toggle"' in response.text
+    assert 'aria-hidden="true"' in response.text
+    assert '<path d="M6 9l6 6l6 -6" />' in response.text
+    assert 'data-bs-toggle="collapse"' in response.text
+    assert 'aria-expanded="false"' in response.text
+
+
+# Тест: accordion header использует Tabler-compatible div, а не heading tag
+def test_accordion_uses_tabler_div_header_markup() -> None:
+    app = create_beeui_app(adapter=FakeProductConsoleAdapter())
+    client = TestClient(app)
+
+    response = client.get("/")
+
+    assert response.status_code == 200
+    assert '<div class="accordion-header"' in response.text
+    assert '<h2 class="accordion-header"' not in response.text
+
+
+# Тест: accordion variant tabs даёт class accordion accordion-tabs
+def test_accordion_variant_tabs_renders_tabs_class(tmp_path: Path) -> None:
+    from beeui_module.pages.config import load_beeui_config
+
+    schema_path = tmp_path / "schema.yml"
+    schema_path.write_text(
+        Path("config/schema.yml")
+        .read_text(encoding="utf-8")
+        .replace(
+            "data_sources:\n  demo_dashboard:\n    type: demo\n\n",
+            "components:\n  accordion:\n    variant: tabs\n\ndata_sources:\n  demo_dashboard:\n    type: demo\n\n",
+            1,
+        ),
+        encoding="utf-8",
+    )
+    settings = load_settings(settings_path())
+    ui_config = load_beeui_config(schema_path)
+    app = create_beeui_app(
+        settings=settings, ui_config=ui_config, adapter=FakeProductConsoleAdapter()
+    )
+    client = TestClient(app)
+
+    response = client.get("/")
+
+    assert response.status_code == 200
+    assert 'class="accordion accordion-tabs"' in response.text
+
+
+# Тест: accordion variant inverted_plus даёт plus svg и accordion-plus class
+def test_accordion_variant_inverted_plus_renders_plus_svg(tmp_path: Path) -> None:
+    from beeui_module.pages.config import load_beeui_config
+
+    schema_path = tmp_path / "schema.yml"
+    schema_path.write_text(
+        Path("config/schema.yml")
+        .read_text(encoding="utf-8")
+        .replace(
+            "data_sources:\n  demo_dashboard:\n    type: demo\n\n",
+            "components:\n  accordion:\n    variant: inverted_plus\n\ndata_sources:\n  demo_dashboard:\n    type: demo\n\n",
+            1,
+        ),
+        encoding="utf-8",
+    )
+    settings = load_settings(settings_path())
+    ui_config = load_beeui_config(schema_path)
+    app = create_beeui_app(
+        settings=settings, ui_config=ui_config, adapter=FakeProductConsoleAdapter()
+    )
+    client = TestClient(app)
+
+    response = client.get("/")
+
+    assert response.status_code == 200
+    assert "accordion-plus" in response.text
+    assert "accordion-button-toggle-plus" in response.text
+    assert '<path d="M12 5l0 14" />' in response.text
+    assert '<path d="M5 12l14 0" />' in response.text
+
+
+# Тест: accordion variant icons даёт accordion-button-icon и chevron toggle
+def test_accordion_variant_icons_renders_icon_and_chevron(tmp_path: Path) -> None:
+    from beeui_module.pages.config import load_beeui_config
+
+    schema_path = tmp_path / "schema.yml"
+    schema_path.write_text(
+        Path("config/schema.yml")
+        .read_text(encoding="utf-8")
+        .replace(
+            "data_sources:\n  demo_dashboard:\n    type: demo\n\n",
+            "components:\n  accordion:\n    variant: icons\n\ndata_sources:\n  demo_dashboard:\n    type: demo\n\n",
+            1,
+        ),
+        encoding="utf-8",
+    )
+    settings = load_settings(settings_path())
+    ui_config = load_beeui_config(schema_path)
+    app = create_beeui_app(
+        settings=settings, ui_config=ui_config, adapter=FakeProductConsoleAdapter()
+    )
+    client = TestClient(app)
+
+    response = client.get("/")
+
+    assert response.status_code == 200
+    assert 'class="accordion-button-icon"' in response.text
+    assert 'class="accordion-button-toggle"' in response.text
+
+
+# Тест: нет внешних ссылок в затронутых шаблонах, включая новые блоки и общие шаблоны
+def test_no_external_refs_in_affected_templates() -> None:
+    template_root = Path("src/beeui_module/web/templates")
+    affected = [
+        "page.html",
+        "product_dashboard.html",
+        "components/primitives/catalog_primitives.html",
+    ]
+    for name in affected:
+        content = (template_root / name).read_text(encoding="utf-8").lower()
+        assert "cdn.jsdelivr" not in content, f"{name} contains cdn.jsdelivr"
+        assert "posthog" not in content, f"{name} contains posthog"
+        assert "scripts.tabler.io" not in content, f"{name} contains scripts.tabler.io"
+        assert "preview.tabler.io" not in content, f"{name} contains preview.tabler.io"
+        assert "docs.tabler.io" not in content, f"{name} contains docs.tabler.io"
+        http_refs = re.findall(r"http://[^\s\"'>]+", content)
+        svg_ns_only = all(ref == "http://www.w3.org/2000/svg" for ref in http_refs)
+        if not svg_ns_only:
+            assert False, f"{name} contains non-SVG http:// references: {http_refs}"
+        assert "|safe" not in content, f"{name} contains |safe"
+
+
+# Тест: нет импортов конкретных Bee-продуктов в затронутых исходных файлах, включая router и layout_renderer
+def test_no_product_imports_in_affected_source() -> None:
+    source_root = Path("src/beeui_module")
+    affected = [
+        "pages/router.py",
+        "pages/product_console.py",
+        "blocks/layout_renderer.py",
+    ]
+    for name in affected:
+        content = (source_root / name).read_text(encoding="utf-8")
+        for product_module in ("beecap_module", "beeagent_module"):
+            assert product_module not in content, f"{name} contains {product_module}"

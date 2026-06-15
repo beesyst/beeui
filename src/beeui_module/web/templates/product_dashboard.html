@@ -85,7 +85,9 @@ title %}{{ page_title }} · {{ app_title }}{% endblock %} {% block content %}
         {% set technical_details_items = [{'title': 'Technical details', 'open':
         false}] %} {% call(item) accordion( items=technical_details_items,
         accordion_id='technical-details-accordion',
-        accordion_class=components.accordion_class ) %} {% if dashboard %}
+        accordion_class=components.accordion_class,
+        accordion_variant=components.accordion_variant|default('default') ) %}
+        {% if dashboard %}
         <pre class="mb-0"><code>{{ dashboard | tojson(indent=2) }}</code></pre>
         {% else %}
         <div class="text-secondary">No dashboard payload available.</div>
