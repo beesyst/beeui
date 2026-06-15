@@ -1,0 +1,9 @@
+<div class="row row-cards g-3">
+  {% for child in block.children %}
+    <div class="{{ child.width_class }}">
+      {% with block = child %}
+        {% include "components/layout_block.html" %}
+      {% endwith %}
+    </div>
+  {% endfor %}
+</div>

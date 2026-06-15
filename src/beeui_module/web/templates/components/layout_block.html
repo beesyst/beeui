@@ -30,6 +30,8 @@
   {% include "components/layout/state_grid.html" %}
 {% elif block.type == "quick_links" %}
   {% include "components/layout/quick_links.html" %}
+{% elif block.type == "group" %}
+  {% include "components/layout/group.html" %}
 {% elif block.type == "run_table" %}
   {% include "components/layout/run_table.html" %}
 {% elif block.type == "degraded" %}

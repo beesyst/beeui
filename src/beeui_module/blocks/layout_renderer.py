@@ -18,7 +18,6 @@ _SIZE_MAP: dict[str, int] = {
     "XL": 12,
 }
 _DEFAULT_WIDTH_CLASS = "col-12"
-_SIZE_SIZE_KEYS = {"width", "span", "size"}
 _SUPPORTED_BLOCK_TYPES: set[str] = {
     "hero_snapshot",
     "metric_card",
@@ -37,6 +36,7 @@ _SUPPORTED_BLOCK_TYPES: set[str] = {
     "state_grid",
     "quick_links",
     "run_table",
+    "group",
 }
 _RUN_TABLE_COLUMNS: tuple[str, ...] = (
     "Run",
@@ -52,6 +52,13 @@ _RUN_TABLE_COLUMNS: tuple[str, ...] = (
     "Events",
     "Artifact",
 )
+_KPI_GRID_COLUMN_CLASSES: dict[int, str] = {
+    1: "col-12",
+    2: "col-12 col-sm-6",
+    3: "col-12 col-sm-6 col-lg-4",
+    4: "col-12 col-sm-6 col-lg-3",
+}
+_GROUP_MAX_DEPTH: int = 3
 
 
 # Определение класса ширины по целочисленному значению width
@@ -203,16 +210,22 @@ def _require_scalar(raw: dict[str, Any], field: str) -> None:
         raise ValueError(f"Block {field} is missing or invalid")
 
 
+# Разрешение количества колонок KPI-сетки: валидация значения от адаптера
+def resolve_kpi_grid_columns(value: object) -> int:
+    if isinstance(value, int) and not isinstance(value, bool):
+        if value in _KPI_GRID_COLUMN_CLASSES:
+            return value
+    return 4
+
+
 # Рендеринг одного блока из необработанных данных с валидацией и обработкой ошибок
-def _render_block(raw: Any) -> dict[str, Any]:
+def _render_block(raw: Any, depth: int = _GROUP_MAX_DEPTH) -> dict[str, Any]:
     if not isinstance(raw, dict):
         return _degraded_block("Block is not an object", width=None)
 
     block_type = raw.get("type")
     if not isinstance(block_type, str) or not block_type:
-        return _degraded_block(
-            "Block type is missing or invalid", width=raw
-        )
+        return _degraded_block("Block type is missing or invalid", width=raw)
 
     if block_type not in _SUPPORTED_BLOCK_TYPES:
         return _degraded_block(
@@ -224,6 +237,8 @@ def _render_block(raw: Any) -> dict[str, Any]:
 
     try:
         renderer = _BLOCK_RENDERERS[block_type]
+        if block_type == "group":
+            return renderer(raw, width_class, depth=depth)
         return renderer(raw, width_class)
     except Exception:
         return _degraded_block(
@@ -571,6 +586,9 @@ def _render_kpi_grid(raw: dict[str, Any], width_class: str) -> dict[str, Any]:
     _require_title(raw)
     _require_list(raw, "items")
 
+    columns = resolve_kpi_grid_columns(raw.get("columns"))
+    column_classes = _KPI_GRID_COLUMN_CLASSES[columns]
+
     items: list[dict[str, Any]] = []
     for item in _safe_dict_list(raw.get("items")):
         items.append(
@@ -586,7 +604,37 @@ def _render_kpi_grid(raw: dict[str, Any], width_class: str) -> dict[str, Any]:
         "type": "kpi_grid",
         "width_class": width_class,
         "title": _display_value(raw.get("title")),
+        "columns": columns,
+        "column_classes": column_classes,
         "items": items,
+    }
+
+
+# Рендеринг layout group — nested container с bounded recursive children
+def _render_group(
+    raw: dict[str, Any],
+    width_class: str,
+    *,
+    depth: int = _GROUP_MAX_DEPTH,
+) -> dict[str, Any]:
+    if depth <= 0:
+        return _degraded_block("Group nesting depth exceeded", width=raw)
+
+    direction = raw.get("direction", "vertical")
+    if not isinstance(direction, str) or direction not in ("vertical",):
+        direction = "vertical"
+
+    children_raw = raw.get("children")
+    if not isinstance(children_raw, list):
+        return _degraded_block("Group children are missing or invalid", width=raw)
+
+    children = [_render_block(child, depth=depth - 1) for child in children_raw]
+
+    return {
+        "type": "group",
+        "width_class": width_class,
+        "direction": direction,
+        "children": children,
     }
 
 
@@ -694,6 +742,7 @@ _BLOCK_RENDERERS: dict[str, Any] = {
     "state_grid": _render_state_grid,
     "quick_links": _render_quick_links,
     "run_table": _render_run_table,
+    "group": _render_group,
 }
 
 
@@ -701,4 +750,4 @@ _BLOCK_RENDERERS: dict[str, Any] = {
 def render_layout(layout: Any) -> list[dict[str, Any]]:
     if not isinstance(layout, list):
         return []
-    return [_render_block(item) for item in layout]
+    return [_render_block(item, depth=_GROUP_MAX_DEPTH) for item in layout]

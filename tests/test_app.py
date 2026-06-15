@@ -146,9 +146,7 @@ def test_get_local_tabler_vendor_asset_returns_file() -> None:
 
 # Тест: vendor CSS является compiled Tabler core, а не placeholder subset
 def test_local_tabler_css_is_not_placeholder() -> None:
-    css_path = Path(
-        "src/beeui_module/web/static/vendor/tabler/css/tabler.min.css"
-    )
+    css_path = Path("src/beeui_module/web/static/vendor/tabler/css/tabler.min.css")
     css = css_path.read_text(encoding="utf-8")
 
     assert css_path.stat().st_size > 100_000
@@ -177,9 +175,7 @@ def test_local_tabler_css_is_not_placeholder() -> None:
 
 # Тест: BeeUI override layer не реализует второй core grid/component framework
 def test_beeui_css_does_not_override_core_grid() -> None:
-    css = Path("src/beeui_module/web/static/css/beeui.css").read_text(
-        encoding="utf-8"
-    )
+    css = Path("src/beeui_module/web/static/css/beeui.css").read_text(encoding="utf-8")
 
     for selector in (
         "\n.row {",
@@ -195,9 +191,7 @@ def test_beeui_css_does_not_override_core_grid() -> None:
 
 # Тест: theme base surface override остаётся привязан к light/dark theme
 def test_beeui_theme_base_surface_override_is_theme_scoped() -> None:
-    css = Path("src/beeui_module/web/static/css/beeui.css").read_text(
-        encoding="utf-8"
-    )
+    css = Path("src/beeui_module/web/static/css/beeui.css").read_text(encoding="utf-8")
 
     light_rule = css.index('[data-bs-theme="light"] .beeui-theme-base-gray')
     light_value = css.index("--beeui-surface: #ffffff;", light_rule)
@@ -213,9 +207,7 @@ def test_beeui_theme_base_surface_override_is_theme_scoped() -> None:
 
 # Тест: footer использует Tabler transparent footer без светлого override
 def test_beeui_footer_override_is_transparent() -> None:
-    css = Path("src/beeui_module/web/static/css/beeui.css").read_text(
-        encoding="utf-8"
-    )
+    css = Path("src/beeui_module/web/static/css/beeui.css").read_text(encoding="utf-8")
     footer_rule = css.split(".beeui-footer {", 1)[1].split("}", 1)[0]
 
     assert "background: transparent;" in footer_rule
@@ -263,7 +255,9 @@ def test_default_dark_shell_has_no_navbar_and_transparent_footer() -> None:
 
     assert response.status_code == 200
     assert "beeui-navbar" not in response.text
-    assert 'class="footer footer-transparent d-print-none beeui-footer"' in response.text
+    assert (
+        'class="footer footer-transparent d-print-none beeui-footer"' in response.text
+    )
 
 
 # Тест: HTML подключает real local Tabler assets до BeeUI overrides
@@ -610,3 +604,78 @@ def test_load_settings_fails_on_missing_features_browser_artifact(tmp_path) -> N
         raise AssertionError(
             "load_settings must fail fast when features.browser_artifact is missing"
         )
+
+
+# Тест: page с tabs рендерит .beeui-page-tabs-card
+def test_page_with_tabs_renders_tabs_card() -> None:
+    from dataclasses import replace
+
+    from beeui_module.pages.models import PageTabsConfig, PageTabsItem
+
+    settings = load_settings(settings_path())
+    ui_config = load_beeui_config(settings_path().parent / "schema.yml")
+    ui_config = replace(
+        ui_config,
+        pages=[
+            replace(
+                ui_config.pages[0],
+                tabs=PageTabsConfig(
+                    items=(PageTabsItem(tab_id="tab1", title="Tab 1", href="/"),),
+                ),
+            ),
+            ui_config.pages[1],
+        ],
+    )
+    app = create_beeui_app(settings=settings, ui_config=ui_config)
+    client = TestClient(app)
+
+    response = client.get("/")
+
+    assert response.status_code == 200
+    assert 'class="card beeui-page-tabs-card"' in response.text
+    assert "Tab 1" in response.text
+
+
+# Тест: page без tabs рендерит normal blocks без .beeui-page-tabs-card
+def test_page_without_tabs_renders_normal_blocks() -> None:
+    app = create_beeui_app()
+    client = TestClient(app)
+
+    response = client.get("/runs")
+
+    assert response.status_code == 200
+    assert "beeui-page-tabs-card" not in response.text
+    assert "No blocks configured" in response.text
+
+
+# Тест: page-body/container wrapper consistent across pages
+def test_page_body_container_wrapper_consistent() -> None:
+    settings = load_settings(settings_path())
+    ui_config = load_beeui_config(settings_path().parent / "schema.yml")
+    app = create_beeui_app(settings=settings, ui_config=ui_config)
+    client = TestClient(app)
+
+    for path in ("/", "/runs"):
+        response = client.get(path)
+        assert response.status_code == 200
+        assert 'class="page-body"' in response.text
+        body_idx = response.text.index('class="page-body"')
+        container_idx = response.text.index("container-xl")
+        assert container_idx > body_idx, (
+            f"Path {path}: container-xl must be inside page-body"
+        )
+
+
+# Тест: product dashboard использует page-body wrapper
+def test_configured_page_uses_page_body() -> None:
+    settings = load_settings(settings_path())
+    ui_config = load_beeui_config(settings_path().parent / "schema.yml")
+    app = create_beeui_app(settings=settings, ui_config=ui_config)
+    client = TestClient(app)
+
+    response = client.get("/")
+
+    assert response.status_code == 200
+    body_idx = response.text.index('class="page-body"')
+    container_idx = response.text.index("container-xl", body_idx)
+    assert container_idx > body_idx

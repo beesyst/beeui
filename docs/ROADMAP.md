@@ -3326,8 +3326,6 @@ Automated checks:
 - no external CDN/scripts/tracking are introduced;
 - docs reflect the updated layout/tabs/locale contract.
 
-## ROADMAP insert
-
 ### Итерация 13.2 — Generic adapter pages and configurable Tabler primitives
 
 **Статус:** DONE
@@ -3624,7 +3622,7 @@ Automated checks:
 
 ### Итерация 13.3 — Tabler attached tabs and accordion visual parity hardening
 
-**Статус:** PLANNED
+**Статус:** DONE
 
 #### Goal
 
@@ -3864,6 +3862,302 @@ Expected:
 - no GET route mutates product storage/config/artifacts;
 - docs reflect actual tabs/accordion/page rendering behavior;
 - BeeAgent UI-5 can proceed after dependency update and smoke verification.
+
+### Iteration 13.4 — Generic layout groups, KPI grid columns, and page spacing normalization
+
+**Status:** DONE
+**Change level:** runtime-risk
+**Stage:** Stage 6 / Stage 7 boundary — BeeAgent integration polish before closing BeeAgent UI-5
+
+#### Goal
+
+Extend BeeUI’s product-neutral layout renderer so adapter-backed pages can express both flat Tabler dashboard rows and simple nested layout groups without product-owned Jinja templates or product-specific CSS.
+
+This iteration follows It13.3.
+
+It13.3 fixed Tabler visual parity for attached page tabs and accordion rendering. After reviewing Tabler dashboard layout patterns, one additional generic layout capability is needed before BeeAgent UI-5 can be closed cleanly:
+
+- consistent page-body spacing across dashboard/custom/modules/runs render paths;
+- optional `kpi_grid.columns` for compact KPI grids;
+- bounded generic layout groups for Tabler-style nested column compositions.
+
+#### Context
+
+Tabler dashboard layouts are not always flat lists of cards.
+
+Some rows are simple flat compositions:
+
+```text
+M + S + S
+6 + 3 + 3 = 12
+```
+
+```text
+S + S + S + S
+3 + 3 + 3 + 3 = 12
+```
+
+Other rows are nested compositions:
+
+```text
+OUTER ROW:
+  LEFT GROUP 6:
+    - Storage card       12 inside group
+    - Activity feed card 12 inside group
+
+  RIGHT BLOCK 6:
+    - Development activity
+```
+
+BeeUI currently has generic blocks and outer `width/span/size` handling, but it needs a small product-neutral way to express grouped blocks inside a column.
+
+This must stay generic:
+
+- BeeUI renders layout primitives;
+- product adapters decide which domain blocks appear where;
+- BeeUI must not know ROP, BeeAgent, BeeCap, MRKT, Binance, Bitrix or other product semantics;
+- BeeAgent must not add product-owned Jinja templates to solve layout.
+
+#### Scope
+
+Included:
+
+- Audit current BeeUI implementation before making changes.
+- Normalize page-body spacing across relevant render paths:
+  - adapter-backed dashboard `/`;
+  - custom adapter pages such as `/rop`;
+  - modules/custom page `/modules`;
+  - runs page `/runs`;
+  - pages with tabs;
+  - pages without tabs.
+
+- Ensure all relevant pages use a Tabler-compatible structure equivalent to:
+
+```html
+<div class="page-header d-print-none">
+  <div class="container-xl">...</div>
+</div>
+
+<div class="page-body">
+  <div class="container-xl">...</div>
+</div>
+```
+
+- Add optional product-neutral `kpi_grid.columns` support.
+- Supported `kpi_grid.columns` values:
+
+```text
+1 -> col-12
+2 -> col-12 col-sm-6
+3 -> col-12 col-sm-6 col-lg-4
+4 -> col-12 col-sm-6 col-lg-3
+```
+
+- Default `kpi_grid.columns` remains `4`.
+- Invalid adapter-provided `columns` values degrade safely to default, not `500`.
+- Invalid schema/config `columns` values fail fast if schema-backed blocks accept the field.
+- Add generic bounded layout group support.
+- Layout group v1 supports:
+  - `type: group`;
+  - `width` / `span` / existing size handling at the outer level;
+  - `direction: vertical` initially;
+  - `children` containing normal BeeUI layout block items;
+  - Tabler-compatible nested `row row-cards`;
+  - children rendered with the existing block renderer.
+
+- The layout group must be product-neutral and must not hardcode domain labels such as `Run Overview`, `Key Metrics`, `ROP`, `BeeAgent`, `BeeCap`, `MRKT`, `Binance`, or `Bitrix`.
+- Add regression tests for:
+  - flat `6 + 3 + 3` layout;
+  - flat `3 + 3 + 3 + 3` layout;
+  - nested `6 group + 6 block` layout;
+  - KPI grid columns;
+  - page spacing;
+  - tabs still attached to page blocks;
+  - safe degradation for malformed adapter payloads;
+  - escaping and no unsafe external refs.
+
+Excluded:
+
+- Full no-code layout builder.
+- Drag-and-drop layout editing.
+- Arbitrary HTML/JS blocks.
+- Unlimited recursive containers.
+- Product-specific layout logic.
+- BeeAgent/BeeCap-owned templates.
+- BeeAgent/BeeCap CSS fixes for BeeUI layout.
+- Auth/session/CSRF changes.
+- Config apply.
+- Operator actions.
+- POST routes.
+- Charts/ApexCharts expansion beyond existing policy.
+- External Tabler preview assets/scripts.
+- New dependencies.
+- `pyproject.toml.version` change.
+- `uv.lock` change unless dependencies unexpectedly change, which is not expected.
+
+#### Proposed layout contract
+
+Flat row example:
+
+```json
+[
+  {
+    "type": "summary",
+    "title": "Welcome",
+    "width": 6
+  },
+  {
+    "type": "metric",
+    "title": "Total Users",
+    "width": 3
+  },
+  {
+    "type": "metric",
+    "title": "Active Users",
+    "width": 3
+  }
+]
+```
+
+KPI grid example:
+
+```json
+{
+  "type": "kpi_grid",
+  "title": "Key Metrics",
+  "width": 4,
+  "columns": 2,
+  "items": [
+    { "label": "Total", "value": "42" },
+    { "label": "Open", "value": "8" },
+    { "label": "Closed", "value": "34" },
+    { "label": "Warnings", "value": "2" },
+    { "label": "Errors", "value": "0" },
+    { "label": "Reviews", "value": "5" }
+  ]
+}
+```
+
+Nested layout group example:
+
+```json
+[
+  {
+    "id": "left_stack",
+    "type": "group",
+    "width": 6,
+    "direction": "vertical",
+    "children": [
+      {
+        "type": "storage",
+        "title": "Storage",
+        "width": 12
+      },
+      {
+        "type": "activity_feed",
+        "title": "Activity Feed",
+        "width": 12
+      }
+    ]
+  },
+  {
+    "type": "development_activity",
+    "title": "Development activity",
+    "width": 6
+  }
+]
+```
+
+Expected rendered structure:
+
+```html
+<div class="row row-deck row-cards">
+  <div class="col-lg-6">
+    <div class="row row-cards">
+      <div class="col-12">...</div>
+      <div class="col-12">...</div>
+    </div>
+  </div>
+
+  <div class="col-lg-6">...</div>
+</div>
+```
+
+#### Acceptance Criteria
+
+- Existing tests remain green.
+- `/`, `/rop`, `/modules`, `/runs` return `200` in relevant tests/smoke checks.
+- Pages with tabs keep tabs and page blocks inside one attached Tabler card.
+- Pages without tabs keep normal page block rendering.
+- Page content spacing after subtitle/header is consistent across dashboard/custom/modules/runs render paths.
+- `kpi_grid.columns=1` renders KPI items with `col-12`.
+- `kpi_grid.columns=2` renders KPI items with `col-12 col-sm-6`.
+- `kpi_grid.columns=3` renders KPI items with `col-12 col-sm-6 col-lg-4`.
+- `kpi_grid.columns=4` renders KPI items with `col-12 col-sm-6 col-lg-3`.
+- Missing `kpi_grid.columns` preserves current/default behavior.
+- Invalid adapter-provided `kpi_grid.columns` degrades safely to default.
+- Invalid schema/config-backed `columns` fails fast if schema supports the field.
+- Generic `group` layout renders a nested `row row-cards` inside the parent column.
+- Group children are rendered through existing BeeUI block rendering.
+- Malformed adapter-provided group payload degrades visibly and safely, not `500`.
+- Unsafe labels/values remain HTML-escaped.
+- No external CDN/scripts/tracking are introduced.
+- No product-specific imports or domain logic are introduced in `src/beeui_module`.
+- No unsafe Jinja `|safe` is introduced.
+- No GET route mutates storage/config/artifacts.
+- `pyproject.toml.version` remains unchanged.
+- `uv.lock` remains unchanged unless dependencies are explicitly changed, which is not expected.
+
+#### Required checks
+
+Automated:
+
+```bash
+uv run pytest -q
+uv run pytest -q -W error::UserWarning
+```
+
+Targeted:
+
+```bash
+uv run pytest -q tests/test_pages.py
+uv run pytest -q tests/test_product_console.py
+uv run pytest -q tests/test_blocks.py
+uv run pytest -q tests/test_config.py
+```
+
+Smoke:
+
+```bash
+./start.sh doctor
+./start.sh routes
+```
+
+Static/security checks:
+
+```bash
+rg -n "beecap_module|beeagent_module" src/beeui_module || true
+rg -n "\\|safe" src/beeui_module/web/templates || true
+rg -n "posthog|scripts.tabler.io|preview.tabler.io|docs.tabler.io|cdn.jsdelivr|http://|https://" src/beeui_module/web/templates src/beeui_module/web/static || true
+rg -n "ROP|BeeAgent|BeeCap|MRKT|Binance|Bitrix|Run Overview|Key Metrics" src/beeui_module || true
+git diff -- pyproject.toml uv.lock
+```
+
+#### Definition of Done
+
+- Current implementation was audited first.
+- No already implemented behavior was duplicated.
+- Generic layout group v1 is implemented or confirmed unnecessary by code evidence.
+- KPI grid columns are implemented or confirmed already present.
+- Page-body spacing is normalized or confirmed already centralized.
+- Tests cover flat layouts, nested groups, KPI columns, spacing, escaping, and safety behavior.
+- Docs reflect the actual supported block/layout contract.
+- Required checks are completed.
+- No product-specific BeeUI code is introduced.
+- No new dependencies are added.
+- Version is not changed.
+- `uv.lock` is not changed.
+- PR is ready for review.
 
 ---
 
