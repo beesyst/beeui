@@ -3863,11 +3863,9 @@ Expected:
 - docs reflect actual tabs/accordion/page rendering behavior;
 - BeeAgent UI-5 can proceed after dependency update and smoke verification.
 
-### Iteration 13.4 — Generic layout groups, KPI grid columns, and page spacing normalization
+### Итерация 13.4 — Generic layout groups, KPI grid columns, and page spacing normalization
 
 **Status:** DONE
-**Change level:** runtime-risk
-**Stage:** Stage 6 / Stage 7 boundary — BeeAgent integration polish before closing BeeAgent UI-5
 
 #### Goal
 
@@ -4157,6 +4155,349 @@ git diff -- pyproject.toml uv.lock
 - No new dependencies are added.
 - Version is not changed.
 - `uv.lock` is not changed.
+- PR is ready for review.
+
+### Итерация 13.5 — Product console route metadata and navigation compatibility
+
+**Status:** DONE
+
+#### Goal
+
+Fix BeeUI config validation and custom page registration so product-side `beeui.yml` can describe metadata, titles, subtitles, tabs, navigation and block/layout references for existing product console routes such as `/venues/mrkt` and `/venues/binance`, without BeeUI trying to register those paths as generic custom routes.
+
+This iteration keeps canonical product routes intact:
+
+```text
+/venues/mrkt
+/venues/binance
+/modes/dry-run
+/modes/paper
+/modes/live
+```
+
+BeeUI must distinguish:
+
+```text
+safe internal path
+  used for navigation links, tabs, links and page metadata
+
+custom route path
+  used only when BeeUI registers a new adapter-backed custom page route
+```
+
+#### Why this is needed
+
+After Iteration 13.4, BeeUI supports product-neutral layout groups, KPI grid columns and normalized page spacing. BeeCap/BeeAgent can now describe richer operator pages through `beeui.yml`.
+
+However, current reserved path validation is too broad. It treats paths such as:
+
+```yaml
+pages:
+  - id: mrkt_dashboard
+    path: /venues/mrkt
+
+navigation:
+  - title: Venues
+    children:
+      - title: MRKT
+        path: /venues/mrkt
+```
+
+as invalid because `/venues/*` is reserved.
+
+That is correct only for generic custom route registration. It is not correct for:
+
+- page metadata for an existing product console route;
+- sidebar navigation links to an existing internal route;
+- page tabs/hrefs/links pointing to existing internal routes.
+
+This blocks BeeCap canonical route parity and encourages wrong workarounds such as `/mrkt`, `/binance` or product-owned templates.
+
+Main rule remains:
+
+```text
+BeeUI renders.
+Product decides.
+```
+
+#### Context
+
+Two different concepts were mixed:
+
+| Concept                                    | Purpose                                                                  | May use `/venues/mrkt` |
+| ------------------------------------------ | ------------------------------------------------------------------------ | ---------------------: |
+| `pages[]` as generic custom page route     | BeeUI registers a new route and calls `adapter.get_page(page_id, query)` |                     No |
+| `pages[]` as product console page metadata | BeeUI stores title/subtitle/tabs/block refs for an existing route        |                    Yes |
+| `navigation[].path`                        | Sidebar/internal link to an existing internal route                      |                    Yes |
+| `tabs[].href` / layout links               | Safe internal links                                                      |                    Yes |
+| Custom route registration                  | Only non-reserved paths such as `/rop`, `/reports`, `/modules`           |     No for `/venues/*` |
+
+#### Scope
+
+**Included**
+
+- Split path validation into two product-neutral concepts:
+  - safe internal path validation;
+  - custom route path validation.
+
+- Safe internal path validation must allow internal product console paths such as:
+
+```text
+/
+/runs
+/runs/<safe-run-id>
+/venues/mrkt
+/venues/binance
+/modes/dry-run
+/modes/paper
+/modes/live
+/rop
+/modules
+```
+
+- Safe internal path validation must still reject:
+  - empty paths;
+  - paths without leading `/`;
+  - protocol-relative paths `//...`;
+  - external URLs;
+  - `?` / `#` in raw path fields where not expected;
+  - backslashes;
+  - control characters;
+  - traversal segments `.` / `..`;
+  - unsafe path segments.
+
+- Custom route path validation must keep BeeUI/system/product-console owned routes reserved.
+
+Reserved exact paths for custom route registration:
+
+```text
+/
+/api
+/auth
+/static
+/components
+/health
+/login
+/logout
+/runs
+/venues
+```
+
+Reserved prefixes for custom route registration:
+
+```text
+/api/
+/auth/
+/static/
+/components/
+/runs/
+/venues/
+```
+
+- `/venues/*` must be allowed as page metadata/navigation, but must not be registered as a generic custom page route.
+
+- `/runs/*` must not be registered as a generic custom page route because run detail routes are product console routes.
+
+- Non-reserved custom pages such as `/rop`, `/modules`, `/reports`, `/settings-lite` must continue to register as adapter-backed custom pages.
+
+- Preserve duplicate path detection for `pages[]`.
+
+- Preserve route collision protection for actual custom pages.
+
+- Preserve fail-fast validation for unsafe paths.
+
+- Preserve route prefix and embedded mount compatibility.
+
+- Update tests for:
+  - safe internal paths;
+  - reserved custom route paths;
+  - navigation links to `/venues/mrkt`;
+  - page metadata for `/venues/mrkt`;
+  - custom route registration skip for `/venues/*`;
+  - custom route registration still works for `/rop`;
+  - unsafe paths still fail fast;
+  - no canonical route renaming.
+
+- Update docs:
+  - `docs/ROADMAP.md`;
+  - `docs/WEB_UI.md`;
+  - `docs/INTEGRATION.md`;
+  - `docs/API_CONTRACT.md` if route/config contract wording is affected;
+  - `README.ru.md` if user-facing integration examples mention reserved paths.
+
+**Excluded**
+
+- Do not rename BeeCap canonical routes.
+- Do not change `/venues/mrkt` to `/mrkt`, `/venue-mrkt`, `/binance`, etc.
+- Do not remove venue page configs from product-side `beeui.yml`.
+- Do not add product-specific MRKT/Binance/BeeCap logic to BeeUI core.
+- Do not touch Binance trading/runtime/risk logic.
+- Do not add auth/session/CSRF changes.
+- Do not add config apply/operator actions.
+- Do not add POST routes.
+- Do not add no-code builder behavior.
+- Do not introduce external CDN/assets/scripts.
+- Do not add dependencies.
+- Do not change `pyproject.toml.version`.
+
+#### Required behavior
+
+`navigation[].path` must be validated as a safe internal path, not as a custom route registration target.
+
+Valid:
+
+```yaml
+navigation:
+  - title: Venues
+    children:
+      - title: MRKT
+        path: /venues/mrkt
+      - title: Binance
+        path: /venues/binance
+```
+
+Valid:
+
+```yaml
+pages:
+  - id: mrkt_dashboard
+    path: /venues/mrkt
+    title: MRKT
+    subtitle: MRKT venue dashboard metadata
+    blocks:
+      - id: system_snapshot
+        enabled: true
+```
+
+This page config must be loaded and preserved as metadata, but BeeUI must not register a custom route for `/venues/mrkt`.
+
+Valid custom page:
+
+```yaml
+pages:
+  - id: rop_dashboard
+    path: /rop
+    title: ROP Dashboard
+    subtitle: ROP operator dashboard
+    blocks: []
+```
+
+BeeUI may register `/rop` as an adapter-backed custom page and call:
+
+```python
+adapter.get_page("rop_dashboard", query)
+```
+
+Invalid custom route registration:
+
+```yaml
+pages:
+  - id: bad_api_shadow
+    path: /api/debug
+```
+
+This must not register a custom route.
+
+#### Deliverable
+
+BeeUI can load product-side `beeui.yml` where `pages[]` and `navigation[]` reference existing product console routes such as `/venues/mrkt` and `/venues/binance`.
+
+Expected outcome:
+
+- config validation succeeds;
+- sidebar can link to `/venues/mrkt` and `/venues/binance`;
+- product console route `/venues/{venue_id}` remains canonical;
+- BeeUI does not register `/venues/mrkt` as a generic custom page;
+- generic custom pages still work for non-reserved paths such as `/rop`;
+- unsafe paths and real route collisions still fail fast.
+
+#### Acceptance Criteria
+
+- `config/beeui.yml` with `pages[].path: /venues/mrkt` validates.
+- `navigation[].path: /venues/mrkt` validates when it points to declared metadata or known internal product console route.
+- `/venues/mrkt` is not registered as a custom page route.
+- Existing `GET /venues/{venue_id}` product console route continues to serve `/venues/mrkt`.
+- `/venues/binance` behaves the same way.
+- `/rop` or another non-reserved custom page still registers as adapter-backed custom page.
+- `/api/*`, `/auth/*`, `/static/*`, `/components/*`, `/runs/*`, `/venues/*` cannot be registered as generic custom routes.
+- Unsafe paths with `..`, `\`, `//`, control characters or external schemes are rejected.
+- Navigation paths do not use the custom-route reserved check.
+- Page metadata paths do not use the custom-route reserved check.
+- Custom route registration does use the custom-route reserved check.
+- No product-specific BeeCap/BeeAgent/MRKT/Binance logic is introduced in generic BeeUI core.
+- No route renaming is introduced.
+- No external assets/scripts are introduced.
+- No unsafe Jinja `|safe` is introduced.
+- Existing tests remain green.
+
+#### Required checks
+
+Automated:
+
+```bash
+uv run pytest -q
+uv run pytest -q -W error::UserWarning
+```
+
+Targeted:
+
+```bash
+uv run pytest -q tests/test_config.py
+uv run pytest -q tests/test_pages.py
+uv run pytest -q tests/test_app.py
+uv run pytest -q tests/test_product_console.py
+```
+
+Smoke:
+
+```bash
+./start.sh doctor
+./start.sh routes
+```
+
+Static/security checks:
+
+```bash
+rg -n "\\|safe" src/beeui_module/web/templates || true
+rg -n "beecap_module|beeagent_module" src/beeui_module || true
+rg -n "posthog|scripts.tabler.io|preview.tabler.io|docs.tabler.io|cdn.jsdelivr|http://|https://" src/beeui_module/web/templates src/beeui_module/web/static || true
+rg -n "MRKT|Binance|BeeCap|BeeAgent|ROP" src/beeui_module/pages src/beeui_module/web src/beeui_module/blocks || true
+git diff -- pyproject.toml
+```
+
+BeeCap verification after dependency update:
+
+```bash
+uv run pytest tests/test_beeui_adapter.py -q
+uv run pytest -q
+```
+
+Expected BeeCap routes:
+
+```text
+GET /
+GET /venues/mrkt
+GET /venues/binance
+GET /modes/dry-run
+GET /modes/paper
+GET /modes/live
+```
+
+#### Definition of Done
+
+- Safe internal path validation and custom route path validation are separated.
+- Product console page metadata paths are allowed.
+- Navigation links to product console routes are allowed.
+- Generic custom route registration still blocks reserved/system/product-console paths.
+- `/venues/*` configs are preserved as metadata and not registered as custom pages.
+- `/runs/*` custom route shadowing remains blocked.
+- Non-reserved custom pages still work.
+- Unsafe paths still fail fast.
+- Tests cover validation and route registration behavior.
+- Docs reflect the distinction between page metadata and custom route registration.
+- BeeUI remains product-neutral.
+- No new dependencies are added.
+- `pyproject.toml.version` is not changed.
 - PR is ready for review.
 
 ---

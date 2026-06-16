@@ -743,7 +743,18 @@ def test_accordion_variant_from_config_affects_rendered_class(tmp_path: Path) ->
 
 
 # Тест: custom page, объявленная в schema с path, рендерится через adapter get_page
-def _custom_page_schema(tmp_path: Path, custom_path: str) -> Path:
+def _custom_page_schema(
+    tmp_path: Path,
+    custom_path: str,
+    *,
+    page_id: str = "custom_page",
+    route_mode: str | None = None,
+    page_blocks: str = "    blocks: []\n",
+    extra_blocks: str = "blocks: {}\n",
+) -> Path:
+    route_config = (
+        f"    route:\n      mode: {route_mode}\n" if route_mode is not None else ""
+    )
     schema_path = tmp_path / "schema.yml"
     schema_path.write_text(
         "app:\n"
@@ -777,21 +788,31 @@ def _custom_page_schema(tmp_path: Path, custom_path: str) -> Path:
         "    icon: file\n"
         "\n"
         "data_sources: {}\n"
-        "blocks: {}\n"
+        f"{extra_blocks}"
         "pages:\n"
         "  - id: dashboard\n"
         "    path: /\n"
         "    title: Dashboard\n"
         "    subtitle: Demo\n"
         "    blocks: []\n"
-        f"  - id: custom_page\n"
+        f"  - id: {page_id}\n"
         f"    path: {custom_path}\n"
+        f"{route_config}"
         "    title: Custom Page\n"
         "    subtitle: Adapter-backed\n"
-        "    blocks: []\n",
+        f"{page_blocks}",
         encoding="utf-8",
     )
     return schema_path
+
+
+# Генерация schema с кастомной страницей для тестов ниже
+def _app_route_paths(app) -> set[str]:
+    return {
+        route.path
+        for route in app.routes
+        if isinstance(getattr(route, "path", None), str)
+    }
 
 
 # Тест: custom page, объявленная в schema с path, рендерится через adapter get_page
@@ -906,16 +927,52 @@ def test_custom_adapter_page_unavailable_degraded(tmp_path: Path) -> None:
     assert "Custom Page" in response.text
 
 
-# Тест: конфликты маршрутов с зарезервированными путями не допускаются для пользовательских страниц
-def test_custom_page_route_collision_reserved_rejected(tmp_path: Path) -> None:
-    ui_cfg_path = _custom_page_schema(tmp_path, "/health")
+# Тест: системные BeeUI paths (/health) с matching page проходят config validation
+def test_custom_page_route_health_is_not_registered(tmp_path: Path) -> None:
+    from beeui_module.adapters.base import ProductUiAdapterBase
+    from beeui_module.adapters.envelopes import AdapterMetadata, ok_result
+    from beeui_module.web.app import create_beeui_app
 
-    try:
-        load_beeui_config(ui_cfg_path)
-    except ValueError as exc:
-        assert str(exc) == "navigation[1].path uses a reserved path"
-    else:
-        raise AssertionError("load_beeui_config must reject reserved /health path")
+    class HealthPageAdapter(ProductUiAdapterBase):
+        def __init__(self):
+            super().__init__(
+                AdapterMetadata(
+                    product_id="test",
+                    title="Test",
+                    version="1.0.0",
+                )
+            )
+
+        def get_dashboard(self):
+            return ok_result({})
+
+        def list_runs(self):
+            return ok_result([])
+
+        def get_run(self, run_id):
+            return ok_result({"id": run_id})
+
+        def list_artifacts(self, run_id):
+            return ok_result([])
+
+        def read_artifact(self, run_id, artifact_id):
+            return ok_result({})
+
+        def get_config_read_model(self):
+            return ok_result({})
+
+    ui_cfg_path = _custom_page_schema(tmp_path, "/health")
+    config = load_beeui_config(ui_cfg_path)
+    assert any(p.path == "/health" for p in config.pages)
+
+    app = create_beeui_app(
+        config_path=str(ui_cfg_path),
+        adapter=HealthPageAdapter(),
+    )
+    client = TestClient(app)
+    response = client.get("/health")
+    assert response.status_code == 200
+    assert response.json().get("app") == "beeui"
 
 
 # Тест: GET пользовательской страницы не должен мутировать исходный конфиг (например, через resolver с side effect)
@@ -1582,3 +1639,531 @@ def test_page_without_tabs_renders_blocks_normally(tmp_path: Path) -> None:
     assert response.status_code == 200
     assert 'class="card beeui-page-tabs-card"' not in response.text
     assert '<section aria-label="Page blocks">' in response.text
+
+
+# Тест: /rop регистрируется как adapter-backed custom page route
+def test_custom_route_rop_registers_with_adapter(tmp_path: Path) -> None:
+    from beeui_module.adapters.base import ProductUiAdapterBase
+    from beeui_module.adapters.envelopes import AdapterMetadata, ok_result
+    from beeui_module.web.app import create_beeui_app
+
+    class RopPageAdapter(ProductUiAdapterBase):
+        def __init__(self):
+            super().__init__(
+                AdapterMetadata(
+                    product_id="test",
+                    title="Test",
+                    version="1.0.0",
+                    capabilities=("dashboard", "custom_pages"),
+                )
+            )
+
+        def get_dashboard(self):
+            return ok_result({})
+
+        def list_runs(self):
+            return ok_result([])
+
+        def get_run(self, run_id):
+            return ok_result({"id": run_id})
+
+        def list_artifacts(self, run_id):
+            return ok_result([])
+
+        def read_artifact(self, run_id, artifact_id):
+            return ok_result({})
+
+        def get_config_read_model(self):
+            return ok_result({})
+
+        def get_page(self, page_id, query):
+            return ok_result(
+                {"layout": [{"type": "metric_card", "title": "ROP", "value": "42"}]}
+            )
+
+    ui_cfg_path = _custom_page_schema(tmp_path, "/rop")
+    app = create_beeui_app(
+        config_path=str(ui_cfg_path),
+        adapter=RopPageAdapter(),
+    )
+    client = TestClient(app)
+
+    response = client.get("/rop")
+    assert response.status_code == 200
+    assert "ROP" in response.text
+    assert "42" in response.text
+
+
+# Тест: /venues/mrkt с route.mode=metadata не регистрирует concrete page route
+def test_metadata_route_venues_mrkt_skipped(tmp_path: Path) -> None:
+    from beeui_module.adapters.base import ProductUiAdapterBase
+    from beeui_module.adapters.envelopes import AdapterMetadata, ok_result
+    from beeui_module.web.app import create_beeui_app
+
+    class VenuePageAdapter(ProductUiAdapterBase):
+        def __init__(self):
+            super().__init__(
+                AdapterMetadata(
+                    product_id="test",
+                    title="Test",
+                    version="1.0.0",
+                    capabilities=("dashboard", "custom_pages"),
+                )
+            )
+
+        def get_dashboard(self):
+            return ok_result({})
+
+        def list_runs(self):
+            return ok_result([])
+
+        def get_run(self, run_id):
+            return ok_result({"id": run_id})
+
+        def list_artifacts(self, run_id):
+            return ok_result([])
+
+        def read_artifact(self, run_id, artifact_id):
+            return ok_result({})
+
+        def get_config_read_model(self):
+            return ok_result({})
+
+    ui_cfg_path = _custom_page_schema(
+        tmp_path,
+        "/venues/mrkt",
+        route_mode="metadata",
+    )
+    app = create_beeui_app(
+        config_path=str(ui_cfg_path),
+        adapter=VenuePageAdapter(),
+    )
+    route_paths = _app_route_paths(app)
+    assert "/venues/mrkt" not in route_paths
+    assert "/venues/{venue_id}" in route_paths
+
+    client = TestClient(app)
+
+    response = client.get("/venues/mrkt")
+    assert response.status_code == 503
+    assert "Custom Page" not in response.text
+
+
+# Тест: /venues/binance с route.mode=metadata не регистрирует concrete page route
+def test_metadata_route_venues_binance_skipped(tmp_path: Path) -> None:
+    from beeui_module.adapters.base import ProductUiAdapterBase
+    from beeui_module.adapters.envelopes import AdapterMetadata, ok_result
+    from beeui_module.web.app import create_beeui_app
+
+    class VenueBinanceAdapter(ProductUiAdapterBase):
+        def __init__(self):
+            super().__init__(
+                AdapterMetadata(
+                    product_id="test",
+                    title="Test",
+                    version="1.0.0",
+                    capabilities=("dashboard", "custom_pages"),
+                )
+            )
+
+        def get_dashboard(self):
+            return ok_result({})
+
+        def list_runs(self):
+            return ok_result([])
+
+        def get_run(self, run_id):
+            return ok_result({"id": run_id})
+
+        def list_artifacts(self, run_id):
+            return ok_result([])
+
+        def read_artifact(self, run_id, artifact_id):
+            return ok_result({})
+
+        def get_config_read_model(self):
+            return ok_result({})
+
+    ui_cfg_path = _custom_page_schema(
+        tmp_path,
+        "/venues/binance",
+        route_mode="metadata",
+    )
+    app = create_beeui_app(
+        config_path=str(ui_cfg_path),
+        adapter=VenueBinanceAdapter(),
+    )
+    route_paths = _app_route_paths(app)
+    assert "/venues/binance" not in route_paths
+    assert "/venues/{venue_id}" in route_paths
+
+    client = TestClient(app)
+
+    response = client.get("/venues/binance")
+    assert response.status_code == 503
+    assert "Custom Page" not in response.text
+
+
+# Тест: /runs/run_001 с route.mode=metadata не регистрирует concrete page route
+def test_metadata_route_runs_skipped(tmp_path: Path) -> None:
+    from beeui_module.adapters.base import ProductUiAdapterBase
+    from beeui_module.adapters.envelopes import AdapterMetadata, ok_result
+    from beeui_module.web.app import create_beeui_app
+
+    class RunsPageAdapter(ProductUiAdapterBase):
+        def __init__(self):
+            super().__init__(
+                AdapterMetadata(
+                    product_id="test",
+                    title="Test",
+                    version="1.0.0",
+                    capabilities=("dashboard", "custom_pages"),
+                )
+            )
+
+        def get_dashboard(self):
+            return ok_result({})
+
+        def list_runs(self):
+            return ok_result([])
+
+        def get_run(self, run_id):
+            return ok_result({"id": run_id})
+
+        def list_artifacts(self, run_id):
+            return ok_result([])
+
+        def read_artifact(self, run_id, artifact_id):
+            return ok_result({})
+
+        def get_config_read_model(self):
+            return ok_result({})
+
+    ui_cfg_path = _custom_page_schema(
+        tmp_path,
+        "/runs/run_001",
+        route_mode="metadata",
+    )
+    app = create_beeui_app(
+        config_path=str(ui_cfg_path),
+        adapter=RunsPageAdapter(),
+    )
+    route_paths = _app_route_paths(app)
+    assert "/runs/run_001" not in route_paths
+    assert "/runs/{run_id}" in route_paths
+
+    client = TestClient(app)
+
+    response = client.get("/runs/run_001")
+    assert response.status_code == 200
+    assert "Custom Page" not in response.text
+    assert "Run run_001" in response.text or "run_001" in response.text
+
+
+# Тест: arbitrary nested route.mode=adapter регистрируется и вызывает adapter.get_page
+def test_adapter_route_hidra_binance_registers(tmp_path: Path) -> None:
+    from beeui_module.adapters.base import ProductUiAdapterBase
+    from beeui_module.adapters.envelopes import AdapterMetadata, ok_result
+    from beeui_module.web.app import create_beeui_app
+
+    class HidraPageAdapter(ProductUiAdapterBase):
+        def __init__(self):
+            super().__init__(
+                AdapterMetadata(
+                    product_id="test",
+                    title="Test",
+                    version="1.0.0",
+                    capabilities=("dashboard", "custom_pages"),
+                )
+            )
+            self.page_calls = []
+
+        def get_dashboard(self):
+            return ok_result({})
+
+        def list_runs(self):
+            return ok_result([])
+
+        def get_run(self, run_id):
+            return ok_result({"id": run_id})
+
+        def list_artifacts(self, run_id):
+            return ok_result([])
+
+        def read_artifact(self, run_id, artifact_id):
+            return ok_result({})
+
+        def get_config_read_model(self):
+            return ok_result({})
+
+        def get_page(self, page_id, query):
+            self.page_calls.append((page_id, dict(query)))
+            return ok_result(
+                {
+                    "layout": [
+                        {
+                            "type": "metric_card",
+                            "title": "Hidra Adapter",
+                            "value": page_id,
+                        }
+                    ]
+                }
+            )
+
+    adapter = HidraPageAdapter()
+    ui_cfg_path = _custom_page_schema(
+        tmp_path,
+        "/hidra/binance",
+        page_id="hidra_binance",
+        route_mode="adapter",
+    )
+    app = create_beeui_app(
+        config_path=str(ui_cfg_path),
+        adapter=adapter,
+    )
+
+    route_paths = _app_route_paths(app)
+    assert "/hidra/binance" in route_paths
+
+    client = TestClient(app)
+    response = client.get("/hidra/binance?tab=orders")
+    assert response.status_code == 200
+    assert "Hidra Adapter" in response.text
+    assert adapter.page_calls == [("hidra_binance", {"tab": "orders"})]
+
+
+# Тест: arbitrary nested route.mode=configured регистрируется как schema page
+def test_configured_route_likes_top_registers_without_adapter_get_page(
+    tmp_path: Path,
+) -> None:
+    from beeui_module.adapters.base import ProductUiAdapterBase
+    from beeui_module.adapters.envelopes import AdapterMetadata, ok_result
+    from beeui_module.web.app import create_beeui_app
+
+    class LikesPageAdapter(ProductUiAdapterBase):
+        def __init__(self):
+            super().__init__(
+                AdapterMetadata(
+                    product_id="test",
+                    title="Test",
+                    version="1.0.0",
+                    capabilities=("dashboard", "custom_pages"),
+                )
+            )
+            self.page_calls = []
+
+        def get_dashboard(self):
+            return ok_result({})
+
+        def list_runs(self):
+            return ok_result([])
+
+        def get_run(self, run_id):
+            return ok_result({"id": run_id})
+
+        def list_artifacts(self, run_id):
+            return ok_result([])
+
+        def read_artifact(self, run_id, artifact_id):
+            return ok_result({})
+
+        def get_config_read_model(self):
+            return ok_result({})
+
+        def get_page(self, page_id, query):
+            self.page_calls.append(page_id)
+            return ok_result({})
+
+    adapter = LikesPageAdapter()
+    ui_cfg_path = _custom_page_schema(
+        tmp_path,
+        "/likes/top",
+        page_id="likes_top",
+        route_mode="configured",
+        extra_blocks=(
+            "blocks:\n"
+            "  likes_metric:\n"
+            "    type: metric_card\n"
+            "    title: Likes Metric\n"
+            "    value: \"99\"\n"
+        ),
+        page_blocks="    blocks:\n      - block: likes_metric\n",
+    )
+    app = create_beeui_app(
+        config_path=str(ui_cfg_path),
+        adapter=adapter,
+    )
+
+    route_paths = _app_route_paths(app)
+    assert "/likes/top" in route_paths
+
+    client = TestClient(app)
+    response = client.get("/likes/top")
+    assert response.status_code == 200
+    assert "Likes Metric" in response.text
+    assert "99" in response.text
+    assert adapter.page_calls == []
+
+
+def test_modes_live_adapter_route_registers(tmp_path: Path) -> None:
+    from beeui_module.adapters.base import ProductUiAdapterBase
+    from beeui_module.adapters.envelopes import AdapterMetadata, ok_result
+    from beeui_module.web.app import create_beeui_app
+
+    class ModesPageAdapter(ProductUiAdapterBase):
+        def __init__(self):
+            super().__init__(
+                AdapterMetadata(
+                    product_id="test",
+                    title="Test",
+                    version="1.0.0",
+                    capabilities=("dashboard", "custom_pages"),
+                )
+            )
+
+        def get_dashboard(self):
+            return ok_result({})
+
+        def list_runs(self):
+            return ok_result([])
+
+        def get_run(self, run_id):
+            return ok_result({"id": run_id})
+
+        def list_artifacts(self, run_id):
+            return ok_result([])
+
+        def read_artifact(self, run_id, artifact_id):
+            return ok_result({})
+
+        def get_config_read_model(self):
+            return ok_result({})
+
+        def get_page(self, page_id, query):
+            return ok_result(
+                {"layout": [{"type": "metric_card", "title": "Mode", "value": page_id}]}
+            )
+
+    ui_cfg_path = _custom_page_schema(
+        tmp_path,
+        "/modes/live",
+        route_mode="adapter",
+    )
+    app = create_beeui_app(
+        config_path=str(ui_cfg_path),
+        adapter=ModesPageAdapter(),
+    )
+
+    route_paths = _app_route_paths(app)
+    assert "/modes/live" in route_paths
+
+    response = TestClient(app).get("/modes/live")
+    assert response.status_code == 200
+    assert "Mode" in response.text
+
+
+def test_modes_live_metadata_route_skipped(tmp_path: Path) -> None:
+    from beeui_module.adapters.base import ProductUiAdapterBase
+    from beeui_module.adapters.envelopes import AdapterMetadata, ok_result
+    from beeui_module.web.app import create_beeui_app
+
+    class ModesPageAdapter(ProductUiAdapterBase):
+        def __init__(self):
+            super().__init__(
+                AdapterMetadata(
+                    product_id="test",
+                    title="Test",
+                    version="1.0.0",
+                    capabilities=("dashboard", "custom_pages"),
+                )
+            )
+
+        def get_dashboard(self):
+            return ok_result({})
+
+        def list_runs(self):
+            return ok_result([])
+
+        def get_run(self, run_id):
+            return ok_result({"id": run_id})
+
+        def list_artifacts(self, run_id):
+            return ok_result([])
+
+        def read_artifact(self, run_id, artifact_id):
+            return ok_result({})
+
+        def get_config_read_model(self):
+            return ok_result({})
+
+    ui_cfg_path = _custom_page_schema(
+        tmp_path,
+        "/modes/live",
+        route_mode="metadata",
+    )
+    app = create_beeui_app(
+        config_path=str(ui_cfg_path),
+        adapter=ModesPageAdapter(),
+    )
+
+    route_paths = _app_route_paths(app)
+    assert "/modes/live" not in route_paths
+
+
+# Тест: system reserved paths не регистрируются как custom pages
+def test_custom_route_system_paths_skipped(tmp_path: Path) -> None:
+    from beeui_module.adapters.base import ProductUiAdapterBase
+    from beeui_module.adapters.envelopes import AdapterMetadata, ok_result
+    from beeui_module.web.app import create_beeui_app
+
+    class SystemPageAdapter(ProductUiAdapterBase):
+        def __init__(self):
+            super().__init__(
+                AdapterMetadata(
+                    product_id="test",
+                    title="Test",
+                    version="1.0.0",
+                    capabilities=("dashboard", "custom_pages"),
+                )
+            )
+
+        def get_dashboard(self):
+            return ok_result({})
+
+        def list_runs(self):
+            return ok_result([])
+
+        def get_run(self, run_id):
+            return ok_result({"id": run_id})
+
+        def list_artifacts(self, run_id):
+            return ok_result([])
+
+        def read_artifact(self, run_id, artifact_id):
+            return ok_result({})
+
+        def get_config_read_model(self):
+            return ok_result({})
+
+    for path in (
+        "/api/debug",
+        "/auth/test",
+        "/static/test",
+        "/components/test",
+        "/health",
+    ):
+        ui_cfg_path = _custom_page_schema(tmp_path, path)
+        app = create_beeui_app(
+            config_path=str(ui_cfg_path),
+            adapter=SystemPageAdapter(),
+        )
+        route_paths = _app_route_paths(app)
+        client = TestClient(app)
+        response = client.get(path)
+        if path == "/health":
+            assert path in route_paths
+            assert response.status_code == 200
+            assert response.json().get("app") == "beeui"
+        else:
+            assert path not in route_paths
+            assert response.status_code in {404, 405}

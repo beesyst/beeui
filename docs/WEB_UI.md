@@ -10,7 +10,7 @@
 - `beeagent`;
 - будущие Bee-продукты.
 
-Текущая реализованная основа после Iteration 13.4 включает:
+Текущая реализованная основа после Iteration 13.5 включает:
 
 - веб-приложение FastAPI;
 - шаблоны Jinja2;
@@ -101,18 +101,17 @@
   - variant class mapping centralized in Python;
   - generic dashboard fallback uses the same reusable accordion primitive instead of raw `<details>`;
   - label `Technical details` относится к одному fallback item и не является отдельным BeeUI rendering contract.
-- generic adapter-backed custom pages (Iteration 13.2):
-  - non-reserved page paths from config register as adapter-backed GET routes;
-  - `adapter.get_page(page_id, query)` called when adapter present;
-  - returned `layout[]` rendered through existing generic layout renderer;
-  - unavailable adapter renders explicit degraded state;
-  - config validation rejects BeeUI-owned reserved paths like `/health`, `/api`, `/auth`, `/venues`, `/login`, `/logout`, `/static`, `/components`;
-  - adapter-backed custom page registration additionally does not shadow `/` and `/runs`, because product console owns them when adapter is present;
+- page route ownership (Iteration 13.5):
+  - safe internal path validation разрешает безопасные внутренние пути;
+  - `pages[].route.mode` задаёт route ownership;
+  - `metadata` не регистрирует concrete route и используется для navigation, title/subtitle, tabs и page metadata;
+  - `adapter` регистрирует route и вызывает `adapter.get_page(page_id, query)`;
+  - `configured` регистрирует route и рендерит schema/config blocks;
+  - BeeUI reserved/custom route protection относится только к BeeUI system-owned routes;
+  - product console dynamic routes вроде `/venues/{venue_id}` остаются отдельной существующей web surface;
+  - `/venues/mrkt` — типичный `metadata` path, если запрос обслуживает `/venues/{venue_id}`;
+  - `/hidra/binance` и `/likes/top` — примеры безопасных вложенных путей без Python hardcode в BeeUI;
   - route collisions rejected during registration.
-
-Запланированные обязанности:
-
-- foundation для будущего no-code dashboard builder.
 
 `beeui` не является runtime engine.
 
@@ -400,7 +399,7 @@ src/beeui_module/
 - Product-specific domain logic must not live in generic BeeUI renderers.
 - `src/beeui_module/__init__.py` should stay lightweight.
 
-## Public embedded API после Iteration 13.4
+## Public embedded API после Iteration 13.5
 
 ### `create_beeui_app()`
 
@@ -430,9 +429,9 @@ app = create_beeui_app(
 
 Adapter сохраняется в `app.state.beeui_adapter`. Product metadata сохраняется в `app.state.beeui_product`.
 
-**Поведение:** adapter принимается и валидируется. При наличии adapter product console routes владеют `/` и `/runs`, а также включают read-only API routes для dashboard/runs/run detail/venue dashboard и generic custom pages для non-reserved config paths. Без adapter BeeUI остаётся backward-compatible и продолжает рендерить schema/demo pages.
+**Поведение:** adapter принимается и валидируется. При наличии adapter product console routes владеют `/` и `/runs`, а также включают read-only API routes для dashboard/runs/run detail/venue dashboard. Page route ownership задаётся через `pages[].route.mode`: `metadata` не создаёт concrete route, `adapter` вызывает `adapter.get_page(page_id, query)`, `configured` рендерит schema/config blocks. Без adapter BeeUI остаётся backward-compatible и продолжает рендерить schema/demo pages.
 
-После Iteration 13.4 product adapter может опционально реализовать:
+После Iteration 13.5 product adapter может опционально реализовать:
 
 ```python
 from typing import Mapping
@@ -486,7 +485,8 @@ Mount helper выполняет:
 /ui/runs/{run_id}
 /ui/venues/{venue_id}
 /ui/auth/csrf
-/ui/<configured-custom-page>
+/ui/<page-path> для route.mode: adapter
+/ui/<page-path> для route.mode: configured
 /ui/api/dashboard
 /ui/api/runs
 /ui/api/runs/{run_id}
@@ -697,7 +697,7 @@ mount_beeui(
 
 ### Контракт product adapter
 
-Текущий adapter contract после Iteration 13.4:
+Текущий adapter contract после Iteration 13.5:
 
 ```python
 from typing import Mapping
@@ -869,6 +869,8 @@ blocks:
 pages:
   - id: dashboard
     path: /
+    route:
+      mode: configured
     title: Dashboard
     subtitle: Demo operator dashboard
     blocks:
@@ -920,8 +922,8 @@ scope и не относятся к уже реализованным product co
 - invalid active query falls back to first enabled tab;
 - disabled tab cannot become active;
 - route prefix applies automatically during render;
-- reserved paths `/health`, `/api`, `/auth`, `/venues`, `/login`, `/logout`, `/static`, `/components` are rejected;
-- reserved prefixes `/api/`, `/auth/`, `/venues/`, `/static/`, `/components/` are rejected;
+- BeeUI system-owned paths `/health`, `/api`, `/auth`, `/login`, `/logout`, `/static`, `/components` защищены от shadowing;
+- BeeUI system-owned prefixes `/api/`, `/auth/`, `/static/`, `/components/` защищены от shadowing;
 - no arbitrary HTML/JS in config;
 - top-level `blocks` is required and validated as mapping;
 - top-level `data_sources` is optional and validated as mapping when present;
@@ -1073,7 +1075,7 @@ JSON routes:
 
 Не все routes должны существовать в MVP.
 
-Текущий набор маршрутов MVP после Iteration 13.4:
+Текущий набор маршрутов MVP после Iteration 13.5:
 
 - `/`
 - `/runs`
@@ -1100,9 +1102,11 @@ JSON routes:
 - `/runs/{run_id}/artifacts/{artifact_id}`
 - `/api/runs/{run_id}/artifacts`
 - `/api/runs/{run_id}/artifacts/{artifact_id}`
-- `/<configured-custom-page>` (adapter-backed custom page — requires adapter and non-reserved page path)
+- `/<page-path>` для страниц с `route.mode: adapter`
+- `/<page-path>` для страниц с `route.mode: configured`
 
 При наличии adapter product console routes владеют `/` и `/runs`. Без adapter сохраняется schema/demo mode.
+Страницы с `route.mode: metadata` не добавляют отдельный route.
 
 Маршрут `/components/plugins` содержит только инертные заглушки каталога
 компонентов. Полноценная интеграция плагинов и дополнений остаётся будущей
@@ -1309,6 +1313,13 @@ pages:
 - page `id` must be unique;
 - page `path` must be unique;
 - page path must be safe;
+- `route` optional;
+- `route.mode` может быть `metadata`, `adapter`, `configured`;
+- неизвестные ключи внутри `route` отклоняются fail-fast;
+- неизвестный `route.mode` отклоняется fail-fast;
+- `metadata` используется для navigation, title/subtitle, tabs и page metadata, но не создаёт route;
+- `adapter` создаёт route и использует `adapter.get_page(page_id, query)`;
+- `configured` создаёт route и использует schema/config blocks;
 - page cannot define arbitrary HTML;
 - `pages[].blocks` is a list of placements;
 - placement поддерживает `width`, `span`, `size`;
@@ -1991,7 +2002,7 @@ visual editor
 
 ## Типовые сценарии оператора
 
-Текущий сценарий после Iteration 13.4:
+Текущий сценарий после Iteration 13.5:
 
 ```text
 1. BeeUI loads config/settings.yml.
@@ -2001,12 +2012,15 @@ visual editor
 5. Adapter is validated and stored in app.state.beeui_adapter.
 6. Product metadata is stored in app.state.beeui_product.
 7. If adapter is present, product console routes call `get_dashboard()`, `list_runs()`, `get_run()` and optional `get_venue_dashboard()`.
-8. Non-reserved configured custom pages call optional `get_page(page_id, query)`.
-9. BeeUI resolves optional page tabs from config.
-10. When tabs are configured, tabs render as attached card header and returned `layout[]` renders inside the attached card body.
-11. Artifact routes call `list_artifacts()` and `read_artifact()`.
-12. If adapter is absent, dashboard/runs continue to render schema/demo/static pages.
-13. No product runtime/action/config mutation happens.
+8. BeeUI определяет route ownership через `pages[].route.mode`.
+9. `metadata` pages не регистрируются.
+10. `adapter` pages вызывают `adapter.get_page(page_id, query)`.
+11. `configured` pages рендерятся из config/schema blocks.
+12. BeeUI resolves optional page tabs from config.
+13. When tabs are configured, tabs render as attached card header and returned `layout[]` renders inside the attached card body.
+14. Artifact routes call `list_artifacts()` and `read_artifact()`.
+15. If adapter is absent, dashboard/runs continue to render schema/demo/static pages.
+16. No product runtime/action/config mutation happens.
 ```
 
 ### 1. Открыть product dashboard
@@ -2037,10 +2051,10 @@ visual editor
 
 ### Открыть adapter-backed custom page
 
-Текущий сценарий Iteration 13.4.
+Текущий сценарий Iteration 13.5.
 
-1. Product declares a non-reserved page in `beeui.yml`.
-2. Operator opens `/rop` or another configured page path.
+1. Product declares a page with `route.mode: adapter` in `beeui.yml`.
+2. Operator opens `/hidra/binance`, `/modes/live` or another safe page path.
 3. BeeUI resolves optional page tabs from config.
 4. BeeUI calls `adapter.get_page(page_id, query)`.
 5. Product adapter returns read-model with optional `layout[]`.
@@ -2083,7 +2097,7 @@ visual editor
 
 ## MVP route contract
 
-Текущий MVP route contract после Iteration 13.4:
+Текущий MVP route contract после Iteration 13.5:
 
 - `GET /`
 - `GET /runs`
@@ -2111,13 +2125,15 @@ visual editor
 - `GET /runs/{run_id}/artifacts/{artifact_id}` (HTML artifact preview — requires adapter)
 - `GET /api/runs/{run_id}/artifacts` (JSON artifact list — requires adapter)
 - `GET /api/runs/{run_id}/artifacts/{artifact_id}` (JSON artifact preview — requires adapter)
-- `GET /<configured-custom-page>` (adapter-backed custom page — requires adapter and non-reserved page path)
+- `GET /<page-path>` для страниц с `route.mode: adapter`
+- `GET /<page-path>` для страниц с `route.mode: configured`
 - `POST /api/config/preview` (protected transport stub — requires feature flag and product callback)
 - `POST /api/config/apply` (protected transport stub — requires feature flag and product callback)
 - `POST /api/actions/preview` (protected transport stub — requires feature flag and product callback)
 - `POST /api/actions/execute` (protected transport stub — requires feature flag and product callback)
 
 Product console routes требуют adapter в `app.state.beeui_adapter` для adapter-backed mode. Без adapter BeeUI остаётся в schema/demo mode. Artifact routes по-прежнему требуют adapter и без него возвращают 503 с explicit unavailable state.
+Страницы с `route.mode: metadata` не добавляют отдельный route. Они используются для navigation, заголовков, subtitle и tabs metadata, а фактический запрос обслуживает уже существующий маршрут.
 BeeUI реализует auth/session/CSRF boundary и transport stubs. Product adapter остаётся владельцем config/action domain semantics.
 
 Stable read-only API envelope for product console routes:

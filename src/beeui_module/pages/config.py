@@ -28,6 +28,7 @@ from beeui_module.pages.models import (
     LayoutConfig,
     LocaleConfig,
     NavbarConfig,
+    PageRouteConfig,
     PageTabsConfig,
     PageTabsItem,
     SidebarConfig,
@@ -61,20 +62,21 @@ _LAYOUT_TYPES = {"vertical"}
 _LAYOUT_CONTAINERS = {"xl", "fluid"}
 _LAYOUT_SIDEBAR_VARIANTS = {"default", "dark"}
 _LAYOUT_NAVBAR_VARIANTS = {"default", "dark"}
-_RESERVED_PATHS = {
-    "/health",
-    "/api",
-    "/auth",
-    "/venues",
-    "/login",
-    "/logout",
-    "/static",
-    "/components",
-}
-_RESERVED_PREFIXES = (
+_PAGE_ROUTE_MODES = {"configured", "adapter", "metadata"}
+_CUSTOM_ROUTE_RESERVED_PATHS = frozenset(
+    {
+        "/health",
+        "/api",
+        "/auth",
+        "/login",
+        "/logout",
+        "/static",
+        "/components",
+    }
+)
+_CUSTOM_ROUTE_RESERVED_PREFIXES = (
     "/api/",
     "/auth/",
-    "/venues/",
     "/static/",
     "/components/",
 )
@@ -252,7 +254,7 @@ def load_beeui_config(config_path: Path) -> BeeUiConfig:
             raise ValueError(f"pages[{index}] must be a mapping")
         _validate_exact_keys(
             item,
-            {"id", "path", "title", "subtitle", "blocks", "tabs"},
+            {"id", "path", "title", "subtitle", "blocks", "tabs", "route"},
             f"pages[{index}]",
         )
 
@@ -285,6 +287,7 @@ def load_beeui_config(config_path: Path) -> BeeUiConfig:
         )
 
         page_tabs = _parse_page_tabs(item.get("tabs"), page_id)
+        page_route = _parse_page_route(item.get("route"), f"pages[{index}].route")
 
         pages.append(
             BeeUiPage(
@@ -294,6 +297,7 @@ def load_beeui_config(config_path: Path) -> BeeUiConfig:
                 subtitle=subtitle,
                 blocks=placements,
                 tabs=page_tabs,
+                route=page_route,
             )
         )
 
@@ -512,6 +516,22 @@ def _parse_page_tabs(payload: Any, page_id: str) -> PageTabsConfig | None:
     )
 
 
+def _parse_page_route(payload: Any, prefix: str) -> PageRouteConfig:
+    if payload is None:
+        return PageRouteConfig()
+    if not isinstance(payload, dict):
+        raise ValueError(f"{prefix} must be a mapping")
+
+    _validate_exact_keys(payload, {"mode"}, prefix)
+
+    mode = payload.get("mode")
+    if mode is None:
+        return PageRouteConfig()
+    if not isinstance(mode, str) or mode not in _PAGE_ROUTE_MODES:
+        raise ValueError(f"{prefix}.mode must be one of: adapter, configured, metadata")
+    return PageRouteConfig(mode=mode)
+
+
 # Валидация tab href — только safe internal links
 def _validate_tab_href(href: Any, page_id: str, idx: int) -> str:
     if not isinstance(href, str) or not href.strip():
@@ -642,7 +662,7 @@ def _required_non_empty_string(
     return value.strip()
 
 
-# Валидация внутренней route path без traversal, query/hash и reserved paths
+# Валидация внутренней route path без traversal, query/hash
 def _safe_path(value: Any, field_name: str) -> str:
     if not isinstance(value, str) or not value.strip():
         raise ValueError(f"{field_name} must be a non-empty string")
@@ -665,12 +685,16 @@ def _safe_path(value: Any, field_name: str) -> str:
         if not _SAFE_SEGMENT_RE.fullmatch(segment):
             raise ValueError(f"{field_name} must be a safe path")
 
-    if path in _RESERVED_PATHS or any(
-        path.startswith(prefix) for prefix in _RESERVED_PREFIXES
-    ):
-        raise ValueError(f"{field_name} uses a reserved path")
-
     return path
+
+
+# Чек, что путь зарезервирован для BeeUI system routes
+def is_custom_route_reserved_path(path: str) -> bool:
+    if path in _CUSTOM_ROUTE_RESERVED_PATHS:
+        return True
+    if any(path.startswith(prefix) for prefix in _CUSTOM_ROUTE_RESERVED_PREFIXES):
+        return True
+    return False
 
 
 # Валидация одного navigation item и рекурсивный сбор children

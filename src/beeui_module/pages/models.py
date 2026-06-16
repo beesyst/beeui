@@ -133,6 +133,12 @@ class PageTabsConfig:
     items: tuple[PageTabsItem, ...] = field(default_factory=tuple)
 
 
+# Конфигурация маршрута страницы, с возможностью указания режима отображения страницы
+@dataclass(frozen=True)
+class PageRouteConfig:
+    mode: str | None = None
+
+
 # Элемент навигации: либо ссылка на страницу, либо группа children
 @dataclass(frozen=True)
 class BeeUiNavigationItem:
@@ -152,6 +158,7 @@ class BeeUiPage:
     subtitle: str | None
     blocks: list[BlockPlacement]
     tabs: PageTabsConfig | None = None
+    route: PageRouteConfig = field(default_factory=PageRouteConfig)
 
 
 # Полная read-only конфигурация BeeUI, собранная из schema.yml

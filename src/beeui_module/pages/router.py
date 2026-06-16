@@ -10,6 +10,7 @@ from fastapi.templating import Jinja2Templates
 from beeui_module.artifacts.redaction import redact_value
 from beeui_module.blocks.layout_renderer import render_layout
 from beeui_module.blocks.registry import resolve_page_blocks
+from beeui_module.pages.config import is_custom_route_reserved_path
 from beeui_module.pages.models import (
     BeeUiConfig,
     BeeUiNavigationItem,
@@ -41,8 +42,6 @@ RESERVED_CUSTOM_PAGE_PATHS: frozenset[str] = frozenset(
         "/static",
         "/api",
         "/auth",
-        "/runs",
-        "/venues",
         "/components",
         "/login",
         "/logout",
@@ -70,12 +69,17 @@ def register_configured_pages(
     ui_config: BeeUiConfig,
     product_title: str,
     product_id: str,
+    route_modes: dict[str, str] | None = None,
     excluded_paths: set[str] | None = None,
 ) -> list[str]:
     registered_routes: list[str] = []
     skipped_paths = excluded_paths or set()
 
     for page in ui_config.pages:
+        if route_modes is not None and route_modes.get(page.path) != "configured":
+            continue
+        if is_custom_route_reserved_path(page.path):
+            continue
         if page.path in skipped_paths:
             continue
         route_path = prefixed_path(route_prefix, page.path)
@@ -315,6 +319,7 @@ def register_adapter_custom_pages(
     ui_config: BeeUiConfig,
     product_title: str,
     product_id: str,
+    route_modes: dict[str, str] | None = None,
     excluded_paths: set[str] | None = None,
 ) -> list[str]:
     registered_routes: list[str] = []
@@ -325,9 +330,13 @@ def register_adapter_custom_pages(
     shell_classes = build_shell_classes(theme, layout)
 
     for page in ui_config.pages:
+        if route_modes is not None and route_modes.get(page.path) != "adapter":
+            continue
         if page.path in skipped_paths:
             continue
         if page.path in RESERVED_CUSTOM_PAGE_PATHS:
+            continue
+        if is_custom_route_reserved_path(page.path):
             continue
         route_path = prefixed_path(route_prefix, page.path)
         registered_routes.append(route_path)
