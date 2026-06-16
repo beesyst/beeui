@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.20.1](https://github.com/beesyst/beeui/compare/beeui-v0.20.0...beeui-v0.20.1) (2026-06-16)
+
+
+### Bug Fixes
+
+* **routing:** make page route ownership config-driven ([#72](https://github.com/beesyst/beeui/issues/72)) ([6fa8d26](https://github.com/beesyst/beeui/commit/6fa8d26b814c63e94e04488da75b69fa45547948))
+
 ## [0.20.0](https://github.com/beesyst/beeui/compare/beeui-v0.19.1...beeui-v0.20.0) (2026-06-15)
 
 
