@@ -20,7 +20,7 @@ from beeui_module.core.settings import load_settings
 from beeui_module.core.version import get_version
 from beeui_module.pages.component_catalog import register_component_catalog_routes
 from beeui_module.pages.config import load_beeui_config
-from beeui_module.pages.models import BeeUiConfig
+from beeui_module.pages.models import BeeUiConfig, BeeUiPage
 from beeui_module.pages.product_console import register_product_console_routes
 from beeui_module.pages.router import (
     register_adapter_custom_pages,
@@ -36,6 +36,16 @@ def _normalize_prefix(route_prefix: str) -> str:
     if not cleaned.startswith("/"):
         cleaned = f"/{cleaned}"
     return cleaned.rstrip("/")
+
+
+def _resolve_page_route_mode(page: BeeUiPage, *, adapter_available: bool) -> str:
+    if page.route.mode is not None:
+        return page.route.mode
+    if adapter_available:
+        if page.path in {"/", "/runs"}:
+            return "metadata"
+        return "adapter"
+    return "configured"
 
 
 # Разрешение директории с шаблонами для Jinja2
@@ -257,10 +267,21 @@ def create_beeui_app(
 
     health_path = f"{route_prefix}/health" if route_prefix else "/health"
 
-    from beeui_module.pages.router import RESERVED_CUSTOM_PAGE_PATHS
+    configured_paths: set[str] = set()
+    adapter_paths: set[str] = set()
+    metadata_paths: set[str] = set()
+    route_modes: dict[str, str] = {}
 
-    excluded_paths: set[str] = set()
-    adapter_custom_paths: set[str] = set()
+    for page in resolved_ui_config.pages:
+        mode = _resolve_page_route_mode(page, adapter_available=adapter is not None)
+        route_modes[page.path] = mode
+        if mode == "configured":
+            configured_paths.add(page.path)
+        elif mode == "adapter":
+            adapter_paths.add(page.path)
+        elif mode == "metadata":
+            metadata_paths.add(page.path)
+
     if adapter is not None:
         register_product_console_routes(
             app=app,
@@ -270,17 +291,6 @@ def create_beeui_app(
             product_title=product_meta["title"],
             product_id=product_meta["id"],
         )
-        excluded_paths = {"/", "/runs"}
-
-        for page in resolved_ui_config.pages:
-            if page.path in excluded_paths:
-                continue
-            if page.path in RESERVED_CUSTOM_PAGE_PATHS:
-                continue
-            adapter_custom_paths.add(page.path)
-
-    always_excluded = RESERVED_CUSTOM_PAGE_PATHS - {"/", "/runs"}
-    merged_excluded = excluded_paths | adapter_custom_paths | always_excluded
 
     register_configured_pages(
         app=app,
@@ -289,10 +299,11 @@ def create_beeui_app(
         ui_config=resolved_ui_config,
         product_title=product_meta["title"],
         product_id=product_meta["id"],
-        excluded_paths=merged_excluded,
+        route_modes=route_modes,
+        excluded_paths=adapter_paths | metadata_paths,
     )
 
-    if adapter is not None and adapter_custom_paths:
+    if adapter is not None and adapter_paths:
         register_adapter_custom_pages(
             app=app,
             templates=templates,
@@ -300,7 +311,8 @@ def create_beeui_app(
             ui_config=resolved_ui_config,
             product_title=product_meta["title"],
             product_id=product_meta["id"],
-            excluded_paths=excluded_paths,
+            route_modes=route_modes,
+            excluded_paths=configured_paths | metadata_paths,
         )
 
     register_component_catalog_routes(

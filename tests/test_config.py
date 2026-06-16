@@ -2,7 +2,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from beeui_module.pages.config import load_beeui_config
+from beeui_module.pages.config import (
+    is_custom_route_reserved_path,
+    load_beeui_config,
+)
 
 
 # Тесты для проверки загрузки и валидации конфигурации BeeUI, включая проверку обязательных полей, типов данных, допустимых значений и ссылок на страницы и блоки
@@ -15,6 +18,17 @@ def _write_config(tmp_path: Path, content: str) -> Path:
     config_path = tmp_path / "schema.yml"
     config_path.write_text(content, encoding="utf-8")
     return config_path
+
+
+# Сбор всех navigation paths рекурсивно для тестов
+def _collect_nav_paths(items: list) -> set[str]:
+    paths: set[str] = set()
+    for item in items:
+        if item.path:
+            paths.add(item.path)
+        if item.children:
+            paths |= _collect_nav_paths(item.children)
+    return paths
 
 
 # Тест: валидная demo schema загружается вместе с Iteration 5 blocks
@@ -376,13 +390,16 @@ def test_load_beeui_config_rejects_external_links_in_links_card(tmp_path: Path) 
         )
 
 
-# Тест: reserved internal routes отклоняются fail-fast уже на validation
-def test_load_beeui_config_rejects_reserved_navigation_paths(tmp_path: Path) -> None:
-    for reserved_path in (
+# Тест: navigation paths по-прежнему проверяются, что ссылаются на объявленные страницы
+def test_load_beeui_config_rejects_navigation_path_without_matching_page(
+    tmp_path: Path,
+) -> None:
+    for path in (
         "/health",
         "/api",
         "/auth",
         "/venues",
+        "/modes",
         "/login",
         "/logout",
         "/static",
@@ -392,7 +409,7 @@ def test_load_beeui_config_rejects_reserved_navigation_paths(tmp_path: Path) -> 
             tmp_path,
             _base_config().replace(
                 "        path: /runs\n        icon: runs\n",
-                f"        path: {reserved_path}\n        icon: runs\n",
+                f"        path: {path}\n        icon: runs\n",
                 1,
             ),
         )
@@ -400,30 +417,206 @@ def test_load_beeui_config_rejects_reserved_navigation_paths(tmp_path: Path) -> 
         try:
             load_beeui_config(config_path)
         except ValueError as exc:
-            assert str(exc) == "navigation[0].children[1].path uses a reserved path"
+            assert (
+                str(exc) == f"navigation path must match a declared page path: {path}"
+            )
         else:
             raise AssertionError(
-                f"load_beeui_config must reject reserved path {reserved_path}"
+                f"load_beeui_config must reject navigation path {path} without matching page"
             )
 
 
-# Тест: reserved internal routes для страниц отклоняются fail-fast уже на validation
-def test_load_beeui_config_rejects_reserved_page_paths(tmp_path: Path) -> None:
-    for reserved_path in (
-        "/health",
-        "/api",
-        "/auth",
-        "/venues",
-        "/login",
-        "/logout",
-        "/static",
-        "/components",
-    ):
+# Тест: pages[].route.mode принимает только явные режимы ownership
+def test_load_beeui_config_accepts_page_route_modes(tmp_path: Path) -> None:
+    for mode in ("metadata", "adapter", "configured"):
         config_path = _write_config(
             tmp_path,
             _base_config().replace(
                 "  - id: runs\n    path: /runs\n",
-                f"  - id: runs\n    path: {reserved_path}\n",
+                f"  - id: runs\n    path: /runs\n    route:\n      mode: {mode}\n",
+                1,
+            ),
+        )
+
+        config = load_beeui_config(config_path)
+        assert config.pages[1].route.mode == mode
+
+
+def test_load_beeui_config_rejects_unknown_page_route_mode(tmp_path: Path) -> None:
+    config_path = _write_config(
+        tmp_path,
+        _base_config().replace(
+            "  - id: runs\n    path: /runs\n",
+            "  - id: runs\n    path: /runs\n    route:\n      mode: python\n",
+            1,
+        ),
+    )
+
+    try:
+        load_beeui_config(config_path)
+    except ValueError as exc:
+        assert (
+            str(exc)
+            == "pages[1].route.mode must be one of: adapter, configured, metadata"
+        )
+    else:
+        raise AssertionError("load_beeui_config must reject unknown page route mode")
+
+
+def test_load_beeui_config_rejects_unknown_page_route_keys(tmp_path: Path) -> None:
+    config_path = _write_config(
+        tmp_path,
+        _base_config().replace(
+            "  - id: runs\n    path: /runs\n",
+            "  - id: runs\n    path: /runs\n"
+            "    route:\n"
+            "      mode: metadata\n"
+            "      handler: python.module.callable\n",
+            1,
+        ),
+    )
+
+    try:
+        load_beeui_config(config_path)
+    except ValueError as exc:
+        assert str(exc) == "pages[1].route contains unsupported keys: handler"
+    else:
+        raise AssertionError("load_beeui_config must reject arbitrary route keys")
+
+
+# Тест: nested product-defined paths are safe internal metadata/config paths
+def test_load_beeui_config_accepts_nested_safe_page_paths(
+    tmp_path: Path,
+) -> None:
+    for page_path in (
+        "/venues/mrkt",
+        "/modes/live",
+        "/hidra/binance",
+        "/likes/top",
+    ):
+        config_path = _write_config(
+            tmp_path,
+            _base_config().replace(
+                "    subtitle: Placeholder page for future run overview\n    blocks: []\n",
+                f"    subtitle: Placeholder page for future run overview\n    blocks: []\n"
+                f"  - id: meta\n    path: {page_path}\n"
+                f"    title: Metadata\n    subtitle: Console ref\n    blocks: []\n",
+                1,
+            ),
+        )
+
+        config = load_beeui_config(config_path)
+        page_paths = [p.path for p in config.pages]
+        assert page_path in page_paths
+        assert "/" in page_paths
+        assert "/runs" in page_paths
+
+
+# Тест: nested product-defined paths разрешены как navigation paths
+def test_load_beeui_config_accepts_nested_safe_navigation_paths(
+    tmp_path: Path,
+) -> None:
+    config_path = _write_config(
+        tmp_path,
+        _base_config()
+        .replace(
+            "    subtitle: Placeholder page for future run overview\n    blocks: []\n",
+            "    subtitle: Placeholder page for future run overview\n    blocks: []\n"
+            "  - id: mrkt_meta\n    path: /venues/mrkt\n"
+            "    title: MRKT\n    subtitle: Venue\n    blocks: []\n"
+            "  - id: mode_live\n    path: /modes/live\n"
+            "    title: Live\n    subtitle: Mode\n    blocks: []\n"
+            "  - id: hidra_binance\n    path: /hidra/binance\n"
+            "    title: Hidra Binance\n    subtitle: Adapter page\n    blocks: []\n"
+            "  - id: likes_top\n    path: /likes/top\n"
+            "    title: Likes\n    subtitle: Configured page\n    blocks: []\n",
+            1,
+        )
+        .replace(
+            "        path: /runs\n        icon: runs\n",
+            "        path: /runs\n        icon: runs\n"
+            "      - title: MRKT\n        path: /venues/mrkt\n        icon: venue\n"
+            "      - title: Live\n        path: /modes/live\n        icon: mode\n"
+            "      - title: Hidra Binance\n        path: /hidra/binance\n        icon: venue\n"
+            "      - title: Likes\n        path: /likes/top\n        icon: list\n",
+            1,
+        ),
+    )
+
+    config = load_beeui_config(config_path)
+    nav_paths = _collect_nav_paths(config.navigation)
+    assert "/venues/mrkt" in nav_paths
+    assert "/modes/live" in nav_paths
+    assert "/hidra/binance" in nav_paths
+    assert "/likes/top" in nav_paths
+
+
+# Тест: is_custom_route_reserved_path — reserved exact paths
+def test_is_custom_route_reserved_exact_paths() -> None:
+    reserved = [
+        "/health",
+        "/api",
+        "/auth",
+        "/login",
+        "/logout",
+        "/static",
+        "/components",
+    ]
+    for path in reserved:
+        assert is_custom_route_reserved_path(path), f"{path} must be reserved"
+
+
+# Тест: is_custom_route_reserved_path — reserved prefix paths
+def test_is_custom_route_reserved_prefix_paths() -> None:
+    reserved = [
+        "/api/debug",
+        "/auth/test",
+        "/static/css/beeui.css",
+        "/components/forms",
+    ]
+    for path in reserved:
+        assert is_custom_route_reserved_path(path), f"{path} must be reserved"
+
+
+# Тест: is_custom_route_reserved_path — non-reserved custom paths
+def test_is_custom_route_reserved_non_reserved_paths() -> None:
+    non_reserved = [
+        "/rop",
+        "/modules",
+        "/reports",
+        "/settings-lite",
+        "/venues",
+        "/venues/mrkt",
+        "/modes",
+        "/modes/dry-run",
+        "/modes/paper",
+        "/modes/live",
+        "/hidra/binance",
+        "/likes/top",
+        "/runs",
+        "/runs/run_001",
+    ]
+    for path in non_reserved:
+        assert not is_custom_route_reserved_path(path), f"{path} must not be reserved"
+
+
+# Тест: navigation paths к системным BeeUI routes (/components, /static, /auth)
+# без matching page — ошибка "must match a declared page path"
+def test_load_beeui_config_rejects_nav_paths_to_system_routes_without_page(
+    tmp_path: Path,
+) -> None:
+    for path in (
+        "/components",
+        "/components/forms",
+        "/static",
+        "/static/css/beeui.css",
+        "/auth/csrf",
+    ):
+        config_path = _write_config(
+            tmp_path,
+            _base_config().replace(
+                "        path: /runs\n        icon: runs\n",
+                f"        path: {path}\n        icon: runs\n",
                 1,
             ),
         )
@@ -431,108 +624,13 @@ def test_load_beeui_config_rejects_reserved_page_paths(tmp_path: Path) -> None:
         try:
             load_beeui_config(config_path)
         except ValueError as exc:
-            assert str(exc) == "pages[1].path uses a reserved path"
+            assert (
+                str(exc) == f"navigation path must match a declared page path: {path}"
+            )
         else:
             raise AssertionError(
-                f"load_beeui_config must reject reserved page path {reserved_path}"
+                f"load_beeui_config must reject nav path {path} without matching page"
             )
-
-
-# Тест: /components зарезервирован для internal component catalog
-def test_load_beeui_config_rejects_reserved_components_path(tmp_path: Path) -> None:
-    config_path = _write_config(
-        tmp_path,
-        _base_config().replace(
-            "        path: /runs\n        icon: runs\n",
-            "        path: /components\n        icon: runs\n",
-            1,
-        ),
-    )
-
-    try:
-        load_beeui_config(config_path)
-    except ValueError as exc:
-        assert str(exc) == "navigation[0].children[1].path uses a reserved path"
-    else:
-        raise AssertionError("load_beeui_config must reject reserved /components path")
-
-
-# Тест: /components/... зарезервирован для internal component catalog
-def test_load_beeui_config_rejects_reserved_components_prefix(tmp_path: Path) -> None:
-    config_path = _write_config(
-        tmp_path,
-        _base_config().replace(
-            "        path: /runs\n        icon: runs\n",
-            "        path: /components/forms\n        icon: runs\n",
-            1,
-        ),
-    )
-
-    try:
-        load_beeui_config(config_path)
-    except ValueError as exc:
-        assert str(exc) == "navigation[0].children[1].path uses a reserved path"
-    else:
-        raise AssertionError(
-            "load_beeui_config must reject reserved /components/... path"
-        )
-
-
-# Тест: /static зарезервирован и не может быть page/navigation path
-def test_load_beeui_config_rejects_reserved_static_path(tmp_path: Path) -> None:
-    config_path = _write_config(
-        tmp_path,
-        _base_config().replace(
-            "        path: /runs\n        icon: runs\n",
-            "        path: /static\n        icon: runs\n",
-            1,
-        ),
-    )
-
-    try:
-        load_beeui_config(config_path)
-    except ValueError as exc:
-        assert str(exc) == "navigation[0].children[1].path uses a reserved path"
-    else:
-        raise AssertionError("load_beeui_config must reject reserved /static path")
-
-
-# Тест: /static/... зарезервирован для package-local assets
-def test_load_beeui_config_rejects_reserved_static_prefix(tmp_path: Path) -> None:
-    config_path = _write_config(
-        tmp_path,
-        _base_config().replace(
-            "        path: /runs\n        icon: runs\n",
-            "        path: /static/css/beeui.css\n        icon: runs\n",
-            1,
-        ),
-    )
-
-    try:
-        load_beeui_config(config_path)
-    except ValueError as exc:
-        assert str(exc) == "navigation[0].children[1].path uses a reserved path"
-    else:
-        raise AssertionError("load_beeui_config must reject reserved /static/... path")
-
-
-# Тест: /auth/... зарезервирован для BeeUI auth routes
-def test_load_beeui_config_rejects_reserved_auth_prefix(tmp_path: Path) -> None:
-    config_path = _write_config(
-        tmp_path,
-        _base_config().replace(
-            "        path: /runs\n        icon: runs\n",
-            "        path: /auth/csrf\n        icon: runs\n",
-            1,
-        ),
-    )
-
-    try:
-        load_beeui_config(config_path)
-    except ValueError as exc:
-        assert str(exc) == "navigation[0].children[1].path uses a reserved path"
-    else:
-        raise AssertionError("load_beeui_config must reject reserved /auth/... path")
 
 
 # Тест: pages[].blocks[] принимает {id, enabled} page block ref
