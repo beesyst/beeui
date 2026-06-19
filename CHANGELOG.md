@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.21.0](https://github.com/beesyst/beeui/compare/beeui-v0.20.1...beeui-v0.21.0) (2026-06-19)
+
+
+### Features
+
+* **layout:** add safe charts and advanced data tables ([#75](https://github.com/beesyst/beeui/issues/75)) ([3ccd9dd](https://github.com/beesyst/beeui/commit/3ccd9dd9588201a5be9a973ffb644f37464163df))
+
 ## [0.20.1](https://github.com/beesyst/beeui/compare/beeui-v0.20.0...beeui-v0.20.1) (2026-06-16)
 
 
