@@ -34,6 +34,8 @@
   {% include "components/layout/group.html" %}
 {% elif block.type == "run_table" %}
   {% include "components/layout/run_table.html" %}
+{% elif block.type == "data_table" %}
+  {% include "components/layout/data_table.html" %}
 {% elif block.type == "degraded" %}
   {% include "components/layout/degraded.html" %}
 {% endif %}

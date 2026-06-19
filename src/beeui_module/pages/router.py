@@ -8,7 +8,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
 from beeui_module.artifacts.redaction import redact_value
-from beeui_module.blocks.layout_renderer import render_layout
+from beeui_module.blocks.layout_renderer import layout_has_charts, render_layout
 from beeui_module.blocks.registry import resolve_page_blocks
 from beeui_module.pages.config import is_custom_route_reserved_path
 from beeui_module.pages.models import (
@@ -101,6 +101,11 @@ def register_configured_pages(
                 request,
                 route_prefix=route_prefix,
             )
+
+            has_charts = any(
+                getattr(b, "block_type", None) == "chart" for b in rendered_blocks
+            )
+
             return templates.TemplateResponse(
                 request=request,
                 name="page.html",
@@ -126,6 +131,7 @@ def register_configured_pages(
                     "has_blocks": bool(rendered_blocks),
                     "has_layout": False,
                     "layout_blocks": [],
+                    "has_charts": has_charts,
                     "error": None,
                     "status": "ok",
                 },
@@ -446,6 +452,9 @@ def register_adapter_custom_pages(
                 request,
                 route_prefix=route_prefix,
             )
+
+            has_charts = layout_has_charts(layout_blocks)
+
             context = {
                 "route_prefix": route_prefix,
                 "product_title": product_title,
@@ -466,6 +475,7 @@ def register_adapter_custom_pages(
                 "shell_classes": shell_classes,
                 "has_layout": has_layout,
                 "layout_blocks": layout_blocks,
+                "has_charts": has_charts,
                 "has_blocks": False,
                 "rendered_blocks": [],
                 "page_title": _page.title,
@@ -533,6 +543,7 @@ def _render_page_unavailable(
         "shell_classes": build_shell_classes(theme, layout),
         "has_layout": False,
         "layout_blocks": [],
+        "has_charts": False,
         "has_blocks": False,
         "rendered_blocks": [],
         "page_title": page.title,

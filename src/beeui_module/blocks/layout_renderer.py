@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import hashlib
+import json
 from typing import Any
 from urllib.parse import unquote, urlsplit
 
@@ -37,6 +39,7 @@ _SUPPORTED_BLOCK_TYPES: set[str] = {
     "quick_links",
     "run_table",
     "group",
+    "data_table",
 }
 _RUN_TABLE_COLUMNS: tuple[str, ...] = (
     "Run",
@@ -474,27 +477,90 @@ def _render_raw_json_panel(raw: dict[str, Any], width_class: str) -> dict[str, A
     }
 
 
-# Рендеринг блока "chart" с нормализацией adapter-provided chart payload
+# Поддерживаемые виды графиков для _render_chart
+_ALLOWED_CHART_KINDS: frozenset = frozenset({"line", "bar", "area", "donut"})
+
+
+# Рендеринг блока "chart" с безопасным chart payload и kind-поддержкой
 def _render_chart(raw: dict[str, Any], width_class: str) -> dict[str, Any]:
+    kind = raw.get("kind")
+    if kind is not None and kind not in _ALLOWED_CHART_KINDS:
+        kind = None
+
     series = _safe_list(raw.get("series"))
-    points = _safe_list(raw.get("points"))
-    candles = _safe_list(raw.get("candles"))
-    has_data = bool(series or points or candles)
+    labels = _safe_list(raw.get("labels"))
+    categories = _safe_list(raw.get("categories"))
+
+    has_data = bool(series)
+    if has_data and isinstance(series, list):
+        if kind == "donut":
+            has_data = bool(series and all(isinstance(v, (int, float)) for v in series))
+        else:
+            has_data = bool(
+                series
+                and all(
+                    isinstance(s, dict) and isinstance(s.get("data"), list)
+                    for s in series
+                )
+            )
+
+    height = raw.get("height")
+    if not isinstance(height, int) or height < 50 or height > 800:
+        height = 300
+
+    resolved_kind = kind or "line"
+    chart_config: dict[str, Any] = {
+        "chart": {
+            "type": resolved_kind,
+            "height": height,
+            "toolbar": {"show": False},
+            "zoom": {"enabled": False},
+        },
+        "series": series,
+        "dataLabels": {"enabled": False},
+        "stroke": {"curve": "smooth", "width": 2},
+    }
+    if resolved_kind == "donut":
+        chart_config["labels"] = labels
+        chart_config["plotOptions"] = {"pie": {"donut": {"size": "65%"}}}
+    else:
+        chart_config["xaxis"] = {}
+        if categories:
+            chart_config["xaxis"]["categories"] = categories
+
+    title = _safe_str(raw.get("title", ""))
+    chart_id = _chart_id_from_config(title, chart_config)
 
     return {
         "type": "chart",
         "width_class": width_class,
-        "title": _safe_str(raw.get("title", "")),
+        "title": title,
         "subtitle": _safe_str(raw.get("subtitle", "")),
         "status": _safe_str(raw.get("status", "")),
         "hint": _safe_str(raw.get("hint", "")),
-        "symbol": _safe_str(raw.get("symbol", "")),
-        "timeframe": _safe_str(raw.get("timeframe", "")),
+        "kind": resolved_kind,
         "series": series,
-        "points": points,
-        "candles": candles,
+        "labels": labels,
+        "categories": categories,
+        "height": height,
+        "unit": _safe_str(raw.get("unit", "")),
+        "empty_message": _safe_str(raw.get("empty_message", "No chart data")),
         "has_data": has_data,
+        "chart_id": chart_id,
+        "chart_config": chart_config,
     }
+
+
+# Генерация уникального chart_id на основе конфигурации для оптимизации рендеринга
+def _chart_id_from_config(title: str, chart_config: dict[str, Any]) -> str:
+    payload = json.dumps(
+        {"title": title, "config": chart_config},
+        ensure_ascii=True,
+        sort_keys=True,
+        default=str,
+    )
+    digest = hashlib.sha256(payload.encode("utf-8")).hexdigest()[:16]
+    return f"beeui-chart-{digest}"
 
 
 # Рендеринг блока "operator_hero" — high-level system/operator snapshot
@@ -723,6 +789,301 @@ def _render_run_table(raw: dict[str, Any], width_class: str) -> dict[str, Any]:
     }
 
 
+# Поддерживаемые типы ячеек для data_table
+_ALLOWED_DATA_TABLE_CELL_TYPES: frozenset = frozenset(
+    {"text", "muted", "link", "badge", "status", "avatar_text", "progress", "actions"}
+)
+_ALLOWED_DATA_TABLE_TONES: frozenset[str] = frozenset(
+    {
+        "primary",
+        "secondary",
+        "success",
+        "warning",
+        "danger",
+        "info",
+        "blue",
+        "azure",
+        "indigo",
+        "purple",
+        "pink",
+        "red",
+        "orange",
+        "yellow",
+        "lime",
+        "green",
+        "teal",
+        "cyan",
+    }
+)
+_ALLOWED_DATA_TABLE_STATUSES: frozenset[str] = frozenset(
+    {
+        "ok",
+        "warning",
+        "error",
+        "unknown",
+        "partial",
+        "degraded",
+        "unavailable",
+        "disabled",
+        "success",
+        "danger",
+        "info",
+    }
+)
+_ALLOWED_DATA_TABLE_COLORS: frozenset[str] = frozenset(
+    {
+        "primary",
+        "secondary",
+        "success",
+        "warning",
+        "danger",
+        "info",
+        "blue",
+        "azure",
+        "indigo",
+        "purple",
+        "pink",
+        "red",
+        "orange",
+        "yellow",
+        "lime",
+        "green",
+        "teal",
+        "cyan",
+    }
+)
+
+
+# Ограничение adapter-provided visual tokens перед использованием в CSS class suffix
+def _safe_visual_token(
+    value: Any,
+    allowed: frozenset[str],
+    default: str = "",
+) -> str:
+    if not isinstance(value, str):
+        return default
+
+    clean = value.strip().lower()
+    if clean in allowed:
+        return clean
+
+    return default
+
+
+# Рендеринг блока "data_table" - advanced Tabler-compatible data table
+def _render_data_table(raw: dict[str, Any], width_class: str) -> dict[str, Any]:
+    _require_title(raw)
+
+    variant = raw.get("variant", "card")
+    if not isinstance(variant, str) or variant not in ("card",):
+        variant = "card"
+
+    striped = bool(raw.get("striped", False))
+    mobile = raw.get("mobile")
+    if not isinstance(mobile, str) or mobile not in ("sm", "md", "lg"):
+        mobile = None
+
+    selectable = bool(raw.get("selectable", False))
+    nowrap = bool(raw.get("nowrap", False))
+    compact = bool(raw.get("compact", False))
+
+    # toolbar
+    toolbar_raw = raw.get("toolbar")
+    toolbar: dict[str, Any] = {"search": False, "entries": False, "actions": []}
+    if isinstance(toolbar_raw, dict):
+        toolbar["search"] = bool(toolbar_raw.get("search", False))
+        toolbar["entries"] = bool(toolbar_raw.get("entries", False))
+        actions: list[dict[str, str]] = []
+        for action in _safe_dict_list(toolbar_raw.get("actions")):
+            href = _validate_link(action.get("href"))
+            if href is not None:
+                actions.append(
+                    {
+                        "label": _display_value(action.get("label")),
+                        "href": href,
+                    }
+                )
+        toolbar["actions"] = actions
+
+    columns_raw = raw.get("columns")
+    if not isinstance(columns_raw, list) or not columns_raw:
+        return _degraded_block("Data table columns are missing or invalid", width=raw)
+
+    columns: list[dict[str, Any]] = []
+    for col in columns_raw:
+        if not isinstance(col, dict):
+            return _degraded_block(
+                "Data table columns are missing or invalid",
+                width=raw,
+            )
+        key = _safe_str(col.get("key", ""))
+        if not key:
+            return _degraded_block(
+                "Data table column key is missing or invalid",
+                width=raw,
+            )
+        cell_type = col.get("cell", "text")
+        if (
+            not isinstance(cell_type, str)
+            or cell_type not in _ALLOWED_DATA_TABLE_CELL_TYPES
+        ):
+            cell_type = "text"
+        columns.append(
+            {
+                "key": key,
+                "label": _safe_str(col.get("label", "")),
+                "cell": cell_type,
+                "sortable": bool(col.get("sortable", False)),
+            }
+        )
+
+    rows_raw = raw.get("rows")
+    if not isinstance(rows_raw, list):
+        return _degraded_block("Data table rows are missing or invalid", width=raw)
+
+    rows: list[dict[str, Any]] = []
+    for row in rows_raw:
+        if not isinstance(row, dict):
+            continue
+        parsed_row: dict[str, Any] = {}
+        for col in columns:
+            key = col["key"]
+            cell_type = col["cell"]
+            cell_raw = row.get(key)
+            parsed_row[key] = _render_data_table_cell(cell_raw, cell_type)
+        rows.append(parsed_row)
+
+    pagination_raw = raw.get("pagination")
+    pagination: dict[str, Any] = {}
+    if isinstance(pagination_raw, dict):
+        pages: list[dict[str, Any]] = []
+        for page in _safe_dict_list(pagination_raw.get("pages")):
+            href = _validate_link(page.get("href"))
+            if href is not None:
+                pages.append(
+                    {
+                        "label": _safe_str(page.get("label", "")),
+                        "href": href,
+                        "active": bool(page.get("active", False)),
+                    }
+                )
+        pagination = {
+            "label": _safe_str(pagination_raw.get("label", "")),
+            "pages": pages,
+        }
+
+    return {
+        "type": "data_table",
+        "width_class": width_class,
+        "title": _display_value(raw.get("title")),
+        "description": _display_value(raw.get("description"), default=""),
+        "variant": variant,
+        "striped": striped,
+        "mobile": mobile,
+        "selectable": selectable,
+        "nowrap": nowrap,
+        "compact": compact,
+        "toolbar": toolbar,
+        "columns": columns,
+        "rows": rows,
+        "pagination": pagination,
+    }
+
+
+# Рендеринг отдельной ячейки data_table по типу
+def _render_data_table_cell(cell_raw: Any, cell_type: str) -> dict[str, Any]:
+    if cell_type == "actions":
+        actions: list[dict[str, str]] = []
+        for action in _safe_dict_list(
+            cell_raw
+            if isinstance(cell_raw, list)
+            else cell_raw.get("items", [])
+            if isinstance(cell_raw, dict)
+            else []
+        ):
+            href = _validate_link(action.get("href"))
+            if href is not None:
+                actions.append(
+                    {
+                        "label": _display_value(action.get("label")),
+                        "href": href,
+                    }
+                )
+        return {"type": "actions", "items": actions}
+
+    if not isinstance(cell_raw, dict):
+        return {"type": "text", "value": _display_value(cell_raw)}
+
+    if cell_type == "link":
+        href = _validate_link(cell_raw.get("href"))
+        return {
+            "type": "link",
+            "label": _display_value(cell_raw.get("label")),
+            "href": href,
+        }
+
+    if cell_type == "badge":
+        return {
+            "type": "badge",
+            "label": _display_value(cell_raw.get("label")),
+            "tone": _safe_visual_token(
+                cell_raw.get("tone"),
+                _ALLOWED_DATA_TABLE_TONES,
+                "secondary",
+            ),
+        }
+
+    if cell_type == "status":
+        return {
+            "type": "status",
+            "label": _display_value(cell_raw.get("label")),
+            "status": _safe_visual_token(
+                cell_raw.get("status"),
+                _ALLOWED_DATA_TABLE_STATUSES,
+                "unknown",
+            ),
+        }
+
+    if cell_type == "avatar_text":
+        return {
+            "type": "avatar_text",
+            "title": _display_value(cell_raw.get("title")),
+            "subtitle": _display_value(cell_raw.get("subtitle"), default=""),
+            "initials": _safe_str(cell_raw.get("initials", "")),
+            "color": _safe_visual_token(
+                cell_raw.get("color"),
+                _ALLOWED_DATA_TABLE_COLORS,
+            ),
+        }
+
+    if cell_type == "progress":
+        value = cell_raw.get("value")
+        if not isinstance(value, (int, float)) or isinstance(value, bool):
+            value = 0
+        if value < 0:
+            value = 0
+        if value > 100:
+            value = 100
+        return {
+            "type": "progress",
+            "label": _display_value(cell_raw.get("label")),
+            "value": value,
+            "color": _safe_visual_token(
+                cell_raw.get("color"),
+                _ALLOWED_DATA_TABLE_COLORS,
+            ),
+        }
+
+    tone = "muted" if cell_type == "muted" else ""
+    return {
+        "type": "text",
+        "value": _display_value(
+            cell_raw.get("label") if isinstance(cell_raw, dict) else cell_raw
+        ),
+        "tone": tone,
+    }
+
+
 # Сопоставление типов блоков с их функциями рендеринга для динамического вызова при обработке layout[] списка
 _BLOCK_RENDERERS: dict[str, Any] = {
     "hero_snapshot": _render_hero_snapshot,
@@ -743,6 +1104,7 @@ _BLOCK_RENDERERS: dict[str, Any] = {
     "quick_links": _render_quick_links,
     "run_table": _render_run_table,
     "group": _render_group,
+    "data_table": _render_data_table,
 }
 
 
@@ -751,3 +1113,18 @@ def render_layout(layout: Any) -> list[dict[str, Any]]:
     if not isinstance(layout, list):
         return []
     return [_render_block(item, depth=_GROUP_MAX_DEPTH) for item in layout]
+
+
+# Рекурсивная проверка chart-блоков, включая вложенные group.children
+def layout_has_charts(blocks: list[dict[str, Any]]) -> bool:
+    for block in blocks:
+        if block.get("type") == "chart":
+            return True
+
+        children = block.get("children")
+        if isinstance(children, list) and layout_has_charts(
+            [child for child in children if isinstance(child, dict)]
+        ):
+            return True
+
+    return False

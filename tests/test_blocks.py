@@ -910,12 +910,12 @@ def test_layout_chart_with_data_renders() -> None:
     assert block["type"] == "chart"
     assert block["title"] == "<script>bad</script>"
     assert block["has_data"] is True
-    assert block["symbol"] == "BTC/USD"
-    assert block["timeframe"] == "1h"
+    assert block["kind"] == "line"
+    assert block["series"] == [{"name": "close", "data": [100, 101, 102]}]
 
 
 # Тест: chart.html template существует в package
-def test_layout_chart_template_exists() -> None:
+def test_layout_chart_template_exists_for_chart_block() -> None:
     assert Path("src/beeui_module/web/templates/components/layout/chart.html").is_file()
 
 
@@ -2093,3 +2093,864 @@ def test_resolve_kpi_grid_columns() -> None:
     assert resolve_kpi_grid_columns(True) == 4
     assert resolve_kpi_grid_columns(False) == 4
     assert resolve_kpi_grid_columns(1.0) == 4
+
+
+# Тест: chart line kind рендерится с has_data=True
+def test_layout_chart_line_renders() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "chart",
+                "title": "Line Chart",
+                "kind": "line",
+                "width": 12,
+                "series": [{"name": "close", "data": [1, 2, 3]}],
+                "categories": ["A", "B", "C"],
+            }
+        ]
+    )
+    assert len(result) == 1
+    block = result[0]
+    assert block["type"] == "chart"
+    assert block["kind"] == "line"
+    assert block["has_data"] is True
+
+
+# Тест: chart bar kind рендерится с has_data=True
+def test_layout_chart_bar_renders() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "chart",
+                "title": "Bar Chart",
+                "kind": "bar",
+                "width": 6,
+                "series": [{"name": "count", "data": [5, 10, 15]}],
+                "categories": ["X", "Y", "Z"],
+            }
+        ]
+    )
+    assert len(result) == 1
+    block = result[0]
+    assert block["type"] == "chart"
+    assert block["kind"] == "bar"
+    assert block["has_data"] is True
+
+
+# Тест: chart area kind рендерится с has_data=True
+def test_layout_chart_area_renders() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "chart",
+                "title": "Area Chart",
+                "kind": "area",
+                "width": 12,
+                "series": [{"name": "volume", "data": [100, 200, 150]}],
+                "categories": ["Jan", "Feb", "Mar"],
+            }
+        ]
+    )
+    assert len(result) == 1
+    block = result[0]
+    assert block["type"] == "chart"
+    assert block["kind"] == "area"
+    assert block["has_data"] is True
+
+
+# Тест: chart donut kind рендерится с has_data=True
+def test_layout_chart_donut_renders() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "chart",
+                "title": "Donut Chart",
+                "kind": "donut",
+                "width": 6,
+                "series": [30, 50, 20],
+                "labels": ["A", "B", "C"],
+            }
+        ]
+    )
+    assert len(result) == 1
+    block = result[0]
+    assert block["type"] == "chart"
+    assert block["kind"] == "donut"
+    assert block["has_data"] is True
+
+
+# Тест: unsupported chart kind деградирует к line
+def test_layout_chart_unsupported_kind_degrades() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "chart",
+                "title": "Bad Kind",
+                "kind": "radar",
+                "width": 12,
+                "series": [{"name": "x", "data": [1, 2]}],
+            }
+        ]
+    )
+    assert len(result) == 1
+    block = result[0]
+    assert block["type"] == "chart"
+    assert block["kind"] == "line"
+    assert block["has_data"] is True
+
+
+# Тест: empty chart data renders has_data=False
+def test_layout_chart_empty_data_renders_empty() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "chart",
+                "title": "Empty Chart",
+                "kind": "line",
+                "width": 12,
+                "series": [],
+                "categories": [],
+            }
+        ]
+    )
+    assert len(result) == 1
+    block = result[0]
+    assert block["type"] == "chart"
+    assert block["has_data"] is False
+
+
+# Тест: invalid chart series degrades to has_data=False
+def test_layout_chart_invalid_series_degrades() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "chart",
+                "title": "Invalid",
+                "kind": "line",
+                "width": 12,
+                "series": "not a list",
+            }
+        ]
+    )
+    assert len(result) == 1
+    block = result[0]
+    assert block["type"] == "chart"
+    assert block["has_data"] is False
+
+
+# Тест: unsafe chart title/labels escaped in rendered dict
+def test_layout_chart_unsafe_text_escaped() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "chart",
+                "title": "<script>bad</script>",
+                "subtitle": "<b>sub</b>",
+                "status": "<i>status</i>",
+                "kind": "line",
+                "width": 12,
+                "series": [{"name": "<script>alert(1)</script>", "data": [1]}],
+            }
+        ]
+    )
+    block = result[0]
+    assert block["title"] == "<script>bad</script>"
+    assert block["subtitle"] == "<b>sub</b>"
+    assert block["status"] == "<i>status</i>"
+
+
+# Тест: chart data stays as a dict for safe template JSON serialization
+def test_layout_chart_safe_json_serialization() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "chart",
+                "title": "Safe JSON",
+                "kind": "line",
+                "width": 12,
+                "series": [{"name": "test", "data": [1, 2, 3]}],
+                "categories": ["A", "B", "C"],
+            }
+        ]
+    )
+    block = result[0]
+    assert "_chart_config" not in block
+    assert isinstance(block["chart_config"], dict)
+
+    config = block["chart_config"]
+    assert config["chart"]["type"] == "line"
+    assert config["series"][0]["name"] == "test"
+    assert config["xaxis"]["categories"] == ["A", "B", "C"]
+    assert config["chart"]["toolbar"]["show"] is False
+
+
+# Тест: chart не передает произвольные ApexCharts options
+def test_layout_chart_no_arbitrary_options() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "chart",
+                "title": "No arbitrary",
+                "kind": "line",
+                "width": 12,
+                "series": [{"name": "x", "data": [1]}],
+                "theme": {"palette": "custom"},
+                "annotations": {"points": [{"x": 1}]},
+            }
+        ]
+    )
+    block = result[0]
+
+    config = block["chart_config"]
+    assert "annotations" not in config
+
+
+# Тест: chart height bounds
+def test_layout_chart_height_bounds() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "chart",
+                "title": "Height",
+                "kind": "line",
+                "width": 12,
+                "height": 999,
+                "series": [{"name": "x", "data": [1]}],
+            }
+        ]
+    )
+    assert result[0]["height"] == 300
+
+    result = render_layout(
+        [
+            {
+                "type": "chart",
+                "title": "Height2",
+                "kind": "line",
+                "width": 12,
+                "height": 200,
+                "series": [{"name": "x", "data": [1]}],
+            }
+        ]
+    )
+    assert result[0]["height"] == 200
+
+
+# Тест: chart_deterministic_id
+def test_layout_chart_deterministic_id() -> None:
+    layout = [
+        {
+            "type": "chart",
+            "title": "ID test",
+            "kind": "line",
+            "width": 12,
+            "series": [{"name": "x", "data": [1]}],
+        }
+    ]
+
+    first = render_layout(layout)
+    second = render_layout(layout)
+
+    assert first[0]["chart_id"].startswith("beeui-chart-")
+    assert first[0]["chart_id"] == second[0]["chart_id"]
+
+
+# Тест: nested chart inside group is detected recursively
+def test_layout_has_charts_detects_nested_group_chart() -> None:
+    from beeui_module.blocks.layout_renderer import layout_has_charts
+
+    blocks = render_layout(
+        [
+            {
+                "type": "group",
+                "children": [
+                    {
+                        "type": "chart",
+                        "title": "Nested chart",
+                        "series": [{"name": "x", "data": [1, 2, 3]}],
+                    }
+                ],
+            }
+        ]
+    )
+
+    assert layout_has_charts(blocks) is True
+
+
+# Тест: chart template exists
+def test_layout_chart_template_exists() -> None:
+    assert Path("src/beeui_module/web/templates/components/layout/chart.html").is_file()
+
+
+# Тест: data_table basic card render
+def test_layout_data_table_basic_renders() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "data_table",
+                "title": "Recent Items",
+                "width": 12,
+                "variant": "card",
+                "columns": [
+                    {"key": "id", "label": "ID"},
+                    {"key": "name", "label": "Name"},
+                ],
+                "rows": [
+                    {"id": {"label": "001"}, "name": {"label": "Alice"}},
+                    {"id": {"label": "002"}, "name": {"label": "Bob"}},
+                ],
+            }
+        ]
+    )
+    assert len(result) == 1
+    block = result[0]
+    assert block["type"] == "data_table"
+    assert block["title"] == "Recent Items"
+    assert len(block["columns"]) == 2
+    assert len(block["rows"]) == 2
+    assert block["rows"][0]["id"]["value"] == "001"
+
+
+# Тест: data_table striped variant
+def test_layout_data_table_striped_renders() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "data_table",
+                "title": "Striped",
+                "width": 12,
+                "striped": True,
+                "columns": [{"key": "id", "label": "ID"}],
+                "rows": [{"id": {"label": "001"}}],
+            }
+        ]
+    )
+    assert result[0]["striped"] is True
+
+
+# Тест: data_table mobile with data-label
+def test_layout_data_table_mobile_renders() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "data_table",
+                "title": "Mobile",
+                "width": 12,
+                "mobile": "md",
+                "columns": [{"key": "id", "label": "ID"}],
+                "rows": [{"id": {"label": "001"}}],
+            }
+        ]
+    )
+    assert result[0]["mobile"] == "md"
+
+
+# Тест: data_table selectable
+def test_layout_data_table_selectable_renders() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "data_table",
+                "title": "Selectable",
+                "width": 12,
+                "selectable": True,
+                "columns": [{"key": "id", "label": "ID"}],
+                "rows": [{"id": {"label": "001"}}],
+            }
+        ]
+    )
+    assert result[0]["selectable"] is True
+
+
+# Тест: data_table compact
+def test_layout_data_table_compact_renders() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "data_table",
+                "title": "Compact",
+                "width": 12,
+                "compact": True,
+                "columns": [{"key": "id", "label": "ID"}],
+                "rows": [{"id": {"label": "001"}}],
+            }
+        ]
+    )
+    assert result[0]["compact"] is True
+
+
+# Тест: data_table toolbar render
+def test_layout_data_table_toolbar_renders() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "data_table",
+                "title": "Toolbar",
+                "width": 12,
+                "toolbar": {
+                    "search": True,
+                    "entries": True,
+                    "actions": [{"label": "Export", "href": "/export"}],
+                },
+                "columns": [{"key": "id", "label": "ID"}],
+                "rows": [{"id": {"label": "001"}}],
+            }
+        ]
+    )
+    block = result[0]
+    assert block["toolbar"]["search"] is True
+    assert block["toolbar"]["entries"] is True
+    assert len(block["toolbar"]["actions"]) == 1
+    assert block["toolbar"]["actions"][0]["href"] == "/export"
+
+
+# Тест: data_table toolbar unsafe link rejected
+def test_layout_data_table_toolbar_unsafe_link_rejected() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "data_table",
+                "title": "Toolbar",
+                "width": 12,
+                "toolbar": {
+                    "actions": [
+                        {"label": "External", "href": "https://evil.com"},
+                        {"label": "Safe", "href": "/safe"},
+                    ]
+                },
+                "columns": [{"key": "id", "label": "ID"}],
+                "rows": [{"id": {"label": "001"}}],
+            }
+        ]
+    )
+    assert len(result[0]["toolbar"]["actions"]) == 1
+    assert result[0]["toolbar"]["actions"][0]["href"] == "/safe"
+
+
+# Тест: data_table pagination render
+def test_layout_data_table_pagination_renders() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "data_table",
+                "title": "Paginated",
+                "width": 12,
+                "columns": [{"key": "id", "label": "ID"}],
+                "rows": [{"id": {"label": "001"}}],
+                "pagination": {
+                    "label": "Showing 1 to 1 of 1 entries",
+                    "pages": [
+                        {"label": "1", "href": "/runs?page=1", "active": True},
+                    ],
+                },
+            }
+        ]
+    )
+    block = result[0]
+    assert block["pagination"]["label"] == "Showing 1 to 1 of 1 entries"
+    assert len(block["pagination"]["pages"]) == 1
+    assert block["pagination"]["pages"][0]["active"] is True
+
+
+# Тест: data_table pagination unsafe link rejected
+def test_layout_data_table_pagination_unsafe_link_rejected() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "data_table",
+                "title": "Paginated",
+                "width": 12,
+                "columns": [{"key": "id", "label": "ID"}],
+                "rows": [{"id": {"label": "001"}}],
+                "pagination": {
+                    "pages": [
+                        {"label": "Bad", "href": "https://evil.com"},
+                        {"label": "Good", "href": "/runs?page=2"},
+                    ]
+                },
+            }
+        ]
+    )
+    assert len(result[0]["pagination"]["pages"]) == 1
+    assert result[0]["pagination"]["pages"][0]["label"] == "Good"
+
+
+# Тест: data_table badge cell type
+def test_layout_data_table_badge_cell() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "data_table",
+                "title": "Badges",
+                "width": 12,
+                "columns": [{"key": "status", "label": "Status", "cell": "badge"}],
+                "rows": [{"status": {"label": "ok", "tone": "success"}}],
+            }
+        ]
+    )
+    cell = result[0]["rows"][0]["status"]
+    assert cell["type"] == "badge"
+    assert cell["label"] == "ok"
+    assert cell["tone"] == "success"
+
+
+# Тест: data_table status cell type
+def test_layout_data_table_status_cell() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "data_table",
+                "title": "Status",
+                "width": 12,
+                "columns": [{"key": "s", "label": "S", "cell": "status"}],
+                "rows": [{"s": {"label": "Active", "status": "ok"}}],
+            }
+        ]
+    )
+    cell = result[0]["rows"][0]["s"]
+    assert cell["type"] == "status"
+    assert cell["status"] == "ok"
+
+
+# Тест: data_table avatar_text cell type
+def test_layout_data_table_avatar_text_cell() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "data_table",
+                "title": "Avatar",
+                "width": 12,
+                "columns": [{"key": "owner", "label": "Owner", "cell": "avatar_text"}],
+                "rows": [
+                    {
+                        "owner": {
+                            "title": "Operator",
+                            "subtitle": "demo@local",
+                            "initials": "OP",
+                        }
+                    }
+                ],
+            }
+        ]
+    )
+    cell = result[0]["rows"][0]["owner"]
+    assert cell["type"] == "avatar_text"
+    assert cell["title"] == "Operator"
+    assert cell["initials"] == "OP"
+
+
+# Тест: data_table progress cell type
+def test_layout_data_table_progress_cell() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "data_table",
+                "title": "Progress",
+                "width": 12,
+                "columns": [{"key": "p", "label": "P", "cell": "progress"}],
+                "rows": [{"p": {"label": "72%", "value": 72, "color": "green"}}],
+            }
+        ]
+    )
+    cell = result[0]["rows"][0]["p"]
+    assert cell["type"] == "progress"
+    assert cell["value"] == 72
+    assert cell["color"] == "green"
+
+
+# Тест: data_table actions cell type
+def test_layout_data_table_actions_cell() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "data_table",
+                "title": "Actions",
+                "width": 12,
+                "columns": [{"key": "a", "label": "", "cell": "actions"}],
+                "rows": [
+                    {
+                        "a": [
+                            {"label": "Open", "href": "/runs/001"},
+                            {"label": "Edit", "href": "/runs/001/edit"},
+                        ]
+                    }
+                ],
+            }
+        ]
+    )
+    cell = result[0]["rows"][0]["a"]
+    assert cell["type"] == "actions"
+    assert len(cell["items"]) == 2
+    assert cell["items"][0]["href"] == "/runs/001"
+
+
+# Тест: data_table actions unsafe link rejected
+def test_layout_data_table_actions_unsafe_link_rejected() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "data_table",
+                "title": "Actions",
+                "width": 12,
+                "columns": [{"key": "a", "label": "", "cell": "actions"}],
+                "rows": [
+                    {
+                        "a": [
+                            {"label": "External", "href": "https://evil.com"},
+                            {"label": "Safe", "href": "/runs/001"},
+                        ]
+                    }
+                ],
+            }
+        ]
+    )
+    cell = result[0]["rows"][0]["a"]
+    assert len(cell["items"]) == 1
+    assert cell["items"][0]["href"] == "/runs/001"
+
+
+# Тест: data_table missing values render n/a
+def test_layout_data_table_missing_values_render_na() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "data_table",
+                "title": "Missing",
+                "width": 12,
+                "columns": [{"key": "val", "label": "Value", "cell": "text"}],
+                "rows": [
+                    {"val": None},
+                    {"val": ""},
+                    {"val": {"label": "exists"}},
+                ],
+            }
+        ]
+    )
+    assert result[0]["rows"][0]["val"]["value"] == "n/a"
+    assert result[0]["rows"][1]["val"]["value"] == "n/a"
+    assert result[0]["rows"][2]["val"]["value"] == "exists"
+
+
+# Тест: malformed data_table columns visibly degrade
+def test_layout_data_table_malformed_columns_degrades() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "data_table",
+                "title": "Malformed",
+                "width": 12,
+                "columns": "not a list",
+                "rows": "not a list",
+            }
+        ]
+    )
+    assert len(result) == 1
+    assert result[0]["type"] == "degraded"
+
+
+# Тест: malformed data_table rows visibly degrade
+def test_layout_data_table_malformed_rows_degrades() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "data_table",
+                "title": "Malformed",
+                "width": 12,
+                "columns": [{"key": "id", "label": "ID"}],
+                "rows": "not a list",
+            }
+        ]
+    )
+    assert len(result) == 1
+    assert result[0]["type"] == "degraded"
+
+
+# Тест: data_table link cell type
+def test_layout_data_table_link_cell() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "data_table",
+                "title": "Links",
+                "width": 12,
+                "columns": [{"key": "link", "label": "Link", "cell": "link"}],
+                "rows": [
+                    {
+                        "link": {
+                            "label": "Open run",
+                            "href": "/runs/001",
+                        }
+                    }
+                ],
+            }
+        ]
+    )
+    cell = result[0]["rows"][0]["link"]
+    assert cell["type"] == "link"
+    assert cell["href"] == "/runs/001"
+    assert cell["label"] == "Open run"
+
+
+# Тест: data_table external link in link cell rejected
+def test_layout_data_table_external_link_cell_rejected() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "data_table",
+                "title": "Links",
+                "width": 12,
+                "columns": [{"key": "link", "label": "Link", "cell": "link"}],
+                "rows": [
+                    {
+                        "link": {
+                            "label": "External",
+                            "href": "https://evil.com",
+                        }
+                    }
+                ],
+            }
+        ]
+    )
+    cell = result[0]["rows"][0]["link"]
+    assert cell["type"] == "link"
+    assert cell["href"] is None
+
+
+# Тест: data_table unknown cell type degrades to text
+def test_layout_data_table_unknown_cell_type() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "data_table",
+                "title": "Unknown",
+                "width": 12,
+                "columns": [{"key": "x", "label": "X", "cell": "unknown_type"}],
+                "rows": [{"x": {"label": "val"}}],
+            }
+        ]
+    )
+    cell = result[0]["rows"][0]["x"]
+    assert cell["type"] == "text"
+    assert cell["value"] == "val"
+
+
+# Тест: data_table template exists
+def test_layout_data_table_template_exists() -> None:
+    assert Path(
+        "src/beeui_module/web/templates/components/layout/data_table.html"
+    ).is_file()
+
+
+# Тест: existing table_card still works (backward compat)
+def test_layout_existing_table_card_still_works() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "metric_card",
+                "title": "Legacy metric",
+                "value": "42",
+                "width": 3,
+            }
+        ]
+    )
+    assert result[0]["type"] == "metric_card"
+    assert result[0]["value"] == "42"
+
+
+# Тест: data_table не добавляет product-specific импорты
+def test_layout_data_table_no_product_imports() -> None:
+    import beeui_module.blocks.layout_renderer as lr
+
+    content = Path(lr.__file__).read_text(encoding="utf-8")
+    assert "beecap_module" not in content
+    assert "beeagent_module" not in content
+
+
+# Тест: progress cell values bounded
+def test_layout_data_table_progress_bounds() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "data_table",
+                "title": "Bounds",
+                "width": 12,
+                "columns": [{"key": "p", "label": "P", "cell": "progress"}],
+                "rows": [
+                    {"p": {"label": "-10%", "value": -10}},
+                    {"p": {"label": "200%", "value": 200}},
+                    {"p": {"label": "50%", "value": 50}},
+                ],
+            }
+        ]
+    )
+    assert result[0]["rows"][0]["p"]["value"] == 0
+    assert result[0]["rows"][1]["p"]["value"] == 100
+    assert result[0]["rows"][2]["p"]["value"] == 50
+
+
+# Тест: data_table muted cell type
+def test_layout_data_table_muted_cell() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "data_table",
+                "title": "Muted",
+                "width": 12,
+                "columns": [{"key": "x", "label": "X", "cell": "muted"}],
+                "rows": [{"x": {"label": "optional"}}],
+            }
+        ]
+    )
+    cell = result[0]["rows"][0]["x"]
+    assert cell["type"] == "text"
+    assert cell["value"] == "optional"
+    assert cell["tone"] == "muted"
+
+
+# Тест: data_table visual class tokens are whitelisted
+def test_layout_data_table_visual_tokens_are_whitelisted() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "data_table",
+                "title": "Visual tokens",
+                "columns": [
+                    {"key": "badge", "label": "Badge", "cell": "badge"},
+                    {"key": "status", "label": "Status", "cell": "status"},
+                    {"key": "avatar", "label": "Avatar", "cell": "avatar_text"},
+                    {"key": "progress", "label": "Progress", "cell": "progress"},
+                ],
+                "rows": [
+                    {
+                        "badge": {"label": "Bad", "tone": "danger extra"},
+                        "status": {"label": "Bad", "status": "ok extra"},
+                        "avatar": {"title": "Bad", "color": "red extra"},
+                        "progress": {
+                            "label": "Bad",
+                            "value": 50,
+                            "color": "green extra",
+                        },
+                    },
+                    {
+                        "badge": {"label": "Good", "tone": "success"},
+                        "status": {"label": "Good", "status": "ok"},
+                        "avatar": {"title": "Good", "color": "red"},
+                        "progress": {"label": "Good", "value": 50, "color": "green"},
+                    },
+                ],
+            }
+        ]
+    )
+
+    first = result[0]["rows"][0]
+    second = result[0]["rows"][1]
+
+    assert first["badge"]["tone"] == "secondary"
+    assert first["status"]["status"] == "unknown"
+    assert first["avatar"]["color"] == ""
+    assert first["progress"]["color"] == ""
+
+    assert second["badge"]["tone"] == "success"
+    assert second["status"]["status"] == "ok"
+    assert second["avatar"]["color"] == "red"
+    assert second["progress"]["color"] == "green"

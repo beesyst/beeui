@@ -6,7 +6,7 @@
 
 ## Текущий статус
 
-**Iteration 13.5** — Product console route metadata and navigation compatibility.
+**Iteration 13.6** — Safe charts and advanced Tabler data tables for product dashboards.
 
 - Generic contract `ProductUiAdapter` существует в `src/beeui_module/adapters/`.
 - `BeeCapFixtureAdapter` в `src/beeui_module/adapters/beecap.py` — только
@@ -30,6 +30,14 @@
   BeeUI system-owned routes (`/health`, `/static`, `/api`, `/auth`, `/components`,
   `/login`, `/logout` и соответствующие system prefixes). BeeUI не хардкодит
   product namespaces и не знает семантику `venues`, `modes`, `hidra`, `likes`.
+- После Iteration 13.6 product adapter может возвращать `chart` и `data_table`
+  внутри adapter-backed `layout[]`.
+- Product adapter владеет бизнес-метриками, временными периодами и
+  ROP/Bitrix/BeeCap/BeeAgent semantics; BeeUI только рендерит нормализованный layout.
+- `chart` и `data_table` работают в product console и custom adapter pages,
+  если adapter возвращает их в `layout[]`.
+- Chart asset локальный, без CDN.
+- Links в `data_table` валидируются и префиксуются под route prefix / embedded mount.
 - Adapter-backed artifact browser реализован: `adapter.list_artifacts(run_id)` и `adapter.read_artifact(run_id, artifact_id)` вызываются из read-only HTML/JSON routes.
 - Artifact preview pipeline: `build_preview()` → JSON/JSONL/text/unsupported → redaction → безопасный render в escaped `<pre>`.
 - Artifact routes требуют adapter; без adapter возвращают 503 unavailable state.
@@ -92,6 +100,9 @@ BeeCap-side adapter отвечает за:
 - not relying on BeeUI to infer semantics from path namespace;
 - declaring route metadata for existing product console routes in product-side `beeui.yml`;
 - returning product-neutral `layout[]`;
+- constructing product-neutral chart and data table layout blocks;
+- keeping product/business semantics outside BeeUI;
+- passing only normalized presentation data to BeeUI;
 - implementing bounded action callbacks (future scope).
 
 ## Что BeeUI не должен делать во время интеграции
@@ -102,6 +113,9 @@ BeeCap-side adapter отвечает за:
 - BeeUI не должен становиться вторым source of truth для product state.
 - BeeUI не должен мутировать product artifacts через read-only routes.
 - BeeUI не должен импортировать `beecap_module` напрямую.
+- BeeUI не должен вычислять ROP/Bitrix/BeeCap/BeeAgent metrics.
+- BeeUI не должен строить product-specific chart series самостоятельно.
+- BeeUI не должен пробрасывать arbitrary chart JS/options от продукта.
 
 ## Текущий fixture adapter
 

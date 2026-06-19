@@ -2,6 +2,31 @@
 
 **BeeUI** — общий UI-фреймворк на Python для Bee-продуктов: `beecap`, `beeagent` и будущих модулей экосистемы Bee.
 
+## Iteration 13.6 — Safe charts and advanced Tabler data tables for product dashboards
+
+Текущий результат — безопасные adapter-backed charts и расширенные Tabler-compatible data tables для product dashboards.
+
+В Iteration 13.6 добавлены:
+
+- adapter-backed `chart` block;
+- поддержка chart kinds: `line`, `bar`, `area`, `donut`;
+- chart rendering через package-local ApexCharts asset:
+  `src/beeui_module/web/static/vendor/apexcharts/apexcharts.min.js`;
+- CDN не используется;
+- arbitrary ApexCharts options от adapter не пробрасываются;
+- chart config сериализуется через Jinja `tojson` в `<script type="application/json">`;
+- chart asset грузится только если на странице есть chart blocks;
+- `layout_has_charts()` ищет chart рекурсивно, включая `group.children`;
+- adapter-backed `data_table` block;
+- `data_table` поддерживает `striped`, `mobile`, `selectable`, `nowrap`, `compact`, `toolbar`, `pagination`;
+- `data_table` cell types: `text`, `muted`, `link`, `badge`, `status`, `avatar_text`, `progress`, `actions`;
+- table links internal-only, external links отклоняются;
+- table links учитывают `route_prefix` и embedded mount path;
+- visual tokens для CSS class suffix allowlisted;
+- malformed `data_table.columns` / `data_table.rows` рендерятся как `degraded`, без 500;
+- existing `table_card` остаётся backward-compatible;
+- BeeUI по-прежнему не знает product semantics.
+
 ## Iteration 13.5 — Product console route metadata and navigation compatibility
 
 Текущий результат — явное владение page route через `pages[].route.mode`.
@@ -257,7 +282,15 @@ adapter-backed типов блоков и отдельный `degraded` fallback
 - malformed custom page payload degrades to explicit unavailable/error state;
 - reserved route protection for `/auth`;
 - embedded API тесты в `tests/test_embedded.py`;
-- generic adapter-backed layout[] block renderer с 18 block types и degraded fallback;
+- generic adapter-backed layout[] block renderer с 19 block types и degraded fallback;
+- adapter-backed `chart` block;
+- adapter-backed `data_table` block;
+- package-local ApexCharts asset;
+- conditional loading chart asset;
+- безопасная JSON-сериализация chart config через `tojson`;
+- рекурсивное обнаружение chart внутри `group.children`;
+- advanced Tabler-compatible data table;
+- prefix-aware links в `data_table`;
 - расширенный набор adapter-backed layout блоков (Iteration 12.4):
   - `operator_hero` — системный snapshot с datagrid и primary links;
   - `venue_card` — компактная карточка площадки с items, alerts и links;
@@ -316,7 +349,7 @@ BeeUI сейчас поддерживает два разных block contract.
 
 Используются в product console mode, когда product adapter возвращает optional поле `layout`.
 
-Поддерживаемые adapter-backed `layout[]` типы после Iteration 13.4:
+Поддерживаемые adapter-backed `layout[]` типы после Iteration 13.6:
 
 - `hero_snapshot`;
 - `metric_card`;
@@ -335,7 +368,10 @@ BeeUI сейчас поддерживает два разных block contract.
 - `state_grid`;
 - `quick_links`;
 - `run_table`;
-- `group`.
+- `group`;
+- `data_table`.
+
+Итого: **19 adapter-backed block types + degraded fallback**.
 
 Правила:
 
@@ -344,7 +380,7 @@ BeeUI сейчас поддерживает два разных block contract.
 - malformed sizing деградирует в `col-12`, не ломая страницу;
 - BeeUI не вычисляет product metrics, а только рендерит product-provided layout.
 
-Текущая web surface после Iteration 13.5:
+Текущая web surface после Iteration 13.6:
 
 - `GET /`
 - `GET /runs`
@@ -364,6 +400,7 @@ BeeUI сейчас поддерживает два разных block contract.
 - `GET /static/...`
 - `GET /static/vendor/tabler/css/tabler.min.css`
 - `GET /static/vendor/tabler/js/tabler.min.js`
+- `GET /static/vendor/apexcharts/apexcharts.min.js` при наличии chart blocks
 - `GET /api/dashboard`
 - `GET /api/runs`
 - `GET /api/runs/{run_id}`
@@ -431,15 +468,19 @@ Shell и dashboard рендерятся через component templates:
 - `components/empty_state.html`.
 - block component templates для literal и resolver-backed dashboard blocks.
 
-Tabler core vendor assets поставляются локально из package path:
+Core web vendor assets поставляются локально из package path:
 
 - `src/beeui_module/web/static/vendor/tabler/css/tabler.min.css`
 - `src/beeui_module/web/static/vendor/tabler/js/tabler.min.js`
 - `src/beeui_module/web/static/vendor/tabler/LICENSE`
+- `src/beeui_module/web/static/vendor/apexcharts/apexcharts.min.js`
 
-Assets взяты из official `@tabler/core@1.4.0` npm dist. BeeUI не требует
+Tabler assets взяты из official `@tabler/core@1.4.0` npm dist. BeeUI не требует
 Node/npm во время установки или runtime. Preview/demo/marketing/sponsor,
 source maps и tracking assets не поставляются.
+
+ApexCharts asset является package-local, используется только для adapter-backed
+`chart` block, подключается без CDN и без tracking.
 
 Navigation, theme и layout shell options (title/subtitle/paths/logo_text/theme/layout) рендерятся из `config/schema.yml`.
 
@@ -530,7 +571,7 @@ MVP не пытается сразу стать полноценным Retool/We
 
 ## Что BeeUI делает
 
-В текущем состоянии после Iteration 13.5 BeeUI отвечает за:
+В текущем состоянии после Iteration 13.6 BeeUI отвечает за:
 
 - FastAPI app factory;
 - Jinja2 templates;
@@ -543,6 +584,9 @@ MVP не пытается сразу стать полноценным Retool/We
 - adapter-backed `layout[]` с поддержкой `width`, `span`, `size` и graceful fallback к `col-12`;
 - adapter-backed `layout[]` поддерживает `type: group` для bounded nested Tabler layout groups;
 - `kpi_grid` в adapter-backed `layout[]` поддерживает optional `columns` 1..4;
+- adapter-backed `chart` block с безопасной JSON-сериализацией через `tojson`;
+- adapter-backed `data_table` block с typed cells, toolbar, pagination и prefix-aware internal links;
+- conditional loading package-local ApexCharts asset только при наличии chart blocks;
 - configured pages и product console pages используют consistent page-body/container wrapper;
 - declarative pages/navigation/theme/layout;
 - static/literal and resolver-backed dashboard blocks from `config/schema.yml`;
@@ -884,7 +928,7 @@ BeeUI не должен получать прямую authority на tools/MCP/r
 
 Продукт импортирует BeeUI и монтирует его в своём web process.
 
-Текущий статус после Iteration 13.5:
+Текущий статус после Iteration 13.6:
 
 - generic adapter contract существует;
 - BeeCap fixture/reference adapter существует для contract validation;
@@ -911,7 +955,10 @@ BeeUI не должен получать прямую authority на tools/MCP/r
 - generic adapter-backed custom pages используют optional `get_page(page_id, query)` и рендерят только возвращённый `layout[]`;
 - adapter-backed `layout[]` поддерживает `type: group` с `direction: vertical` и bounded depth 3;
 - `kpi_grid.columns` поддерживает 1..4 columns для compact KPI grids;
+- adapter-backed `layout[]` поддерживает `chart` для line/bar/area/donut через локальный ApexCharts asset;
+- adapter-backed `layout[]` поддерживает `data_table` с typed cells, toolbar, pagination и mobile labels;
 - malformed group payload деградирует в explicit degraded block;
+- malformed `data_table.columns` / `data_table.rows` деградируют в explicit degraded block;
 - page-body/container spacing унифицирован для configured/custom/product render paths;
 - adapter-backed custom page payload redaction выполняется до HTML render;
 - malformed custom page payload деgrades to explicit unavailable/error state;
@@ -1080,11 +1127,13 @@ pages:
 - stable resolver envelope;
 - degraded block rendering on missing selector data.
 
+Adapter-backed `chart` уже реализован в Iteration 13.6.
+
 Пока не реализовано:
 
 - production BeeCap/BeeAgent adapters;
-- adapter-backed block data in runtime;
-- charts/maps;
+- schema/demo `chart_card` и полноценные chart/data sources для config blocks;
+- maps;
 - artifact/config/action blocks;
 - arbitrary HTML/JS blocks.
 
@@ -1177,7 +1226,7 @@ Iteration 12.1 добавляет optional presentation contract:
 - product adapter остаётся владельцем product semantics;
 - при отсутствии `layout[]` используется generic fallback renderer.
 
-Текущий contract v0 после Iteration 13.5:
+Текущий contract v0 после Iteration 13.6:
 
 ```python
 from typing import Mapping
@@ -1224,7 +1273,7 @@ class ProductUiAdapter:
 
 `get_page()` optional: default `ProductUiAdapterBase.get_page()` возвращает unavailable, существующие adapters не обязаны реализовывать метод, product adapter владеет domain semantics страницы, а BeeUI только рендерит returned `layout[]`.
 
-После Iteration 13.5 BeeUI вызывает adapter через embedded mount/app factory layer
+После Iteration 13.6 BeeUI вызывает adapter через embedded mount/app factory layer
 для product console, страниц с `route.mode: adapter` и artifact browser routes.
 
 Product adapter решает, что можно читать/делать.
@@ -1534,7 +1583,7 @@ uv run --frozen --extra dev python config/start.py web
 
 ## Целевая структура проекта
 
-Актуальные ключевые файлы после Iteration 13.4:
+Актуальные ключевые файлы после Iteration 13.6:
 
 ```text
 config/
@@ -1618,6 +1667,9 @@ src/beeui_module/
         table_card.html
         text_card.html
         empty_state.html
+        layout/
+          chart.html
+          data_table.html
       artifacts/
         list.html
         detail.html
@@ -1628,6 +1680,8 @@ src/beeui_module/
         tabler/
           css/tabler.min.css
           js/tabler.min.js
+        apexcharts/
+          apexcharts.min.js
 ```
 
 Остальная структура ниже — целевая для следующих итераций.
@@ -2053,6 +2107,7 @@ Iteration 13.2 — Generic adapter pages and configurable Tabler primitives
 Iteration 13.3 — Tabler attached page tabs and generic accordion visual parity hardening
 Iteration 13.4 — Generic layout groups, KPI grid columns, and page spacing normalization
 Iteration 13.5 — Product console route metadata and navigation compatibility
+Iteration 13.6 — Safe charts and advanced Tabler data tables for product dashboards
 BeeCap UI-25 — BeeUI Console parity MVP
 BeeCap UI-26 — BeeUI default route switch with legacy fallback
 ```
@@ -2225,6 +2280,7 @@ Iteration 13.2 — Generic adapter pages and configurable Tabler primitives — 
 Iteration 13.3 — Tabler attached page tabs and generic accordion visual parity hardening — ЗАВЕРШЕНО
 Iteration 13.4 — Generic layout groups, KPI grid columns, and page spacing normalization — ЗАВЕРШЕНО
 Iteration 13.5 — Product console route metadata and navigation compatibility — ЗАВЕРШЕНО
+Iteration 13.6 — Safe charts and advanced Tabler data tables for product dashboards — ЗАВЕРШЕНО
 ```
 
 Работает:
@@ -2242,6 +2298,8 @@ uv run pytest -q
 - `pages[].blocks[]` поддерживает `width`, `span`, `size`;
 - adapter-backed `layout[]` поддерживает `width`, `span`, `size`;
 - adapter-backed `layout[]` поддерживает `type: group` с `direction: vertical` и bounded depth 3;
+- adapter-backed `chart` block рендерит line/bar/area/donut через локальный ApexCharts asset;
+- adapter-backed `data_table` block поддерживает Tabler-compatible toolbar, pagination, mobile labels и typed cells;
 - `kpi_grid.columns` поддерживает 1..4 columns для compact KPI grids;
 - malformed group payload деградирует в explicit degraded block;
 - page-body/container spacing унифицирован для configured/custom/product render paths;

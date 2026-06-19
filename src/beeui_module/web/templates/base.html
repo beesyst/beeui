@@ -28,5 +28,42 @@
 
     <script src="{{ route_prefix }}/static/vendor/tabler/js/tabler.min.js"></script>
     <script src="{{ route_prefix }}/static/js/beeui.js"></script>
+    {% if has_charts %}
+    <script src="{{ route_prefix }}/static/vendor/apexcharts/apexcharts.min.js"></script>
+    <script>
+    (function() {
+      'use strict';
+
+      document.querySelectorAll('.beeui-chart-container[data-chart-config-id]').forEach(function(el) {
+        try {
+          var configId = el.getAttribute('data-chart-config-id');
+          var configNode = document.getElementById(configId);
+
+          if (!configNode) {
+            throw new Error('Missing chart config');
+          }
+
+          var config = JSON.parse(configNode.textContent || '{}');
+          config.chart = config.chart || {};
+          config.chart.el = el;
+
+          new ApexCharts(el, config).render();
+        } catch(e) {
+          el.textContent = '';
+          var empty = document.createElement('div');
+          empty.className = 'empty';
+
+          var title = document.createElement('div');
+          title.className = 'empty-title';
+          title.textContent = 'Chart render error';
+
+          empty.appendChild(title);
+          el.appendChild(empty);
+        }
+      });
+    })();
+    </script>
+    {% endif %}
+    {% block scripts %}{% endblock %}
   </body>
 </html>

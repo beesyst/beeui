@@ -24,7 +24,7 @@ from beeui_module.api.envelopes import (
     malformed_payload_envelope,
     safe_adapter_call,
 )
-from beeui_module.blocks.layout_renderer import render_layout
+from beeui_module.blocks.layout_renderer import layout_has_charts, render_layout
 from beeui_module.artifacts.redaction import redact_value
 from beeui_module.pages.models import BeeUiConfig, LocaleConfig
 from beeui_module.pages.router import (
@@ -516,8 +516,10 @@ def _dashboard_html_context(
         return context, status_code
 
     layout = payload.get("layout")
-    context["layout_blocks"] = render_layout(layout)
+    layout_blocks = render_layout(layout)
+    context["layout_blocks"] = layout_blocks
     context["has_layout"] = isinstance(layout, list) and len(layout) > 0
+    context["has_charts"] = layout_has_charts(layout_blocks)
 
     latest_run = (
         payload.get("latest_run")
@@ -574,15 +576,17 @@ def _runs_html_context(
 
     payload = redact_value(result.data)
 
-    # Support both list (backward-compatible) and dict with optional layout + items.
     if isinstance(payload, dict):
         layout = payload.get("layout")
-        context["layout_blocks"] = render_layout(layout)
+        layout_blocks = render_layout(layout)
+        context["layout_blocks"] = layout_blocks
         context["has_layout"] = isinstance(layout, list) and len(layout) > 0
+        context["has_charts"] = layout_has_charts(layout_blocks)
         raw_items = payload.get("runs") or payload.get("items") or []
     elif isinstance(payload, list):
         context["layout_blocks"] = []
         context["has_layout"] = False
+        context["has_charts"] = False
         raw_items = payload
     else:
         response, status_code = malformed_payload_envelope(
@@ -675,8 +679,10 @@ def _run_detail_html_context(
         return context, status_code
 
     layout = payload.get("layout")
-    context["layout_blocks"] = render_layout(layout)
+    layout_blocks = render_layout(layout)
+    context["layout_blocks"] = layout_blocks
     context["has_layout"] = isinstance(layout, list) and len(layout) > 0
+    context["has_charts"] = layout_has_charts(layout_blocks)
 
     artifacts, local_warnings = _normalize_artifacts(payload.get("artifacts"), run_id)
     context["run"] = payload
@@ -741,8 +747,10 @@ def _venue_html_context(
         return context, status_code
 
     layout = payload.get("layout")
-    context["layout_blocks"] = render_layout(layout)
+    layout_blocks = render_layout(layout)
+    context["layout_blocks"] = layout_blocks
     context["has_layout"] = isinstance(layout, list) and len(layout) > 0
+    context["has_charts"] = layout_has_charts(layout_blocks)
 
     context["dashboard"] = payload
     context["summary_items"] = _mapping_items(payload)

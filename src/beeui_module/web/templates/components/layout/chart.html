@@ -1,4 +1,4 @@
-<div class="card">
+<div class="card beeui-chart-card">
   <div class="card-header">
     <div>
       <h3 class="card-title mb-0">{{ block.title or "Chart" }}</h3>
@@ -11,33 +11,26 @@
     {% endif %}
   </div>
   <div class="card-body">
-    {% if block.symbol or block.timeframe %}
-    <div class="d-flex gap-3 text-secondary small mb-3">
-      {% if block.symbol %}
-        <span>Symbol: {{ block.symbol }}</span>
-      {% endif %}
-      {% if block.timeframe %}
-        <span>Timeframe: {{ block.timeframe }}</span>
-      {% endif %}
-    </div>
-    {% endif %}
-
     {% if block.has_data %}
-      <div class="beeui-chart-placeholder border rounded p-2">
-        <svg viewBox="0 0 320 96" role="img" aria-label="{{ block.title or 'Chart' }}" class="w-100" height="96">
-          <polyline
-            points="8,76 48,54 88,66 128,38 168,48 208,24 248,36 312,18"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-          />
-        </svg>
-      </div>
+      <div
+        class="beeui-chart-container"
+        id="{{ block.chart_id }}"
+        data-chart-config-id="{{ block.chart_id }}-config"
+        data-chart-height="{{ block.height }}"
+      ></div>
+      <script
+        type="application/json"
+        id="{{ block.chart_id }}-config"
+        class="beeui-chart-config"
+      >{{ block.chart_config | tojson }}</script>
+      {% if block.unit %}
+        <div class="text-secondary small mt-2 text-center">Unit: {{ block.unit }}</div>
+      {% endif %}
     {% else %}
       <div class="empty">
-        <div class="empty-title">No chart data</div>
+        <div class="empty-title">{{ block.empty_message }}</div>
         <p class="empty-subtitle text-secondary">
-          Chart block is available, but the adapter did not provide series, points or candles.
+          Chart data is missing or invalid.
         </p>
       </div>
     {% endif %}

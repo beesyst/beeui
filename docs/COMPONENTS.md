@@ -26,6 +26,144 @@ Product decides.
 
 Все маршруты обслуживаются под настроенным `web.route_prefix`.
 
+## Добавления Iteration 13.6
+
+### Chart (`type: chart`)
+
+Safe local chart renderer for adapter-backed `layout[]`. Supports controlled chart kinds without arbitrary JS or ApexCharts options passthrough.
+
+Поддерживаемые виды:
+
+| Kind | Chart type |
+|------|-----------|
+| `line` | ApexCharts line chart |
+| `bar` | ApexCharts bar chart |
+| `area` | ApexCharts area chart |
+| `donut` | ApexCharts donut chart (uses `labels`, not `categories`) |
+
+Контролируемые поля:
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `title` | string | `"Chart"` | Card title |
+| `subtitle` | string | `""` | Card subtitle |
+| `kind` | string | `"line"` | Chart kind: `line`, `bar`, `area`, `donut` |
+| `height` | int | `300` | Chart height in px (50..800, clamped) |
+| `series` | list | `[]` | Line/bar/area: `[{"name": str, "data": [num]}]`; donut: `[num]` |
+| `categories` | list | `[]` | X-axis labels for line/bar/area |
+| `labels` | list | `[]` | Segment labels for donut |
+| `unit` | string | `""` | Display unit below chart |
+| `empty_message` | string | `"No chart data"` | Message when data is empty |
+| `status` | string | `""` | Badge text in card header |
+| `hint` | string | `""` | Hint text below chart |
+
+Правила:
+
+- No arbitrary ApexCharts options passthrough.
+- Only controlled fields are serialized.
+- Chart script is package-local (`static/vendor/apexcharts/apexcharts.min.js`).
+- Chart DOM ids are deterministic.
+- Missing/empty series render as empty state, not 500.
+- Unsupported kind falls back to `line`.
+- Malformed payload degrades visibly.
+
+Пример adapter-backed payload:
+
+```json
+{
+  "type": "chart",
+  "title": "Processed events",
+  "kind": "line",
+  "height": 280,
+  "series": [
+    { "name": "Processed", "data": [12, 18, 24, 19, 31, 42, 38] }
+  ],
+  "categories": ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+  "width": 6
+}
+```
+
+### Data table (`type: data_table`)
+
+Advanced Tabler-compatible data table for adapter-backed `layout[]`. Backward-compatible with existing `table_card`.
+
+Поддерживаемые варианты:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `variant` | string | Only `"card"` supported |
+| `striped` | bool | Alternate row backgrounds |
+| `mobile` | string | Responsive breakpoint: `"sm"`, `"md"`, `"lg"` or null |
+| `selectable` | bool | Show checkbox column (inert) |
+| `nowrap` | bool | Prevent text wrapping |
+| `compact` | bool | Use `table-sm` |
+| `toolbar` | object | Optional toolbar: `{search, entries, actions}` |
+| `pagination` | object | Optional footer pagination: `{label, pages[]}` |
+
+Поддерживаемые типы ячеек:
+
+| Cell type | Payload format | Renders as |
+|-----------|---------------|------------|
+| `text` | `{"label": str}` or scalar | Plain text, escaped |
+| `muted` | `{"label": str}` or scalar | Text with secondary color |
+| `link` | `{"label": str, "href": str}` | `<a>` link (internal only) |
+| `badge` | `{"label": str, "tone": str}` | Tabler badge with tone |
+| `status` | `{"label": str, "status": str}` | Status dot + label |
+| `avatar_text` | `{"title": str, "subtitle": str, "initials": str, "color": str}` | Avatar + text |
+| `progress` | `{"label": str, "value": int, "color": str}` | Progress bar + label |
+| `actions` | `[{"label": str, "href": str}]` | Action button list |
+
+Правила:
+
+- Все ссылки internal-only: разрешены `/...`, отклонены `//...`, `http://...`, `https://...`, `javascript:` и traversal.
+- Missing values render as `n/a`.
+- Unknown cell type degrades to escaped text.
+- Malformed payload renders as empty table, not 500.
+- No DataTables/List.js runtime in this iteration.
+- Search/entries controls are inert placeholders.
+- Unsafe/external links are rejected or rendered inert.
+
+Пример adapter-backed payload:
+
+```json
+{
+  "type": "data_table",
+  "title": "Recent items",
+  "striped": true,
+  "mobile": "md",
+  "selectable": true,
+  "toolbar": {
+    "search": true,
+    "entries": true,
+    "actions": [{"label": "Export", "href": "/reports/export"}]
+  },
+  "columns": [
+    { "key": "id", "label": "ID", "cell": "link" },
+    { "key": "status", "label": "Status", "cell": "badge" },
+    { "key": "progress", "label": "Progress", "cell": "progress" },
+    { "key": "actions", "label": "", "cell": "actions" }
+  ],
+  "rows": [
+    {
+      "id": { "label": "run_001", "href": "/runs/run_001" },
+      "status": { "label": "ok", "tone": "success" },
+      "progress": { "label": "72%", "value": 72 },
+      "actions": [{ "label": "Open", "href": "/runs/run_001" }]
+    }
+  ],
+  "pagination": {
+    "label": "Showing 1 to 8 of 16 entries",
+    "pages": [
+      { "label": "1", "href": "/runs?page=1", "active": true },
+      { "label": "2", "href": "/runs?page=2" }
+    ]
+  },
+  "width": 12
+}
+```
+
+## Рекомендации по переиспользованию
+
 ## Добавления Iteration 13.4
 
 ### Layout group (`type: group`)
