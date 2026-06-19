@@ -1,0 +1,176 @@
+{% set href_prefix = url_prefix|default(route_prefix, true) %}
+<div class="card beeui-data-table">
+  <div class="card-header">
+    <div>
+      <h3 class="card-title mb-0">{{ block.title }}</h3>
+      {% if block.description %}
+        <div class="text-secondary small">{{ block.description }}</div>
+      {% endif %}
+    </div>
+  </div>
+
+  {% if block.toolbar.search or block.toolbar.entries or block.toolbar.actions %}
+  <div class="card-body border-bottom py-2">
+    <div class="d-flex justify-content-between align-items-center">
+      <div class="d-flex gap-2 align-items-center">
+        {% if block.toolbar.entries %}
+        <div class="text-secondary small beeui-table-entries">
+          Show <select class="form-select form-select-sm d-inline-block w-auto" disabled>
+            <option>10</option>
+            <option>25</option>
+            <option>50</option>
+          </select> entries
+        </div>
+        {% endif %}
+      </div>
+      <div class="d-flex gap-2 align-items-center">
+        {% for action in block.toolbar.actions %}
+          {% if action.href %}
+            <a href="{{ href_prefix }}{{ action.href }}" class="btn btn-sm btn-outline-primary">{{ action.label }}</a>
+          {% else %}
+            <span class="btn btn-sm btn-outline-primary disabled">{{ action.label }}</span>
+          {% endif %}
+        {% endfor %}
+        {% if block.toolbar.search %}
+        <div class="ms-auto beeui-table-search">
+          <input type="search" class="form-control form-control-sm" placeholder="Search..." disabled>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="table-responsive">
+    <table class="table card-table table-vcenter{% if block.striped %} table-striped{% endif %}{% if block.nowrap %} table-nowrap{% endif %}{% if block.compact %} table-sm{% endif %}{% if block.selectable %} beeui-table-selectable{% endif %}{% if block.mobile %} table-mobile-{{ block.mobile }}{% endif %}">
+      {% if block.columns %}
+      <thead>
+        <tr>
+          {% if block.selectable %}
+          <th class="w-1">
+            <input type="checkbox" class="form-check-input beeui-table-select-all" disabled>
+          </th>
+          {% endif %}
+          {% for col in block.columns %}
+          <th{% if col.sortable %} class="beeui-sortable"{% endif %}>
+            {{ col.label }}
+            {% if col.sortable %}
+            <span class="text-secondary ms-1">&#8645;</span>
+            {% endif %}
+          </th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in block.rows %}
+        <tr{% if block.selectable %} class="beeui-table-row-selectable"{% endif %}>
+          {% if block.selectable %}
+          <td>
+            <input type="checkbox" class="form-check-input beeui-table-row-checkbox" disabled>
+          </td>
+          {% endif %}
+          {% for col in block.columns %}
+          <td{% if block.mobile %} data-label="{{ col.label }}"{% endif %}>
+            {% set cell = row.get(col.key, {}) %}
+            {% if cell.type == "text" %}
+              {% if cell.tone %}
+                <span class="text-secondary">{{ cell.value }}</span>
+              {% else %}
+                {{ cell.value }}
+              {% endif %}
+            {% elif cell.type == "link" %}
+              {% if cell.href %}
+                <a href="{{ href_prefix }}{{ cell.href }}">{{ cell.label }}</a>
+              {% else %}
+                <span class="text-secondary">{{ cell.label }}</span>
+              {% endif %}
+            {% elif cell.type == "badge" %}
+              {% if cell.tone %}
+                <span class="badge bg-{{ cell.tone }}-lt">{{ cell.label }}</span>
+              {% else %}
+                <span class="badge bg-secondary-lt">{{ cell.label }}</span>
+              {% endif %}
+            {% elif cell.type == "status" %}
+              <span class="status status-{{ cell.status }}">
+                <span class="status-dot status-dot-animated"></span>
+                {{ cell.label }}
+              </span>
+            {% elif cell.type == "avatar_text" %}
+              <div class="d-flex align-items-center">
+                <span class="avatar avatar-sm{% if cell.color %} bg-{{ cell.color }}-lt{% endif %} me-2">
+                  {% if cell.initials %}{{ cell.initials }}{% else %}?{% endif %}
+                </span>
+                <div class="lh-sm">
+                  <div>{{ cell.title }}</div>
+                  {% if cell.subtitle %}
+                    <div class="text-secondary small">{{ cell.subtitle }}</div>
+                  {% endif %}
+                </div>
+              </div>
+            {% elif cell.type == "progress" %}
+              <div class="d-flex align-items-center gap-2">
+                <svg
+                  class="flex-grow-1 text-{% if cell.color %}{{ cell.color }}{% else %}primary{% endif %}"
+                  viewBox="0 0 100 4"
+                  height="4"
+                  preserveAspectRatio="none"
+                  role="progressbar"
+                  aria-valuenow="{{ cell.value }}"
+                  aria-valuemin="0"
+                  aria-valuemax="100"
+                >
+                  <rect
+                    width="100"
+                    height="4"
+                    rx="2"
+                    fill="currentColor"
+                    opacity="0.15"
+                  ></rect>
+                  <rect
+                    width="{{ cell.value }}"
+                    height="4"
+                    rx="2"
+                    fill="currentColor"
+                  ></rect>
+                </svg>
+                <span class="text-secondary small">{{ cell.label }}</span>
+              </div>
+            {% elif cell.type == "actions" %}
+              <div class="btn-list flex-nowrap">
+              {% for action in cell.get("items", []) %}
+                {% if action.href %}
+                  <a href="{{ href_prefix }}{{ action.href }}" class="btn btn-sm btn-ghost-primary">{{ action.label }}</a>
+                {% else %}
+                  <span class="btn btn-sm btn-ghost-primary disabled">{{ action.label }}</span>
+                {% endif %}
+              {% endfor %}
+              </div>
+            {% else %}
+              {{ cell.value if cell.value else "n/a" }}
+            {% endif %}
+          </td>
+          {% endfor %}
+        </tr>
+        {% endfor %}
+      </tbody>
+      {% endif %}
+    </table>
+  </div>
+
+  {% if block.pagination and block.pagination.pages %}
+  <div class="card-footer d-flex justify-content-between align-items-center">
+    <div class="text-secondary small">
+      {{ block.pagination.label }}
+    </div>
+    <nav>
+      <ul class="pagination pagination-sm mb-0">
+        {% for page in block.pagination.pages %}
+        <li class="page-item{% if page.active %} active{% endif %}">
+          <a class="page-link" href="{{ href_prefix }}{{ page.href }}">{{ page.label }}</a>
+        </li>
+        {% endfor %}
+      </ul>
+    </nav>
+  </div>
+  {% endif %}
+</div>

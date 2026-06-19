@@ -10,7 +10,19 @@
 - `beeagent`;
 - будущие Bee-продукты.
 
-Текущая реализованная основа после Iteration 13.5 включает:
+Текущая реализованная основа после Iteration 13.6 включает:
+
+- безопасный локальный рендеринг графиков через package-local ApexCharts asset (`chart` block type, виды: `line`, `bar`, `area`, `donut`);
+- продвинутую Tabler-совместимую таблицу (`data_table` block type) с mobile, selectable, striped, toolbar, pagination и типами ячеек: text, muted, link, badge, status, avatar_text, progress, actions;
+- безопасная сериализация chart config без произвольных ApexCharts options;
+- chart/degraded rendering для malformed/empty/unsupported payloads;
+- все ссылки таблицы internal-only, external ссылки отклоняются;
+- missing значения рендерятся как `n/a`;
+- существующий `table_card` остаётся backward-compatible;
+- package-local ApexCharts asset (`static/vendor/apexcharts/apexcharts.min.js`), без CDN;
+- условная загрузка ApexCharts script только когда на странице есть chart blocks.
+
+Предыдущая основа после Iteration 13.5:
 
 - веб-приложение FastAPI;
 - шаблоны Jinja2;

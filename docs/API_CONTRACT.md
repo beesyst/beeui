@@ -5,6 +5,10 @@
 Iteration 13 добавляет auth error envelopes, login/logout/CSRF routes и защищённые POST transport stubs.
 Iteration 13.4 расширяет только adapter-backed presentation contract `layout[]`:
 `kpi_grid.columns` и `type: group`. JSON API envelope, route behavior и artifact API contract не менялись.
+Iteration 13.6 также расширяет только adapter-backed presentation contract
+`layout[]`: добавлены `chart` и `data_table`.
+JSON API envelope, route behavior и artifact API contract не менялись.
+Это не schema/demo block contract и не `config/settings.yml`.
 
 Iteration 12 определяет стабильный read-only envelope для adapter-backed
 маршрутов product console:
@@ -219,8 +223,9 @@ Adapter-backed payloads (`dashboard`, `run`, `venue dashboard`, optionally `runs
 | `attention_list` | List group с severity-dot indicators (severity: warning/error/info/ok/unknown) |
 | `artifact_links` | List group artifact links с content_type badge |
 | `raw_json_panel` | Card c raw JSON data |
-| `chart` | Server-rendered chart placeholder (no external JS); adapter-provided title/subtitle/status/symbol/timeframe/series/points/candles; empty state when no data |
+| `chart` | Safe local chart renderer через package-local ApexCharts asset; поддерживает line/bar/area/donut; config сериализуется через `tojson`; arbitrary ApexCharts options не пробрасываются |
 | `group` | Nested container с `direction` (vertical), `children` (list of layout blocks), bounded recursion depth 3 |
+| `data_table` | Advanced Tabler-compatible table с toolbar, pagination, mobile labels, selectable rows и typed cells |
 | `degraded` | Fallback для malformed/unsupported blocks |
 
 ### Mapping `width`/`span`/`size`
@@ -276,6 +281,87 @@ Missing or invalid adapter values degrade to default 4 (no 500).
 
 Children render through existing BeeUI block renderer. Depth is bounded at 3 levels; exceeded depth renders as `degraded`.
 
+### Chart block (Iteration 13.6)
+
+`chart` поддерживается только в adapter-backed `layout[]`.
+
+Поля:
+
+| Field | Type | Обязательное | Описание |
+|-------|------|----------|-------------|
+| `type` | string | yes | Должно быть `"chart"` |
+| `title` | string | no | Заголовок |
+| `subtitle` | string | no | Подзаголовок |
+| `kind` | string | no | `line`, `bar`, `area`, `donut`; unsupported kind fallback к `line` |
+| `height` | int | no | Ограниченная высота |
+| `series` | array | no | Series payload для выбранного kind |
+| `categories` | array | no | X-axis categories для line/bar/area |
+| `labels` | array | no | Labels для donut |
+| `unit` | string | no | Единица отображения |
+| `empty_message` | string | no | Сообщение для empty state |
+| `status` | string | no | Текст статуса |
+| `hint` | string | no | Подсказка |
+| `width` / `span` / `size` | int/string | no | Стандартный adapter-backed sizing |
+
+Правила:
+
+- `chart` не является schema/demo block contract и не добавляет keys в `config/settings.yml`.
+- Arbitrary ApexCharts options от adapter не пробрасываются.
+- CDN не используется; renderer использует package-local ApexCharts asset.
+- Chart config сериализуется через Jinja `tojson` в JSON script node.
+- Empty/malformed data рендерится как empty/degraded state, без 500.
+- Unsupported `kind` нормализуется к `line`.
+- Chart asset загружается только если на странице есть chart blocks.
+- Nested chart внутри `group.children` определяется рекурсивно.
+
+### Data table block (Iteration 13.6)
+
+`data_table` поддерживается только в adapter-backed `layout[]`.
+Existing schema/demo `table_card` остаётся без изменений.
+
+Поля:
+
+| Field | Type | Обязательное | Описание |
+|-------|------|----------|-------------|
+| `type` | string | yes | Должно быть `"data_table"` |
+| `title` | string | yes | Заголовок |
+| `description` | string | no | Описание |
+| `variant` | string | no | `"card"` |
+| `striped` | bool | no | Tabler striped table |
+| `mobile` | string | no | Mobile labels breakpoint |
+| `selectable` | bool | no | Selectable rows UI |
+| `nowrap` | bool | no | No-wrap table cells |
+| `compact` | bool | no | Compact table sizing |
+| `toolbar` | object | no | Search/entries/actions toolbar |
+| `columns` | array | yes | Column definitions |
+| `rows` | array | yes | Row data keyed by column key |
+| `pagination` | object | no | Label and page links |
+| `width` / `span` / `size` | int/string | no | Стандартный adapter-backed sizing |
+
+Типы ячеек:
+
+- `text`;
+- `muted`;
+- `link`;
+- `badge`;
+- `status`;
+- `avatar_text`;
+- `progress`;
+- `actions`.
+
+Правила:
+
+- `data_table` не является schema/demo block contract и не добавляет keys в `config/settings.yml`.
+- Links являются internal-only.
+- Layout links могут включать query string, например `/runs?page=2`.
+- Links отклоняют scheme, netloc, protocol-relative values, traversal и control characters.
+- Links префиксуются BeeUI route prefix / embedded mount path.
+- Visual tokens проходят allowlist перед использованием как CSS classes.
+- Malformed `columns` или `rows` рендерятся как `degraded`.
+- Unknown cell type fallback к escaped text.
+- Missing values рендерятся как `n/a`.
+- No DataTables/List.js runtime.
+
 ### Правила безопасности
 
 - Все adapter-provided text values проходят через Jinja autoescaping.
@@ -287,3 +373,8 @@ Children render through existing BeeUI block renderer. Depth is bounded at 3 lev
 - Если adapter возвращает `layout` в payload, оно может оставаться внутри `data`; клиенты должны считать его optional presentation metadata.
 - `/api/runs` сохраняет backward-compatible list contract: если adapter возвращает wrapper `{layout, runs}` или `{layout, items}`, API отдаёт список runs/items в `data`.
 - Layout blocks не содержат и не допускают arbitrary HTML/JS.
+- Chart config сериализуется как JSON script node, не как raw HTML attribute.
+- Unsafe `|safe` не используется для adapter/config values.
+- Table visual tokens проходят allowlist перед CSS class suffix rendering.
+- Table links являются internal-only и prefix-aware.
+- Browser-executed chart path остаётся product-neutral.

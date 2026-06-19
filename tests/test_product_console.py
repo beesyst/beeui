@@ -567,8 +567,6 @@ def test_chart_layout_html_escapes_adapter_values() -> None:
                             "title": "<script>alert(1)</script>",
                             "subtitle": "<b>subtitle</b>",
                             "hint": "<img src=x onerror=alert(1)>",
-                            "symbol": "<BTC>",
-                            "timeframe": "<1h>",
                             "series": [{"name": "close", "data": [1, 2, 3]}],
                         }
                     ]
@@ -581,10 +579,79 @@ def test_chart_layout_html_escapes_adapter_values() -> None:
     assert "&lt;script&gt;alert(1)&lt;/script&gt;" in response.text
     assert "&lt;b&gt;subtitle&lt;/b&gt;" in response.text
     assert "&lt;img src=x onerror=alert(1)&gt;" in response.text
-    assert "&lt;BTC&gt;" in response.text
-    assert "&lt;1h&gt;" in response.text
     assert "<script>alert(1)</script>" not in response.text
     assert "<img src=x onerror=alert(1)>" not in response.text
+
+
+# Тест: chart config сериализуется в JSON script node, а не в unsafe attribute
+def test_chart_layout_html_uses_safe_json_script_config() -> None:
+    class UnsafeChartConfigAdapter(FakeProductConsoleAdapter):
+        def get_dashboard(self) -> Any:
+            return ok_result(
+                {
+                    "layout": [
+                        {
+                            "type": "chart",
+                            "title": "Safe chart config",
+                            "series": [
+                                {
+                                    "name": 'A <script>x</script> "quote"',
+                                    "data": [1, 2, 3],
+                                }
+                            ],
+                        }
+                    ]
+                }
+            )
+
+    response = TestClient(create_beeui_app(adapter=UnsafeChartConfigAdapter())).get("/")
+
+    assert response.status_code == 200
+    assert "<script>x</script>" not in response.text
+    assert 'type="application/json"' in response.text
+    assert "beeui-chart-config" in response.text
+    assert 'data-chart-config="{' not in response.text
+    assert "|safe" not in response.text
+    assert "\\u003cscript\\u003ex\\u003c/script\\u003e" in response.text
+
+
+# Тест: chart/base templates do not use unsafe chart serialization primitives
+def test_chart_templates_do_not_use_unsafe_serialization() -> None:
+    template_root = Path("src/beeui_module/web/templates")
+    chart = (template_root / "components/layout/chart.html").read_text(encoding="utf-8")
+    base = (template_root / "base.html").read_text(encoding="utf-8")
+
+    assert "|safe" not in chart
+    assert 'data-chart-config="{{' not in chart
+    assert "innerHTML" not in base
+
+
+# Тест: chart внутри group подключает локальный ApexCharts asset
+def test_nested_chart_in_group_loads_chart_asset() -> None:
+    class NestedChartAdapter(FakeProductConsoleAdapter):
+        def get_dashboard(self) -> Any:
+            return ok_result(
+                {
+                    "layout": [
+                        {
+                            "type": "group",
+                            "children": [
+                                {
+                                    "type": "chart",
+                                    "title": "Nested chart",
+                                    "series": [{"name": "x", "data": [1, 2, 3]}],
+                                }
+                            ],
+                        }
+                    ]
+                }
+            )
+
+    response = TestClient(create_beeui_app(adapter=NestedChartAdapter())).get("/")
+
+    assert response.status_code == 200
+    assert "beeui-chart-container" in response.text
+    assert "/static/vendor/apexcharts/apexcharts.min.js" in response.text
 
 
 # Тест: layout[] ссылки учитывают route prefix и FastAPI mount path
@@ -656,6 +723,76 @@ def test_layout_links_use_route_prefix_and_embedded_mount() -> None:
 
     assert mounted_response.status_code == 200
     assert '<a href="/ui/runs/run_safe_001">' in mounted_response.text
+
+
+# Тест: data_table ссылки учитывают route prefix и FastAPI mount path
+def test_data_table_links_use_route_prefix_and_embedded_mount() -> None:
+    class DataTableAdapter(FakeProductConsoleAdapter):
+        def get_dashboard(self) -> Any:
+            return ok_result(
+                {
+                    "layout": [
+                        {
+                            "type": "data_table",
+                            "title": "Runs",
+                            "toolbar": {
+                                "actions": [
+                                    {"label": "All runs", "href": "/runs"},
+                                ]
+                            },
+                            "columns": [
+                                {"key": "run", "label": "Run", "cell": "link"},
+                                {"key": "actions", "label": "", "cell": "actions"},
+                            ],
+                            "rows": [
+                                {
+                                    "run": {
+                                        "label": "Open run",
+                                        "href": "/runs/run_safe_001",
+                                    },
+                                    "actions": [
+                                        {
+                                            "label": "Edit",
+                                            "href": "/runs/run_safe_001/edit",
+                                        }
+                                    ],
+                                }
+                            ],
+                            "pagination": {
+                                "label": "Showing 1 to 1 of 2 entries",
+                                "pages": [
+                                    {
+                                        "label": "2",
+                                        "href": "/runs?page=2",
+                                    }
+                                ],
+                            },
+                        }
+                    ]
+                }
+            )
+
+    settings = load_settings(settings_path())
+    settings["web"]["route_prefix"] = "/bee"
+    prefixed_response = TestClient(
+        create_beeui_app(settings=settings, adapter=DataTableAdapter())
+    ).get("/bee/")
+
+    assert prefixed_response.status_code == 200
+    assert 'href="/bee/runs"' in prefixed_response.text
+    assert '<a href="/bee/runs/run_safe_001">Open run</a>' in prefixed_response.text
+    assert 'href="/bee/runs/run_safe_001/edit"' in prefixed_response.text
+    assert 'href="/bee/runs?page=2"' in prefixed_response.text
+
+    parent = FastAPI()
+    mount_beeui(parent, path="/ui", adapter=DataTableAdapter())
+    mounted_response = TestClient(parent).get("/ui/")
+
+    assert mounted_response.status_code == 200
+    assert 'href="/ui/runs"' in mounted_response.text
+    assert '<a href="/ui/runs/run_safe_001">Open run</a>' in mounted_response.text
+    assert 'href="/ui/runs/run_safe_001/edit"' in mounted_response.text
+    assert 'href="/ui/runs?page=2"' in mounted_response.text
 
 
 # Тест: KPI template использует responsive card grid из local CSS contract
