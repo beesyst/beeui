@@ -24,10 +24,12 @@ from beeui_module.api.envelopes import (
     malformed_payload_envelope,
     safe_adapter_call,
 )
-from beeui_module.blocks.layout_renderer import layout_has_charts, render_layout
 from beeui_module.artifacts.redaction import redact_value
+from beeui_module.blocks.layout_renderer import layout_has_charts, render_layout
+from beeui_module.pages.locale import resolve_localized_text
 from beeui_module.pages.models import BeeUiConfig, LocaleConfig
 from beeui_module.pages.router import (
+    _build_language_switcher,
     build_components_context,
     build_layout_context,
     build_navigation,
@@ -37,7 +39,6 @@ from beeui_module.pages.router import (
 )
 
 
-# Регистрация routes для продуктовой консоли, использующей ProductUiAdapter
 def register_product_console_routes(
     *,
     app: FastAPI,
@@ -351,13 +352,34 @@ def _with_request_context(
     context: dict[str, Any],
     request: Request,
 ) -> dict[str, Any]:
-    context["url_prefix"] = _resolve_url_prefix(
-        request,
-        str(context.get("route_prefix", "")),
-    )
+    route_prefix = str(context.get("route_prefix", ""))
+    context["url_prefix"] = _resolve_url_prefix(request, route_prefix)
+
     locale_cfg = context.get("locale_cfg")
     if isinstance(locale_cfg, LocaleConfig):
-        context["locale"] = resolve_locale(request, locale_cfg)
+        locale = resolve_locale(request, locale_cfg)
+        context["locale"] = locale
+        context["app_title"] = resolve_localized_text(
+            context.get("app_title", ""), locale, locale_cfg.default
+        )
+        context["logo_text"] = resolve_localized_text(
+            context.get("logo_text", ""), locale, locale_cfg.default
+        )
+        context["language_switcher"] = _build_language_switcher(
+            request, locale_cfg, route_prefix
+        )
+
+        ui_navigation = context.get("ui_navigation")
+        active_path = context.get("active_path")
+        if isinstance(ui_navigation, list) and isinstance(active_path, str):
+            context["navigation"] = build_navigation(
+                route_prefix=route_prefix,
+                navigation=ui_navigation,
+                active_path=active_path,
+                locale=locale,
+                default_locale=locale_cfg.default,
+            )
+
     return context
 
 
@@ -377,6 +399,7 @@ def _build_page_context(
         "product_id": product_id,
         "logo_text": ui_config.logo_text,
         "locale_cfg": ui_config.locale,
+        "available_locales": list(ui_config.locale.available),
         "theme": theme,
         "layout": layout,
         "components": build_components_context(ui_config.components),
@@ -385,12 +408,13 @@ def _build_page_context(
             route_prefix=route_prefix,
             navigation=ui_config.navigation,
             active_path="/",
+            locale=ui_config.locale.default,
+            default_locale=ui_config.locale.default,
         ),
         "shell_classes": build_shell_classes(theme, layout),
     }
 
 
-# Рендер страницы с сообщением об недоступности адаптера
 def _render_unavailable(
     request: Request,
     templates: Jinja2Templates,
@@ -405,6 +429,7 @@ def _render_unavailable(
     context = dict(base_context)
     context.update(
         {
+            "active_path": active_path,
             "navigation": build_navigation(
                 route_prefix=base_context["route_prefix"],
                 navigation=base_context["ui_navigation"],
@@ -429,7 +454,6 @@ def _render_unavailable(
     )
 
 
-# Рендер страницы с сообщением об невалидности идентификатора
 def _render_invalid_id(
     request: Request,
     templates: Jinja2Templates,
@@ -443,6 +467,7 @@ def _render_invalid_id(
     context = dict(base_context)
     context.update(
         {
+            "active_path": active_path,
             "navigation": build_navigation(
                 route_prefix=base_context["route_prefix"],
                 navigation=base_context["ui_navigation"],
@@ -466,7 +491,6 @@ def _render_invalid_id(
     )
 
 
-# Adapter-backed dashboard context.
 def _dashboard_html_context(
     *,
     base_context: dict[str, Any],
@@ -476,6 +500,7 @@ def _dashboard_html_context(
     context = dict(base_context)
     context.update(
         {
+            "active_path": active_path,
             "navigation": build_navigation(
                 route_prefix=base_context["route_prefix"],
                 navigation=base_context["ui_navigation"],
@@ -538,7 +563,6 @@ def _dashboard_html_context(
     return context, 200
 
 
-# Adapter-backed runs context.
 def _runs_html_context(
     *,
     base_context: dict[str, Any],
@@ -548,6 +572,7 @@ def _runs_html_context(
     context = dict(base_context)
     context.update(
         {
+            "active_path": active_path,
             "navigation": build_navigation(
                 route_prefix=base_context["route_prefix"],
                 navigation=base_context["ui_navigation"],
@@ -630,7 +655,6 @@ def _runs_html_context(
     return context, 200
 
 
-# Adapter-backed run detail context.
 def _run_detail_html_context(
     *,
     base_context: dict[str, Any],
@@ -641,6 +665,7 @@ def _run_detail_html_context(
     context = dict(base_context)
     context.update(
         {
+            "active_path": active_path,
             "navigation": build_navigation(
                 route_prefix=base_context["route_prefix"],
                 navigation=base_context["ui_navigation"],
@@ -698,7 +723,6 @@ def _run_detail_html_context(
     return context, 200
 
 
-# Adapter-backed venue context.
 def _venue_html_context(
     *,
     base_context: dict[str, Any],
@@ -709,6 +733,7 @@ def _venue_html_context(
     context = dict(base_context)
     context.update(
         {
+            "active_path": active_path,
             "navigation": build_navigation(
                 route_prefix=base_context["route_prefix"],
                 navigation=base_context["ui_navigation"],
@@ -762,7 +787,6 @@ def _venue_html_context(
     return context, 200
 
 
-# Safe run link normalization.
 def _normalize_run_link(item: Any) -> dict[str, Any] | None:
     if not isinstance(item, dict):
         return None
@@ -779,7 +803,6 @@ def _normalize_run_link(item: Any) -> dict[str, Any] | None:
     return normalized
 
 
-# KPI list normalization.
 def _normalize_kpi_items(raw_data: Any) -> list[dict[str, str]]:
     if not isinstance(raw_data, list):
         return []
@@ -801,14 +824,12 @@ def _normalize_kpi_items(raw_data: Any) -> list[dict[str, str]]:
     return normalized
 
 
-# Mapping-to-display-items conversion.
 def _mapping_items(raw_data: Any) -> list[dict[str, Any]]:
     if not isinstance(raw_data, dict):
         return []
     return [{"key": str(key), "value": value} for key, value in raw_data.items()]
 
 
-# Safe artifact link normalization.
 def _normalize_artifacts(
     raw_data: Any,
     run_id: str,

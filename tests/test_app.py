@@ -13,14 +13,12 @@ from beeui_module.pages.config import load_beeui_config
 from beeui_module.web.app import create_beeui_app
 
 
-# Тест: фабрика возвращает FastAPI-приложение
 def test_create_beeui_app_returns_fastapi_app() -> None:
     app = create_beeui_app()
 
     assert isinstance(app, FastAPI)
 
 
-# Тест: главная страница доступна и содержит безопасные заголовки
 def test_get_index_returns_html() -> None:
     app = create_beeui_app()
     client = TestClient(app)
@@ -36,7 +34,6 @@ def test_get_index_returns_html() -> None:
     assert response.headers["Cache-Control"] == "no-store"
 
 
-# Тест: страница runs доступна и возвращает HTML
 def test_get_runs_returns_html() -> None:
     app = create_beeui_app()
     client = TestClient(app)
@@ -48,7 +45,6 @@ def test_get_runs_returns_html() -> None:
     assert "Placeholder page for future run overview" in response.text
 
 
-# Тест: component catalog routes доступны как read-only HTML pages
 def test_component_catalog_routes_render() -> None:
     app = create_beeui_app()
     client = TestClient(app)
@@ -69,7 +65,6 @@ def test_component_catalog_routes_render() -> None:
         assert response.headers["Cache-Control"] == "no-store"
 
 
-# Тест: component catalog routes учитывают web.route_prefix
 def test_component_catalog_routes_follow_route_prefix() -> None:
     settings = load_settings(settings_path())
     settings["web"]["route_prefix"] = "/bee"
@@ -84,7 +79,6 @@ def test_component_catalog_routes_follow_route_prefix() -> None:
     assert plain.status_code == 404
 
 
-# Тест: catalog internal links учитывают web.route_prefix
 def test_component_catalog_internal_links_follow_route_prefix() -> None:
     settings = load_settings(settings_path())
     settings["web"]["route_prefix"] = "/bee"
@@ -100,7 +94,6 @@ def test_component_catalog_internal_links_follow_route_prefix() -> None:
     assert 'href="/components"' not in response.text
 
 
-# Тест: health endpoint возвращает ожидаемый JSON и read-only заголовки
 def test_get_health_returns_expected_payload() -> None:
     app = create_beeui_app()
     client = TestClient(app)
@@ -118,7 +111,6 @@ def test_get_health_returns_expected_payload() -> None:
     assert response.headers["Cache-Control"] == "no-store"
 
 
-# Тест: локальный CSS доступен через static route
 def test_get_static_css_returns_file() -> None:
     app = create_beeui_app()
     client = TestClient(app)
@@ -130,7 +122,6 @@ def test_get_static_css_returns_file() -> None:
     assert response.headers["X-BeeUI-Read-Only"] == "true"
 
 
-# Тест: локальный real Tabler CSS доступен через static route
 def test_get_local_tabler_vendor_asset_returns_file() -> None:
     app = create_beeui_app()
     client = TestClient(app)
@@ -144,7 +135,6 @@ def test_get_local_tabler_vendor_asset_returns_file() -> None:
     assert response.headers["X-BeeUI-Read-Only"] == "true"
 
 
-# Тест: vendor CSS является compiled Tabler core, а не placeholder subset
 def test_local_tabler_css_is_not_placeholder() -> None:
     css_path = Path("src/beeui_module/web/static/vendor/tabler/css/tabler.min.css")
     css = css_path.read_text(encoding="utf-8")
@@ -173,7 +163,6 @@ def test_local_tabler_css_is_not_placeholder() -> None:
         assert forbidden not in lowered
 
 
-# Тест: BeeUI override layer не реализует второй core grid/component framework
 def test_beeui_css_does_not_override_core_grid() -> None:
     css = Path("src/beeui_module/web/static/css/beeui.css").read_text(encoding="utf-8")
 
@@ -189,7 +178,6 @@ def test_beeui_css_does_not_override_core_grid() -> None:
         assert selector not in css
 
 
-# Тест: theme base surface override остаётся привязан к light/dark theme
 def test_beeui_theme_base_surface_override_is_theme_scoped() -> None:
     css = Path("src/beeui_module/web/static/css/beeui.css").read_text(encoding="utf-8")
 
@@ -205,7 +193,6 @@ def test_beeui_theme_base_surface_override_is_theme_scoped() -> None:
     assert "\n.beeui-theme-base-gray," not in css
 
 
-# Тест: footer использует Tabler transparent footer без светлого override
 def test_beeui_footer_override_is_transparent() -> None:
     css = Path("src/beeui_module/web/static/css/beeui.css").read_text(encoding="utf-8")
     footer_rule = css.split(".beeui-footer {", 1)[1].split("}", 1)[0]
@@ -216,7 +203,6 @@ def test_beeui_footer_override_is_transparent() -> None:
     assert "white" not in footer_rule.lower()
 
 
-# Тест: локальный real Tabler JS доступен через static route
 def test_get_local_tabler_vendor_js_asset_returns_file() -> None:
     app = create_beeui_app()
     client = TestClient(app)
@@ -230,7 +216,6 @@ def test_get_local_tabler_vendor_js_asset_returns_file() -> None:
     assert response.headers["X-BeeUI-Read-Only"] == "true"
 
 
-# Тест: HTML не содержит внешние URL и трекинг-скрипты
 def test_html_does_not_include_external_assets_or_tracking() -> None:
     app = create_beeui_app()
     client = TestClient(app)
@@ -249,7 +234,6 @@ def test_html_does_not_include_external_assets_or_tracking() -> None:
     assert "@import url(http" not in html
 
 
-# Тест: default dark shell скрывает top navbar и сохраняет transparent footer
 def test_default_dark_shell_has_no_navbar_and_transparent_footer() -> None:
     response = TestClient(create_beeui_app()).get("/")
 
@@ -260,7 +244,6 @@ def test_default_dark_shell_has_no_navbar_and_transparent_footer() -> None:
     )
 
 
-# Тест: HTML подключает real local Tabler assets до BeeUI overrides
 def test_html_uses_real_local_tabler_assets() -> None:
     app = create_beeui_app()
     client = TestClient(app)
@@ -285,7 +268,6 @@ def test_html_uses_real_local_tabler_assets() -> None:
     assert "beeui-theme-base-gray" in response.text
 
 
-# Тест: Jinja autoescape предотвращает вставку сырого script из title
 def test_product_title_is_escaped_in_html() -> None:
     settings = load_settings(settings_path())
     settings["product"]["title"] = "<script>alert(1)</script>"
@@ -308,7 +290,6 @@ def test_product_title_is_escaped_in_html() -> None:
     assert "&lt;script&gt;alert(1)&lt;/script&gt;" in response.text
 
 
-# Тест: missing обязательного web.port вызывает fail-fast ошибку
 def test_load_settings_fails_on_missing_web_port(tmp_path) -> None:
     config_path = tmp_path / "settings.yml"
     config_path.write_text(
@@ -349,7 +330,6 @@ def test_load_settings_fails_on_missing_web_port(tmp_path) -> None:
         raise AssertionError("load_settings must fail fast when web.port is missing")
 
 
-# Тест: invalid web.port вызывает fail-fast ошибку
 def test_load_settings_fails_on_invalid_web_port(tmp_path) -> None:
     config_path = tmp_path / "settings.yml"
     config_path.write_text(
@@ -391,7 +371,6 @@ def test_load_settings_fails_on_invalid_web_port(tmp_path) -> None:
         raise AssertionError("load_settings must fail fast on invalid web.port")
 
 
-# Тест: missing обязательного web.cache_static вызывает fail-fast ошибку
 def test_load_settings_fails_on_missing_web_cache_static(tmp_path) -> None:
     config_path = tmp_path / "settings.yml"
     config_path.write_text(
@@ -434,7 +413,6 @@ def test_load_settings_fails_on_missing_web_cache_static(tmp_path) -> None:
         )
 
 
-# Тест: invalid web.cache_static вызывает fail-fast ошибку
 def test_load_settings_fails_on_invalid_web_cache_static(tmp_path) -> None:
     config_path = tmp_path / "settings.yml"
     config_path.write_text(
@@ -476,7 +454,6 @@ def test_load_settings_fails_on_invalid_web_cache_static(tmp_path) -> None:
         raise AssertionError("load_settings must fail fast on invalid web.cache_static")
 
 
-# Тест: missing security.assets_ext вызывает fail-fast ошибку
 def test_load_settings_fails_on_missing_security_assets_ext(tmp_path) -> None:
     config_path = tmp_path / "settings.yml"
     config_path.write_text(
@@ -519,7 +496,6 @@ def test_load_settings_fails_on_missing_security_assets_ext(tmp_path) -> None:
         )
 
 
-# Тест: invalid security.assets_ext вызывает fail-fast ошибку
 def test_load_settings_fails_on_invalid_security_assets_ext(tmp_path) -> None:
     config_path = tmp_path / "settings.yml"
     config_path.write_text(
@@ -563,7 +539,6 @@ def test_load_settings_fails_on_invalid_security_assets_ext(tmp_path) -> None:
         )
 
 
-# Тест: missing features.browser_artifact вызывает fail-fast ошибку
 def test_load_settings_fails_on_missing_features_browser_artifact(tmp_path) -> None:
     config_path = tmp_path / "settings.yml"
     config_path.write_text(
@@ -606,7 +581,6 @@ def test_load_settings_fails_on_missing_features_browser_artifact(tmp_path) -> N
         )
 
 
-# Тест: page с tabs рендерит .beeui-page-tabs-card
 def test_page_with_tabs_renders_tabs_card() -> None:
     from dataclasses import replace
 
@@ -636,7 +610,6 @@ def test_page_with_tabs_renders_tabs_card() -> None:
     assert "Tab 1" in response.text
 
 
-# Тест: page без tabs рендерит normal blocks без .beeui-page-tabs-card
 def test_page_without_tabs_renders_normal_blocks() -> None:
     app = create_beeui_app()
     client = TestClient(app)
@@ -648,7 +621,6 @@ def test_page_without_tabs_renders_normal_blocks() -> None:
     assert "No blocks configured" in response.text
 
 
-# Тест: page-body/container wrapper consistent across pages
 def test_page_body_container_wrapper_consistent() -> None:
     settings = load_settings(settings_path())
     ui_config = load_beeui_config(settings_path().parent / "schema.yml")
@@ -666,7 +638,6 @@ def test_page_body_container_wrapper_consistent() -> None:
         )
 
 
-# Тест: product dashboard использует page-body wrapper
 def test_configured_page_uses_page_body() -> None:
     settings = load_settings(settings_path())
     ui_config = load_beeui_config(settings_path().parent / "schema.yml")

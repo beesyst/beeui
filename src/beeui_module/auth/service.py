@@ -15,7 +15,6 @@ from beeui_module.auth.sessions import (
 logger = logging.getLogger("beeui.auth")
 
 
-# Класс: сервис аутентификации, который управляет настройками, проверкой токенов и сессий, а также ролями пользователей
 class AuthService:
     def __init__(self, settings_auth: dict[str, Any]) -> None:
         self._enabled = bool(settings_auth.get("enabled", False))

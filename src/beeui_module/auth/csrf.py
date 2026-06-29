@@ -5,7 +5,6 @@ import hmac
 from beeui_module.auth.sessions import generate_csrf_token
 
 
-# Чек CSRF токена: сравнение предоставленного токена с ожидаемым, возвращая True при совпадении
 def validate_csrf_token(
     provided_token: str,
     expected_token: str,

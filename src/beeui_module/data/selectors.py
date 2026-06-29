@@ -9,7 +9,6 @@ _SELECTOR_RE = re.compile(
 _SEGMENT_RE = re.compile(r"[A-Za-z][A-Za-z0-9_]*|\[(\d+)\]")
 
 
-# Валидация селектора и его разбор на токены для последующего выбора данных из payload
 def validate_selector(selector: str) -> list[str | int]:
     if not isinstance(selector, str) or not selector.strip():
         raise ValueError("selector must be a non-empty string")
@@ -38,7 +37,6 @@ def validate_selector(selector: str) -> list[str | int]:
     return tokens
 
 
-# Выбор данных из payload по селектору, который уже был валидирован и разобран на токены
 def select_data(payload: Any, selector: str) -> Any:
     current = payload
     for token in validate_selector(selector):

@@ -20,7 +20,6 @@ from beeui_module.adapters.errors import NotFoundError
 from beeui_module.adapters.ids import validate_artifact_id, validate_run_id
 
 
-# Адаптер для фикстурного тестирования BeeCap-совместимых read-моделей
 class BeeCapFixtureAdapter(ProductUiAdapterBase):
     def __init__(self, fixture_root: Path | None = None) -> None:
         metadata = AdapterMetadata(

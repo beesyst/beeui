@@ -2,9 +2,23 @@
   <div class="{{ layout.container_class }}">
     <div class="row g-2 align-items-center">
       <div class="col">
-        <h2 class="page-title">{{ page.title }}</h2>
-        {% if page.subtitle %}
-        <div class="text-secondary mt-1">{{ page.subtitle }}</div>
+        <h2 class="page-title">{{ page_title }}</h2>
+        {% if page_subtitle %}
+        <div class="text-secondary mt-1">{{ page_subtitle }}</div>
+        {% endif %}
+      </div>
+      <div class="col-auto">
+        {% if language_switcher %}
+        <div class="beeui-language-switcher">
+          {% for lang_item in language_switcher %}
+          {% if lang_item.active %}
+          <strong class="beeui-lang-active">{{ lang_item.label }}</strong>
+          {% else %}
+          <a href="{{ lang_item.href }}" class="beeui-lang-link" hreflang="{{ lang_item.lang }}">{{ lang_item.label }}</a>
+          {% endif %}
+          {% if not loop.last %}<span class="text-secondary mx-1">|</span>{% endif %}
+          {% endfor %}
+        </div>
         {% endif %}
       </div>
     </div>

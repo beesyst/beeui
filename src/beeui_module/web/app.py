@@ -28,7 +28,6 @@ from beeui_module.pages.router import (
 )
 
 
-# Нормализация route_prefix для корректного формирования маршрутов
 def _normalize_prefix(route_prefix: str) -> str:
     cleaned = route_prefix.strip()
     if not cleaned:
@@ -48,12 +47,10 @@ def _resolve_page_route_mode(page: BeeUiPage, *, adapter_available: bool) -> str
     return "configured"
 
 
-# Разрешение директории с шаблонами для Jinja2
 def _resolve_templates_dir() -> Path:
     return Path(__file__).resolve().parent / "templates"
 
 
-# Разрешение директории со статикой и проверка ее наличия
 def _resolve_static_dir() -> Path:
     static_dir = Path(__file__).resolve().parent / "static"
     if not static_dir.is_dir():
@@ -61,7 +58,6 @@ def _resolve_static_dir() -> Path:
     return static_dir
 
 
-# Валидация mount path для mount_beeui
 def _validate_mount_path(path: str) -> str:
     if not path:
         raise ValueError("Mount path must be a non-empty string")
@@ -75,14 +71,12 @@ def _validate_mount_path(path: str) -> str:
         raise ValueError("Mount path must not contain '//'")
     if "?" in path or "#" in path or "&" in path:
         raise ValueError("Mount path must not contain query or fragment characters")
-    # Normalize: remove trailing slash
     normalized = path.rstrip("/")
     if normalized != path:
         raise ValueError("Mount path must not have trailing slash")
     return normalized
 
 
-# Runtime-проверка, что переданный adapter соответствует минимальному протоколу ProductUiAdapter
 def _validate_adapter(adapter: Any) -> None:
     if not hasattr(adapter, "metadata"):
         raise ValueError(
@@ -106,7 +100,6 @@ def _validate_adapter(adapter: Any) -> None:
             raise ValueError(f"Adapter.{method_name} must be callable")
 
 
-# Получение product metadata из adapter или переданных параметров
 def _resolve_product_metadata(
     product_id: str | None,
     product_title: str | None,
@@ -129,7 +122,6 @@ def _resolve_product_metadata(
     return result
 
 
-# Выбор source of truth для UI config
 def _resolve_ui_config(
     ui_config: BeeUiConfig | None,
     config_path: Path | str | None,
@@ -141,7 +133,6 @@ def _resolve_ui_config(
     return load_beeui_config(schema_path())
 
 
-# Создание экземпляра FastAPI с учетом настроек и маршрутов
 def create_beeui_app(
     settings: dict[str, Any] | None = None,
     ui_config: BeeUiConfig | None = None,
@@ -348,7 +339,6 @@ def create_beeui_app(
     return app
 
 
-# Хелпер: встраивание BeeUI в родительское FastAPI приложение
 def mount_beeui(
     app: FastAPI,
     *,
@@ -379,7 +369,6 @@ def mount_beeui(
     return app
 
 
-# Регистрация защищенных config/action POST routes
 def _register_protected_post_routes(
     *,
     app: FastAPI,
@@ -637,7 +626,6 @@ def _register_protected_post_routes(
             )
 
 
-# Чек на коллизию маршрутов в родительском приложении
 def _check_route_collision(app: FastAPI, mount_path: str) -> None:
     for route in app.routes:
         route_path = getattr(route, "path", None)

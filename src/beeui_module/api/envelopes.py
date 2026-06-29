@@ -13,7 +13,6 @@ from beeui_module.artifacts.redaction import redact_value
 API_VERSION = "beeui.v0"
 
 
-# Формирование API-ответов в едином формате, а также для безопасного вызова адаптеров и обработки их результатов
 def api_success_envelope(
     data: Any,
     *,
@@ -35,7 +34,6 @@ def api_success_envelope(
     }
 
 
-# Формирование API-ответов об ошибках, с поддержкой кодов ошибок и метаданных
 def api_error_envelope(
     code: str,
     message: str,
@@ -53,7 +51,6 @@ def api_error_envelope(
     }
 
 
-# Преобразование результатов адаптера в API-ответы с правильными статусами
 def api_envelope_from_adapter(
     adapter_result: AdapterResult | AdapterErrorResult,
     *,
@@ -91,7 +88,6 @@ def api_envelope_from_adapter(
     )
 
 
-# Чек на недоступность адаптера и формирование ответа об ошибке
 def adapter_unavailable_envelope() -> tuple[dict[str, Any], int]:
     return (
         api_error_envelope("adapter_unavailable", "Adapter is not available"),
@@ -99,7 +95,6 @@ def adapter_unavailable_envelope() -> tuple[dict[str, Any], int]:
     )
 
 
-# Чек на невалидные идентификаторы и path traversal
 def invalid_id_envelope(field_name: str, value: str) -> tuple[dict[str, Any], int]:
     return (
         api_error_envelope("invalid_id", f"Invalid {field_name}: {value}"),
@@ -107,12 +102,10 @@ def invalid_id_envelope(field_name: str, value: str) -> tuple[dict[str, Any], in
     )
 
 
-# Формирование ответа для некорректного payload от адаптера
 def malformed_payload_envelope(message: str) -> tuple[dict[str, Any], int]:
     return api_error_envelope("malformed_adapter_payload", message), 502
 
 
-# Безопасный вызов adapter method с нормализацией исключений
 def safe_adapter_call(method: Any, *args: Any) -> AdapterResult | AdapterErrorResult:
     try:
         result = method(*args)
@@ -128,7 +121,6 @@ def safe_adapter_call(method: Any, *args: Any) -> AdapterResult | AdapterErrorRe
     )
 
 
-# Валидация адаптера на наличие необходимых методов и корректность metadata
 def error_status_code(code: str) -> int:
     if code == "invalid_id":
         return 400

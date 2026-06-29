@@ -4,21 +4,18 @@ import sys
 from typing import Iterable
 
 
-# Ленивый import doctor-команды, чтобы version не тянул runtime stack.
 def run_doctor() -> int:
     from beeui_module.cli.doctor import run_doctor as _run_doctor
 
     return _run_doctor()
 
 
-# Ленивый import web-команды, потому что она подключает FastAPI/runtime stack.
 def run_web(args: list[str]) -> int:
     from beeui_module.cli.web import run_web as _run_web
 
     return _run_web(args)
 
 
-# Нормализация route_prefix для CLI routes output без импорта web stack.
 def _normalize_route_prefix(route_prefix: str) -> str:
     cleaned = route_prefix.strip()
     if not cleaned:
@@ -28,7 +25,6 @@ def _normalize_route_prefix(route_prefix: str) -> str:
     return cleaned.rstrip("/")
 
 
-# Вывод маршрутов, доступных в текущей конфигурации приложения
 def _print_routes() -> int:
     from beeui_module.core.paths import schema_path, settings_path
     from beeui_module.core.settings import load_settings
@@ -62,7 +58,6 @@ def _print_routes() -> int:
     return 0
 
 
-# Обработка аргументов командной строки и вызывает соответствующие функции
 def main(argv: Iterable[str] | None = None) -> int:
     arguments = list(sys.argv[1:] if argv is None else argv)
     if not arguments:

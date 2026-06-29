@@ -9,7 +9,6 @@ from beeui_module.adapters.ids import validate_product_id
 AdapterStatus = Literal["ok", "partial", "error"]
 
 
-# Энвелопы для результатов адаптера
 @dataclass(frozen=True)
 class AdapterWarning:
     code: str
@@ -19,7 +18,6 @@ class AdapterWarning:
         return {"code": self.code, "message": self.message}
 
 
-# Энвелоп для успешного результата
 @dataclass(frozen=True)
 class AdapterMetadata:
     product_id: str
@@ -55,7 +53,6 @@ class AdapterMetadata:
         }
 
 
-# Энвелоп для успешного результата
 @dataclass(frozen=True)
 class AdapterResult:
     status: Literal["ok", "partial"]
@@ -72,7 +69,6 @@ class AdapterResult:
         }
 
 
-# Энвелоп для результата с ошибкой
 @dataclass(frozen=True)
 class AdapterErrorResult:
     error: dict[str, str]
@@ -89,7 +85,6 @@ class AdapterErrorResult:
         }
 
 
-# Создание результатов адаптера
 def ok_result(
     data: Any,
     *,
@@ -104,7 +99,6 @@ def ok_result(
     )
 
 
-# Результат с частичным успехом
 def partial_result(
     data: Any,
     *,
@@ -119,7 +113,6 @@ def partial_result(
     )
 
 
-# Результат с ошибкой
 def error_result(
     code: str,
     message: str,
@@ -134,7 +127,6 @@ def error_result(
     )
 
 
-# Создание результата с ошибкой из исключения
 def error_result_from_exception(
     exc: Exception,
     *,

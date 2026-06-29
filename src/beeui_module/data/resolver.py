@@ -10,7 +10,6 @@ from beeui_module.data.selectors import select_data, validate_selector
 from beeui_module.data.sources import load_source_data
 
 
-# Разрешение данных из источников с поддержкой кэширования и селекторов
 class DataResolver:
     def __init__(self, data_sources: dict[str, DataSourceDefinition]) -> None:
         self._data_sources = data_sources

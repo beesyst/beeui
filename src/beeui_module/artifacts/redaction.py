@@ -25,7 +25,6 @@ _REDACT_KEYS = frozenset(
 _REDACTED_PLACEHOLDER = "*** REDACTED ***"
 
 
-# Чек: нужно ли редактировать значение по ключу
 def _should_redact(key: str) -> bool:
     lowered = key.lower().replace("-", "_")
     return lowered in _REDACT_KEYS or any(
@@ -33,7 +32,6 @@ def _should_redact(key: str) -> bool:
     )
 
 
-# Рекурсивная редакция чувствительных данных в структуре JSON
 def redact_value(value: Any) -> Any:
     if isinstance(value, dict):
         result: dict[str, Any] = {}
@@ -55,7 +53,6 @@ def redact_value(value: Any) -> Any:
     return deepcopy(value)
 
 
-# Редакция чувствительных данных в текстовом формате (консервативный подход)
 def redact_text(text: str) -> str:
     lines = text.splitlines(keepends=True)
     result_lines: list[str] = []

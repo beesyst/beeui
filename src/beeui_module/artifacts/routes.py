@@ -22,12 +22,10 @@ from beeui_module.pages.router import (
 )
 
 
-# Маршрут артефактов
 def _resolve_adapter(request: Request) -> Any | None:
     return getattr(request.app.state, "beeui_adapter", None)
 
 
-# Унифицированный ответ при отсутствии адаптера
 def _adapter_unavailable_response() -> dict[str, Any]:
     return {
         "status": "error",
@@ -35,7 +33,6 @@ def _adapter_unavailable_response() -> dict[str, Any]:
     }
 
 
-# Нормализация artifact list от adapter: adapter response тоже untrusted input
 def _normalize_artifact_items(
     raw_data: Any,
 ) -> tuple[list[dict[str, str]], list[dict[str, str]]]:
@@ -91,7 +88,6 @@ def _normalize_artifact_items(
     return artifacts, warnings
 
 
-# Конвертация результата адаптера в JSON-ответ для списка артефактов
 def _artifact_list_to_json(
     adapter_result: AdapterResult | AdapterErrorResult,
 ) -> dict[str, Any]:
@@ -108,7 +104,6 @@ def _artifact_list_to_json(
     }
 
 
-# Конвертация результата адаптера + превью в JSON-ответ для детали артефакта
 def _artifact_preview_to_json(
     adapter_result: AdapterResult | AdapterErrorResult,
     preview: ArtifactPreview,
@@ -136,7 +131,6 @@ def _artifact_preview_to_json(
     }
 
 
-# Регистрация read-only artifact routes
 def _build_page_context(
     ui_config: BeeUiConfig,
     route_prefix: str,
@@ -166,7 +160,6 @@ def _build_page_context(
     }
 
 
-# Регистрация маршрутов для артефактов (список и детальный просмотр)
 def register_artifact_routes(
     app: FastAPI,
     templates: Jinja2Templates,
@@ -262,7 +255,6 @@ def register_artifact_routes(
     async def artifact_detail_html(
         request: Request, run_id: str, artifact_id: str
     ) -> HTMLResponse:
-        # Validate IDs before passing to adapter
         try:
             validate_run_id(run_id)
             validate_artifact_id(artifact_id)

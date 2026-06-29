@@ -6,7 +6,14 @@
 
 ## Текущий статус
 
-**Iteration 13.6** — Safe charts and advanced Tabler data tables for product dashboards.
+**Iteration 13.7** — Locale-aware shell labels, language switcher and query-preserving navigation.
+
+- Product-side `beeui.yml` может передавать localized shell labels.
+- BeeUI resolves locale через allowlisted `?lang=`.
+- BeeUI preserves locale в shell / navigation / page tabs / catalog, где это practically applicable.
+- Product adapter по-прежнему владеет product-specific labels и semantics.
+- Query, передаваемый в `get_page(page_id, query)`, остаётся untrusted input.
+- Locale persistence не использует cookies, session или localStorage.
 
 - Generic contract `ProductUiAdapter` существует в `src/beeui_module/adapters/`.
 - `BeeCapFixtureAdapter` в `src/beeui_module/adapters/beecap.py` — только
@@ -30,7 +37,7 @@
   BeeUI system-owned routes (`/health`, `/static`, `/api`, `/auth`, `/components`,
   `/login`, `/logout` и соответствующие system prefixes). BeeUI не хардкодит
   product namespaces и не знает семантику `venues`, `modes`, `hidra`, `likes`.
-- После Iteration 13.6 product adapter может возвращать `chart` и `data_table`
+- После Iteration 13.7 product adapter может возвращать `chart` и `data_table`
   внутри adapter-backed `layout[]`.
 - Product adapter владеет бизнес-метриками, временными периодами и
   ROP/Bitrix/BeeCap/BeeAgent semantics; BeeUI только рендерит нормализованный layout.

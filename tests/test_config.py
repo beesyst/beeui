@@ -8,19 +8,16 @@ from beeui_module.pages.config import (
 )
 
 
-# Тесты для проверки загрузки и валидации конфигурации BeeUI, включая проверку обязательных полей, типов данных, допустимых значений и ссылок на страницы и блоки
 def _base_config() -> str:
     return Path("config/schema.yml").read_text(encoding="utf-8")
 
 
-# Запись временного конфигурационного файла с заданным содержимым
 def _write_config(tmp_path: Path, content: str) -> Path:
     config_path = tmp_path / "schema.yml"
     config_path.write_text(content, encoding="utf-8")
     return config_path
 
 
-# Сбор всех navigation paths рекурсивно для тестов
 def _collect_nav_paths(items: list) -> set[str]:
     paths: set[str] = set()
     for item in items:
@@ -31,7 +28,6 @@ def _collect_nav_paths(items: list) -> set[str]:
     return paths
 
 
-# Тест: валидная demo schema загружается вместе с Iteration 5 blocks
 def test_load_beeui_config_valid_payload() -> None:
     config = load_beeui_config(Path("config/schema.yml"))
 
@@ -46,7 +42,6 @@ def test_load_beeui_config_valid_payload() -> None:
     assert "runtime_status" in config.blocks
 
 
-# Тест: app.title обязателен и валидируется fail-fast
 def test_load_beeui_config_fails_on_missing_app_title(tmp_path: Path) -> None:
     config_path = _write_config(
         tmp_path,
@@ -56,12 +51,11 @@ def test_load_beeui_config_fails_on_missing_app_title(tmp_path: Path) -> None:
     try:
         load_beeui_config(config_path)
     except ValueError as exc:
-        assert str(exc) == "app.title must be a non-empty string"
+        assert "app.title must be a string or a mapping" in str(exc)
     else:
         raise AssertionError("load_beeui_config must fail on missing app.title")
 
 
-# Тест: theme.mode принимает только разрешённые значения
 def test_load_beeui_config_rejects_invalid_theme_mode(tmp_path: Path) -> None:
     config_path = _write_config(
         tmp_path,
@@ -107,7 +101,6 @@ def test_load_beeui_config_rejects_arbitrary_css_js_html_keys(tmp_path: Path) ->
             )
 
 
-# Тест: page.id должен быть уникальным
 def test_load_beeui_config_fails_on_duplicate_page_id(tmp_path: Path) -> None:
     config_path = _write_config(
         tmp_path,
@@ -122,7 +115,6 @@ def test_load_beeui_config_fails_on_duplicate_page_id(tmp_path: Path) -> None:
         raise AssertionError("load_beeui_config must fail on duplicate page id")
 
 
-# Тест: page.path должен быть уникальным
 def test_load_beeui_config_fails_on_duplicate_page_path(tmp_path: Path) -> None:
     config_path = _write_config(
         tmp_path,
@@ -141,7 +133,6 @@ def test_load_beeui_config_fails_on_duplicate_page_path(tmp_path: Path) -> None:
         raise AssertionError("load_beeui_config must fail on duplicate page path")
 
 
-# Тест: navigation path должен ссылаться на объявленную страницу
 def test_load_beeui_config_fails_on_unknown_navigation_path(tmp_path: Path) -> None:
     config_path = _write_config(
         tmp_path,
@@ -160,7 +151,6 @@ def test_load_beeui_config_fails_on_unknown_navigation_path(tmp_path: Path) -> N
         raise AssertionError("load_beeui_config must fail on unknown navigation path")
 
 
-# Тест: external navigation path запрещён в текущем schema contract
 def test_load_beeui_config_rejects_external_navigation_path(tmp_path: Path) -> None:
     config_path = _write_config(
         tmp_path,
@@ -179,7 +169,6 @@ def test_load_beeui_config_rejects_external_navigation_path(tmp_path: Path) -> N
         raise AssertionError("load_beeui_config must reject external navigation path")
 
 
-# Тест: pages[].blocks обязателен и должен быть list
 def test_load_beeui_config_fails_on_missing_page_blocks(tmp_path: Path) -> None:
     config_path = _write_config(
         tmp_path,
@@ -200,7 +189,6 @@ def test_load_beeui_config_fails_on_missing_page_blocks(tmp_path: Path) -> None:
         )
 
 
-# Тест: корневой ключ blocks обязателен и должен быть mapping
 def test_load_beeui_config_fails_on_missing_top_level_blocks(tmp_path: Path) -> None:
     base = _base_config()
     start = base.index("blocks:\n")
@@ -217,7 +205,6 @@ def test_load_beeui_config_fails_on_missing_top_level_blocks(tmp_path: Path) -> 
         )
 
 
-# Тест: корневой ключ blocks должен быть mapping, а не list или scalar
 def test_load_beeui_config_accepts_optional_data_sources_section(
     tmp_path: Path,
 ) -> None:
@@ -262,7 +249,6 @@ def test_load_beeui_config_accepts_optional_data_sources_section(
     assert config.blocks["latest_run"].payload["value"] == "run_demo_001"
 
 
-# Тест: block source ссылается на несуществующий data source, load_beeui_config должен отклонить конфигурацию с ошибкой
 def test_load_beeui_config_rejects_unknown_block_source(tmp_path: Path) -> None:
     config_path = _write_config(
         tmp_path,
@@ -284,7 +270,6 @@ def test_load_beeui_config_rejects_unknown_block_source(tmp_path: Path) -> None:
         raise AssertionError("load_beeui_config must reject unknown block source")
 
 
-# Тест: invalid data source type должен быть отклонён с ошибкой валидации
 def test_load_beeui_config_rejects_invalid_data_source_type(tmp_path: Path) -> None:
     config_path = _write_config(
         tmp_path,
@@ -390,7 +375,6 @@ def test_load_beeui_config_rejects_external_links_in_links_card(tmp_path: Path) 
         )
 
 
-# Тест: navigation paths по-прежнему проверяются, что ссылаются на объявленные страницы
 def test_load_beeui_config_rejects_navigation_path_without_matching_page(
     tmp_path: Path,
 ) -> None:
@@ -426,7 +410,6 @@ def test_load_beeui_config_rejects_navigation_path_without_matching_page(
             )
 
 
-# Тест: pages[].route.mode принимает только явные режимы ownership
 def test_load_beeui_config_accepts_page_route_modes(tmp_path: Path) -> None:
     for mode in ("metadata", "adapter", "configured"):
         config_path = _write_config(
@@ -484,7 +467,6 @@ def test_load_beeui_config_rejects_unknown_page_route_keys(tmp_path: Path) -> No
         raise AssertionError("load_beeui_config must reject arbitrary route keys")
 
 
-# Тест: nested product-defined paths are safe internal metadata/config paths
 def test_load_beeui_config_accepts_nested_safe_page_paths(
     tmp_path: Path,
 ) -> None:
@@ -512,7 +494,6 @@ def test_load_beeui_config_accepts_nested_safe_page_paths(
         assert "/runs" in page_paths
 
 
-# Тест: nested product-defined paths разрешены как navigation paths
 def test_load_beeui_config_accepts_nested_safe_navigation_paths(
     tmp_path: Path,
 ) -> None:
@@ -551,7 +532,6 @@ def test_load_beeui_config_accepts_nested_safe_navigation_paths(
     assert "/likes/top" in nav_paths
 
 
-# Тест: is_custom_route_reserved_path — reserved exact paths
 def test_is_custom_route_reserved_exact_paths() -> None:
     reserved = [
         "/health",
@@ -566,7 +546,6 @@ def test_is_custom_route_reserved_exact_paths() -> None:
         assert is_custom_route_reserved_path(path), f"{path} must be reserved"
 
 
-# Тест: is_custom_route_reserved_path — reserved prefix paths
 def test_is_custom_route_reserved_prefix_paths() -> None:
     reserved = [
         "/api/debug",
@@ -578,7 +557,6 @@ def test_is_custom_route_reserved_prefix_paths() -> None:
         assert is_custom_route_reserved_path(path), f"{path} must be reserved"
 
 
-# Тест: is_custom_route_reserved_path — non-reserved custom paths
 def test_is_custom_route_reserved_non_reserved_paths() -> None:
     non_reserved = [
         "/rop",
@@ -600,8 +578,6 @@ def test_is_custom_route_reserved_non_reserved_paths() -> None:
         assert not is_custom_route_reserved_path(path), f"{path} must not be reserved"
 
 
-# Тест: navigation paths к системным BeeUI routes (/components, /static, /auth)
-# без matching page — ошибка "must match a declared page path"
 def test_load_beeui_config_rejects_nav_paths_to_system_routes_without_page(
     tmp_path: Path,
 ) -> None:
@@ -633,7 +609,6 @@ def test_load_beeui_config_rejects_nav_paths_to_system_routes_without_page(
             )
 
 
-# Тест: pages[].blocks[] принимает {id, enabled} page block ref
 def test_page_block_ref_id_enabled_accepted(tmp_path: Path) -> None:
     config_path = _write_config(
         tmp_path,
@@ -653,7 +628,6 @@ def test_page_block_ref_id_enabled_accepted(tmp_path: Path) -> None:
     assert dashboard.blocks[0].width == 12
 
 
-# Тест: pages[].blocks[] принимает {id} без enabled
 def test_page_block_ref_id_only_accepted(tmp_path: Path) -> None:
     config_path = _write_config(
         tmp_path,
@@ -673,7 +647,6 @@ def test_page_block_ref_id_only_accepted(tmp_path: Path) -> None:
     assert dashboard.blocks[0].width == 12
 
 
-# Тест: pages[].blocks[] отвергает неизвестные ключи в {id, enabled}
 def test_page_block_ref_extra_key_rejected(tmp_path: Path) -> None:
     config_path = _write_config(
         tmp_path,
@@ -697,7 +670,6 @@ def test_page_block_ref_extra_key_rejected(tmp_path: Path) -> None:
         )
 
 
-# Тест: pages[].blocks[] отвергает не-string id
 def test_page_block_ref_non_string_id_rejected(tmp_path: Path) -> None:
     config_path = _write_config(
         tmp_path,
@@ -718,7 +690,6 @@ def test_page_block_ref_non_string_id_rejected(tmp_path: Path) -> None:
         )
 
 
-# Тест: pages[].blocks[] отвергает не-bool enabled
 def test_page_block_ref_non_bool_enabled_rejected(tmp_path: Path) -> None:
     config_path = _write_config(
         tmp_path,
@@ -739,7 +710,6 @@ def test_page_block_ref_non_bool_enabled_rejected(tmp_path: Path) -> None:
         )
 
 
-# Тест: pages[].blocks[] принимает {id} без top-level block definition
 def test_page_block_ref_unknown_product_id_is_accepted(tmp_path: Path) -> None:
     config_path = _write_config(
         tmp_path,
@@ -759,7 +729,6 @@ def test_page_block_ref_unknown_product_id_is_accepted(tmp_path: Path) -> None:
     assert dashboard.blocks[0].width == 12
 
 
-# Тест: pages[].blocks[] отвергает небезопасный id
 def test_page_block_ref_unsafe_id_rejected(tmp_path: Path) -> None:
     config_path = _write_config(
         tmp_path,
@@ -780,7 +749,6 @@ def test_page_block_ref_unsafe_id_rejected(tmp_path: Path) -> None:
         )
 
 
-# Тест: regression — исходная ошибка pages[0].blocks[0] содержит unsupported keys: enabled, id
 def test_page_block_ref_regression_original_error(tmp_path: Path) -> None:
     config_content = _base_config().replace(
         "      - block: latest_run\n        width: 3\n",
@@ -797,7 +765,6 @@ def test_page_block_ref_regression_original_error(tmp_path: Path) -> None:
     assert dashboard.blocks[0].block_id == "latest_run"
 
 
-# Тест: существующий {block, width} placement всё ещё работает
 def test_existing_block_width_placement_still_works(tmp_path: Path) -> None:
     config_path = _write_config(
         tmp_path,
@@ -813,7 +780,6 @@ def test_existing_block_width_placement_still_works(tmp_path: Path) -> None:
     assert dashboard.blocks[0].width == 3
 
 
-# Тест: source config file content не меняется после load_beeui_config
 def test_page_block_ref_does_not_mutate_source_config(tmp_path: Path) -> None:
     config_content = _base_config().replace(
         "      - block: latest_run\n        width: 3\n",
@@ -828,7 +794,6 @@ def test_page_block_ref_does_not_mutate_source_config(tmp_path: Path) -> None:
     assert config_path.read_text(encoding="utf-8") == original_content
 
 
-# Тест: .beeui_sanitized.yml не создаётся
 def test_page_block_ref_no_sanitized_yml_created(tmp_path: Path) -> None:
     config_content = _base_config().replace(
         "      - block: latest_run\n        width: 3\n",
@@ -843,7 +808,6 @@ def test_page_block_ref_no_sanitized_yml_created(tmp_path: Path) -> None:
     assert not sanitized.exists()
 
 
-# Тест: app factory стартует с config содержащим {id, enabled} page blocks
 def test_app_factory_starts_with_id_enabled_page_block_refs(tmp_path: Path) -> None:
     from beeui_module.core.paths import settings_path
     from beeui_module.core.settings import load_settings
@@ -863,7 +827,6 @@ def test_app_factory_starts_with_id_enabled_page_block_refs(tmp_path: Path) -> N
     assert app is not None
 
 
-# Тест: BeeCap-like config с product page refs и пустым blocks: {}
 def test_page_block_ref_beecap_like_config(tmp_path: Path) -> None:
     config_content = (
         "app:\n"
@@ -921,7 +884,6 @@ def test_page_block_ref_beecap_like_config(tmp_path: Path) -> None:
     assert dashboard.blocks[1].block_id == "venue_cards"
 
 
-# Тест: span в schema placement работает
 def test_schema_accepts_span_placement(tmp_path: Path) -> None:
     content = _base_config().replace(
         "      - block: latest_run\n        width: 3\n",
@@ -934,7 +896,6 @@ def test_schema_accepts_span_placement(tmp_path: Path) -> None:
     assert dashboard.blocks[0].width == 12
 
 
-# Тест: size в schema placement работает
 def test_schema_accepts_size_placement(tmp_path: Path) -> None:
     content = _base_config().replace(
         "      - block: latest_run\n        width: 3\n",
@@ -946,7 +907,6 @@ def test_schema_accepts_size_placement(tmp_path: Path) -> None:
     assert dashboard.blocks[0].size == "L"
 
 
-# Тест: size case-insensitive в schema
 def test_schema_accepts_size_lowercase(tmp_path: Path) -> None:
     content = _base_config().replace(
         "      - block: latest_run\n        width: 3\n",
@@ -958,7 +918,6 @@ def test_schema_accepts_size_lowercase(tmp_path: Path) -> None:
     assert dashboard.blocks[0].size == "XL"
 
 
-# Тест: конфликтующие sizing keys в schema placement fail fast
 def test_schema_rejects_conflicting_sizing_keys(tmp_path: Path) -> None:
     content = _base_config().replace(
         "      - block: latest_run\n        width: 3\n",
@@ -973,7 +932,6 @@ def test_schema_rejects_conflicting_sizing_keys(tmp_path: Path) -> None:
         raise AssertionError("load_beeui_config must reject conflicting sizing keys")
 
 
-# Тест: невалидный span в schema placement fail fast
 def test_schema_rejects_invalid_span(tmp_path: Path) -> None:
     content = _base_config().replace(
         "      - block: latest_run\n        width: 3\n",
@@ -988,7 +946,6 @@ def test_schema_rejects_invalid_span(tmp_path: Path) -> None:
         raise AssertionError("load_beeui_config must reject invalid span")
 
 
-# Тест: невалидный size в schema placement fail fast
 def test_schema_rejects_invalid_size(tmp_path: Path) -> None:
     content = _base_config().replace(
         "      - block: latest_run\n        width: 3\n",
@@ -1003,14 +960,12 @@ def test_schema_rejects_invalid_size(tmp_path: Path) -> None:
         raise AssertionError("load_beeui_config must reject invalid size")
 
 
-# Тест: locale default en без config
 def test_schema_locale_default() -> None:
     config = load_beeui_config(Path("config/schema.yml"))
     assert config.locale.default == "en"
     assert "ru" in config.locale.available
 
 
-# Тест: locale config работает
 def test_schema_locale_custom(tmp_path: Path) -> None:
     content = (
         "app:\n"
@@ -1059,7 +1014,6 @@ def test_schema_locale_custom(tmp_path: Path) -> None:
     assert config.locale.available == ("ru", "en")
 
 
-# Тест: locale default вне available fail fast
 def test_schema_locale_default_not_in_available(tmp_path: Path) -> None:
     content = (
         "app:\n"
@@ -1112,7 +1066,6 @@ def test_schema_locale_default_not_in_available(tmp_path: Path) -> None:
         )
 
 
-# Тест: components.tabs.variant принимает valid value
 def _minimal_schema() -> str:
     return (
         "app:\n"
@@ -1153,7 +1106,6 @@ def _minimal_schema() -> str:
     )
 
 
-# Тест: components.tabs.variant принимает valid value
 def test_components_tabs_variant_valid(tmp_path: Path) -> None:
     content = _minimal_schema().replace(
         "data_sources: {}\n",
@@ -1164,7 +1116,6 @@ def test_components_tabs_variant_valid(tmp_path: Path) -> None:
     assert cfg.components.tabs.variant == "fill"
 
 
-# Тест: components.tabs.variant принимает numeric alias и нормализуется
 def test_components_tabs_variant_numeric_alias_normalizes(tmp_path: Path) -> None:
     content = _minimal_schema().replace(
         "data_sources: {}\n",
@@ -1175,7 +1126,6 @@ def test_components_tabs_variant_numeric_alias_normalizes(tmp_path: Path) -> Non
     assert cfg.components.tabs.variant == "dropdown"
 
 
-# Тест: components.tabs.variant с невалидным значением отклоняется с ошибкой
 def test_components_tabs_variant_invalid_fails_fast(tmp_path: Path) -> None:
     content = _minimal_schema().replace(
         "data_sources: {}\n",
@@ -1190,7 +1140,6 @@ def test_components_tabs_variant_invalid_fails_fast(tmp_path: Path) -> None:
         raise AssertionError("load_beeui_config must reject invalid tabs variant")
 
 
-# Тест: components.tabs.variant с невалидным numeric alias отклоняется с ошибкой
 def test_components_tabs_variant_invalid_numeric_fails_fast(tmp_path: Path) -> None:
     content = _minimal_schema().replace(
         "data_sources: {}\n",
@@ -1207,7 +1156,6 @@ def test_components_tabs_variant_invalid_numeric_fails_fast(tmp_path: Path) -> N
         )
 
 
-# Тест: components.accordion.variant принимает valid value
 def test_components_accordion_variant_valid(tmp_path: Path) -> None:
     content = _minimal_schema().replace(
         "data_sources: {}\n",
@@ -1218,7 +1166,6 @@ def test_components_accordion_variant_valid(tmp_path: Path) -> None:
     assert cfg.components.accordion.variant == "flush"
 
 
-# Тест: components.accordion.variant принимает numeric alias и нормализуется
 def test_components_accordion_variant_numeric_alias_normalizes(tmp_path: Path) -> None:
     content = _minimal_schema().replace(
         "data_sources: {}\n",
@@ -1229,7 +1176,6 @@ def test_components_accordion_variant_numeric_alias_normalizes(tmp_path: Path) -
     assert cfg.components.accordion.variant == "flush"
 
 
-# Тест: components.accordion.variant с невалидным значением отклоняется с ошибкой
 def test_components_accordion_variant_invalid_fails_fast(tmp_path: Path) -> None:
     content = _minimal_schema().replace(
         "data_sources: {}\n",
@@ -1244,7 +1190,6 @@ def test_components_accordion_variant_invalid_fails_fast(tmp_path: Path) -> None
         raise AssertionError("load_beeui_config must reject invalid accordion variant")
 
 
-# Тест: components.accordion.variant с невалидным numeric alias отклоняется с ошибкой
 def test_components_accordion_variant_invalid_numeric_fails_fast(
     tmp_path: Path,
 ) -> None:
@@ -1263,14 +1208,12 @@ def test_components_accordion_variant_invalid_numeric_fails_fast(
         )
 
 
-# Тест: components без указания variant использует дефолтные значения
 def test_components_missing_uses_defaults(tmp_path: Path) -> None:
     cfg = load_beeui_config(_write_config(tmp_path, _minimal_schema()))
     assert cfg.components.tabs.variant == "default"
     assert cfg.components.accordion.variant == "default"
 
 
-# Тест: page.tabs с valid config загружается корректно
 def _schema_with_page_tabs(page_tabs_yaml: str) -> str:
     return (
         "app:\n"
@@ -1312,7 +1255,6 @@ def _schema_with_page_tabs(page_tabs_yaml: str) -> str:
     )
 
 
-# Тест: page.tabs с valid config загружается корректно
 def test_page_tabs_valid_config(tmp_path: Path) -> None:
     content = _schema_with_page_tabs(
         "  - id: rop\n"
@@ -1341,7 +1283,6 @@ def test_page_tabs_valid_config(tmp_path: Path) -> None:
     assert rop_page.tabs.items[1].href == "/rop?tab=queue"
 
 
-# Тест: page.tabs.variant принимает numeric alias и нормализуется
 def test_page_tabs_numeric_variant_alias_normalizes(tmp_path: Path) -> None:
     content = _schema_with_page_tabs(
         "  - id: rop\n"
@@ -1361,7 +1302,6 @@ def test_page_tabs_numeric_variant_alias_normalizes(tmp_path: Path) -> None:
     assert cfg.pages[1].tabs.variant == "fill"
 
 
-# Тест: page.tabs с duplicate tab ids fail fast
 def test_page_tabs_duplicate_ids_fail_fast(tmp_path: Path) -> None:
     content = _schema_with_page_tabs(
         "  - id: rop\n"
@@ -1386,7 +1326,6 @@ def test_page_tabs_duplicate_ids_fail_fast(tmp_path: Path) -> None:
         raise AssertionError("load_beeui_config must reject duplicate tab ids")
 
 
-# Тест: page.tabs.variant с невалидным numeric alias отклоняется с ошибкой
 def test_page_tabs_invalid_numeric_variant_fails_fast(tmp_path: Path) -> None:
     content = _schema_with_page_tabs(
         "  - id: rop\n"
@@ -1411,7 +1350,6 @@ def test_page_tabs_invalid_numeric_variant_fails_fast(tmp_path: Path) -> None:
         )
 
 
-# Тест: page.tabs с небезопасным href отклоняется с ошибкой
 def test_page_tabs_unsafe_href_rejected(tmp_path: Path) -> None:
     for unsafe_href in (
         "http://evil.com",
@@ -1444,3 +1382,124 @@ def test_page_tabs_unsafe_href_rejected(tmp_path: Path) -> None:
             raise AssertionError(
                 f"load_beeui_config must reject unsafe href: {unsafe_href}"
             )
+
+
+def _localized_schema_base(app_title_yaml: str, logo_text_yaml: str) -> str:
+    return (
+        "app:\n"
+        f"  title: {app_title_yaml}\n"
+        "  product: test\n"
+        f"  logo_text: {logo_text_yaml}\n"
+        "  locale:\n"
+        "    default: en\n"
+        "    available:\n"
+        "      - en\n"
+        "      - ru\n"
+        "  theme:\n"
+        "    mode: dark\n"
+        "    primary: blue\n"
+        "    base: gray\n"
+        "    font: sans-serif\n"
+        "    radius: 1\n"
+        "    density: default\n"
+        "  layout:\n"
+        "    type: vertical\n"
+        "    container: xl\n"
+        "    sidebar:\n"
+        "      variant: dark\n"
+        "      collapsed: false\n"
+        "    navbar:\n"
+        "      enabled: false\n"
+        "      variant: default\n"
+        "      sticky: false\n"
+        "\n"
+        "navigation:\n"
+        "  - title: Nav\n"
+        "    path: /\n"
+        "    icon: dashboard\n"
+        "\n"
+        "data_sources: {}\n"
+        "blocks: {}\n"
+        "pages:\n"
+        "  - id: dashboard\n"
+        "    path: /\n"
+        "    title: Dashboard\n"
+        "    subtitle: Demo\n"
+        "    blocks: []\n"
+    )
+
+
+def test_localized_app_title_valid(tmp_path: Path) -> None:
+    content = _localized_schema_base("{en: BeeUI, ru: БИУ}", "BeeUI")
+    cfg = load_beeui_config(_write_config(tmp_path, content))
+    assert cfg.app_title == {"en": "BeeUI", "ru": "БИУ"}
+    assert cfg.logo_text == "BeeUI"
+
+
+def test_localized_app_title_unknown_locale_key_fails(tmp_path: Path) -> None:
+    content = _localized_schema_base("{en: BeeUI, fr: BeeUI}", "BeeUI")
+    try:
+        load_beeui_config(_write_config(tmp_path, content))
+    except ValueError as exc:
+        assert "unknown locale key" in str(exc)
+    else:
+        raise AssertionError("load_beeui_config must reject unknown locale key")
+
+
+def test_localized_app_title_missing_default_fails(tmp_path: Path) -> None:
+    content = _localized_schema_base("{ru: БИУ}", "BeeUI")
+    try:
+        load_beeui_config(_write_config(tmp_path, content))
+    except ValueError as exc:
+        assert "must contain default locale key" in str(exc)
+    else:
+        raise AssertionError("load_beeui_config must reject missing default locale")
+
+
+def test_localized_app_title_empty_mapping_fails(tmp_path: Path) -> None:
+    content = _localized_schema_base("{}", "BeeUI")
+    try:
+        load_beeui_config(_write_config(tmp_path, content))
+    except ValueError as exc:
+        assert "must not be empty" in str(exc)
+    else:
+        raise AssertionError("load_beeui_config must reject empty mapping")
+
+
+def test_localized_app_title_non_string_value_fails(tmp_path: Path) -> None:
+    content = _localized_schema_base("{en: 42, ru: БИУ}", "BeeUI")
+    try:
+        load_beeui_config(_write_config(tmp_path, content))
+    except ValueError as exc:
+        assert "non-empty string" in str(exc)
+    else:
+        raise AssertionError("load_beeui_config must reject non-string value")
+
+
+def test_localized_page_title_valid(tmp_path: Path) -> None:
+    content = _localized_schema_base("BeeUI", "BeeUI").replace(
+        "    title: Dashboard\n",
+        "    title:\n      en: Dashboard\n      ru: Дашборд\n",
+        1,
+    )
+    cfg = load_beeui_config(_write_config(tmp_path, content))
+    assert cfg.pages[0].title == {"en": "Dashboard", "ru": "Дашборд"}
+
+
+def test_localized_nav_title_valid(tmp_path: Path) -> None:
+    content = _localized_schema_base("BeeUI", "BeeUI").replace(
+        "  - title: Nav\n",
+        "  - title:\n      en: Nav\n      ru: Нав\n",
+        1,
+    )
+    cfg = load_beeui_config(_write_config(tmp_path, content))
+    assert cfg.navigation[0].title == {"en": "Nav", "ru": "Нав"}
+
+
+def test_existing_plain_string_config_still_works(tmp_path: Path) -> None:
+    content = _localized_schema_base("BeeUI", "BeeUI")
+    cfg = load_beeui_config(_write_config(tmp_path, content))
+    assert cfg.app_title == "BeeUI"
+    assert cfg.logo_text == "BeeUI"
+    assert cfg.pages[0].title == "Dashboard"
+    assert cfg.navigation[0].title == "Nav"

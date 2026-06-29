@@ -4,7 +4,6 @@ import sys
 from pathlib import Path
 
 
-# Настройка окружения и запуска CLI
 def _add_src_to_path() -> None:
     project_root = Path(__file__).resolve().parents[1]
     src_path = project_root / "src"
@@ -17,7 +16,6 @@ _add_src_to_path()
 from beeui_module.cli.main import main as cli_main
 
 
-# Главная точка входа для запуска CLI
 def main(argv: list[str] | None = None) -> int:
     return cli_main(argv)
 

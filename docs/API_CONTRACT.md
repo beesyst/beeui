@@ -64,7 +64,8 @@ Artifact API routes сохраняют существующий contract Iterati
 
 - Product console API routes существуют только при передаче adapter во время
   создания приложения.
-- Все маршруты используют только GET и содержат `read_only: true`.
+- Product console read API routes используют GET и содержат `read_only: true`.
+- Protected config/action transport routes используют POST и описаны отдельно в разделе Auth/error envelopes.
 - `run_id` и `venue_id` валидируются до вызова adapter.
 - Исключения adapter нормализуются, внутренние детали исключений не раскрываются.
 - Adapter payload считается недоверенным входом.
