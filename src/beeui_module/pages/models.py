@@ -5,6 +5,8 @@ from dataclasses import dataclass, field
 from beeui_module.blocks.models import BlockDefinition, BlockPlacement
 from beeui_module.data.models import DataSourceDefinition
 
+LocalizedText = str | dict[str, str]
+
 
 # Локаль: default locale и список доступных локалей
 @dataclass(frozen=True)
@@ -120,7 +122,7 @@ class ComponentConfig:
 @dataclass(frozen=True)
 class PageTabsItem:
     tab_id: str
-    title: str
+    title: LocalizedText
     href: str
     disabled: bool = False
 
@@ -142,7 +144,7 @@ class PageRouteConfig:
 # Элемент навигации: либо ссылка на страницу, либо группа children
 @dataclass(frozen=True)
 class BeeUiNavigationItem:
-    title: str
+    title: LocalizedText
     path: str | None = None
     icon: str | None = None
     disabled: bool = False
@@ -154,8 +156,8 @@ class BeeUiNavigationItem:
 class BeeUiPage:
     page_id: str
     path: str
-    title: str
-    subtitle: str | None
+    title: LocalizedText
+    subtitle: LocalizedText | None
     blocks: list[BlockPlacement]
     tabs: PageTabsConfig | None = None
     route: PageRouteConfig = field(default_factory=PageRouteConfig)
@@ -164,9 +166,9 @@ class BeeUiPage:
 # Полная read-only конфигурация BeeUI, собранная из schema.yml
 @dataclass(frozen=True)
 class BeeUiConfig:
-    app_title: str
+    app_title: LocalizedText
     product: str
-    logo_text: str
+    logo_text: LocalizedText
     locale: LocaleConfig
     theme: ThemeConfig
     layout: LayoutConfig

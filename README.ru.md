@@ -2,6 +2,34 @@
 
 **BeeUI** — общий UI-фреймворк на Python для Bee-продуктов: `beecap`, `beeagent` и будущих модулей экосистемы Bee.
 
+## Iteration 13.7 — Locale-aware shell labels, language switcher and query-preserving navigation
+
+Текущий результат — locale-aware shell labels, простой language switcher и
+query-preserving navigation для BeeUI shell.
+
+В Iteration 13.7 добавлены:
+
+- localized shell labels для:
+  - `app.title`;
+  - `app.logo_text`;
+  - `navigation[].title`;
+  - `navigation[].children[].title`;
+  - `pages[].title`;
+  - `pages[].subtitle`;
+  - `pages[].tabs.items[].title`;
+- plain string labels остаются backward-compatible;
+- localized mapping `{en: "...", ru: "..."}` поддерживается;
+- mapping keys валидируются через `app.locale.available`;
+- mapping обязан содержать `app.locale.default`;
+- `?lang=` работает только через allowlist;
+- invalid `?lang=bad` falls back to default;
+- language switcher рендерится в page header, если доступно больше одной locale;
+- switcher работает без JS, cookies, session и localStorage;
+- page tab links сохраняют `lang`, `period`, `run_id`;
+- sidebar / navigation / catalog / product console сохраняют `lang`, где это practically applicable;
+- route prefix и embedded mount поддерживаются;
+- BeeUI не переводит product-specific semantics.
+
 ## Iteration 13.6 — Safe charts and advanced Tabler data tables for product dashboards
 
 Текущий результат — безопасные adapter-backed charts и расширенные Tabler-compatible data tables для product dashboards.
@@ -349,7 +377,7 @@ BeeUI сейчас поддерживает два разных block contract.
 
 Используются в product console mode, когда product adapter возвращает optional поле `layout`.
 
-Поддерживаемые adapter-backed `layout[]` типы после Iteration 13.6:
+Поддерживаемые adapter-backed `layout[]` типы после Iteration 13.7:
 
 - `hero_snapshot`;
 - `metric_card`;
@@ -380,7 +408,7 @@ BeeUI сейчас поддерживает два разных block contract.
 - malformed sizing деградирует в `col-12`, не ломая страницу;
 - BeeUI не вычисляет product metrics, а только рендерит product-provided layout.
 
-Текущая web surface после Iteration 13.6:
+Текущая web surface после Iteration 13.7:
 
 - `GET /`
 - `GET /runs`
@@ -571,7 +599,7 @@ MVP не пытается сразу стать полноценным Retool/We
 
 ## Что BeeUI делает
 
-В текущем состоянии после Iteration 13.6 BeeUI отвечает за:
+В текущем состоянии после Iteration 13.7 BeeUI отвечает за:
 
 - FastAPI app factory;
 - Jinja2 templates;
@@ -928,7 +956,7 @@ BeeUI не должен получать прямую authority на tools/MCP/r
 
 Продукт импортирует BeeUI и монтирует его в своём web process.
 
-Текущий статус после Iteration 13.6:
+Текущий статус после Iteration 13.7:
 
 - generic adapter contract существует;
 - BeeCap fixture/reference adapter существует для contract validation;
@@ -945,6 +973,11 @@ BeeUI не должен получать прямую authority на tools/MCP/r
 - `app.locale.default` / `app.locale.available` поддерживаются в schema;
 - `?lang=` применяет locale только если значение входит в allowlist;
 - resolved `locale` пробрасывается в HTML templates и в `<html lang="{{ locale|default('en') }}">`;
+- shell labels поддерживают plain string и localized mapping `{en: "...", ru: "..."}`;
+- language switcher рендерится в page header при `len(app.locale.available) > 1`;
+- language switcher не использует JS, cookies, session или localStorage;
+- page tab links сохраняют `lang`, `period`, `run_id`;
+- sidebar / navigation / catalog / product console сохраняют `lang`, где это practically applicable;
 - configurable component defaults через `components.tabs.variant` и `components.accordion.variant`;
 - page-level URL tabs через `pages[].tabs`;
 - safe internal tab href validation, disabled tab fallback и route-prefix-aware tab href rendering;
@@ -1226,7 +1259,7 @@ Iteration 12.1 добавляет optional presentation contract:
 - product adapter остаётся владельцем product semantics;
 - при отсутствии `layout[]` используется generic fallback renderer.
 
-Текущий contract v0 после Iteration 13.6:
+Текущий contract v0 после Iteration 13.7:
 
 ```python
 from typing import Mapping
@@ -1273,7 +1306,7 @@ class ProductUiAdapter:
 
 `get_page()` optional: default `ProductUiAdapterBase.get_page()` возвращает unavailable, существующие adapters не обязаны реализовывать метод, product adapter владеет domain semantics страницы, а BeeUI только рендерит returned `layout[]`.
 
-После Iteration 13.6 BeeUI вызывает adapter через embedded mount/app factory layer
+После Iteration 13.7 BeeUI вызывает adapter через embedded mount/app factory layer
 для product console, страниц с `route.mode: adapter` и artifact browser routes.
 
 Product adapter решает, что можно читать/делать.
@@ -1583,7 +1616,7 @@ uv run --frozen --extra dev python config/start.py web
 
 ## Целевая структура проекта
 
-Актуальные ключевые файлы после Iteration 13.6:
+Актуальные ключевые файлы после Iteration 13.7:
 
 ```text
 config/
@@ -1601,6 +1634,8 @@ examples/
 tests/
   fixtures/
     beecap/
+  test_links.py
+  test_locale.py
 
 src/beeui_module/
   blocks/
@@ -1641,6 +1676,8 @@ src/beeui_module/
     envelopes.py
   pages/
     config.py
+    links.py
+    locale.py
     models.py
     product_console.py
     router.py
@@ -2107,6 +2144,7 @@ Iteration 13.2 — Generic adapter pages and configurable Tabler primitives
 Iteration 13.3 — Tabler attached page tabs and generic accordion visual parity hardening
 Iteration 13.4 — Generic layout groups, KPI grid columns, and page spacing normalization
 Iteration 13.5 — Product console route metadata and navigation compatibility
+Iteration 13.7 — Locale-aware shell labels, language switcher and query-preserving navigation
 Iteration 13.6 — Safe charts and advanced Tabler data tables for product dashboards
 BeeCap UI-25 — BeeUI Console parity MVP
 BeeCap UI-26 — BeeUI default route switch with legacy fallback
@@ -2274,6 +2312,7 @@ Visual builder later.
 Текущий статус:
 
 ```text
+Iteration 13.7 — Locale-aware shell labels, language switcher and query-preserving navigation — ЗАВЕРШЕНО
 Iteration 13 — Auth/session/CSRF boundary for config/action routes MVP — ЗАВЕРШЕНО
 Iteration 13.1 — Dashboard layout primitives, URL tabs and locale seed — ЗАВЕРШЕНО
 Iteration 13.2 — Generic adapter pages and configurable Tabler primitives — ЗАВЕРШЕНО

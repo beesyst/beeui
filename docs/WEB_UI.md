@@ -10,8 +10,14 @@
 - `beeagent`;
 - будущие Bee-продукты.
 
-Текущая реализованная основа после Iteration 13.6 включает:
+Текущая реализованная основа после Iteration 13.7 включает:
 
+- locale-aware shell labels: `app.title`, `app.logo_text`, `navigation[].title`, `navigation[].children[].title`, `pages[].title`, `pages[].subtitle`, `pages[].tabs.items[].title` поддерживают как plain string, так и mapping `{en: ..., ru: ...}`;
+- разрешение локали через `?lang=XX` с fallback к `app.locale.default` при невалидном значении;
+- query-param based language switcher (`RU / EN`) в page header, без JS/cookies/session/localStorage;
+- сохранение `lang`, `period`, `run_id` в tab hrefs;
+- сохранение `lang` в sidebar/navigation hrefs (когда locale не default);
+- product-neutral helpers: `resolve_localized_text()`, `validate_localized_text()`, `preserve_allowed_params()`, `add_preserved_params_to_href()`;
 - безопасный локальный рендеринг графиков через package-local ApexCharts asset (`chart` block type, виды: `line`, `bar`, `area`, `donut`);
 - продвинутую Tabler-совместимую таблицу (`data_table` block type) с mobile, selectable, striped, toolbar, pagination и типами ячеек: text, muted, link, badge, status, avatar_text, progress, actions;
 - безопасная сериализация chart config без произвольных ApexCharts options;
@@ -87,6 +93,29 @@
   - resolved `locale` пробрасывается в Jinja templates/context;
   - `<html lang="{{ locale|default('en') }}">`;
   - BeeUI не переводит product-specific строки.
+- locale-aware shell labels (Iteration 13.7):
+  - `app.title`, `app.logo_text`, `navigation[].title`, `navigation[].children[].title`, `pages[].title`, `pages[].subtitle`, `pages[].tabs.items[].title` поддерживают как plain string, так и mapping вида `{en: "...", ru: "..."}`;
+  - mapping ключи проверяются по `app.locale.available`;
+  - mapping обязан содержать `app.locale.default`;
+  - неизвестные ключи локали fail fast;
+  - не-string значения fail fast;
+  - selected locale резолвится через `?lang=` (только allowlist);
+  - `?lang=bad` падает на default locale;
+  - helper `resolve_localized_text()`: plain string → сама строка; mapping → selected locale или default locale;
+  - helper `validate_localized_text()`: валидация mapping на этапе загрузки config.
+- query-preserving navigation (Iteration 13.7):
+  - tab hrefs сохраняют `lang`, `period`, `run_id` из текущего запроса;
+  - sidebar/navigation hrefs сохраняют `lang`, когда locale не default;
+  - allowlist-based helper `preserve_allowed_params()` и `add_preserved_params_to_href()`;
+  - preserved allowlisted params добавляются к href; при конфликте active preserved value заменяет existing value, чтобы не дублировать и не сохранять устаревший `lang`.
+- language switcher (Iteration 13.7):
+  - рендерится в page header (`beeui-language-switcher`);
+  - видим только при `len(app.locale.available) > 1`;
+  - метки: `RU`, `EN` и т.д. (uppercase locale codes);
+  - активная локаль выделена (`beeui-lang-active`);
+  - ссылка переключателя сохраняет path и allowlisted query params (`lang`, `period`, `run_id`), заменяя `lang`;
+  - без JS, cookies, session, localStorage;
+  - корректно работает под route prefix и embedded mount.
 - generic dashboard fallback cleanup (Iteration 13.1):
   - raw/debug technical payload in BeeUI accordion «Technical details»;
   - primary UX shows summary cards/KPIs/structured fields first.

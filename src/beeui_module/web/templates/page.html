@@ -1,6 +1,6 @@
 {% extends "base.html" %} {% from
 "components/primitives/catalog_primitives.html" import url_tabs %} {% block
-title %}{{ page.title }} · {{ app_title }}{% endblock %} {% block content %}
+title %}{{ page_title }} · {{ app_title }}{% endblock %} {% block content %}
 {% include "components/page_header.html" %}
 
 <div class="page-body">
@@ -35,7 +35,7 @@ title %}{{ page.title }} · {{ app_title }}{% endblock %} {% block content %}
           </div>
           {% elif error %}
           <div class="alert alert-warning" role="alert">
-            <h4 class="alert-title">{{ page.title }}</h4>
+            <h4 class="alert-title">{{ page_title }}</h4>
             <div class="text-secondary">{{ error }}</div>
           </div>
           {% else %} {% include "components/empty_state.html" %} {% endif %}
@@ -62,7 +62,7 @@ title %}{{ page.title }} · {{ app_title }}{% endblock %} {% block content %}
       </div>
       {% elif error %}
       <div class="alert alert-warning" role="alert">
-        <h4 class="alert-title">{{ page.title }}</h4>
+        <h4 class="alert-title">{{ page_title }}</h4>
         <div class="text-secondary">{{ error }}</div>
       </div>
       {% else %} {% include "components/empty_state.html" %} {% endif %}

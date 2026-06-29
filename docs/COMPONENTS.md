@@ -26,6 +26,10 @@ Product decides.
 
 Все маршруты обслуживаются под настроенным `web.route_prefix`.
 
+После Iteration 13.7 component catalog использует тот же shell locale context,
+что и остальные BeeUI страницы. Catalog links сохраняют `lang`, где это
+practically applicable. Catalog остаётся read-only и product-neutral.
+
 ## Добавления Iteration 13.6
 
 ### Chart (`type: chart`)
@@ -161,8 +165,6 @@ Advanced Tabler-compatible data table for adapter-backed `layout[]`. Backward-co
   "width": 12
 }
 ```
-
-## Рекомендации по переиспользованию
 
 ## Добавления Iteration 13.4
 

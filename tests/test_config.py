@@ -56,7 +56,7 @@ def test_load_beeui_config_fails_on_missing_app_title(tmp_path: Path) -> None:
     try:
         load_beeui_config(config_path)
     except ValueError as exc:
-        assert str(exc) == "app.title must be a non-empty string"
+        assert "app.title must be a string or a mapping" in str(exc)
     else:
         raise AssertionError("load_beeui_config must fail on missing app.title")
 
@@ -1444,3 +1444,127 @@ def test_page_tabs_unsafe_href_rejected(tmp_path: Path) -> None:
             raise AssertionError(
                 f"load_beeui_config must reject unsafe href: {unsafe_href}"
             )
+
+
+# --- Locale-aware config label tests ---
+
+
+def _localized_schema_base(app_title_yaml: str, logo_text_yaml: str) -> str:
+    return (
+        "app:\n"
+        f"  title: {app_title_yaml}\n"
+        "  product: test\n"
+        f"  logo_text: {logo_text_yaml}\n"
+        "  locale:\n"
+        "    default: en\n"
+        "    available:\n"
+        "      - en\n"
+        "      - ru\n"
+        "  theme:\n"
+        "    mode: dark\n"
+        "    primary: blue\n"
+        "    base: gray\n"
+        "    font: sans-serif\n"
+        "    radius: 1\n"
+        "    density: default\n"
+        "  layout:\n"
+        "    type: vertical\n"
+        "    container: xl\n"
+        "    sidebar:\n"
+        "      variant: dark\n"
+        "      collapsed: false\n"
+        "    navbar:\n"
+        "      enabled: false\n"
+        "      variant: default\n"
+        "      sticky: false\n"
+        "\n"
+        "navigation:\n"
+        "  - title: Nav\n"
+        "    path: /\n"
+        "    icon: dashboard\n"
+        "\n"
+        "data_sources: {}\n"
+        "blocks: {}\n"
+        "pages:\n"
+        "  - id: dashboard\n"
+        "    path: /\n"
+        "    title: Dashboard\n"
+        "    subtitle: Demo\n"
+        "    blocks: []\n"
+    )
+
+
+def test_localized_app_title_valid(tmp_path: Path) -> None:
+    content = _localized_schema_base("{en: BeeUI, ru: БИУ}", "BeeUI")
+    cfg = load_beeui_config(_write_config(tmp_path, content))
+    assert cfg.app_title == {"en": "BeeUI", "ru": "БИУ"}
+    assert cfg.logo_text == "BeeUI"
+
+
+def test_localized_app_title_unknown_locale_key_fails(tmp_path: Path) -> None:
+    content = _localized_schema_base("{en: BeeUI, fr: BeeUI}", "BeeUI")
+    try:
+        load_beeui_config(_write_config(tmp_path, content))
+    except ValueError as exc:
+        assert "unknown locale key" in str(exc)
+    else:
+        raise AssertionError("load_beeui_config must reject unknown locale key")
+
+
+def test_localized_app_title_missing_default_fails(tmp_path: Path) -> None:
+    content = _localized_schema_base("{ru: БИУ}", "BeeUI")
+    try:
+        load_beeui_config(_write_config(tmp_path, content))
+    except ValueError as exc:
+        assert "must contain default locale key" in str(exc)
+    else:
+        raise AssertionError("load_beeui_config must reject missing default locale")
+
+
+def test_localized_app_title_empty_mapping_fails(tmp_path: Path) -> None:
+    content = _localized_schema_base("{}", "BeeUI")
+    try:
+        load_beeui_config(_write_config(tmp_path, content))
+    except ValueError as exc:
+        assert "must not be empty" in str(exc)
+    else:
+        raise AssertionError("load_beeui_config must reject empty mapping")
+
+
+def test_localized_app_title_non_string_value_fails(tmp_path: Path) -> None:
+    content = _localized_schema_base("{en: 42, ru: БИУ}", "BeeUI")
+    try:
+        load_beeui_config(_write_config(tmp_path, content))
+    except ValueError as exc:
+        assert "non-empty string" in str(exc)
+    else:
+        raise AssertionError("load_beeui_config must reject non-string value")
+
+
+def test_localized_page_title_valid(tmp_path: Path) -> None:
+    content = _localized_schema_base("BeeUI", "BeeUI").replace(
+        "    title: Dashboard\n",
+        "    title:\n      en: Dashboard\n      ru: Дашборд\n",
+        1,
+    )
+    cfg = load_beeui_config(_write_config(tmp_path, content))
+    assert cfg.pages[0].title == {"en": "Dashboard", "ru": "Дашборд"}
+
+
+def test_localized_nav_title_valid(tmp_path: Path) -> None:
+    content = _localized_schema_base("BeeUI", "BeeUI").replace(
+        "  - title: Nav\n",
+        "  - title:\n      en: Nav\n      ru: Нав\n",
+        1,
+    )
+    cfg = load_beeui_config(_write_config(tmp_path, content))
+    assert cfg.navigation[0].title == {"en": "Nav", "ru": "Нав"}
+
+
+def test_existing_plain_string_config_still_works(tmp_path: Path) -> None:
+    content = _localized_schema_base("BeeUI", "BeeUI")
+    cfg = load_beeui_config(_write_config(tmp_path, content))
+    assert cfg.app_title == "BeeUI"
+    assert cfg.logo_text == "BeeUI"
+    assert cfg.pages[0].title == "Dashboard"
+    assert cfg.navigation[0].title == "Nav"

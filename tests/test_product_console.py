@@ -1426,3 +1426,37 @@ def test_no_product_imports_in_affected_source() -> None:
         content = (source_root / name).read_text(encoding="utf-8")
         for product_module in ("beecap_module", "beeagent_module"):
             assert product_module not in content, f"{name} contains {product_module}"
+
+
+def test_adapter_dashboard_navigation_follows_locale() -> None:
+    from beeui_module.pages.config import load_beeui_config
+    from beeui_module.pages.models import LocaleConfig
+
+    adapter = FakeProductConsoleAdapter()
+    settings = load_settings(settings_path())
+    settings["product"]["title"] = "Fake"
+    ui_config = load_beeui_config(settings_path().parent / "schema.yml")
+
+    from dataclasses import replace
+
+    ui_config = replace(
+        ui_config,
+        locale=LocaleConfig(default="en", available=("en", "ru")),
+        navigation=[
+            replace(n, title={"en": "Dashboard", "ru": "Дашборд"})
+            for n in ui_config.navigation
+        ],
+    )
+
+    app = create_beeui_app(settings=settings, ui_config=ui_config, adapter=adapter)
+    client = TestClient(app)
+
+    ru = client.get("/?lang=ru")
+    assert ru.status_code == 200
+    assert "Дашборд" in ru.text
+    assert "lang=ru" in ru.text
+
+    en = client.get("/")
+    assert en.status_code == 200
+    assert "Dashboard" in en.text
+    assert "?lang=" not in en.text  # no lang param in nav links when default locale

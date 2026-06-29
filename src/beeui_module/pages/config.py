@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 from urllib.parse import unquote, urlsplit
 
 import yaml
@@ -16,6 +16,9 @@ from beeui_module.data.models import (
     ALLOWED_STATIC_SOURCE_FORMATS,
     SUPPORTED_DATA_SOURCE_TYPES,
     DataSourceDefinition,
+)
+from beeui_module.pages.locale import (
+    validate_localized_text,
 )
 from beeui_module.pages.models import (
     ACCORDION_VARIANTS,
@@ -106,10 +109,6 @@ def load_beeui_config(config_path: Path) -> BeeUiConfig:
         "app",
     )
 
-    app_title = _required_non_empty_string(app_cfg, "title", "app")
-    product = _required_non_empty_string(app_cfg, "product", "app")
-    logo_text = _required_non_empty_string(app_cfg, "logo_text", "app")
-
     locale_cfg = app_cfg.get("locale")
     if locale_cfg is not None:
         if not isinstance(locale_cfg, dict):
@@ -137,6 +136,14 @@ def load_beeui_config(config_path: Path) -> BeeUiConfig:
         locale = LocaleConfig(default=locale_default, available=tuple(available))
     else:
         locale = LocaleConfig()
+
+    app_title = _required_localized_text(
+        app_cfg, "title", "app", locale.available, locale.default
+    )
+    product = _required_non_empty_string(app_cfg, "product", "app")
+    logo_text = _required_localized_text(
+        app_cfg, "logo_text", "app", locale.available, locale.default
+    )
 
     theme_cfg = app_cfg.get("theme")
     if not isinstance(theme_cfg, dict):
@@ -236,6 +243,8 @@ def load_beeui_config(config_path: Path) -> BeeUiConfig:
                 prefix=f"navigation[{index}]",
                 seen_nav_paths=seen_nav_paths,
                 seen_page_paths=set(),
+                available_locales=locale.available,
+                default_locale=locale.default,
             )
         )
 
@@ -272,13 +281,22 @@ def load_beeui_config(config_path: Path) -> BeeUiConfig:
             raise ValueError(f"Duplicate page path: {page_path}")
         seen_page_paths.add(page_path)
 
-        page_title = _required_non_empty_string(item, "title", f"pages[{index}]")
+        page_title = _required_localized_text(
+            item,
+            "title",
+            f"pages[{index}]",
+            locale.available,
+            locale.default,
+        )
 
         subtitle = item.get("subtitle")
-        if subtitle is not None and (
-            not isinstance(subtitle, str) or not subtitle.strip()
-        ):
-            raise ValueError(f"pages[{index}].subtitle must be a non-empty string")
+        if subtitle is not None:
+            validate_localized_text(
+                subtitle,
+                locale.available,
+                locale.default,
+                f"pages[{index}].subtitle",
+            )
 
         placements = parse_page_block_placements(
             page_blocks=item.get("blocks"),
@@ -286,7 +304,12 @@ def load_beeui_config(config_path: Path) -> BeeUiConfig:
             available_block_ids=set(blocks),
         )
 
-        page_tabs = _parse_page_tabs(item.get("tabs"), page_id)
+        page_tabs = _parse_page_tabs(
+            item.get("tabs"),
+            page_id,
+            available_locales=locale.available,
+            default_locale=locale.default,
+        )
         page_route = _parse_page_route(item.get("route"), f"pages[{index}].route")
 
         pages.append(
@@ -436,7 +459,13 @@ def _parse_components(payload: Any) -> ComponentConfig:
 
 
 # Парсинг page-level tabs config
-def _parse_page_tabs(payload: Any, page_id: str) -> PageTabsConfig | None:
+def _parse_page_tabs(
+    payload: Any,
+    page_id: str,
+    *,
+    available_locales: tuple[str, ...] = ("en",),
+    default_locale: str = "en",
+) -> PageTabsConfig | None:
     if payload is None:
         return None
 
@@ -493,11 +522,13 @@ def _parse_page_tabs(payload: Any, page_id: str) -> PageTabsConfig | None:
             raise ValueError(f"Duplicate tab id in page {page_id}: {tab_id}")
         seen_ids.add(tab_id)
 
-        title = item_raw.get("title")
-        if not isinstance(title, str) or not title.strip():
-            raise ValueError(
-                f"pages.{page_id}.tabs.items[{idx}].title must be a non-empty string"
-            )
+        title = _required_localized_text(
+            item_raw,
+            "title",
+            f"pages.{page_id}.tabs.items[{idx}]",
+            available_locales,
+            default_locale,
+        )
 
         href = _validate_tab_href(item_raw.get("href"), page_id, idx)
 
@@ -662,6 +693,19 @@ def _required_non_empty_string(
     return value.strip()
 
 
+# Разрешение локализованного текста: принимает строку или mapping с ключами локалей
+def _required_localized_text(
+    payload: dict[str, Any],
+    key: str,
+    prefix: str,
+    available_locales: tuple[str, ...],
+    default_locale: str,
+) -> str | dict[str, str]:
+    value = payload.get(key)
+    validate_localized_text(value, available_locales, default_locale, f"{prefix}.{key}")
+    return cast(str | dict[str, str], value)
+
+
 # Валидация внутренней route path без traversal, query/hash
 def _safe_path(value: Any, field_name: str) -> str:
     if not isinstance(value, str) or not value.strip():
@@ -704,6 +748,8 @@ def _parse_navigation_item(
     prefix: str,
     seen_nav_paths: set[str],
     seen_page_paths: set[str],
+    available_locales: tuple[str, ...] = ("en",),
+    default_locale: str = "en",
 ) -> BeeUiNavigationItem:
     if not isinstance(item, dict):
         raise ValueError(f"{prefix} must be a mapping")
@@ -714,7 +760,13 @@ def _parse_navigation_item(
         prefix,
     )
 
-    nav_title = _required_non_empty_string(item, "title", prefix)
+    nav_title = _required_localized_text(
+        item,
+        "title",
+        prefix,
+        available_locales,
+        default_locale,
+    )
 
     icon = item.get("icon")
     if icon is not None and (not isinstance(icon, str) or not icon.strip()):
@@ -740,6 +792,8 @@ def _parse_navigation_item(
                 prefix=f"{prefix}.children[{index}]",
                 seen_nav_paths=seen_nav_paths,
                 seen_page_paths=seen_page_paths,
+                available_locales=available_locales,
+                default_locale=default_locale,
             )
             for index, child in enumerate(children_cfg)
         ]

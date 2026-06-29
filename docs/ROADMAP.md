@@ -4614,9 +4614,7 @@ donut
   - invalid series shape;
   - invalid labels/categories;
   - too-large payload.
-
 - запретить arbitrary ApexCharts options passthrough.
-
 - разрешить только allowlisted chart options:
   - `kind`;
   - `height`;
@@ -4627,13 +4625,9 @@ donut
   - `empty_message`;
   - `status`;
   - `width` / `span` / `size`.
-
 - инициализировать charts только на страницах, где есть chart blocks.
-
 - chart script должен быть package-local и не должен делать network calls.
-
 - chart DOM ids должны быть deterministic/safe and collision-resistant.
-
 - добавить advanced Tabler-compatible data table block:
 
 ```text
@@ -4641,11 +4635,8 @@ data_table
 ```
 
 - сохранить backward compatibility для существующего `table_card`.
-
 - `table_card` может остаться simple/static block.
-
 - `data_table` должен покрывать richer operator table use cases.
-
 - supported table styles:
   - basic card table;
   - striped table;
@@ -4657,15 +4648,10 @@ data_table
   - progress/background rows;
   - toolbar with search/entries/actions as controlled/inert or URL-driven UI;
   - footer pagination.
-
 - не добавлять настоящие DataTables/List.js runtime в этой итерации.
-
 - sort/search controls могут быть inert or URL-driven placeholders.
-
 - не добавлять arbitrary client-side sorting/search JS.
-
 - не добавлять DataTables plugin dependency.
-
 - `data_table` block contract должен быть product-neutral, например:
 
 ```json
@@ -4728,9 +4714,7 @@ actions
 ```
 
 - unknown cell type should degrade visibly or render as escaped text according to existing renderer policy.
-
 - missing values render as `n/a`, not `None`.
-
 - all links must be safe internal links:
   - allow `/...`;
   - reject `//...`;
@@ -4739,7 +4723,6 @@ actions
   - reject `javascript:`;
   - reject `mailto:`;
   - reject traversal/control characters.
-
 - add catalog/demo examples for:
   - chart line;
   - chart bar;
@@ -4752,13 +4735,9 @@ actions
   - avatar/status table;
   - compact progress table;
   - advanced toolbar/pagination table.
-
 - update `config/schema.yml` demo with non-product-specific chart/table examples if it helps smoke validation.
-
 - no required new keys in `config/settings.yml`.
-
 - no secrets in schema/config.
-
 - update docs:
   - `docs/ROADMAP.md`;
   - `docs/COMPONENTS.md`;
@@ -4810,59 +4789,33 @@ Expected result:
 #### Acceptance
 
 - `chart` block renders package-local line chart.
-
 - `chart` block renders package-local bar chart.
-
 - `chart` block renders package-local area chart.
-
 - `chart` block renders package-local donut chart.
-
 - Unsupported chart kind renders explicit degraded state, not `500`.
-
 - Missing/empty chart data renders empty/degraded state.
-
 - Unsafe chart labels/titles are HTML-escaped.
-
 - Chart initialization data is serialized safely.
-
 - Chart renderer does not accept arbitrary JS/options from adapter/config.
-
 - Chart asset is package-local.
-
 - Chart asset is loaded only when chart blocks exist, if practical.
-
 - `data_table` block renders Tabler-compatible card table.
-
 - `data_table` supports `table-vcenter card-table`.
-
 - `data_table` supports `table-striped`.
-
 - `data_table` supports `table-mobile-md` and `data-label`.
-
 - `data_table` supports selectable rows.
-
 - `data_table` supports toolbar controls as controlled/inert or URL-driven markup.
-
 - `data_table` supports footer pagination.
-
 - `data_table` supports cell types: text, muted, link, badge, status, avatar_text, progress, actions.
-
 - Unsafe/external links are rejected or rendered inert.
-
 - Missing values render as `n/a`.
-
 - Malformed table payload renders explicit degraded state, not `500`.
-
 - Existing `table_card` configs continue to work.
-
 - Existing `chart` placeholder behavior is replaced or made compatible with the new safe renderer.
-
 - No product-specific imports are added:
   - no `beecap_module`;
   - no `beeagent_module`.
-
 - No product-specific strings/semantics are added to BeeUI core.
-
 - No external references are added:
   - no `posthog`;
   - no `scripts.tabler.io`;
@@ -4870,15 +4823,10 @@ Expected result:
   - no `docs.tabler.io`;
   - no `cdn.jsdelivr`;
   - no remote font imports.
-
 - No unsafe Jinja `|safe` is added for adapter/config-provided fields.
-
 - GET routes do not mutate storage/config/artifacts.
-
 - Secrets do not appear in HTML/API/logs.
-
 - `pyproject.toml.version` remains unchanged.
-
 - `uv.lock` remains unchanged unless a dependency is explicitly changed and justified.
 
 #### Checks
@@ -4956,6 +4904,330 @@ Expected:
 - Required checks are executed and recorded.
 - Docs reflect the actual chart/table block contracts.
 - PR is ready for review before BeeAgent Iteration 14.
+
+### Итерация 13.7 — Locale-aware shell labels, language switcher and query-preserving navigation
+
+**Status:** DONE
+
+#### Goal
+
+Добавить в BeeUI generic locale-aware rendering для shell/page/navigation/tabs labels, простой language switcher и сохранение allowlisted query params в navigation/tab links, чтобы product dashboards вроде BeeAgent `/rop?lang=ru` не теряли выбранный язык при переходах и могли рендерить RU/EN shell labels без product-owned Jinja templates.
+
+#### Why
+
+После Iteration 13.6 BeeUI умеет безопасно рендерить charts и advanced data tables, но BeeAgent UI-6 выявила реальный blocker:
+
+```text
+/rop?lang=ru
+```
+
+переводит только часть adapter-provided layout blocks, а BeeUI shell остаётся частично английским:
+
+- page title/subtitle;
+- sidebar navigation labels;
+- page tabs;
+- tab links;
+- language choice after tab navigation.
+
+Причина архитектурная: эти элементы рендерятся BeeUI shell/config renderer, а не BeeAgent `read_model.py`.
+
+BeeAgent может и должен переводить свои domain/read-model labels через product-side locale catalog. Но BeeUI должен предоставить generic механизм:
+
+```text
+Product provides localized config labels.
+BeeUI resolves and renders them.
+BeeUI preserves locale in safe navigation links.
+```
+
+Главное правило сохраняется:
+
+```text
+BeeUI renders.
+Product decides.
+```
+
+BeeUI не должен знать, что такое ROP, Bitrix, lead, manager, BeeAgent, BeeCap, MRKT или Binance.
+
+#### Change level
+
+**runtime-risk**
+
+Причина:
+
+- меняется HTML rendering shell/navigation/tabs;
+- меняется schema/config text contract для selected user-facing labels;
+- меняется URL/query behavior;
+- route-prefix and embedded behavior должны сохраниться;
+- operator-facing dashboards зависят от корректной навигации.
+
+Требуются security-sensitive checks для:
+
+- safe internal links;
+- query param allowlist;
+- URL encoding;
+- HTML escaping localized labels;
+- invalid locale fallback;
+- absence of external assets/scripts/tracking;
+- absence of product-specific imports/logic;
+- no mutation from GET routes.
+
+#### Scope
+
+**Включено:**
+
+- добавить schema-compatible localized text v0 для BeeUI shell fields:
+  - `app.title`;
+  - `app.logo_text`;
+  - `navigation[].title`;
+  - `navigation[].children[].title`;
+  - `pages[].title`;
+  - `pages[].subtitle`;
+  - `pages[].tabs.items[].title`.
+
+- сохранить backward compatibility:
+  - existing plain string values continue to work;
+  - optional localized mapping values are supported.
+
+- supported localized text shape:
+
+```yaml
+pages:
+  - id: rop_dashboard
+    path: /rop
+    title:
+      en: ROP Dashboard
+      ru: Панель РОПа
+    subtitle:
+      en: ROP operator dashboard
+      ru: Рабочая панель РОПа
+    tabs:
+      active_param: tab
+      items:
+        - id: overview
+          title:
+            en: Overview
+            ru: Обзор
+          href: /rop?tab=overview
+```
+
+- localized mapping rules:
+  - mapping keys must be allowlisted locales from `app.locale.available`;
+  - mapping must contain the default locale;
+  - invalid mapping keys fail fast;
+  - empty mapping fails fast;
+  - invalid non-string values fail fast;
+  - selected locale resolves from `?lang=...` only if allowlisted;
+  - invalid `lang` falls back to `app.locale.default`;
+  - missing selected locale falls back to default locale.
+
+- добавить product-neutral helper для resolving localized text:
+  - plain string → same string;
+  - mapping → selected locale value or default locale value;
+  - no translation catalog inside BeeUI;
+  - no product-specific fallback strings.
+
+- добавить product-neutral URL helper for query preservation:
+  - preserve only allowlisted params;
+  - do not preserve arbitrary query params globally;
+  - URL-encode query values;
+  - keep existing href query values unless explicitly overridden;
+  - reject unsafe/external hrefs according to existing safe link rules.
+
+- preserve query params in page tabs:
+  - `lang`;
+  - `period`;
+  - `run_id`.
+
+- preserve `lang` in sidebar/navigation links where practical.
+
+- add language switcher:
+  - rendered only when `app.locale.available` has more than one locale;
+  - labels are uppercase locale codes, e.g. `RU / EN`;
+  - current locale is marked active;
+  - switch href preserves current path and all current query params, replacing only `lang`;
+  - no cookies;
+  - no session persistence;
+  - no localStorage;
+  - no JS required.
+
+- route prefix / embedded mount compatibility:
+  - generated hrefs must remain correct under `web.route_prefix` and `mount_beeui(path="/ui")`;
+  - no double prefixing;
+  - no protocol-relative hrefs.
+
+- update tests for:
+  - localized config label validation;
+  - localized page title rendering;
+  - localized sidebar rendering;
+  - localized tab title rendering;
+  - invalid locale fallback;
+  - tab links preserve `lang`, `period`, `run_id`;
+  - sidebar/nav links preserve `lang`;
+  - language switcher preserves current query and replaces only `lang`;
+  - safe internal link behavior remains intact;
+  - route prefix compatibility;
+  - no unsafe `|safe`;
+  - no product-specific imports/strings in BeeUI generic renderer.
+
+- update docs:
+  - `docs/ROADMAP.md`;
+  - `docs/WEB_UI.md`;
+  - `docs/API_CONTRACT.md` if config/page contract is documented there;
+  - `docs/COMPONENTS.md` if language switcher/component behavior is documented there;
+  - `README.ru.md` if user-facing config examples change.
+
+**Не включено:**
+
+- BeeAgent ROP domain translations inside BeeUI;
+- Bitrix/lead/manager-specific labels in BeeUI;
+- modifying `beeagent-rop`;
+- runtime AI execution;
+- mailbox/CRM/Bitrix/module/capability execution;
+- full i18n catalog;
+- gettext/Babel;
+- translation files;
+- persisted user preferences;
+- cookies/session for language;
+- auth changes;
+- magic-link login;
+- social login;
+- copying Tabler sign-in pages;
+- PostHog/demo scripts/sponsor blocks/remote fonts/external CDN;
+- config apply;
+- operator actions;
+- POST routes;
+- no-code builder;
+- new dependencies;
+- `pyproject.toml.version` change;
+- `uv.lock` change.
+
+#### Deliverable
+
+BeeUI can render localized shell/page/navigation/tabs labels from product-side `beeui.yml`, preserve locale in page navigation, and expose a simple query-param based language switcher.
+
+Expected behavior:
+
+```text
+/rop?tab=overview&period=7d&lang=ru
+```
+
+renders:
+
+- RU page title/subtitle if product config provides RU labels;
+- RU sidebar labels if product config provides RU labels;
+- RU tab labels if product config provides RU labels;
+- language switcher with RU active;
+- tab links preserving `period=7d&lang=ru`;
+- no product-specific logic inside BeeUI.
+
+#### Acceptance
+
+- Existing configs with plain string titles still validate and render.
+- Localized config mapping validates when keys are in `app.locale.available`.
+- Localized config mapping fails fast when it uses unknown locale keys.
+- Localized config mapping fails fast when default locale is missing.
+- Localized config mapping fails fast on non-string values.
+- `?lang=ru` resolves to `ru` when `ru` is allowlisted.
+- Invalid `?lang=bad` falls back to default locale.
+- Page title/subtitle render localized values.
+- Sidebar/navigation labels render localized values.
+- Page tab labels render localized values.
+- Page tab hrefs preserve `lang`, `period`, `run_id`.
+- Sidebar/navigation hrefs preserve `lang` where practical.
+- Language switcher renders only when more than one locale is available.
+- Language switcher links preserve current query params and replace only `lang`.
+- Generated links remain safe internal links.
+- Generated links work under route prefix / embedded mount.
+- HTML labels remain escaped.
+- Existing attached tabs card behavior from Iteration 13.3 remains intact.
+- Existing chart/data_table behavior from Iteration 13.6 remains intact.
+- No product-specific imports are added:
+  - no `beecap_module`;
+  - no `beeagent_module`.
+
+- No product-specific domain strings are added to generic BeeUI renderers.
+- No external references are added:
+  - no `posthog`;
+  - no `scripts.tabler.io`;
+  - no `preview.tabler.io`;
+  - no `docs.tabler.io`;
+  - no `cdn.jsdelivr`;
+  - no remote font imports.
+
+- No unsafe Jinja `|safe` is added for config/adapter-provided fields.
+- GET routes do not mutate storage/config/artifacts.
+- `pyproject.toml.version` remains unchanged.
+- `uv.lock` remains unchanged.
+
+#### Checks
+
+Automated:
+
+```bash
+uv run pytest -q
+uv run pytest -q -W error::UserWarning
+```
+
+Targeted:
+
+```bash
+uv run pytest -q tests/test_config.py
+uv run pytest -q tests/test_pages.py
+uv run pytest -q tests/test_app.py
+uv run pytest -q tests/test_product_console.py
+uv run pytest -q tests/test_security.py
+```
+
+Smoke:
+
+```bash
+./start.sh doctor
+./start.sh routes
+./start.sh web --host 127.0.0.1 --port 8780
+```
+
+Static/security checks:
+
+```bash
+rg -n "\\|safe" src/beeui_module/web/templates || true
+rg -n "beecap_module|beeagent_module" src/beeui_module || true
+rg -n "posthog|scripts.tabler.io|preview.tabler.io|docs.tabler.io|cdn.jsdelivr|http://|https://" src/beeui_module/web/templates src/beeui_module/web/static || true
+rg -n "ROP|BeeAgent|BeeCap|MRKT|Binance|Bitrix|lead|manager|broker|strategy" src/beeui_module || true
+git diff -- pyproject.toml uv.lock
+```
+
+Manual/browser smoke:
+
+```text
+GET /
+GET /?lang=ru
+GET /runs?lang=ru
+GET /components?lang=ru
+GET /rop?tab=overview&period=7d&lang=ru when a product config declares /rop
+```
+
+Expected:
+
+- no `500`;
+- language switcher visible when multiple locales configured;
+- selected locale does not disappear after tab click;
+- no external network asset references in HTML.
+
+#### DoD
+
+- Localized config text v0 is implemented, documented and tested.
+- Plain string config values remain backward-compatible.
+- Page title/sidebar/tabs can render RU/EN from product-side config without BeeUI product semantics.
+- Query-param locale is preserved across tabs/navigation where practical.
+- Language switcher works without JS, cookies, session or localStorage.
+- URL/query helpers are allowlist-based and safe.
+- Route prefix / embedded mount behavior remains correct.
+- BeeUI remains product-neutral.
+- No auth/magic-link/social-login scope is added.
+- No external Tabler preview/demo code is copied.
+- Tests and security checks are recorded.
+- Docs reflect the actual locale/navigation contract.
+- PR is ready for review before BeeAgent UI-6 closure.
 
 ---
 

@@ -11,6 +11,14 @@ from beeui_module.artifacts.redaction import redact_value
 from beeui_module.blocks.layout_renderer import layout_has_charts, render_layout
 from beeui_module.blocks.registry import resolve_page_blocks
 from beeui_module.pages.config import is_custom_route_reserved_path
+from beeui_module.pages.links import add_preserved_params_to_href
+from beeui_module.pages.locale import (
+    build_lang_switch_href,
+    resolve_localized_text,
+)
+from beeui_module.pages.locale import (
+    resolve_locale as _resolve_locale,
+)
 from beeui_module.pages.models import (
     BeeUiConfig,
     BeeUiNavigationItem,
@@ -54,10 +62,29 @@ def resolve_locale(
     request: Request,
     locale_cfg: LocaleConfig,
 ) -> str:
-    lang = request.query_params.get("lang")
-    if lang and lang in locale_cfg.available:
-        return lang
-    return locale_cfg.default
+    return _resolve_locale(request, locale_cfg.default, locale_cfg.available)
+
+
+# Сбор данных для language switcher
+def _build_language_switcher(
+    request: Request,
+    locale_cfg: LocaleConfig,
+    route_prefix: str,
+) -> list[dict[str, object]] | None:
+    if len(locale_cfg.available) <= 1:
+        return None
+    current = resolve_locale(request, locale_cfg)
+    items: list[dict[str, object]] = []
+    for lang in locale_cfg.available:
+        items.append(
+            {
+                "lang": lang,
+                "label": lang.upper(),
+                "href": build_lang_switch_href(request, lang, route_prefix),
+                "active": lang == current,
+            }
+        )
+    return items
 
 
 # Регистрация HTML routes из declarative pages config
@@ -96,14 +123,26 @@ def register_configured_pages(
                 data_sources=ui_config.data_sources,
             )
             locale = resolve_locale(request, ui_config.locale)
+
             page_tabs_data = _resolve_page_tabs_data(
                 _page,
                 request,
                 route_prefix=route_prefix,
+                locale=locale,
+                default_locale=ui_config.locale.default,
             )
 
             has_charts = any(
                 getattr(b, "block_type", None) == "chart" for b in rendered_blocks
+            )
+
+            resolved_title = resolve_localized_text(
+                _page.title, locale, ui_config.locale.default
+            )
+            resolved_subtitle = (
+                resolve_localized_text(_page.subtitle, locale, ui_config.locale.default)
+                if _page.subtitle is not None
+                else None
             )
 
             return templates.TemplateResponse(
@@ -113,18 +152,28 @@ def register_configured_pages(
                     "route_prefix": route_prefix,
                     "product_title": product_title,
                     "product_id": product_id,
-                    "app_title": ui_config.app_title,
-                    "logo_text": ui_config.logo_text,
+                    "app_title": resolve_localized_text(
+                        ui_config.app_title, locale, ui_config.locale.default
+                    ),
+                    "logo_text": resolve_localized_text(
+                        ui_config.logo_text, locale, ui_config.locale.default
+                    ),
                     "locale": locale,
+                    "available_locales": list(ui_config.locale.available),
+                    "locale_cfg": ui_config.locale,
                     "theme": theme,
                     "layout": layout,
                     "page": _page,
+                    "page_title": resolved_title,
+                    "page_subtitle": resolved_subtitle,
                     "components": build_components_context(ui_config.components),
                     "page_tabs": page_tabs_data,
                     "navigation": build_navigation(
                         route_prefix=route_prefix,
                         navigation=ui_config.navigation,
                         active_path=_page.path,
+                        locale=locale,
+                        default_locale=ui_config.locale.default,
                     ),
                     "shell_classes": build_shell_classes(theme, layout),
                     "rendered_blocks": rendered_blocks,
@@ -132,6 +181,9 @@ def register_configured_pages(
                     "has_layout": False,
                     "layout_blocks": [],
                     "has_charts": has_charts,
+                    "language_switcher": _build_language_switcher(
+                        request, ui_config.locale, route_prefix
+                    ),
                     "error": None,
                     "status": "ok",
                 },
@@ -150,6 +202,8 @@ def build_navigation(
     route_prefix: str,
     navigation: list[BeeUiNavigationItem],
     active_path: str,
+    locale: str = "en",
+    default_locale: str = "en",
 ) -> list[dict[str, Any]]:
     items: list[dict[str, Any]] = []
     for item in navigation:
@@ -157,17 +211,26 @@ def build_navigation(
             route_prefix=route_prefix,
             navigation=item.children,
             active_path=active_path,
+            locale=locale,
+            default_locale=default_locale,
         )
         active = item.path == active_path if item.path is not None else False
         descendant_active = any(
             child["active"] or child["descendant_active"] for child in children
         )
+        resolved_title = resolve_localized_text(item.title, locale, default_locale)
+        item_path = item.path
+        item_href: str | None = None
+        if item_path is not None and not item.disabled:
+            item_href = prefixed_path(route_prefix, item_path)
+            if locale != default_locale:
+                item_href = add_preserved_params_to_href(item_href, {"lang": locale})
         items.append(
             {
-                "title": item.title,
-                "path": item.path,
-                "href": prefixed_path(route_prefix, item.path)
-                if item.path and not item.disabled
+                "title": resolved_title,
+                "path": item_path,
+                "href": item_href
+                if item_path is not None and not item.disabled
                 else None,
                 "icon": item.icon,
                 "active": active,
@@ -259,17 +322,36 @@ def _resolve_page_tabs_data(
     request: Request,
     *,
     route_prefix: str,
+    locale: str = "en",
+    default_locale: str = "en",
 ) -> dict[str, Any] | None:
     if page.tabs is None or not page.tabs.items:
         return None
 
+    qp = dict(request.query_params)
+    preserved: dict[str, str] = {}
+
+    if locale != default_locale:
+        preserved["lang"] = locale
+
+    period = qp.get("period")
+    if period:
+        preserved["period"] = period
+
+    run_id = qp.get("run_id")
+    if run_id:
+        preserved["run_id"] = run_id
+
     items_list = []
     for item in page.tabs.items:
+        resolved_title = resolve_localized_text(item.title, locale, default_locale)
+        href = _prefix_internal_href(route_prefix, item.href)
+        href = add_preserved_params_to_href(href, preserved)
         items_list.append(
             {
                 "id": item.tab_id,
-                "title": item.title,
-                "href": _prefix_internal_href(route_prefix, item.href),
+                "title": resolved_title,
+                "href": href,
                 "disabled": item.disabled,
             }
         )
@@ -286,6 +368,8 @@ def _resolve_page_tabs_data(
         "active_id": active_id,
         "tabs_class": tabs_class_for_variant(page.tabs.variant),
         "active_param": page.tabs.active_param,
+        "locale": locale,
+        "default_locale": default_locale,
     }
 
 
@@ -447,10 +531,13 @@ def register_adapter_custom_pages(
             has_layout = bool(layout_blocks)
 
             locale = resolve_locale(request, ui_config.locale)
+
             page_tabs_data = _resolve_page_tabs_data(
                 _page,
                 request,
                 route_prefix=route_prefix,
+                locale=locale,
+                default_locale=ui_config.locale.default,
             )
 
             has_charts = layout_has_charts(layout_blocks)
@@ -459,9 +546,15 @@ def register_adapter_custom_pages(
                 "route_prefix": route_prefix,
                 "product_title": product_title,
                 "product_id": product_id,
-                "app_title": ui_config.app_title,
-                "logo_text": ui_config.logo_text,
+                "app_title": resolve_localized_text(
+                    ui_config.app_title, locale, ui_config.locale.default
+                ),
+                "logo_text": resolve_localized_text(
+                    ui_config.logo_text, locale, ui_config.locale.default
+                ),
                 "locale": locale,
+                "available_locales": list(ui_config.locale.available),
+                "locale_cfg": ui_config.locale,
                 "theme": theme,
                 "layout": layout,
                 "page": _page,
@@ -471,6 +564,8 @@ def register_adapter_custom_pages(
                     route_prefix=route_prefix,
                     navigation=ui_config.navigation,
                     active_path=_page.path,
+                    locale=locale,
+                    default_locale=ui_config.locale.default,
                 ),
                 "shell_classes": shell_classes,
                 "has_layout": has_layout,
@@ -478,8 +573,19 @@ def register_adapter_custom_pages(
                 "has_charts": has_charts,
                 "has_blocks": False,
                 "rendered_blocks": [],
-                "page_title": _page.title,
-                "page_subtitle": _page.subtitle,
+                "page_title": resolve_localized_text(
+                    _page.title, locale, ui_config.locale.default
+                ),
+                "page_subtitle": (
+                    resolve_localized_text(
+                        _page.subtitle, locale, ui_config.locale.default
+                    )
+                    if _page.subtitle is not None
+                    else None
+                ),
+                "language_switcher": _build_language_switcher(
+                    request, ui_config.locale, route_prefix
+                ),
                 "error": None,
                 "warnings": [],
                 "meta": {},
@@ -522,14 +628,22 @@ def _render_page_unavailable(
         page,
         request,
         route_prefix=route_prefix,
+        locale=locale,
+        default_locale=ui_config.locale.default,
     )
     context = {
         "route_prefix": route_prefix,
         "product_title": product_title,
         "product_id": product_id,
-        "app_title": ui_config.app_title,
-        "logo_text": ui_config.logo_text,
+        "app_title": resolve_localized_text(
+            ui_config.app_title, locale, ui_config.locale.default
+        ),
+        "logo_text": resolve_localized_text(
+            ui_config.logo_text, locale, ui_config.locale.default
+        ),
         "locale": locale,
+        "available_locales": list(ui_config.locale.available),
+        "locale_cfg": ui_config.locale,
         "theme": theme,
         "layout": layout,
         "page": page,
@@ -539,6 +653,8 @@ def _render_page_unavailable(
             route_prefix=route_prefix,
             navigation=ui_config.navigation,
             active_path=page.path,
+            locale=locale,
+            default_locale=ui_config.locale.default,
         ),
         "shell_classes": build_shell_classes(theme, layout),
         "has_layout": False,
@@ -546,8 +662,17 @@ def _render_page_unavailable(
         "has_charts": False,
         "has_blocks": False,
         "rendered_blocks": [],
-        "page_title": page.title,
-        "page_subtitle": page.subtitle,
+        "page_title": resolve_localized_text(
+            page.title, locale, ui_config.locale.default
+        ),
+        "page_subtitle": (
+            resolve_localized_text(page.subtitle, locale, ui_config.locale.default)
+            if page.subtitle is not None
+            else None
+        ),
+        "language_switcher": _build_language_switcher(
+            request, ui_config.locale, route_prefix
+        ),
         "error": error,
         "warnings": [],
         "meta": {},
