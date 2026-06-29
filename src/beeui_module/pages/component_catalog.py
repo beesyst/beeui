@@ -22,7 +22,6 @@ from beeui_module.pages.router import (
 _CATALOG_SECTION_ORDER = ["interface", "forms", "layout", "extra", "plugins"]
 
 
-# Разрешение активного таба в демонстрационных примерах каталога компонентов через ?tab= с fallback на default и безопасной проверкой allowlist
 def _resolve_url_tab(
     request: Request,
     tabs: list[dict[str, str]],
@@ -58,7 +57,6 @@ def _catalog_sections_for_locale(
     return sections
 
 
-# Регистрация маршрутов для компонентного каталога и их рендеринг
 def register_component_catalog_routes(
     *,
     app: FastAPI,
@@ -210,7 +208,6 @@ def register_component_catalog_routes(
     return registered_routes
 
 
-# Определение структуры разделов каталога компонентов и их метаданных
 def _catalog_sections(route_prefix: str) -> dict[str, dict[str, str]]:
     return {
         "interface": {
@@ -256,7 +253,6 @@ def _catalog_sections(route_prefix: str) -> dict[str, dict[str, str]]:
     }
 
 
-# Билд навигационного дерева для каталога компонентов, включая активные состояния
 def _catalog_navigation(
     *,
     route_prefix: str,
@@ -363,7 +359,6 @@ def _catalog_navigation(
     return navigation
 
 
-# Пример данных для демонстрации различных компонентов в каталоге, включая небезопасные строки для проверки экранирования
 def _catalog_samples(route_prefix: str) -> dict[str, Any]:
     return {
         "unsafe_text": "<script>alert(6)</script>",

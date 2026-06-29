@@ -15,7 +15,6 @@ from beeui_module.core.version import get_version
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
-# Тест: команда doctor вызывается через main
 def test_main_dispatches_doctor(monkeypatch) -> None:
     calls: list[str] = []
 
@@ -29,7 +28,6 @@ def test_main_dispatches_doctor(monkeypatch) -> None:
     assert calls == ["doctor"]
 
 
-# Тест: чек вывода маршрутов через CLI
 def test_main_prints_routes(capsys) -> None:
     assert main(["routes"]) == 0
 
@@ -80,7 +78,6 @@ def test_main_routes_hides_artifacts_when_feature_flag_false(
     assert "artifacts" not in captured.out
 
 
-# Тест: CLI route_prefix normalization совпадает с web route semantics.
 def test_cli_normalizes_route_prefix_for_routes_output() -> None:
     from beeui_module.cli.main import _normalize_route_prefix
 
@@ -91,7 +88,6 @@ def test_cli_normalizes_route_prefix_for_routes_output() -> None:
     assert _normalize_route_prefix("bee") == "/bee"
 
 
-# Тест: чек обработки неизвестной команды и вывода ошибки
 def test_invalid_command_is_handled_safely(capsys) -> None:
     assert main(["bogus"]) == 2
 
@@ -99,7 +95,6 @@ def test_invalid_command_is_handled_safely(capsys) -> None:
     assert "Unknown command: bogus" in captured.err
 
 
-# Тест: стартовый скрипт выводит версию
 def test_start_script_dispatches_version() -> None:
     result = subprocess.run(
         [sys.executable, "config/start.py", "version"],
@@ -113,7 +108,6 @@ def test_start_script_dispatches_version() -> None:
     assert result.stdout.strip() == f"beeui {get_version()}"
 
 
-# Тест: чек, что команда doctor пишет в stdout и создает лог-файл с ожидаемым содержимым
 def test_doctor_writes_stdout_and_log(tmp_path, capsys) -> None:
     root = tmp_path
     (root / "config").mkdir()
@@ -215,7 +209,6 @@ def test_doctor_writes_stdout_and_log(tmp_path, capsys) -> None:
     assert (root / "logs" / "app.log").is_file()
 
 
-# Тест: web-команда передает аргументы в run_web
 def test_main_dispatches_web_args(monkeypatch) -> None:
     calls: list[list[str]] = []
 
@@ -229,7 +222,6 @@ def test_main_dispatches_web_args(monkeypatch) -> None:
     assert calls == [["--host", "127.0.0.1", "--port", "8780"]]
 
 
-# Тест: чек, что старая команда serve больше не поддерживается и вызывает ошибку
 def test_old_serve_command_is_not_supported(capsys) -> None:
     assert main(["serve"]) == 2
 
@@ -237,7 +229,6 @@ def test_old_serve_command_is_not_supported(capsys) -> None:
     assert "Unknown command: serve" in captured.err
 
 
-# Тест: load_settings читает валидный конфиг
 def test_load_settings_reads_valid_config(tmp_path) -> None:
     config_path = tmp_path / "settings.yml"
     config_path.write_text(
@@ -278,7 +269,6 @@ def test_load_settings_reads_valid_config(tmp_path) -> None:
     assert settings["storage"]["root"] == "storage"
 
 
-# Тест: отсутствие logging.level вызывает fail-fast ошибку
 def test_load_settings_fails_fast_on_missing_logging_level(tmp_path) -> None:
     config_path = tmp_path / "settings.yml"
     config_path.write_text(
@@ -321,7 +311,6 @@ def test_load_settings_fails_fast_on_missing_logging_level(tmp_path) -> None:
         )
 
 
-# Тест: чек, что configure_logging создает лог-файл с ожидаемым содержимым
 def test_configure_logging_creates_configured_log_file(tmp_path) -> None:
     root = tmp_path
     (root / "pyproject.toml").write_text(

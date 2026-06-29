@@ -8,7 +8,6 @@ from pathlib import Path
 from beeui_module.core.paths import log_file_path
 
 
-# Настройка логирования для приложения
 def _parse_level(level: str | int) -> int:
     if isinstance(level, int):
         return level
@@ -20,7 +19,6 @@ def _parse_level(level: str | int) -> int:
     raise ValueError(f"Unsupported log level: {level}")
 
 
-# Конфигурация логирования, создающая логгер с консольным и файловым обработчиками
 def configure_logging(
     *,
     root: Path | str | None = None,

@@ -3,18 +3,15 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
-
 PreviewType = Literal["json", "jsonl", "text", "unsupported"]
 
 
-# Минимальная ссылка на артефакт от адаптера
 @dataclass(frozen=True)
 class ArtifactRef:
     artifact_id: str
     content_type: str
 
 
-# Результат preview-обработки артефакта
 @dataclass(frozen=True)
 class ArtifactPreview:
     artifact_id: str

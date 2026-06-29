@@ -36,14 +36,12 @@ _ALLOWED_ALERT_SEVERITIES = {"info", "warning", "error", "success"}
 _ALLOWED_KPI_STATUSES = {"ok", "warning", "error", "unknown", "partial", "degraded"}
 
 
-# Описание renderer: имя template и функция проверки payload
 @dataclass(frozen=True)
 class BlockRenderer:
     template_name: str
     validator: Any
 
 
-# Валидация schema block и нормализация payload для дальнейшего рендера
 def validate_block_definition(
     block_id: str,
     payload: Any,
@@ -87,7 +85,6 @@ def validate_block_definition(
     )
 
 
-# Подбор template для уже валидированного блока
 def render_block(block: BlockDefinition, width: int) -> RenderedBlock:
     renderer = get_renderer_registry()[block.block_type]
     return RenderedBlock(
@@ -101,7 +98,6 @@ def render_block(block: BlockDefinition, width: int) -> RenderedBlock:
     )
 
 
-# Принятие разрешенного блока и данных из резолвера, их объединение и повторная валидация для рендера, с учётом возможных ошибок разрешения данных
 def coerce_resolved_block(
     block: BlockDefinition,
     resolved_values: dict[str, Any],
@@ -146,7 +142,6 @@ def coerce_resolved_block(
         )
 
 
-# Единый список поддерживаемых block types
 def get_renderer_registry() -> dict[str, BlockRenderer]:
     return {
         "metric_card": BlockRenderer(
@@ -184,7 +179,6 @@ def get_renderer_registry() -> dict[str, BlockRenderer]:
     }
 
 
-# Чек metric_card: обязательные title/value и опциональные subtitle/suffix
 def _validate_metric_card(block_id: str, payload: dict[str, Any]) -> dict[str, Any]:
     _validate_exact_keys(
         payload,
@@ -238,7 +232,6 @@ def _validate_metric_card(block_id: str, payload: dict[str, Any]) -> dict[str, A
     return normalized
 
 
-# Чек kpi_grid: список KPI с label/value и опциональным status
 def _validate_kpi_grid(block_id: str, payload: dict[str, Any]) -> dict[str, Any]:
     _validate_exact_keys(
         payload,
@@ -265,7 +258,6 @@ def _validate_kpi_grid(block_id: str, payload: dict[str, Any]) -> dict[str, Any]
     return normalized
 
 
-# Чек status_card: status ограничен безопасным набором CSS-состояний
 def _validate_status_card(block_id: str, payload: dict[str, Any]) -> dict[str, Any]:
     _validate_exact_keys(
         payload,
@@ -315,7 +307,6 @@ def _validate_status_card(block_id: str, payload: dict[str, Any]) -> dict[str, A
     return normalized
 
 
-# Чек table_card: колонки фиксируют порядок, rows принимают только scalar values
 def _validate_table_card(block_id: str, payload: dict[str, Any]) -> dict[str, Any]:
     _validate_exact_keys(
         payload,
@@ -390,7 +381,6 @@ def _validate_table_card(block_id: str, payload: dict[str, Any]) -> dict[str, An
     return normalized
 
 
-# Чек links_card: href разрешён только как внутренний безопасный path
 def _validate_links_card(block_id: str, payload: dict[str, Any]) -> dict[str, Any]:
     _validate_exact_keys(
         payload,
@@ -439,7 +429,6 @@ def _validate_links_card(block_id: str, payload: dict[str, Any]) -> dict[str, An
     return normalized
 
 
-# Чек alert_card: severity ограничен локальными визуальными вариантами
 def _validate_alert_card(block_id: str, payload: dict[str, Any]) -> dict[str, Any]:
     _validate_exact_keys(
         payload,
@@ -463,7 +452,6 @@ def _validate_alert_card(block_id: str, payload: dict[str, Any]) -> dict[str, An
     return normalized
 
 
-# Чек text_card: только plain text, без markdown/html интерпретации
 def _validate_text_card(block_id: str, payload: dict[str, Any]) -> dict[str, Any]:
     _validate_exact_keys(
         payload,
@@ -493,7 +481,6 @@ def _validate_text_card(block_id: str, payload: dict[str, Any]) -> dict[str, Any
     return normalized
 
 
-# Чек progress_card: value должен быть процентом в диапазоне 0..100
 def _validate_progress_card(block_id: str, payload: dict[str, Any]) -> dict[str, Any]:
     _validate_exact_keys(
         payload,
@@ -522,7 +509,6 @@ def _validate_progress_card(block_id: str, payload: dict[str, Any]) -> dict[str,
     return normalized
 
 
-# Чек общие состояния блока, отображаемые всеми templates
 def _validate_state(state: Any, prefix: str) -> None:
     if not isinstance(state, str) or state not in ALLOWED_BLOCK_STATES:
         raise ValueError(
@@ -530,7 +516,6 @@ def _validate_state(state: Any, prefix: str) -> None:
         )
 
 
-# Возврат непустой строки без сохранения внешних пробелов
 def _required_non_empty_string(payload: dict[str, Any], key: str, prefix: str) -> str:
     value = payload.get(key)
     if not isinstance(value, str) or not value.strip():
@@ -538,7 +523,6 @@ def _required_non_empty_string(payload: dict[str, Any], key: str, prefix: str) -
     return value.strip()
 
 
-# Возврат scalar value как строки для безопасного HTML-вывода через Jinja autoescape
 def _required_display_scalar(
     payload: dict[str, Any],
     key: str,
@@ -553,14 +537,12 @@ def _required_display_scalar(
     return display_value
 
 
-# Блок schema keys, которые могли бы намекать на HTML/CSS/JS injection
 def _reject_forbidden_keys(payload: dict[str, Any], prefix: str) -> None:
     forbidden = sorted(set(payload) & _FORBIDDEN_SCHEMA_KEYS)
     if forbidden:
         raise ValueError(f"{prefix} contains unsupported keys: {', '.join(forbidden)}")
 
 
-# Fail-fast чек, что schema не содержит неизвестных полей
 def _validate_exact_keys(
     payload: dict[str, Any], allowed_keys: set[str], prefix: str
 ) -> None:
@@ -569,7 +551,6 @@ def _validate_exact_keys(
         raise ValueError(f"{prefix} contains unsupported keys: {', '.join(unknown)}")
 
 
-# Принятие только внутренних path-линков без query/hash/traversal
 def _safe_internal_href(value: str, field_name: str) -> str:
     lowered = value.lower()
     if lowered.startswith("http://") or lowered.startswith("https://"):
@@ -598,7 +579,6 @@ def _safe_internal_href(value: str, field_name: str) -> str:
     return value
 
 
-# Нормализация items для kpi_grid, включая валидацию статусов и чек на отсутствие HTML/JS в label/value
 def _normalize_kpi_items(block_id: str, items: Any) -> list[dict[str, str]]:
     if not isinstance(items, list):
         raise ValueError(f"blocks.{block_id}.items must be a list")
@@ -636,7 +616,6 @@ def _normalize_kpi_items(block_id: str, items: Any) -> list[dict[str, str]]:
     return normalized_items
 
 
-# Нормализация rows для table_card, включая чек на отсутствие HTML/JS в ячейках и требование scalar values для безопасного отображения
 def _normalize_table_rows(block_id: str, rows: Any) -> list[dict[str, str]]:
     if not isinstance(rows, list):
         raise ValueError(f"blocks.{block_id}.rows must be a list")
@@ -661,7 +640,6 @@ def _normalize_table_rows(block_id: str, rows: Any) -> list[dict[str, str]]:
     return normalized_rows
 
 
-# Валидация статуса для status_card, ограниченного безопасным набором значений, с учётом возможного получения из резолвера
 def _validate_status_value(status: Any, block_id: str) -> str:
     if not isinstance(status, str) or status not in _ALLOWED_STATUS_VALUES:
         raise ValueError(
@@ -670,7 +648,6 @@ def _validate_status_value(status: Any, block_id: str) -> str:
     return status
 
 
-# Валидация селекторных полей и их связка с source, включая чек на существование source_id в доступных источниках данных
 def _validate_selector_bindings(
     block_id: str,
     block_type: str,
@@ -718,7 +695,6 @@ def _validate_selector_bindings(
     return source_id.strip(), bindings
 
 
-# Валидация блока страницы: чек наличия block, width и их правильного типа, а также ссылки на объявленный block id в реестре
 def _selector_fields_for_block(block_type: str) -> dict[str, str]:
     return {
         "metric_card": {
@@ -736,7 +712,6 @@ def _selector_fields_for_block(block_type: str) -> dict[str, str]:
     }.get(block_type, {})
 
 
-# Чек наличия block, width и их правильного типа, а также ссылки на объявленный block id в реестре
 def _resolved_state(existing_state: str, resolution_status: str) -> str:
     if resolution_status == "error":
         return "error"
@@ -745,7 +720,6 @@ def _resolved_state(existing_state: str, resolution_status: str) -> str:
     return existing_state
 
 
-# Чек наличия block, width и их правильного типа, а также ссылки на объявленный block id в реестре
 def _apply_resolution_defaults(
     block_type: str,
     payload: dict[str, Any],

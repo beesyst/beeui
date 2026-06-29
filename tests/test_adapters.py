@@ -23,7 +23,6 @@ from beeui_module.adapters.ids import (
 )
 
 
-# Фейковый адаптер для тестирования контрактов и базовой логики
 class FakeAdapter(ProductUiAdapterBase):
     def __init__(self) -> None:
         super().__init__(
@@ -130,7 +129,6 @@ class FakeAdapter(ProductUiAdapterBase):
         )
 
 
-# Тест: чек, что фейковый адаптер соответствует контракту и базовая логика работает как ожидается
 def test_product_ui_adapter_contract_is_importable() -> None:
     adapter = FakeAdapter()
     as_protocol: ProductUiAdapter = adapter
@@ -147,7 +145,6 @@ def test_product_ui_adapter_contract_is_importable() -> None:
     assert as_protocol.metadata.supported_pages == ("/", "/runs")
 
 
-# Тест: чек, что методы адаптера возвращают данные в правильной форме и обрабатывают ошибки корректно
 def test_fake_adapter_dashboard_runs_run_detail_and_config() -> None:
     adapter = FakeAdapter()
 
@@ -170,7 +167,6 @@ def test_fake_adapter_dashboard_runs_run_detail_and_config() -> None:
     assert config_model["data"]["read_only"] is True
 
 
-# Тест: чек, что адаптер корректно обрабатывает невалидные идентификаторы и возвращает ошибки в правильной форме
 def test_fake_adapter_lists_and_reads_artifacts() -> None:
     adapter = FakeAdapter()
 
@@ -187,7 +183,6 @@ def test_fake_adapter_lists_and_reads_artifacts() -> None:
     assert artifact["data"]["content"]["score"] == 0.9
 
 
-# Тест: чек, что невалидные идентификаторы для запусков и артефактов корректно отклоняются с ошибкой invalid_id
 def test_invalid_run_id_and_artifact_id_are_rejected() -> None:
     adapter = FakeAdapter()
 
@@ -200,7 +195,6 @@ def test_invalid_run_id_and_artifact_id_are_rejected() -> None:
     assert invalid_artifact["error"]["code"] == "invalid_id"
 
 
-# Тест: чек, что запрос несуществующего запуска возвращает ошибку not_found в правильной форме
 def test_not_found_error_envelope_shape_is_stable() -> None:
     adapter = FakeAdapter()
 
@@ -215,7 +209,9 @@ def test_not_found_error_envelope_shape_is_stable() -> None:
 
 
 def test_generic_exception_error_envelope_does_not_leak_raw_message() -> None:
-    envelope = error_result_from_exception(RuntimeError("secret token abc123")).to_dict()
+    envelope = error_result_from_exception(
+        RuntimeError("secret token abc123")
+    ).to_dict()
 
     assert envelope["status"] == "error"
     assert envelope["error"] == {"code": "adapter_error", "message": "Adapter error"}
@@ -265,7 +261,6 @@ def test_adapter_metadata_rejects_empty_or_non_string_fields() -> None:
 AdapterMethodCall = tuple[str, Callable[..., Any], tuple[Any, ...]]
 
 
-# Тест: чек, что необязательные методы по умолчанию недоступны и возвращают ошибку unavailable при вызове
 def test_optional_methods_are_unavailable_by_default() -> None:
     adapter = FakeAdapter()
 
@@ -292,7 +287,6 @@ def test_optional_methods_are_unavailable_by_default() -> None:
             raise AssertionError(f"{method_name} must raise UnavailableError")
 
 
-# Тест: чек, что методы, которые не должны мутировать состояние адаптера, действительно его не мутируют
 def test_read_only_methods_do_not_mutate_fake_adapter_state() -> None:
     adapter = FakeAdapter()
 
@@ -304,7 +298,6 @@ def test_read_only_methods_do_not_mutate_fake_adapter_state() -> None:
     assert second_runs["data"][0]["id"] == "run_001"
 
 
-# Тест: чек, что хелперы для валидации идентификаторов отклоняют небезопасные значения и возвращают ошибки с кодом invalid_id
 def test_safe_id_helpers_reject_unsafe_values() -> None:
     invalid_values = [
         "",

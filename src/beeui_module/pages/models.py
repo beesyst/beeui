@@ -8,14 +8,12 @@ from beeui_module.data.models import DataSourceDefinition
 LocalizedText = str | dict[str, str]
 
 
-# Локаль: default locale и список доступных локалей
 @dataclass(frozen=True)
 class LocaleConfig:
     default: str = "en"
     available: tuple[str, ...] = ("en",)
 
 
-# Настройки темы, прошедшие schema validation
 @dataclass(frozen=True)
 class ThemeConfig:
     mode: str
@@ -26,14 +24,12 @@ class ThemeConfig:
     density: str
 
 
-# Настройки боковой навигации
 @dataclass(frozen=True)
 class SidebarConfig:
     variant: str
     collapsed: bool
 
 
-# Настройки верхнего navbar
 @dataclass(frozen=True)
 class NavbarConfig:
     enabled: bool
@@ -41,7 +37,6 @@ class NavbarConfig:
     sticky: bool
 
 
-# Общая конфигурация layout shell
 @dataclass(frozen=True)
 class LayoutConfig:
     type: str
@@ -50,7 +45,6 @@ class LayoutConfig:
     navbar: NavbarConfig
 
 
-# Оформления для Tabs и Accordion
 TABS_VARIANTS = frozenset(
     {"default", "reverse", "fill", "icons", "fill_icons", "dropdown"}
 )
@@ -75,7 +69,6 @@ ACCORDION_VARIANT_NUMERIC: dict[int, str] = {
 }
 
 
-# Нормализация вариантов оформления для Tabs и Accordion, поддерживающая как строковые, так и числовые варианты
 def normalize_tabs_variant(variant: str | int) -> str:
     if isinstance(variant, int):
         if variant not in TABS_VARIANT_NUMERIC:
@@ -86,7 +79,6 @@ def normalize_tabs_variant(variant: str | int) -> str:
     return variant
 
 
-# Аналогичная функция для Accordion
 def normalize_accordion_variant(variant: str | int) -> str:
     if isinstance(variant, int):
         if variant not in ACCORDION_VARIANT_NUMERIC:
@@ -97,19 +89,16 @@ def normalize_accordion_variant(variant: str | int) -> str:
     return variant
 
 
-# Конфигурация для переиспользуемых компонентов, таких как Tabs и Accordion, с нормализацией вариантов оформления
 @dataclass(frozen=True)
 class TabsComponentConfig:
     variant: str = "default"
 
 
-# Конфигурация для Accordion компонента, с нормализацией вариантов оформления
 @dataclass(frozen=True)
 class AccordionComponentConfig:
     variant: str = "default"
 
 
-# Общая конфигурация для всех переиспользуемых компонентов, с дефолтными настройками для Tabs и Accordion
 @dataclass(frozen=True)
 class ComponentConfig:
     tabs: TabsComponentConfig = field(default_factory=TabsComponentConfig)
@@ -118,7 +107,6 @@ class ComponentConfig:
     )
 
 
-# Элемент конфигурации таба на странице
 @dataclass(frozen=True)
 class PageTabsItem:
     tab_id: str
@@ -127,7 +115,6 @@ class PageTabsItem:
     disabled: bool = False
 
 
-# Конфигурация табов на странице, с дефолтным вариантом оформления и параметром для определения активного таба через query param
 @dataclass(frozen=True)
 class PageTabsConfig:
     variant: str = "default"
@@ -135,13 +122,11 @@ class PageTabsConfig:
     items: tuple[PageTabsItem, ...] = field(default_factory=tuple)
 
 
-# Конфигурация маршрута страницы, с возможностью указания режима отображения страницы
 @dataclass(frozen=True)
 class PageRouteConfig:
     mode: str | None = None
 
 
-# Элемент навигации: либо ссылка на страницу, либо группа children
 @dataclass(frozen=True)
 class BeeUiNavigationItem:
     title: LocalizedText
@@ -151,7 +136,6 @@ class BeeUiNavigationItem:
     children: list["BeeUiNavigationItem"] = field(default_factory=list)
 
 
-# Страница BeeUI с валидированными block placements
 @dataclass(frozen=True)
 class BeeUiPage:
     page_id: str
@@ -163,7 +147,6 @@ class BeeUiPage:
     route: PageRouteConfig = field(default_factory=PageRouteConfig)
 
 
-# Полная read-only конфигурация BeeUI, собранная из schema.yml
 @dataclass(frozen=True)
 class BeeUiConfig:
     app_title: LocalizedText

@@ -7,19 +7,16 @@ from beeui_module.blocks.layout_renderer import render_layout
 from beeui_module.pages.config import load_beeui_config
 
 
-# Создание временного schema.yml для негативных проверок
 def _write_schema(tmp_path: Path, content: str) -> Path:
     schema_path = tmp_path / "schema.yml"
     schema_path.write_text(content, encoding="utf-8")
     return schema_path
 
 
-# Возврат базовую demo schema как источник валидных defaults.
 def _base_schema() -> str:
     return Path("config/schema.yml").read_text(encoding="utf-8")
 
 
-# Возврат базовой demo schema с literal значениями для display fields вместо селекторов
 def _literal_schema() -> str:
     return (
         _base_schema()
@@ -51,7 +48,6 @@ def _literal_schema() -> str:
     )
 
 
-# Тест: block id должен быть безопасным schema identifier
 def test_schema_rejects_invalid_block_id(tmp_path: Path) -> None:
     base = _base_schema()
     invalid = base.replace("  latest_run:", "  Latest Run:", 1)
@@ -64,7 +60,6 @@ def test_schema_rejects_invalid_block_id(tmp_path: Path) -> None:
         raise AssertionError("load_beeui_config must reject unsafe block id")
 
 
-# Тест: renderer-specific поля должны валидироваться внутри renderer contract
 def test_schema_rejects_invalid_renderer_specific_field(tmp_path: Path) -> None:
     base = _literal_schema()
     invalid = base.replace(
@@ -86,7 +81,6 @@ def test_schema_rejects_invalid_renderer_specific_field(tmp_path: Path) -> None:
         )
 
 
-# Тест: display values принимают scalar literals и нормализуются в строки
 def test_schema_accepts_scalar_display_values(tmp_path: Path) -> None:
     schema = _literal_schema()
     schema = schema.replace("    value: run_demo_001\n", "    value: 42\n", 1)
@@ -102,7 +96,6 @@ def test_schema_accepts_scalar_display_values(tmp_path: Path) -> None:
     assert config.blocks["runtime_status"].payload["value"] == "True"
 
 
-# Тест: display values не принимают вложенные objects/lists
 def test_schema_rejects_nested_display_values(tmp_path: Path) -> None:
     invalid_values = [
         (
@@ -133,7 +126,6 @@ def test_schema_rejects_nested_display_values(tmp_path: Path) -> None:
             raise AssertionError("load_beeui_config must reject nested display values")
 
 
-# Тест: HTML/CSS/JS-подобные keys запрещены во всех block definitions
 def test_schema_rejects_forbidden_block_keys(tmp_path: Path) -> None:
     base = _literal_schema()
     forbidden_keys = [
@@ -170,7 +162,6 @@ def test_schema_rejects_forbidden_block_keys(tmp_path: Path) -> None:
             )
 
 
-# Тест: Top-level blocks обязан быть mapping, а не list/null/scalar
 def test_schema_rejects_non_mapping_blocks_root(tmp_path: Path) -> None:
     invalid = (
         "app:\n"
@@ -220,7 +211,6 @@ def test_schema_rejects_non_mapping_blocks_root(tmp_path: Path) -> None:
         raise AssertionError("load_beeui_config must reject non-mapping blocks root")
 
 
-# Тест: table_card rows принимают только scalar values для безопасного вывода
 def test_schema_rejects_invalid_table_rows_value(tmp_path: Path) -> None:
     base = _literal_schema()
     invalid = base.replace(
@@ -239,7 +229,6 @@ def test_schema_rejects_invalid_table_rows_value(tmp_path: Path) -> None:
         )
 
 
-# Тест: links_card не принимает внешние URL и опасные URL schemes
 def test_schema_rejects_unsafe_links_card_hrefs(tmp_path: Path) -> None:
     base = _base_schema()
     unsafe_hrefs = [
@@ -270,7 +259,6 @@ def test_schema_rejects_unsafe_links_card_hrefs(tmp_path: Path) -> None:
             )
 
 
-# Тест: пустой layout возвращает пустой список
 def test_layout_empty_returns_empty_list() -> None:
     assert render_layout(None) == []
     assert render_layout([]) == []
@@ -278,7 +266,6 @@ def test_layout_empty_returns_empty_list() -> None:
     assert render_layout(42) == []
 
 
-# Тест: не-object элемент в layout возвращает degraded блок
 def test_layout_non_object_item_returns_degraded() -> None:
     result = render_layout(["not an object"])
     assert len(result) == 1
@@ -286,21 +273,18 @@ def test_layout_non_object_item_returns_degraded() -> None:
     assert "width_class" in result[0]
 
 
-# Тест: неизвестный block type возвращает degraded блок
 def test_layout_unknown_block_type_returns_degraded() -> None:
     result = render_layout([{"type": "unknown_block", "width": 6}])
     assert len(result) == 1
     assert result[0]["type"] == "degraded"
 
 
-# Тест: block type без type поля возвращает degraded блок
 def test_layout_missing_type_returns_degraded() -> None:
     result = render_layout([{"width": 6}])
     assert len(result) == 1
     assert result[0]["type"] == "degraded"
 
 
-# Тест: width mapping работает корректно
 def test_layout_width_mapping() -> None:
     result = render_layout(
         [
@@ -317,7 +301,6 @@ def test_layout_width_mapping() -> None:
     assert result[3]["width_class"] == "col-12"  # invalid -> default
 
 
-# Тест: hero_snapshot рендерится с items и links
 def test_layout_hero_snapshot_renders() -> None:
     result = render_layout(
         [
@@ -350,7 +333,6 @@ def test_layout_hero_snapshot_renders() -> None:
     assert block["links"][0]["href"] == "/runs"
 
 
-# Тест: hero_snapshot с небезопасной ссылкой отфильтровывается
 def test_layout_hero_snapshot_rejects_unsafe_links() -> None:
     result = render_layout(
         [
@@ -417,7 +399,6 @@ def test_layout_hero_snapshot_rejects_unsafe_links() -> None:
     assert len(block["links"]) == 0
 
 
-# Тест: metric_card рендерится с value, status и hint
 def test_layout_metric_card_renders() -> None:
     result = render_layout(
         [
@@ -439,7 +420,6 @@ def test_layout_metric_card_renders() -> None:
     assert block["hint"] == "No closed trades"
 
 
-# Тест: kpi_strip рендерится с items
 def test_layout_kpi_strip_renders() -> None:
     result = render_layout(
         [
@@ -461,7 +441,6 @@ def test_layout_kpi_strip_renders() -> None:
     assert block["items"][0]["status"] == "ok"
 
 
-# Тест: venue_summary_grid рендерится с items
 def test_layout_venue_summary_grid_renders() -> None:
     result = render_layout(
         [
@@ -481,7 +460,6 @@ def test_layout_venue_summary_grid_renders() -> None:
     assert len(result[0]["items"]) == 2
 
 
-# Тест: mode_cards рендерится с items
 def test_layout_mode_cards_renders() -> None:
     result = render_layout(
         [
@@ -501,7 +479,6 @@ def test_layout_mode_cards_renders() -> None:
     assert len(result[0]["items"]) == 2
 
 
-# Тест: status_table рендерится с columns и rows
 def test_layout_status_table_renders() -> None:
     result = render_layout(
         [
@@ -524,7 +501,6 @@ def test_layout_status_table_renders() -> None:
     assert block["rows"][0][0] == "runtime/active.json"
 
 
-# Тест: status_table с dict rows деградирует
 def test_layout_status_table_dict_rows_degrades() -> None:
     result = render_layout(
         [
@@ -571,7 +547,6 @@ def test_layout_status_table_empty_columns_degrades() -> None:
     assert result[0]["type"] == "degraded"
 
 
-# Тест: event_table рендерится с columns и rows
 def test_layout_event_table_renders() -> None:
     result = render_layout(
         [
@@ -590,7 +565,6 @@ def test_layout_event_table_renders() -> None:
     assert result[0]["type"] == "event_table"
 
 
-# Тест: attention_list рендерится с items
 def test_layout_attention_list_renders() -> None:
     result = render_layout(
         [
@@ -620,7 +594,6 @@ def test_layout_attention_list_renders() -> None:
     assert block["items"][1]["severity"] == "error"
 
 
-# Тест: artifact_links рендерится с items
 def test_layout_artifact_links_renders() -> None:
     result = render_layout(
         [
@@ -644,7 +617,6 @@ def test_layout_artifact_links_renders() -> None:
     assert block["items"][0]["href"] == "/runs/1/artifacts/report"
 
 
-# Тест: artifact_links с небезопасными href отфильтровывается
 def test_layout_artifact_links_rejects_unsafe_href() -> None:
     result = render_layout(
         [
@@ -672,7 +644,6 @@ def test_layout_artifact_links_rejects_unsafe_href() -> None:
     assert block["items"][-1]["href"] == "/runs/1/artifacts/report"
 
 
-# Тест: raw_json_panel рендерится с data
 def test_layout_raw_json_panel_renders() -> None:
     result = render_layout(
         [
@@ -690,7 +661,6 @@ def test_layout_raw_json_panel_renders() -> None:
     assert block["data"] == {"key": "value"}
 
 
-# Тест: malformed payload не ломает render_layout
 def test_layout_malformed_items_do_not_crash() -> None:
     result = render_layout(
         [
@@ -711,7 +681,6 @@ def test_layout_malformed_items_do_not_crash() -> None:
     assert result[3]["type"] == "degraded"
 
 
-# Тест: все типы блоков рендерятся с корректными type и width_class
 def test_layout_all_block_types_render_with_type_and_width() -> None:
     layout = [
         {
@@ -774,7 +743,6 @@ def test_layout_all_block_types_render_with_type_and_width() -> None:
         assert "width_class" in block
 
 
-# Тест: блоки рендерят safe text (Jinja-экранирование в rendered dict)
 def test_layout_block_text_is_escaped() -> None:
     result = render_layout(
         [
@@ -816,7 +784,6 @@ def test_layout_block_text_is_escaped() -> None:
     assert result[2]["items"][0]["message"] == "<script>bad</script>"
 
 
-# Тест: raw_json_panel не рендерится когда есть непустой layout структурированных блоков
 def test_layout_structured_blocks_hide_raw_panel() -> None:
     layout = [
         {
@@ -838,14 +805,12 @@ def test_layout_structured_blocks_hide_raw_panel() -> None:
     assert "raw_json_panel" in types_with_raw
 
 
-# Тест: fallback рендерится при пустом layout
 def test_layout_fallback_when_empty() -> None:
     assert render_layout(None) == []
     assert render_layout([]) == []
     assert render_layout({}) == []
 
 
-# Тест: KPI strip использует правильные CSS-классы для stat card
 def test_layout_kpi_strip_uses_stat_cards() -> None:
     result = render_layout(
         [
@@ -870,7 +835,6 @@ def test_layout_kpi_strip_uses_stat_cards() -> None:
     assert block["items"][1]["status"] == ""
 
 
-# Тест: chart block type рендерится без данных
 def test_layout_chart_type_renders() -> None:
     result = render_layout(
         [
@@ -886,7 +850,6 @@ def test_layout_chart_type_renders() -> None:
     assert block["width_class"] == "col-12"
 
 
-# Тест: chart с полными данными рендерится с has_data=True
 def test_layout_chart_with_data_renders() -> None:
     result = render_layout(
         [
@@ -914,12 +877,10 @@ def test_layout_chart_with_data_renders() -> None:
     assert block["series"] == [{"name": "close", "data": [100, 101, 102]}]
 
 
-# Тест: chart.html template существует в package
 def test_layout_chart_template_exists_for_chart_block() -> None:
     assert Path("src/beeui_module/web/templates/components/layout/chart.html").is_file()
 
 
-# Тест: все layout templates, упомянутые в layout_block.html, существуют
 def test_layout_block_includes_exist() -> None:
     template_root = Path("src/beeui_module/web/templates")
     layout_block = (template_root / "components" / "layout_block.html").read_text(
@@ -933,7 +894,6 @@ def test_layout_block_includes_exist() -> None:
         )
 
 
-# Тест: venue_summary_grid использует правильную сетку
 def test_layout_venue_summary_grid_uses_grid() -> None:
     result = render_layout(
         [
@@ -954,7 +914,6 @@ def test_layout_venue_summary_grid_uses_grid() -> None:
     assert block["items"][1]["value"] == "connected"
 
 
-# Тест: mode_cards рендерится с compact card deck
 def test_layout_mode_cards_uses_compact_cards() -> None:
     result = render_layout(
         [
@@ -974,7 +933,6 @@ def test_layout_mode_cards_uses_compact_cards() -> None:
     assert len(block["items"]) == 2
 
 
-# Тест: attention_list использует list-group с severity
 def test_layout_attention_list_uses_list_group() -> None:
     result = render_layout(
         [
@@ -997,7 +955,6 @@ def test_layout_attention_list_uses_list_group() -> None:
     assert block["items"][2]["severity"] == "info"
 
 
-# Тест: artifact_links использует list-group с href и content_type
 def test_layout_artifact_links_uses_list_group() -> None:
     result = render_layout(
         [
@@ -1027,7 +984,6 @@ def test_layout_artifact_links_uses_list_group() -> None:
     assert block["items"][1]["content_type"] == "text"
 
 
-# Тест: operator_hero рендерится с title, subtitle, status, items, primary_links
 def test_layout_operator_hero_renders() -> None:
     result = render_layout(
         [
@@ -1065,7 +1021,6 @@ def test_layout_operator_hero_renders() -> None:
     assert block["primary_links"][0]["href"] == "/runs/run_001"
 
 
-# Тест: operator_hero с небезопасными ссылками отфильтровывается
 def test_layout_operator_hero_rejects_unsafe_links() -> None:
     result = render_layout(
         [
@@ -1093,7 +1048,6 @@ def test_layout_operator_hero_rejects_unsafe_links() -> None:
     assert block["primary_links"][0]["href"] == "/runs/1"
 
 
-# Тест: venue_card рендерится с items, alerts, links
 def test_layout_venue_card_renders() -> None:
     result = render_layout(
         [
@@ -1137,7 +1091,6 @@ def test_layout_venue_card_renders() -> None:
     assert block["links"][0]["href"] == "/runs/run_001"
 
 
-# Тест: venue_card с небезопасными ссылками отфильтровывается
 def test_layout_venue_card_rejects_unsafe_links() -> None:
     result = render_layout(
         [
@@ -1158,7 +1111,6 @@ def test_layout_venue_card_rejects_unsafe_links() -> None:
     assert block["links"][0]["href"] == "/venues/mrkt"
 
 
-# Тест: kpi_grid рендерится с items (label/value/unit/status/hint)
 def test_layout_kpi_grid_renders() -> None:
     result = render_layout(
         [
@@ -1190,7 +1142,6 @@ def test_layout_kpi_grid_renders() -> None:
     assert block["items"][1]["hint"] == ""
 
 
-# Тест: state_grid рендерится с items
 def test_layout_state_grid_renders() -> None:
     result = render_layout(
         [
@@ -1215,7 +1166,6 @@ def test_layout_state_grid_renders() -> None:
     assert block["items"][1]["status"] == ""
 
 
-# Тест: quick_links рендерится с items
 def test_layout_quick_links_renders() -> None:
     result = render_layout(
         [
@@ -1240,7 +1190,6 @@ def test_layout_quick_links_renders() -> None:
     assert block["items"][2]["href"] is None
 
 
-# Тест: run_table рендерится с columns и rows
 def test_layout_run_table_renders() -> None:
     result = render_layout(
         [
@@ -1298,7 +1247,6 @@ def test_layout_run_table_renders() -> None:
     assert block["filters"] is True
 
 
-# Тест: run_table с dict rows деградирует
 def test_layout_run_table_invalid_columns_degrades() -> None:
     result = render_layout(
         [
@@ -1316,7 +1264,6 @@ def test_layout_run_table_invalid_columns_degrades() -> None:
     assert result[0]["type"] == "degraded"
 
 
-# Тест: run_table с небезопасными href отфильтровывается
 def test_layout_run_table_rejects_unsafe_href() -> None:
     result = render_layout(
         [
@@ -1364,7 +1311,6 @@ def test_layout_run_table_rejects_unsafe_href() -> None:
     assert block["filters"] is False
 
 
-# Тест: mode_cards с optional полями href, latest, latest_href
 def test_layout_mode_cards_optional_fields() -> None:
     result = render_layout(
         [
@@ -1397,7 +1343,6 @@ def test_layout_mode_cards_optional_fields() -> None:
     assert block["items"][1]["latest_href"] is None
 
 
-# Тест: mode_cards не ломается при отсутствии optional полей
 def test_layout_mode_cards_missing_optionals() -> None:
     result = render_layout(
         [
@@ -1418,7 +1363,6 @@ def test_layout_mode_cards_missing_optionals() -> None:
     assert block["items"][0]["latest_href"] is None
 
 
-# Тест: attention_list обрабатывает отсутствующие label/message
 def test_layout_attention_list_missing_fields() -> None:
     result = render_layout(
         [
@@ -1444,7 +1388,6 @@ def test_layout_attention_list_missing_fields() -> None:
     assert block["items"][4]["severity"] == "unknown"
 
 
-# Тест: _display_value helper возвращает default для None/null/empty
 def test_display_value_helper() -> None:
     from beeui_module.blocks.layout_renderer import _display_value
 
@@ -1463,7 +1406,6 @@ def test_display_value_helper() -> None:
     assert _display_value([1, 2]) == "n/a"
 
 
-# Тест: операторные блоки с None значениями items рендерятся как n/a
 def test_layout_operator_blocks_none_values() -> None:
     result = render_layout(
         [
@@ -1501,7 +1443,6 @@ def test_layout_operator_blocks_none_values() -> None:
     assert result[2]["items"][0]["label"] == "n/a"
 
 
-# Тест: все 6 новых типов блоков рендерятся в render_layout без degraded
 def test_layout_all_new_block_types_render() -> None:
     layout = [
         {
@@ -1561,14 +1502,12 @@ def test_layout_all_new_block_types_render() -> None:
         assert block["type"] != "degraded", f"Block type {block.get('type')} degraded"
 
 
-# Тест: run_table template существует в package
 def test_layout_run_table_template_exists() -> None:
     assert Path(
         "src/beeui_module/web/templates/components/layout/run_table.html"
     ).is_file()
 
 
-# Тест: все новые layout templates существуют
 def test_layout_new_templates_exist() -> None:
     for name in (
         "operator_hero",
@@ -1582,7 +1521,6 @@ def test_layout_new_templates_exist() -> None:
         assert path.is_file(), f"Missing template: {path}"
 
 
-# Тест: span в adapter-backed layout рендерит правильный класс ширины
 def test_layout_span_sizing() -> None:
     result = render_layout(
         [
@@ -1598,7 +1536,6 @@ def test_layout_span_sizing() -> None:
     assert result[3]["width_class"] == "col-12 col-sm-6 col-lg-3"
 
 
-# Тест: size в adapter-backed layout рендерит правильный класс ширины
 def test_layout_size_sizing() -> None:
     result = render_layout(
         [
@@ -1614,7 +1551,6 @@ def test_layout_size_sizing() -> None:
     assert result[3]["width_class"] == "col-12"  # XL -> 12
 
 
-# Тест: size case-insensitive
 def test_layout_size_case_insensitive() -> None:
     result = render_layout(
         [
@@ -1630,7 +1566,6 @@ def test_layout_size_case_insensitive() -> None:
     assert result[3]["width_class"] == "col-12"
 
 
-# Тест: невалидный span в adapter-backed layout деградирует к default
 def test_layout_invalid_span_degrades() -> None:
     result = render_layout(
         [
@@ -1642,7 +1577,6 @@ def test_layout_invalid_span_degrades() -> None:
     assert result[1]["width_class"] == "col-12"
 
 
-# Тест: невалидный size в adapter-backed layout деградирует к default
 def test_layout_invalid_size_degrades() -> None:
     result = render_layout(
         [
@@ -1654,7 +1588,6 @@ def test_layout_invalid_size_degrades() -> None:
     assert result[1]["width_class"] == "col-12"
 
 
-# Тест: конфликтующие sizing keys в adapter-backed layout деградируют к default
 def test_layout_conflicting_sizing_keys_degrades() -> None:
     result = render_layout(
         [
@@ -1674,7 +1607,6 @@ def test_layout_conflicting_sizing_keys_degrades() -> None:
     assert result[2]["width_class"] == "col-12"
 
 
-# Тест: существующая width остается обратно совместимой
 def test_layout_width_backward_compatible() -> None:
     result = render_layout(
         [
@@ -1686,7 +1618,6 @@ def test_layout_width_backward_compatible() -> None:
     assert result[1]["width_class"] == "col-12 col-lg-6"
 
 
-# Тест: adapter-backed layout span
 def test_layout_span_supported() -> None:
     result = render_layout(
         [
@@ -1696,7 +1627,6 @@ def test_layout_span_supported() -> None:
     assert result[0]["width_class"] == "col-12 col-lg-6"
 
 
-# Тест: adapter-backed layout size
 def test_layout_size_supported() -> None:
     result = render_layout(
         [
@@ -1706,7 +1636,6 @@ def test_layout_size_supported() -> None:
     assert result[0]["width_class"] == "col-12 col-lg-6"
 
 
-# Тест: adapter-backed layout size S
 def test_layout_size_s() -> None:
     result = render_layout(
         [
@@ -1716,7 +1645,6 @@ def test_layout_size_s() -> None:
     assert result[0]["width_class"] == "col-12 col-md-6 col-lg-4"
 
 
-# Тест: malformed adapter sizing degrades to col-12
 def test_layout_malformed_sizing_degrades() -> None:
     result = render_layout(
         [
@@ -1733,7 +1661,6 @@ def test_layout_malformed_sizing_degrades() -> None:
         )
 
 
-# Тест: conflicting sizing keys degrade to col-12
 def test_layout_conflicting_sizing_degrades() -> None:
     result = render_layout(
         [
@@ -1747,7 +1674,6 @@ def test_layout_conflicting_sizing_degrades() -> None:
         )
 
 
-# Тест: kpi_grid.columns=1 рендерит col-12
 def test_layout_kpi_grid_columns_1() -> None:
     result = render_layout(
         [
@@ -1763,7 +1689,6 @@ def test_layout_kpi_grid_columns_1() -> None:
     assert result[0]["column_classes"] == "col-12"
 
 
-# Тест: kpi_grid.columns=2 рендерит col-12 col-sm-6
 def test_layout_kpi_grid_columns_2() -> None:
     result = render_layout(
         [
@@ -1779,7 +1704,6 @@ def test_layout_kpi_grid_columns_2() -> None:
     assert result[0]["column_classes"] == "col-12 col-sm-6"
 
 
-# Тест: kpi_grid.columns=3 рендерит col-12 col-sm-6 col-lg-4
 def test_layout_kpi_grid_columns_3() -> None:
     result = render_layout(
         [
@@ -1795,7 +1719,6 @@ def test_layout_kpi_grid_columns_3() -> None:
     assert result[0]["column_classes"] == "col-12 col-sm-6 col-lg-4"
 
 
-# Тест: kpi_grid.columns=4 рендерит col-12 col-sm-6 col-lg-3
 def test_layout_kpi_grid_columns_4() -> None:
     result = render_layout(
         [
@@ -1811,7 +1734,6 @@ def test_layout_kpi_grid_columns_4() -> None:
     assert result[0]["column_classes"] == "col-12 col-sm-6 col-lg-3"
 
 
-# Тест: kpi_grid без columns сохраняет default 4
 def test_layout_kpi_grid_columns_default() -> None:
     result = render_layout(
         [
@@ -1826,7 +1748,6 @@ def test_layout_kpi_grid_columns_default() -> None:
     assert result[0]["column_classes"] == "col-12 col-sm-6 col-lg-3"
 
 
-# Тест: kpi_grid с invalid adapter columns деградирует к default 4
 def test_layout_kpi_grid_invalid_columns_degrades() -> None:
     result = render_layout(
         [
@@ -1855,7 +1776,6 @@ def test_layout_kpi_grid_invalid_columns_degrades() -> None:
         assert block["column_classes"] == "col-12 col-sm-6 col-lg-3"
 
 
-# Тест: generic group рендерится с children
 def test_layout_group_renders() -> None:
     result = render_layout(
         [
@@ -1891,7 +1811,6 @@ def test_layout_group_renders() -> None:
     assert group["children"][1]["title"] == "Activity"
 
 
-# Тест: group width=6 + block width=6 рендерит две top-level columns
 def test_layout_group_and_block_as_columns() -> None:
     result = render_layout(
         [
@@ -1923,7 +1842,6 @@ def test_layout_group_and_block_as_columns() -> None:
     assert result[1]["width_class"] == "col-12 col-lg-6"
 
 
-# Тест: group children с width=12 рендерят col-12 внутри nested row
 def test_layout_group_children_width_12() -> None:
     result = render_layout(
         [
@@ -1945,7 +1863,6 @@ def test_layout_group_children_width_12() -> None:
     assert group["children"][0]["width_class"] == "col-12"
 
 
-# Тест: malformed group payload degrades to degraded
 def test_layout_group_malformed_degrades() -> None:
     result = render_layout(
         [
@@ -1971,7 +1888,6 @@ def test_layout_group_malformed_degrades() -> None:
     assert len(result[1]["children"]) == 1
 
 
-# Тест: group с отсутствующим direction по умолчанию vertical
 def test_layout_group_missing_direction_defaults() -> None:
     result = render_layout(
         [
@@ -1987,7 +1903,6 @@ def test_layout_group_missing_direction_defaults() -> None:
     assert result[0]["direction"] == "vertical"
 
 
-# Тест: group с невалидным direction деградирует к vertical
 def test_layout_group_invalid_direction_degrades() -> None:
     result = render_layout(
         [
@@ -2004,7 +1919,6 @@ def test_layout_group_invalid_direction_degrades() -> None:
     assert result[0]["direction"] == "vertical"
 
 
-# Тест: group с глубиной 4+ деградирует с reason depth exceeded
 def test_layout_group_depth_bounded() -> None:
     result = render_layout(
         [
@@ -2044,7 +1958,6 @@ def test_layout_group_depth_bounded() -> None:
     assert "depth exceeded" in inner["reason"]
 
 
-# Тест: flat layout 6+3+3 рендерит ожидаемые column classes
 def test_layout_flat_6_3_3() -> None:
     result = render_layout(
         [
@@ -2058,7 +1971,6 @@ def test_layout_flat_6_3_3() -> None:
     assert result[2]["width_class"] == "col-12 col-sm-6 col-lg-3"
 
 
-# Тест: flat layout 3+3+3+3 рендерит col-12 col-sm-6 col-lg-3 для всех блоков
 def test_layout_flat_3_3_3_3() -> None:
     result = render_layout(
         [
@@ -2072,12 +1984,10 @@ def test_layout_flat_3_3_3_3() -> None:
         assert block["width_class"] == "col-12 col-sm-6 col-lg-3"
 
 
-# Тест: group template существует
 def test_layout_group_template_exists() -> None:
     assert Path("src/beeui_module/web/templates/components/layout/group.html").is_file()
 
 
-# Тест: resolve_kpi_grid_columns helper
 def test_resolve_kpi_grid_columns() -> None:
     from beeui_module.blocks.layout_renderer import resolve_kpi_grid_columns
 
@@ -2095,7 +2005,6 @@ def test_resolve_kpi_grid_columns() -> None:
     assert resolve_kpi_grid_columns(1.0) == 4
 
 
-# Тест: chart line kind рендерится с has_data=True
 def test_layout_chart_line_renders() -> None:
     result = render_layout(
         [
@@ -2116,7 +2025,6 @@ def test_layout_chart_line_renders() -> None:
     assert block["has_data"] is True
 
 
-# Тест: chart bar kind рендерится с has_data=True
 def test_layout_chart_bar_renders() -> None:
     result = render_layout(
         [
@@ -2137,7 +2045,6 @@ def test_layout_chart_bar_renders() -> None:
     assert block["has_data"] is True
 
 
-# Тест: chart area kind рендерится с has_data=True
 def test_layout_chart_area_renders() -> None:
     result = render_layout(
         [
@@ -2158,7 +2065,6 @@ def test_layout_chart_area_renders() -> None:
     assert block["has_data"] is True
 
 
-# Тест: chart donut kind рендерится с has_data=True
 def test_layout_chart_donut_renders() -> None:
     result = render_layout(
         [
@@ -2179,7 +2085,6 @@ def test_layout_chart_donut_renders() -> None:
     assert block["has_data"] is True
 
 
-# Тест: unsupported chart kind деградирует к line
 def test_layout_chart_unsupported_kind_degrades() -> None:
     result = render_layout(
         [
@@ -2199,7 +2104,6 @@ def test_layout_chart_unsupported_kind_degrades() -> None:
     assert block["has_data"] is True
 
 
-# Тест: empty chart data renders has_data=False
 def test_layout_chart_empty_data_renders_empty() -> None:
     result = render_layout(
         [
@@ -2219,7 +2123,6 @@ def test_layout_chart_empty_data_renders_empty() -> None:
     assert block["has_data"] is False
 
 
-# Тест: invalid chart series degrades to has_data=False
 def test_layout_chart_invalid_series_degrades() -> None:
     result = render_layout(
         [
@@ -2238,7 +2141,6 @@ def test_layout_chart_invalid_series_degrades() -> None:
     assert block["has_data"] is False
 
 
-# Тест: unsafe chart title/labels escaped in rendered dict
 def test_layout_chart_unsafe_text_escaped() -> None:
     result = render_layout(
         [
@@ -2259,7 +2161,6 @@ def test_layout_chart_unsafe_text_escaped() -> None:
     assert block["status"] == "<i>status</i>"
 
 
-# Тест: chart data stays as a dict for safe template JSON serialization
 def test_layout_chart_safe_json_serialization() -> None:
     result = render_layout(
         [
@@ -2284,7 +2185,6 @@ def test_layout_chart_safe_json_serialization() -> None:
     assert config["chart"]["toolbar"]["show"] is False
 
 
-# Тест: chart не передает произвольные ApexCharts options
 def test_layout_chart_no_arbitrary_options() -> None:
     result = render_layout(
         [
@@ -2305,7 +2205,6 @@ def test_layout_chart_no_arbitrary_options() -> None:
     assert "annotations" not in config
 
 
-# Тест: chart height bounds
 def test_layout_chart_height_bounds() -> None:
     result = render_layout(
         [
@@ -2336,7 +2235,6 @@ def test_layout_chart_height_bounds() -> None:
     assert result[0]["height"] == 200
 
 
-# Тест: chart_deterministic_id
 def test_layout_chart_deterministic_id() -> None:
     layout = [
         {
@@ -2355,7 +2253,6 @@ def test_layout_chart_deterministic_id() -> None:
     assert first[0]["chart_id"] == second[0]["chart_id"]
 
 
-# Тест: nested chart inside group is detected recursively
 def test_layout_has_charts_detects_nested_group_chart() -> None:
     from beeui_module.blocks.layout_renderer import layout_has_charts
 
@@ -2377,12 +2274,10 @@ def test_layout_has_charts_detects_nested_group_chart() -> None:
     assert layout_has_charts(blocks) is True
 
 
-# Тест: chart template exists
 def test_layout_chart_template_exists() -> None:
     assert Path("src/beeui_module/web/templates/components/layout/chart.html").is_file()
 
 
-# Тест: data_table basic card render
 def test_layout_data_table_basic_renders() -> None:
     result = render_layout(
         [
@@ -2411,7 +2306,6 @@ def test_layout_data_table_basic_renders() -> None:
     assert block["rows"][0]["id"]["value"] == "001"
 
 
-# Тест: data_table striped variant
 def test_layout_data_table_striped_renders() -> None:
     result = render_layout(
         [
@@ -2428,7 +2322,6 @@ def test_layout_data_table_striped_renders() -> None:
     assert result[0]["striped"] is True
 
 
-# Тест: data_table mobile with data-label
 def test_layout_data_table_mobile_renders() -> None:
     result = render_layout(
         [
@@ -2445,7 +2338,6 @@ def test_layout_data_table_mobile_renders() -> None:
     assert result[0]["mobile"] == "md"
 
 
-# Тест: data_table selectable
 def test_layout_data_table_selectable_renders() -> None:
     result = render_layout(
         [
@@ -2462,7 +2354,6 @@ def test_layout_data_table_selectable_renders() -> None:
     assert result[0]["selectable"] is True
 
 
-# Тест: data_table compact
 def test_layout_data_table_compact_renders() -> None:
     result = render_layout(
         [
@@ -2479,7 +2370,6 @@ def test_layout_data_table_compact_renders() -> None:
     assert result[0]["compact"] is True
 
 
-# Тест: data_table toolbar render
 def test_layout_data_table_toolbar_renders() -> None:
     result = render_layout(
         [
@@ -2504,7 +2394,6 @@ def test_layout_data_table_toolbar_renders() -> None:
     assert block["toolbar"]["actions"][0]["href"] == "/export"
 
 
-# Тест: data_table toolbar unsafe link rejected
 def test_layout_data_table_toolbar_unsafe_link_rejected() -> None:
     result = render_layout(
         [
@@ -2527,7 +2416,6 @@ def test_layout_data_table_toolbar_unsafe_link_rejected() -> None:
     assert result[0]["toolbar"]["actions"][0]["href"] == "/safe"
 
 
-# Тест: data_table pagination render
 def test_layout_data_table_pagination_renders() -> None:
     result = render_layout(
         [
@@ -2552,7 +2440,6 @@ def test_layout_data_table_pagination_renders() -> None:
     assert block["pagination"]["pages"][0]["active"] is True
 
 
-# Тест: data_table pagination unsafe link rejected
 def test_layout_data_table_pagination_unsafe_link_rejected() -> None:
     result = render_layout(
         [
@@ -2575,7 +2462,6 @@ def test_layout_data_table_pagination_unsafe_link_rejected() -> None:
     assert result[0]["pagination"]["pages"][0]["label"] == "Good"
 
 
-# Тест: data_table badge cell type
 def test_layout_data_table_badge_cell() -> None:
     result = render_layout(
         [
@@ -2594,7 +2480,6 @@ def test_layout_data_table_badge_cell() -> None:
     assert cell["tone"] == "success"
 
 
-# Тест: data_table status cell type
 def test_layout_data_table_status_cell() -> None:
     result = render_layout(
         [
@@ -2612,7 +2497,6 @@ def test_layout_data_table_status_cell() -> None:
     assert cell["status"] == "ok"
 
 
-# Тест: data_table avatar_text cell type
 def test_layout_data_table_avatar_text_cell() -> None:
     result = render_layout(
         [
@@ -2639,7 +2523,6 @@ def test_layout_data_table_avatar_text_cell() -> None:
     assert cell["initials"] == "OP"
 
 
-# Тест: data_table progress cell type
 def test_layout_data_table_progress_cell() -> None:
     result = render_layout(
         [
@@ -2658,7 +2541,6 @@ def test_layout_data_table_progress_cell() -> None:
     assert cell["color"] == "green"
 
 
-# Тест: data_table actions cell type
 def test_layout_data_table_actions_cell() -> None:
     result = render_layout(
         [
@@ -2684,7 +2566,6 @@ def test_layout_data_table_actions_cell() -> None:
     assert cell["items"][0]["href"] == "/runs/001"
 
 
-# Тест: data_table actions unsafe link rejected
 def test_layout_data_table_actions_unsafe_link_rejected() -> None:
     result = render_layout(
         [
@@ -2709,7 +2590,6 @@ def test_layout_data_table_actions_unsafe_link_rejected() -> None:
     assert cell["items"][0]["href"] == "/runs/001"
 
 
-# Тест: data_table missing values render n/a
 def test_layout_data_table_missing_values_render_na() -> None:
     result = render_layout(
         [
@@ -2731,7 +2611,6 @@ def test_layout_data_table_missing_values_render_na() -> None:
     assert result[0]["rows"][2]["val"]["value"] == "exists"
 
 
-# Тест: malformed data_table columns visibly degrade
 def test_layout_data_table_malformed_columns_degrades() -> None:
     result = render_layout(
         [
@@ -2748,7 +2627,6 @@ def test_layout_data_table_malformed_columns_degrades() -> None:
     assert result[0]["type"] == "degraded"
 
 
-# Тест: malformed data_table rows visibly degrade
 def test_layout_data_table_malformed_rows_degrades() -> None:
     result = render_layout(
         [
@@ -2765,7 +2643,6 @@ def test_layout_data_table_malformed_rows_degrades() -> None:
     assert result[0]["type"] == "degraded"
 
 
-# Тест: data_table link cell type
 def test_layout_data_table_link_cell() -> None:
     result = render_layout(
         [
@@ -2791,7 +2668,6 @@ def test_layout_data_table_link_cell() -> None:
     assert cell["label"] == "Open run"
 
 
-# Тест: data_table external link in link cell rejected
 def test_layout_data_table_external_link_cell_rejected() -> None:
     result = render_layout(
         [
@@ -2816,7 +2692,6 @@ def test_layout_data_table_external_link_cell_rejected() -> None:
     assert cell["href"] is None
 
 
-# Тест: data_table unknown cell type degrades to text
 def test_layout_data_table_unknown_cell_type() -> None:
     result = render_layout(
         [
@@ -2834,14 +2709,12 @@ def test_layout_data_table_unknown_cell_type() -> None:
     assert cell["value"] == "val"
 
 
-# Тест: data_table template exists
 def test_layout_data_table_template_exists() -> None:
     assert Path(
         "src/beeui_module/web/templates/components/layout/data_table.html"
     ).is_file()
 
 
-# Тест: existing table_card still works (backward compat)
 def test_layout_existing_table_card_still_works() -> None:
     result = render_layout(
         [
@@ -2857,7 +2730,6 @@ def test_layout_existing_table_card_still_works() -> None:
     assert result[0]["value"] == "42"
 
 
-# Тест: data_table не добавляет product-specific импорты
 def test_layout_data_table_no_product_imports() -> None:
     import beeui_module.blocks.layout_renderer as lr
 
@@ -2866,7 +2738,6 @@ def test_layout_data_table_no_product_imports() -> None:
     assert "beeagent_module" not in content
 
 
-# Тест: progress cell values bounded
 def test_layout_data_table_progress_bounds() -> None:
     result = render_layout(
         [
@@ -2888,7 +2759,6 @@ def test_layout_data_table_progress_bounds() -> None:
     assert result[0]["rows"][2]["p"]["value"] == 50
 
 
-# Тест: data_table muted cell type
 def test_layout_data_table_muted_cell() -> None:
     result = render_layout(
         [
@@ -2907,7 +2777,6 @@ def test_layout_data_table_muted_cell() -> None:
     assert cell["tone"] == "muted"
 
 
-# Тест: data_table visual class tokens are whitelisted
 def test_layout_data_table_visual_tokens_are_whitelisted() -> None:
     result = render_layout(
         [

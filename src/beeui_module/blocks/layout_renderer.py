@@ -64,14 +64,12 @@ _KPI_GRID_COLUMN_CLASSES: dict[int, str] = {
 _GROUP_MAX_DEPTH: int = 3
 
 
-# Определение класса ширины по целочисленному значению width
 def _resolve_width_class(width: Any) -> str:
     if isinstance(width, int) and width in _WIDTH_MAP:
         return _WIDTH_MAP[width]
     return _DEFAULT_WIDTH_CLASS
 
 
-# Разрешение CSS-класса колонки из span или size для adapter-backed layout[]
 def _resolve_block_width_class(raw: dict[str, Any]) -> str:
     has_width = "width" in raw
     has_span = "span" in raw
@@ -97,7 +95,6 @@ def _resolve_block_width_class(raw: dict[str, Any]) -> str:
     return _resolve_width_class(raw.get("width"))
 
 
-# Валидация и нормализация ссылок для блоков, которые поддерживают ссылки
 def _validate_link(href: Any) -> str | None:
     if not isinstance(href, str):
         return None
@@ -126,7 +123,6 @@ def _validate_link(href: Any) -> str | None:
     return value
 
 
-# Безопасное преобразование значения в строку для отображения в блоках
 def _safe_str(value: Any) -> str:
     if isinstance(value, str):
         return value
@@ -135,7 +131,6 @@ def _safe_str(value: Any) -> str:
     return ""
 
 
-# Безопасное отображение user-visible значений: None, пустые или "null"/"none" -> default
 def _display_value(value: Any, default: str = "n/a") -> str:
     if value is None:
         return default
@@ -149,21 +144,18 @@ def _display_value(value: Any, default: str = "n/a") -> str:
     return default
 
 
-# Нормализация списка
 def _safe_list(raw: Any) -> list[Any]:
     if isinstance(raw, list):
         return raw
     return []
 
 
-# Нормализация списка словарей
 def _safe_dict_list(raw: Any) -> list[dict[str, Any]]:
     if not isinstance(raw, list):
         return []
     return [item for item in raw if isinstance(item, dict)]
 
 
-# Нормализация строковых данных для таблиц с проверкой формы строк
 def _safe_table_rows(raw: Any, column_count: int) -> list[list[str]]:
     if not isinstance(raw, list):
         raise ValueError("Block rows are missing or invalid")
@@ -176,7 +168,6 @@ def _safe_table_rows(raw: Any, column_count: int) -> list[list[str]]:
     return rows
 
 
-# Нормализация списка столбцов
 def _safe_columns(raw: Any) -> list[str]:
     if (
         not isinstance(raw, list)
@@ -187,7 +178,6 @@ def _safe_columns(raw: Any) -> list[str]:
     return list(raw)
 
 
-# Валидация соответствия столбцов таблицы операторскому контракту для блока "run_table"
 def _safe_run_table_columns(raw: Any) -> list[str]:
     columns = _safe_columns(raw)
     if tuple(columns) != _RUN_TABLE_COLUMNS:
@@ -195,25 +185,21 @@ def _safe_run_table_columns(raw: Any) -> list[str]:
     return columns
 
 
-# Валидация наличия обязательного поля "title" и его типа для блоков, требующих заголовок
 def _require_title(raw: dict[str, Any]) -> None:
     if not isinstance(raw.get("title"), str) or not raw["title"].strip():
         raise ValueError("Block title is missing or invalid")
 
 
-# Валидация наличия обязательного поля "items" и его типа для блоков, требующих список элементов
 def _require_list(raw: dict[str, Any], field: str) -> None:
     if not isinstance(raw.get(field), list):
         raise ValueError(f"Block {field} is missing or invalid")
 
 
-# Валидация наличия обязательного скаляра (строка, число, булево) для указанных полей
 def _require_scalar(raw: dict[str, Any], field: str) -> None:
     if not isinstance(raw.get(field), (str, int, float, bool)):
         raise ValueError(f"Block {field} is missing or invalid")
 
 
-# Разрешение количества колонок KPI-сетки: валидация значения от адаптера
 def resolve_kpi_grid_columns(value: object) -> int:
     if isinstance(value, int) and not isinstance(value, bool):
         if value in _KPI_GRID_COLUMN_CLASSES:
@@ -221,7 +207,6 @@ def resolve_kpi_grid_columns(value: object) -> int:
     return 4
 
 
-# Рендеринг одного блока из необработанных данных с валидацией и обработкой ошибок
 def _render_block(raw: Any, depth: int = _GROUP_MAX_DEPTH) -> dict[str, Any]:
     if not isinstance(raw, dict):
         return _degraded_block("Block is not an object", width=None)
@@ -250,7 +235,6 @@ def _render_block(raw: Any, depth: int = _GROUP_MAX_DEPTH) -> dict[str, Any]:
         )
 
 
-# Генерация "degraded" блока с сообщением об ошибке для случаев, когда рендеринг блока невозможен из-за ошибок в данных
 def _degraded_block(reason: str, width: Any = None) -> dict[str, Any]:
     if isinstance(width, dict):
         width_class = _resolve_block_width_class(width)
@@ -264,7 +248,6 @@ def _degraded_block(reason: str, width: Any = None) -> dict[str, Any]:
     }
 
 
-# Рендеринг конкретных типов блоков с валидацией их специфичных полей и структур данных
 def _render_hero_snapshot(raw: dict[str, Any], width_class: str) -> dict[str, Any]:
     _require_title(raw)
     _require_list(raw, "items")
@@ -304,7 +287,6 @@ def _render_hero_snapshot(raw: dict[str, Any], width_class: str) -> dict[str, An
     }
 
 
-# Рендеринг блока "metric_card" с валидацией наличия обязательных полей "title" и "value"
 def _render_metric_card(raw: dict[str, Any], width_class: str) -> dict[str, Any]:
     _require_title(raw)
     _require_scalar(raw, "value")
@@ -319,7 +301,6 @@ def _render_metric_card(raw: dict[str, Any], width_class: str) -> dict[str, Any]
     }
 
 
-# Рендеринг блока "kpi_strip" с валидацией наличия обязательных полей "title" и "items"
 def _render_kpi_strip(raw: dict[str, Any], width_class: str) -> dict[str, Any]:
     _require_title(raw)
     _require_list(raw, "items")
@@ -341,7 +322,6 @@ def _render_kpi_strip(raw: dict[str, Any], width_class: str) -> dict[str, Any]:
     }
 
 
-# Рендеринг блока "venue_summary_grid" с валидацией наличия обязательных полей "title" и "items"
 def _render_venue_summary_grid(raw: dict[str, Any], width_class: str) -> dict[str, Any]:
     _require_title(raw)
     _require_list(raw, "items")
@@ -363,7 +343,6 @@ def _render_venue_summary_grid(raw: dict[str, Any], width_class: str) -> dict[st
     }
 
 
-# Рендеринг блока "mode_cards" с валидацией наличия обязательных полей "title" и "items"
 def _render_mode_cards(raw: dict[str, Any], width_class: str) -> dict[str, Any]:
     _require_title(raw)
     _require_list(raw, "items")
@@ -390,7 +369,6 @@ def _render_mode_cards(raw: dict[str, Any], width_class: str) -> dict[str, Any]:
     }
 
 
-# Рендеринг блоков "status_table" и "event_table" с валидацией наличия обязательных полей "title", "columns" и "rows"
 def _render_status_table(raw: dict[str, Any], width_class: str) -> dict[str, Any]:
     _require_title(raw)
     columns = _safe_columns(raw.get("columns"))
@@ -405,7 +383,6 @@ def _render_status_table(raw: dict[str, Any], width_class: str) -> dict[str, Any
     }
 
 
-# Рендеринг блоков "status_table" и "event_table" с валидацией наличия обязательных полей "title", "columns" и "rows"
 def _render_event_table(raw: dict[str, Any], width_class: str) -> dict[str, Any]:
     _require_title(raw)
     columns = _safe_columns(raw.get("columns"))
@@ -420,7 +397,6 @@ def _render_event_table(raw: dict[str, Any], width_class: str) -> dict[str, Any]
     }
 
 
-# Рендеринг блока "attention_list" с валидацией наличия обязательных полей "title" и "items", а также структуры элементов списка
 def _render_attention_list(raw: dict[str, Any], width_class: str) -> dict[str, Any]:
     _require_title(raw)
     _require_list(raw, "items")
@@ -442,7 +418,6 @@ def _render_attention_list(raw: dict[str, Any], width_class: str) -> dict[str, A
     }
 
 
-# Рендеринг блока "artifact_links" с валидацией наличия обязательных полей "title" и "items"
 def _render_artifact_links(raw: dict[str, Any], width_class: str) -> dict[str, Any]:
     _require_title(raw)
     _require_list(raw, "items")
@@ -465,7 +440,6 @@ def _render_artifact_links(raw: dict[str, Any], width_class: str) -> dict[str, A
     }
 
 
-# Рендеринг блока "raw_json_panel" с валидацией наличия обязательного поля "title" и сохранением произвольных данных для отображения в виде JSON
 def _render_raw_json_panel(raw: dict[str, Any], width_class: str) -> dict[str, Any]:
     _require_title(raw)
 
@@ -477,11 +451,9 @@ def _render_raw_json_panel(raw: dict[str, Any], width_class: str) -> dict[str, A
     }
 
 
-# Поддерживаемые виды графиков для _render_chart
 _ALLOWED_CHART_KINDS: frozenset = frozenset({"line", "bar", "area", "donut"})
 
 
-# Рендеринг блока "chart" с безопасным chart payload и kind-поддержкой
 def _render_chart(raw: dict[str, Any], width_class: str) -> dict[str, Any]:
     kind = raw.get("kind")
     if kind is not None and kind not in _ALLOWED_CHART_KINDS:
@@ -551,7 +523,6 @@ def _render_chart(raw: dict[str, Any], width_class: str) -> dict[str, Any]:
     }
 
 
-# Генерация уникального chart_id на основе конфигурации для оптимизации рендеринга
 def _chart_id_from_config(title: str, chart_config: dict[str, Any]) -> str:
     payload = json.dumps(
         {"title": title, "config": chart_config},
@@ -563,7 +534,6 @@ def _chart_id_from_config(title: str, chart_config: dict[str, Any]) -> str:
     return f"beeui-chart-{digest}"
 
 
-# Рендеринг блока "operator_hero" — high-level system/operator snapshot
 def _render_operator_hero(raw: dict[str, Any], width_class: str) -> dict[str, Any]:
     _require_title(raw)
     _require_list(raw, "items")
@@ -601,7 +571,6 @@ def _render_operator_hero(raw: dict[str, Any], width_class: str) -> dict[str, An
     }
 
 
-# Рендеринг блока "venue_card" — compact venue/operator summary card
 def _render_venue_card(raw: dict[str, Any], width_class: str) -> dict[str, Any]:
     _require_title(raw)
 
@@ -647,7 +616,6 @@ def _render_venue_card(raw: dict[str, Any], width_class: str) -> dict[str, Any]:
     }
 
 
-# Рендеринг блока "kpi_grid" — responsive KPI stat cards
 def _render_kpi_grid(raw: dict[str, Any], width_class: str) -> dict[str, Any]:
     _require_title(raw)
     _require_list(raw, "items")
@@ -676,7 +644,6 @@ def _render_kpi_grid(raw: dict[str, Any], width_class: str) -> dict[str, Any]:
     }
 
 
-# Рендеринг layout group — nested container с bounded recursive children
 def _render_group(
     raw: dict[str, Any],
     width_class: str,
@@ -704,7 +671,6 @@ def _render_group(
     }
 
 
-# Рендеринг блока "state_grid" — dense key/value state section
 def _render_state_grid(raw: dict[str, Any], width_class: str) -> dict[str, Any]:
     _require_title(raw)
     _require_list(raw, "items")
@@ -726,7 +692,6 @@ def _render_state_grid(raw: dict[str, Any], width_class: str) -> dict[str, Any]:
     }
 
 
-# Рендеринг блока "quick_links" — grouped internal operator links
 def _render_quick_links(raw: dict[str, Any], width_class: str) -> dict[str, Any]:
     _require_title(raw)
 
@@ -747,7 +712,6 @@ def _render_quick_links(raw: dict[str, Any], width_class: str) -> dict[str, Any]
     }
 
 
-# Рендеринг блока "run_table" — operator run/event/artifact table
 def _render_run_table(raw: dict[str, Any], width_class: str) -> dict[str, Any]:
     _require_title(raw)
 
@@ -789,7 +753,6 @@ def _render_run_table(raw: dict[str, Any], width_class: str) -> dict[str, Any]:
     }
 
 
-# Поддерживаемые типы ячеек для data_table
 _ALLOWED_DATA_TABLE_CELL_TYPES: frozenset = frozenset(
     {"text", "muted", "link", "badge", "status", "avatar_text", "progress", "actions"}
 )
@@ -854,7 +817,6 @@ _ALLOWED_DATA_TABLE_COLORS: frozenset[str] = frozenset(
 )
 
 
-# Ограничение adapter-provided visual tokens перед использованием в CSS class suffix
 def _safe_visual_token(
     value: Any,
     allowed: frozenset[str],
@@ -870,7 +832,6 @@ def _safe_visual_token(
     return default
 
 
-# Рендеринг блока "data_table" - advanced Tabler-compatible data table
 def _render_data_table(raw: dict[str, Any], width_class: str) -> dict[str, Any]:
     _require_title(raw)
 
@@ -887,7 +848,6 @@ def _render_data_table(raw: dict[str, Any], width_class: str) -> dict[str, Any]:
     nowrap = bool(raw.get("nowrap", False))
     compact = bool(raw.get("compact", False))
 
-    # toolbar
     toolbar_raw = raw.get("toolbar")
     toolbar: dict[str, Any] = {"search": False, "entries": False, "actions": []}
     if isinstance(toolbar_raw, dict):
@@ -990,7 +950,6 @@ def _render_data_table(raw: dict[str, Any], width_class: str) -> dict[str, Any]:
     }
 
 
-# Рендеринг отдельной ячейки data_table по типу
 def _render_data_table_cell(cell_raw: Any, cell_type: str) -> dict[str, Any]:
     if cell_type == "actions":
         actions: list[dict[str, str]] = []
@@ -1084,7 +1043,6 @@ def _render_data_table_cell(cell_raw: Any, cell_type: str) -> dict[str, Any]:
     }
 
 
-# Сопоставление типов блоков с их функциями рендеринга для динамического вызова при обработке layout[] списка
 _BLOCK_RENDERERS: dict[str, Any] = {
     "hero_snapshot": _render_hero_snapshot,
     "metric_card": _render_metric_card,
@@ -1108,14 +1066,12 @@ _BLOCK_RENDERERS: dict[str, Any] = {
 }
 
 
-# Рендеринг layout[] списка
 def render_layout(layout: Any) -> list[dict[str, Any]]:
     if not isinstance(layout, list):
         return []
     return [_render_block(item, depth=_GROUP_MAX_DEPTH) for item in layout]
 
 
-# Рекурсивная проверка chart-блоков, включая вложенные group.children
 def layout_has_charts(blocks: list[dict[str, Any]]) -> bool:
     for block in blocks:
         if block.get("type") == "chart":

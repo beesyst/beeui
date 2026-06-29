@@ -85,7 +85,6 @@ _CUSTOM_ROUTE_RESERVED_PREFIXES = (
 )
 
 
-# Загрузка schema.yml и сбор валидированной BeeUiConfig
 def load_beeui_config(config_path: Path) -> BeeUiConfig:
     if not config_path.is_file():
         raise FileNotFoundError(f"BeeUI schema config is missing: {config_path}")
@@ -342,7 +341,6 @@ def load_beeui_config(config_path: Path) -> BeeUiConfig:
     )
 
 
-# Парсинг одного block placement и чек ссылки на объявленный block id
 def parse_data_sources(
     data_sources_payload: Any,
     *,
@@ -416,7 +414,6 @@ def parse_data_sources(
     return data_sources
 
 
-# Парсинг components конфига
 def _parse_components(payload: Any) -> ComponentConfig:
     if payload is None:
         return ComponentConfig()
@@ -458,7 +455,6 @@ def _parse_components(payload: Any) -> ComponentConfig:
     return ComponentConfig(tabs=tabs, accordion=accordion)
 
 
-# Парсинг page-level tabs config
 def _parse_page_tabs(
     payload: Any,
     page_id: str,
@@ -563,7 +559,6 @@ def _parse_page_route(payload: Any, prefix: str) -> PageRouteConfig:
     return PageRouteConfig(mode=mode)
 
 
-# Валидация tab href — только safe internal links
 def _validate_tab_href(href: Any, page_id: str, idx: int) -> str:
     if not isinstance(href, str) or not href.strip():
         raise ValueError(
@@ -607,7 +602,6 @@ def _validate_tab_href(href: Any, page_id: str, idx: int) -> str:
     return value
 
 
-# Разрешение блока из реестра по его id и сбор модели для передачи в template, включая разрешение селекторов данных
 def _resolve_schema_root(config_path: Path) -> Path:
     if config_path.parent.name == "config":
         return config_path.parent.parent.resolve()
@@ -618,7 +612,6 @@ def _resolve_schema_root(config_path: Path) -> Path:
         return project_root().resolve()
 
 
-# Валидация и безопасное разрешение пути для static источников
 def _validate_static_source_path(
     value: str,
     *,
@@ -636,7 +629,6 @@ def _validate_static_source_path(
         raise ValueError(f"{field_name} must match format json")
 
 
-# Чек, что mapping содержит только поля текущего schema contract
 def _validate_exact_keys(
     payload: dict[str, Any],
     allowed_keys: set[str],
@@ -647,7 +639,6 @@ def _validate_exact_keys(
         raise ValueError(f"{prefix} contains unsupported keys: {', '.join(unknown)}")
 
 
-# Чтение обязательных boolean-полей
 def _required_bool(payload: dict[str, Any], key: str, prefix: str) -> bool:
     value = payload.get(key)
     if not isinstance(value, bool):
@@ -655,7 +646,6 @@ def _required_bool(payload: dict[str, Any], key: str, prefix: str) -> bool:
     return value
 
 
-# Чтение обязательной строки из заранее разрешенного набора
 def _required_enum(
     payload: dict[str, Any],
     key: str,
@@ -668,7 +658,6 @@ def _required_enum(
     return value
 
 
-# Чтение обязательного integer-поля из заранее разрешенного набора
 def _required_int_enum(
     payload: dict[str, Any],
     key: str,
@@ -681,7 +670,6 @@ def _required_int_enum(
     return value
 
 
-# Чтение обязательной непустой строки и обрезка внешних пробелов
 def _required_non_empty_string(
     payload: dict[str, Any],
     key: str,
@@ -693,7 +681,6 @@ def _required_non_empty_string(
     return value.strip()
 
 
-# Разрешение локализованного текста: принимает строку или mapping с ключами локалей
 def _required_localized_text(
     payload: dict[str, Any],
     key: str,
@@ -706,7 +693,6 @@ def _required_localized_text(
     return cast(str | dict[str, str], value)
 
 
-# Валидация внутренней route path без traversal, query/hash
 def _safe_path(value: Any, field_name: str) -> str:
     if not isinstance(value, str) or not value.strip():
         raise ValueError(f"{field_name} must be a non-empty string")
@@ -732,7 +718,6 @@ def _safe_path(value: Any, field_name: str) -> str:
     return path
 
 
-# Чек, что путь зарезервирован для BeeUI system routes
 def is_custom_route_reserved_path(path: str) -> bool:
     if path in _CUSTOM_ROUTE_RESERVED_PATHS:
         return True
@@ -741,7 +726,6 @@ def is_custom_route_reserved_path(path: str) -> bool:
     return False
 
 
-# Валидация одного navigation item и рекурсивный сбор children
 def _parse_navigation_item(
     item: Any,
     *,
@@ -826,7 +810,6 @@ def _parse_navigation_item(
     )
 
 
-# Чек, что navigation links указывает на объявленные страницы
 def _validate_navigation_pages(
     item: Any,
     prefix: str,

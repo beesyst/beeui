@@ -26,7 +26,6 @@ from beeui_module.web.app import create_beeui_app
 FIXTURE_ROOT = Path(__file__).resolve().parent / "fixtures" / "beecap"
 
 
-# Класс: адаптер для тестирования артефактов с фикстурами
 class ArtifactTestAdapter(ProductUiAdapterBase):
     def __init__(self) -> None:
         super().__init__(
@@ -130,7 +129,6 @@ class ArtifactTestAdapter(ProductUiAdapterBase):
         return ok_result({"mode": "test", "read_only": True})
 
 
-# Класс: тесты для редакции и превью артефактов, а также маршрутов без адаптера и с префиксом
 class TestRedaction:
     def test_redact_sensitive_keys(self) -> None:
         data = {
@@ -166,7 +164,6 @@ class TestRedaction:
         assert redact_value(None) is None
 
 
-# Класс: тесты для превью артефактов с различными типами контента и ошибками
 class TestPreviewJson:
     def test_json_preview_dict(self) -> None:
         preview = build_preview("test", "application/json", {"key": "value"})
@@ -204,7 +201,6 @@ class TestPreviewJson:
         assert "exceeds maximum" in preview.error.lower()
 
 
-# Класс: тесты для превью артефактов с типом application/jsonl, включая обработку ошибок и больших данных
 class TestPreviewJsonl:
     def test_jsonl_preview_list(self) -> None:
         preview = build_preview("test", "application/jsonl", [{"a": 1}, {"b": 2}])
@@ -240,7 +236,6 @@ class TestPreviewJsonl:
         assert len(preview.preview_data) == MAX_JSONL_ROWS
 
 
-# Класс: тесты для превью текстовых артефактов, включая проверку редактирования и обрезки больших данных
 class TestPreviewText:
     def test_text_preview(self) -> None:
         preview = build_preview("test", "text/plain", "hello world")
@@ -267,7 +262,6 @@ class TestPreviewText:
         assert preview.preview_data is None
 
 
-# Класс: тест для превью артефактов с неподдерживаемым типом контента, проверяющий, что возвращается только метадата без данных
 class TestPreviewUnsupported:
     def test_binary_metadata_only(self) -> None:
         preview = build_preview("test", "application/octet-stream", b"\x00\x01")
@@ -276,7 +270,6 @@ class TestPreviewUnsupported:
         assert preview.preview_data is None
 
 
-# Класс: тесты для маршрутов артефактов без адаптера, с префиксом и для проверки безопасности, включая отсутствие мутации данных и экранирование HTML
 class TestArtifactRoutes:
     def _make_app(self, adapter: Any = None) -> FastAPI:
         return create_beeui_app(
@@ -312,7 +305,6 @@ class TestArtifactRoutes:
         adapter = ArtifactTestAdapter()
         app = self._make_app(adapter)
         client = TestClient(app)
-        # Use run_id with semicolon (invalid per validate_run_id)
         resp = client.get("/runs/run;id/artifacts")
         assert resp.status_code == 400
 
@@ -477,7 +469,6 @@ class TestArtifactRoutes:
         assert data["error"]["code"] == "not_found"
 
 
-# Класс: тесты для маршрутов артефактов без адаптера, с префиксом и для проверки безопасности, включая отсутствие мутации данных и экранирование HTML
 class TestArtifactRoutesNoAdapter:
     def _make_app(self) -> FastAPI:
         return create_beeui_app()
@@ -513,7 +504,6 @@ class TestArtifactRoutesNoAdapter:
         assert data["error"]["code"] == "adapter_unavailable"
 
 
-# Класс: тесты для маршрутов артефактов с префиксом, проверяющие, что маршруты работают корректно с заданным префиксом и возвращают ожидаемые данные
 class TestArtifactRoutesWithPrefix:
     def test_route_prefix_works(self) -> None:
         from beeui_module.core.paths import settings_path
@@ -536,7 +526,6 @@ class TestArtifactRoutesWithPrefix:
         assert data["status"] == "ok"
 
 
-# Класс: тесты для превью артефактов с различными типами контента и ошибками
 class TestArtifactPreviewViaRoute:
     def test_malformed_json_via_route(self) -> None:
         adapter = ArtifactTestAdapter()
@@ -572,7 +561,6 @@ class TestArtifactPreviewViaRoute:
         assert data["data"]["preview_type"] == "text"
 
 
-# Класс: тесты для маршрутов артефактов без адаптера, с префиксом и для проверки безопасности, включая отсутствие мутации данных и экранирование HTML
 class TestArtifactSecurity:
     def test_no_mutation_of_source_data(self) -> None:
         """Verify that artifact routes do not mutate source fixture files."""
@@ -672,7 +660,6 @@ class TestArtifactSecurity:
                 )
 
 
-# Класс: тест для чека, что маршруты артефактов не регистрируются, когда флаг features.browser_artifact отключен
 class TestArtifactFeatureFlag:
     def test_artifact_routes_disabled_when_feature_flag_false(self) -> None:
         from beeui_module.core.paths import settings_path

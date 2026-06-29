@@ -6,13 +6,11 @@ from typing import Any
 from beeui_module.artifacts.models import ArtifactPreview, PreviewType
 from beeui_module.artifacts.redaction import redact_text, redact_value
 
-# Константы для ограничения размера превью
 MAX_JSON_BYTES = 512 * 1024
 MAX_JSONL_ROWS = 500
 MAX_CHARS_TEXT = 100_000
 
 
-# Определение типа превью на основе content-type и содержимого
 def _infer_preview_type(content_type: str, content: Any) -> PreviewType:
     ct = (content_type or "").lower()
 
@@ -31,7 +29,6 @@ def _infer_preview_type(content_type: str, content: Any) -> PreviewType:
     return "unsupported"
 
 
-# Билд превью в зависимости от типа контента
 def _preview_json(content: Any) -> ArtifactPreview:
     preview_type: PreviewType = "json"
 
@@ -94,7 +91,6 @@ def _preview_json(content: Any) -> ArtifactPreview:
     )
 
 
-# Набор ключей для redaction (консервативный подход)
 def _preview_jsonl(content: Any) -> ArtifactPreview:
     preview_type: PreviewType = "jsonl"
 
@@ -170,7 +166,6 @@ def _preview_jsonl(content: Any) -> ArtifactPreview:
     )
 
 
-# Билд превью для текстовых артефактов с ограничением по количеству символов
 def _preview_text(content: Any) -> ArtifactPreview:
     preview_type: PreviewType = "text"
 
@@ -226,7 +221,6 @@ def _preview_text(content: Any) -> ArtifactPreview:
     )
 
 
-# Билд превью артефакта в зависимости от его типа
 def build_preview(
     artifact_id: str,
     content_type: str,

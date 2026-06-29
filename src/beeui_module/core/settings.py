@@ -11,7 +11,6 @@ VALID_LOG_LEVELS = {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}
 _ENV_REF_RE = re.compile(r"^\$\{([A-Z0-9_]+)\}$")
 
 
-# Загрузка YAML-настроек BeeUI с минимальной fail-fast валидацией
 def load_settings(config_path: Path) -> dict[str, Any]:
     if not config_path.is_file():
         raise FileNotFoundError(f"Settings config is missing: {config_path}")
@@ -32,7 +31,6 @@ def load_settings(config_path: Path) -> dict[str, Any]:
     return payload
 
 
-# Валидация структуры и типов в секциях app, logging и storage настроек
 def _validate_app(settings: dict[str, Any]) -> None:
     app = settings.get("app")
     if not isinstance(app, dict):
@@ -42,7 +40,6 @@ def _validate_app(settings: dict[str, Any]) -> None:
         raise ValueError("settings.yml must declare app.name=beeui")
 
 
-# Валидация секции logging с проверкой наличия ключей и типов значений
 def _validate_logging(settings: dict[str, Any]) -> None:
     logging_cfg = settings.get("logging")
     if not isinstance(logging_cfg, dict):
@@ -70,7 +67,6 @@ def _validate_logging(settings: dict[str, Any]) -> None:
         raise ValueError("logging.file must be a safe relative path")
 
 
-# Валидация секции web с проверкой наличия ключей и типов значений
 def _validate_web(settings: dict[str, Any]) -> None:
     web_cfg = settings.get("web")
     if not isinstance(web_cfg, dict):
@@ -99,7 +95,6 @@ def _validate_web(settings: dict[str, Any]) -> None:
         raise ValueError("web.cache_static must be an integer >= 0")
 
 
-# Валидация секции security с проверкой наличия ключей и типов значений
 def _validate_security(settings: dict[str, Any]) -> None:
     security_cfg = settings.get("security")
     if not isinstance(security_cfg, dict):
@@ -115,7 +110,6 @@ def _validate_security(settings: dict[str, Any]) -> None:
         raise ValueError("security.assets_ext must be a boolean")
 
 
-# Валидация секции auth
 def _validate_auth(settings: dict[str, Any]) -> None:
     auth_cfg = settings.get("auth")
     if auth_cfg is None:
@@ -151,7 +145,6 @@ def _validate_auth(settings: dict[str, Any]) -> None:
                 )
 
 
-# Разрешение ссылок на переменные окружения в виде ${ENV_VAR} для чувствительных данных
 def _resolve_env_ref(value: Any) -> Any:
     if not isinstance(value, str):
         return value
@@ -164,7 +157,6 @@ def _resolve_env_ref(value: Any) -> Any:
     return os.environ.get(env_name)
 
 
-# Валидация секции features с проверкой наличия ключей и типов значений
 def _validate_features(settings: dict[str, Any]) -> None:
     features_cfg = settings.get("features")
     if not isinstance(features_cfg, dict):
@@ -184,7 +176,6 @@ def _validate_features(settings: dict[str, Any]) -> None:
             raise ValueError(f"features.{key} must be a boolean")
 
 
-# Валидация секции product с проверкой наличия ключей и типов значений
 def _validate_product(settings: dict[str, Any]) -> None:
     product_cfg = settings.get("product")
     if not isinstance(product_cfg, dict):
@@ -203,7 +194,6 @@ def _validate_product(settings: dict[str, Any]) -> None:
         raise ValueError("product.title must be a non-empty string")
 
 
-# Валидация секции storage с проверкой наличия ключей и типов значений
 def _validate_storage(settings: dict[str, Any]) -> None:
     storage_cfg = settings.get("storage")
     if not isinstance(storage_cfg, dict):

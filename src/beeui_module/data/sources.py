@@ -30,7 +30,6 @@ _DEMO_SOURCE_PAYLOAD = {
 }
 
 
-# Загрузка данных для источника. В случае ошибок возвращает envelope с описанием проблемы в warnings
 def load_source_data(source: DataSourceDefinition):
     if source.source_type == "demo":
         return build_envelope(
@@ -56,7 +55,6 @@ def load_source_data(source: DataSourceDefinition):
     )
 
 
-# Загрузка данных из static источника. В будущем может быть расширена для поддержки других форматов и источников
 def _load_static_source(source: DataSourceDefinition):
     try:
         static_path = _resolve_static_path(source)
@@ -107,7 +105,6 @@ def _load_static_source(source: DataSourceDefinition):
     )
 
 
-# Валидация и безопасное разрешение пути для static источников
 def _resolve_static_path(source: DataSourceDefinition) -> Path:
     if source.root_dir is None:
         raise ValueError("Static source root directory is not configured")

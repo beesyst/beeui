@@ -15,7 +15,6 @@ _SESSION_MAX_AGE = 86400
 _HMAC_DIGEST = hashlib.sha256
 
 
-# Создание и проверка подписанных cookie для сессий, а также генерация CSRF токенов
 def _sign(payload: str, secret: str) -> str:
     mac = hmac.new(
         secret.encode("utf-8"),
@@ -25,13 +24,11 @@ def _sign(payload: str, secret: str) -> str:
     return base64.urlsafe_b64encode(mac.digest()).decode("ascii").rstrip("=")
 
 
-# Кодирование и декодирование данных сессии в безопасный для cookie формат (base64 + подпись)
 def _encode_data(data: dict[str, Any]) -> str:
     raw = json.dumps(data, separators=(",", ":"), sort_keys=True)
     return base64.urlsafe_b64encode(raw.encode("utf-8")).decode("ascii").rstrip("=")
 
 
-# Декодирование данных сессии из cookie, возвращая None при ошибках (недопустимый формат, неверная подпись, истекшая сессия)
 def _decode_data(encoded: str) -> dict[str, Any] | None:
     try:
         padded = encoded + "=" * (4 - len(encoded) % 4)
@@ -41,7 +38,6 @@ def _decode_data(encoded: str) -> dict[str, Any] | None:
         return None
 
 
-# Создание и проверки cookie сессий, а также генерации CSRF токенов
 def create_session_cookie(session: SessionData, secret: str) -> str:
     data = session.to_dict()
     encoded = _encode_data(data)
@@ -49,7 +45,6 @@ def create_session_cookie(session: SessionData, secret: str) -> str:
     return f"{encoded}.{sig}"
 
 
-# Чек cookie сессии: возвращение SessionData при валидной cookie, иначе None (включая истечение срока действия)
 def verify_session_cookie(cookie: str, secret: str) -> SessionData | None:
     if not cookie or "." not in cookie:
         return None
@@ -70,15 +65,13 @@ def verify_session_cookie(cookie: str, secret: str) -> SessionData | None:
 
     try:
         return SessionData.from_dict(data)
-    except (KeyError, ValueError, TypeError):
+    except KeyError, ValueError, TypeError:
         return None
 
 
-# Генерация безопасного CSRF токена для защиты от CSRF атак
 def generate_csrf_token() -> str:
     return secrets.token_urlsafe(32)
 
 
-# Возвращение имени cookie для сессий
 def session_cookie_name() -> str:
     return _SESSION_COOKIE_NAME

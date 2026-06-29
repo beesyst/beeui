@@ -11,7 +11,6 @@ from beeui_module.auth.models import SessionData
 from beeui_module.auth.service import AuthService
 
 
-# Маршруты для аутентификации: login/logout формы и действия, а также получение CSRF токена
 def register_auth_routes(
     *,
     app: Any,
@@ -240,7 +239,6 @@ def register_auth_routes(
     app.include_router(router)
 
 
-# Извлечение сервиса аутентификации и проверки сессии из cookie
 def _get_service(request: Request) -> AuthService:
     service: AuthService | None = getattr(request.app.state, "beeui_auth_service", None)
     if service is None:
@@ -248,7 +246,6 @@ def _get_service(request: Request) -> AuthService:
     return service
 
 
-# Валидация cookie сессии: возвращение SessionData при валидной cookie, иначе None (включая истечение срока действия)
 def _get_session_if_valid(request: Request, service: AuthService) -> SessionData | None:
     cookie_name = service.cookie_name()
     cookie = request.cookies.get(cookie_name)

@@ -18,7 +18,6 @@ from beeui_module.pages.models import BeeUiConfig
 from beeui_module.web.app import create_beeui_app, mount_beeui
 
 
-# Фейк: минимальный валидный адаптер для тестирования инъекции API в embedded режиме
 class FakeEmbeddedAdapter(ProductUiAdapterBase):
     def __init__(self) -> None:
         super().__init__(
@@ -64,7 +63,6 @@ class WrongMetadataTypeAdapter:
     metadata = "not an AdapterMetadata instance"
 
 
-# Адаптер с метаданными, но без обязательных методов
 class MissingMethodAdapter:
     def __init__(self) -> None:
         self.metadata = AdapterMetadata(
@@ -74,14 +72,12 @@ class MissingMethodAdapter:
         )
 
 
-# Хелпер: запись словаря в YAML файл для тестов
 def _write_beeui_yml(tmp_path: Path, content: dict[str, Any]) -> Path:
     path = tmp_path / "beeui.yml"
     path.write_text(yaml.safe_dump(content), encoding="utf-8")
     return path
 
 
-# Хелпер: валидация адаптера при передаче в create_beeui_app - проверка наличия metadata и обязательных методов
 def _route_paths(app: FastAPI) -> set[str]:
     paths: set[str] = set()
     for route in app.routes:
@@ -91,7 +87,6 @@ def _route_paths(app: FastAPI) -> set[str]:
     return paths
 
 
-# Валидация адаптера при передаче в create_beeui_app
 def _minimal_beeui_config() -> dict[str, Any]:
     return {
         "app": {
@@ -135,7 +130,6 @@ def _minimal_beeui_config() -> dict[str, Any]:
     }
 
 
-# Тесты: создание приложения в embedded режиме и его базовая функциональность
 class TestDefaultCreateBeeuiApp:
     def test_returns_fastapi_app(self) -> None:
         app = create_beeui_app()
@@ -183,7 +177,6 @@ class TestDefaultCreateBeeuiApp:
         assert api_routes == expected, f"Expected {expected}, got {api_routes}"
 
 
-# Тесты: загрузка конфигурации из config_path и приоритет explicit ui_config над config_path
 class TestCreateBeeuiAppWithConfigPath:
     def test_config_path_loads_routes(self, tmp_path: Path) -> None:
         config = _minimal_beeui_config()
@@ -240,7 +233,6 @@ class TestCreateBeeuiAppWithConfigPath:
         assert "Explicit Config" in resp.text
 
 
-# Тесты: инъекция product_id и product_title в app.state и приоритет этих параметров над настройками из config_path
 class TestProductMetadataInjection:
     def test_product_id_and_title_stored(self) -> None:
         app = create_beeui_app(
@@ -282,7 +274,6 @@ class TestProductMetadataInjection:
         assert app.state.beeui_product["title"] == "BeeUI Demo"
 
 
-# Тесты: инъекция адаптера в app.state и валидация адаптера при передаче в create_beeui_app
 class TestAdapterInjection:
     def test_adapter_stored_in_app_state(self) -> None:
         adapter = FakeEmbeddedAdapter()
@@ -328,7 +319,6 @@ class TestAdapterInjection:
             )
 
 
-# Тесты: использование route_prefix в настройках и его влияние на маршруты и статические файлы
 class TestRoutePrefixWithEmbedded:
     def test_route_prefix_works_with_product_metadata(self) -> None:
         settings = load_settings(settings_path())
@@ -375,7 +365,6 @@ class TestRoutePrefixWithEmbedded:
         assert resp.status_code == 200
 
 
-# Тесты: монтирование BeeUI в существующее FastAPI приложение и базовая функциональность
 class TestMountBeeui:
     def test_mount_exposes_health(self) -> None:
         parent = FastAPI()
@@ -430,7 +419,6 @@ class TestMountBeeui:
         assert "Embedded Test" in resp.text
 
 
-# Тесты: валидация пути при монтировании и защита от небезопасных или некорректных путей
 class TestMountPathValidation:
     def test_rejects_empty_path(self) -> None:
         parent = FastAPI()
@@ -496,7 +484,6 @@ class TestMountPathValidation:
             raise AssertionError("Expected ValueError for trailing slash")
 
 
-# Тесты: обнаружение конфликтов маршрутов при монтировании в существующее приложение
 class TestRouteCollision:
     def test_conflicting_route_detected(self) -> None:
         parent = FastAPI()
@@ -513,7 +500,6 @@ class TestRouteCollision:
             raise AssertionError("Expected ValueError for conflicting route")
 
 
-# Тесты: embedded app with adapter exposes artifact and product console read-only API routes
 class TestNoApiRoutes:
     def test_artifact_api_routes_after_embedded_creation(self) -> None:
         adapter = FakeEmbeddedAdapter()

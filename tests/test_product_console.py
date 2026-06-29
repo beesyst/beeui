@@ -20,7 +20,6 @@ from beeui_module.core.settings import load_settings
 from beeui_module.web.app import create_beeui_app, mount_beeui
 
 
-# Класс: полный тестовый адаптер для HTML/API сценариев продуктовой консоли
 class FakeProductConsoleAdapter(ProductUiAdapterBase):
     def __init__(self) -> None:
         super().__init__(
@@ -137,7 +136,6 @@ class FakeProductConsoleAdapter(ProductUiAdapterBase):
         return ok_result({"read_only": True})
 
 
-# Класс: legacy-адаптер намеренно не реализует новые необязательные методы протокола
 class LegacyProductConsoleAdapter:
     def __init__(self) -> None:
         self.metadata = AdapterMetadata(
@@ -165,7 +163,6 @@ class LegacyProductConsoleAdapter:
         return ok_result({"read_only": True})
 
 
-# Тест: dashboard корректно отображается в HTML и возвращается через API
 def test_adapter_dashboard_html_and_api_work() -> None:
     app = create_beeui_app(adapter=FakeProductConsoleAdapter())
     client = TestClient(app)
@@ -188,7 +185,6 @@ def test_adapter_dashboard_html_and_api_work() -> None:
     assert payload["meta"]["status"] == "partial"
 
 
-# Тест: adapter-backed dashboard использует page-body/container wrapper
 def test_adapter_dashboard_uses_page_body_container_wrapper() -> None:
     app = create_beeui_app(adapter=FakeProductConsoleAdapter())
     client = TestClient(app)
@@ -201,7 +197,6 @@ def test_adapter_dashboard_uses_page_body_container_wrapper() -> None:
     assert container_idx > body_idx
 
 
-# Тест: список запусков доступен в HTML и API с метаданными адаптера
 def test_adapter_runs_html_and_api_work() -> None:
     app = create_beeui_app(adapter=FakeProductConsoleAdapter())
     client = TestClient(app)
@@ -220,7 +215,6 @@ def test_adapter_runs_html_and_api_work() -> None:
     assert payload["meta"]["count"] == 2
 
 
-# Тест: детали запуска и связанные артефакты доступны в HTML и API
 def test_adapter_run_detail_html_and_api_work() -> None:
     app = create_beeui_app(adapter=FakeProductConsoleAdapter())
     client = TestClient(app)
@@ -238,7 +232,6 @@ def test_adapter_run_detail_html_and_api_work() -> None:
     assert payload["data"]["id"] == "run_safe_001"
 
 
-# Тест: venue dashboard отображается в HTML и возвращается через API
 def test_adapter_venue_dashboard_html_and_api_work() -> None:
     app = create_beeui_app(adapter=FakeProductConsoleAdapter())
     client = TestClient(app)
@@ -256,7 +249,6 @@ def test_adapter_venue_dashboard_html_and_api_work() -> None:
     assert payload["data"]["venue_id"] == "venue_safe_001"
 
 
-# Тест: отсутствующий optional venue method даёт явный unavailable envelope
 def test_legacy_adapter_without_venue_method_is_supported() -> None:
     legacy_adapter = LegacyProductConsoleAdapter()
     app = create_beeui_app(adapter=cast(Any, legacy_adapter))
@@ -273,7 +265,6 @@ def test_legacy_adapter_without_venue_method_is_supported() -> None:
     }
 
 
-# Тест: небезопасные идентификаторы отклоняются до вызова адаптера
 def test_invalid_ids_are_rejected() -> None:
     app = create_beeui_app(adapter=FakeProductConsoleAdapter())
     client = TestClient(app)
@@ -291,7 +282,6 @@ def test_invalid_ids_are_rejected() -> None:
     assert invalid_venue_api.json()["error"]["code"] == "invalid_id"
 
 
-# Тест: ошибочные и частичные состояния адаптера сохраняются в API envelope
 def test_not_found_and_partial_states_are_explicit() -> None:
     app = create_beeui_app(adapter=FakeProductConsoleAdapter())
     client = TestClient(app)
@@ -308,7 +298,6 @@ def test_not_found_and_partial_states_are_explicit() -> None:
     assert partial_venue.json()["meta"]["status"] == "partial"
 
 
-# Тест: без адаптера приложение продолжает работать в demo mode
 def test_demo_mode_still_uses_configured_pages_without_adapter() -> None:
     app = create_beeui_app()
     client = TestClient(app)
@@ -320,7 +309,6 @@ def test_demo_mode_still_uses_configured_pages_without_adapter() -> None:
     assert client.get("/api/dashboard").status_code == 404
 
 
-# Тест: HTML-ссылки учитывают route prefix и FastAPI mount path
 def test_route_prefix_and_embedded_mount_work_for_product_console() -> None:
     settings = load_settings(settings_path())
     settings["web"]["route_prefix"] = "/bee"
@@ -351,7 +339,6 @@ def test_route_prefix_and_embedded_mount_work_for_product_console() -> None:
     assert 'href="/ui/runs/run_safe_001/artifacts/report_json"' in mounted_run.text
 
 
-# Тест: экранирование значения адаптера перед выводом в HTML
 def test_html_escapes_adapter_values() -> None:
     app = create_beeui_app(adapter=FakeProductConsoleAdapter())
     client = TestClient(app)
@@ -363,7 +350,6 @@ def test_html_escapes_adapter_values() -> None:
     assert "\\u003cimg" in response.text or "&lt;img" in response.text
 
 
-# Тест: API отклоняет dashboard payload неверного типа
 def test_malformed_dashboard_api_is_rejected() -> None:
     class MalformedDashboardAdapter(FakeProductConsoleAdapter):
         def get_dashboard(self) -> Any:
@@ -382,7 +368,6 @@ def test_malformed_dashboard_api_is_rejected() -> None:
     )
 
 
-# Тест: API отклоняет runs payload неверного типа
 def test_malformed_runs_api_is_rejected() -> None:
     class MalformedRunsAdapter(FakeProductConsoleAdapter):
         def list_runs(self) -> Any:
@@ -398,7 +383,6 @@ def test_malformed_runs_api_is_rejected() -> None:
     assert payload["error"]["code"] == "malformed_adapter_payload"
 
 
-# Тест: API отклоняет run detail payload неверного типа
 def test_malformed_run_detail_api_is_rejected() -> None:
     class MalformedRunAdapter(FakeProductConsoleAdapter):
         def get_run(self, run_id: str) -> Any:
@@ -414,7 +398,6 @@ def test_malformed_run_detail_api_is_rejected() -> None:
     assert payload["error"]["code"] == "malformed_adapter_payload"
 
 
-# Тест: API отклоняет venue payload неверного типа
 def test_malformed_venue_api_is_rejected() -> None:
     class MalformedVenueAdapter(FakeProductConsoleAdapter):
         def get_venue_dashboard(self, venue_id: str) -> Any:
@@ -430,7 +413,6 @@ def test_malformed_venue_api_is_rejected() -> None:
     assert payload["error"]["code"] == "malformed_adapter_payload"
 
 
-# Тест: секреты в dashboard payload редактируются для HTML и API
 def test_dashboard_secrets_are_redacted_in_html_and_api() -> None:
     class SecretDashboardAdapter(FakeProductConsoleAdapter):
         def get_dashboard(self) -> Any:
@@ -457,7 +439,6 @@ def test_dashboard_secrets_are_redacted_in_html_and_api() -> None:
     assert "safe-value" in api.text
 
 
-# Тест: секреты в warnings и meta редактируются для HTML и API
 def test_warning_and_meta_secrets_are_redacted_in_html_and_api() -> None:
     class SecretEnvelopeAdapter(FakeProductConsoleAdapter):
         def get_dashboard(self) -> Any:
@@ -491,7 +472,6 @@ def test_warning_and_meta_secrets_are_redacted_in_html_and_api() -> None:
     assert "safe-value" in api.text
 
 
-# Тест: секреты в сообщении об ошибке адаптера редактируются для HTML и API
 def test_adapter_error_message_secret_is_redacted_in_html_and_api() -> None:
     class SecretErrorAdapter(FakeProductConsoleAdapter):
         def get_dashboard(self) -> Any:
@@ -513,7 +493,6 @@ def test_adapter_error_message_secret_is_redacted_in_html_and_api() -> None:
     assert "*** REDACTED ***" in api.text
 
 
-# Тест: generic router не содержит импортов конкретных Bee-продуктов
 def test_no_product_specific_imports_in_console_router() -> None:
     source = Path("src/beeui_module/pages/product_console.py").read_text(
         encoding="utf-8"
@@ -522,7 +501,6 @@ def test_no_product_specific_imports_in_console_router() -> None:
     assert "beeagent_module" not in source
 
 
-# Тест: адаптер с chart layout block возвращает 200 с корректным рендерингом
 def test_adapter_chart_layout_block_renders() -> None:
     class ChartLayoutAdapter(FakeProductConsoleAdapter):
         def get_dashboard(self) -> Any:
@@ -555,7 +533,6 @@ def test_adapter_chart_layout_block_renders() -> None:
     assert "https://" not in response.text
 
 
-# Тест: chart layout HTML экранирует опасные adapter-provided значения
 def test_chart_layout_html_escapes_adapter_values() -> None:
     class UnsafeChartAdapter(FakeProductConsoleAdapter):
         def get_dashboard(self) -> Any:
@@ -583,7 +560,6 @@ def test_chart_layout_html_escapes_adapter_values() -> None:
     assert "<img src=x onerror=alert(1)>" not in response.text
 
 
-# Тест: chart config сериализуется в JSON script node, а не в unsafe attribute
 def test_chart_layout_html_uses_safe_json_script_config() -> None:
     class UnsafeChartConfigAdapter(FakeProductConsoleAdapter):
         def get_dashboard(self) -> Any:
@@ -615,7 +591,6 @@ def test_chart_layout_html_uses_safe_json_script_config() -> None:
     assert "\\u003cscript\\u003ex\\u003c/script\\u003e" in response.text
 
 
-# Тест: chart/base templates do not use unsafe chart serialization primitives
 def test_chart_templates_do_not_use_unsafe_serialization() -> None:
     template_root = Path("src/beeui_module/web/templates")
     chart = (template_root / "components/layout/chart.html").read_text(encoding="utf-8")
@@ -626,7 +601,6 @@ def test_chart_templates_do_not_use_unsafe_serialization() -> None:
     assert "innerHTML" not in base
 
 
-# Тест: chart внутри group подключает локальный ApexCharts asset
 def test_nested_chart_in_group_loads_chart_asset() -> None:
     class NestedChartAdapter(FakeProductConsoleAdapter):
         def get_dashboard(self) -> Any:
@@ -654,7 +628,6 @@ def test_nested_chart_in_group_loads_chart_asset() -> None:
     assert "/static/vendor/apexcharts/apexcharts.min.js" in response.text
 
 
-# Тест: layout[] ссылки учитывают route prefix и FastAPI mount path
 def test_layout_links_use_route_prefix_and_embedded_mount() -> None:
     class LayoutAdapter(FakeProductConsoleAdapter):
         def get_dashboard(self) -> Any:
@@ -725,7 +698,6 @@ def test_layout_links_use_route_prefix_and_embedded_mount() -> None:
     assert '<a href="/ui/runs/run_safe_001">' in mounted_response.text
 
 
-# Тест: data_table ссылки учитывают route prefix и FastAPI mount path
 def test_data_table_links_use_route_prefix_and_embedded_mount() -> None:
     class DataTableAdapter(FakeProductConsoleAdapter):
         def get_dashboard(self) -> Any:
@@ -795,7 +767,6 @@ def test_data_table_links_use_route_prefix_and_embedded_mount() -> None:
     assert 'href="/ui/runs?page=2"' in mounted_response.text
 
 
-# Тест: KPI template использует responsive card grid из local CSS contract
 def test_kpi_template_uses_responsive_card_grid() -> None:
     template = Path(
         "src/beeui_module/web/templates/components/layout/kpi_strip.html"
@@ -807,7 +778,6 @@ def test_kpi_template_uses_responsive_card_grid() -> None:
     assert 'class="col-sm"' not in template
 
 
-# Тест: KPI layout title/value экранируются при реальном HTML rendering
 def test_kpi_layout_html_escapes_adapter_title_and_value() -> None:
     class UnsafeKpiAdapter(FakeProductConsoleAdapter):
         def get_dashboard(self) -> Any:
@@ -835,7 +805,6 @@ def test_kpi_layout_html_escapes_adapter_title_and_value() -> None:
     assert "<script>bad</script>" not in response.text
 
 
-# Тест: layout[] рендерится без ошибок при сохранении контракта API метода list_runs
 def test_runs_layout_wrapper_preserves_list_api_contract() -> None:
     class LayoutRunsAdapter(FakeProductConsoleAdapter):
         def list_runs(self) -> Any:
@@ -865,7 +834,6 @@ def test_runs_layout_wrapper_preserves_list_api_contract() -> None:
     assert api.json()["meta"]["count"] == 1
 
 
-# Тест: новый блок operator_hero рендерится через HTML route с 200
 def test_operator_hero_block_renders_through_layout() -> None:
     class NewBlocksAdapter(FakeProductConsoleAdapter):
         def get_dashboard(self) -> Any:
@@ -1021,7 +989,6 @@ def test_operator_hero_block_renders_through_layout() -> None:
         assert forbidden not in response.text
 
 
-# Тест: новые блоки экранируют небезопасные значения адаптера
 def test_new_blocks_escape_unsafe_adapter_values() -> None:
     class UnsafeNewBlocksAdapter(FakeProductConsoleAdapter):
         def get_dashboard(self) -> Any:
@@ -1143,7 +1110,6 @@ def test_new_blocks_escape_unsafe_adapter_values() -> None:
     assert "&lt;i&gt;value&lt;/i&gt;" in response.text
 
 
-# Тест: новые блоки не содержат внешние ссылки в HTML
 def test_new_blocks_have_no_external_links() -> None:
     class ExternalLinkAdapter(FakeProductConsoleAdapter):
         def get_dashboard(self) -> Any:
@@ -1206,7 +1172,6 @@ def test_new_blocks_have_no_external_links() -> None:
     assert "/venues/mrkt" in response.text
 
 
-# Тест: no posthog/tabler external references in new block templates
 def test_new_block_templates_no_external_refs() -> None:
     template_root = Path("src/beeui_module/web/templates/components/layout")
     for name in (
@@ -1229,7 +1194,6 @@ def test_new_block_templates_no_external_refs() -> None:
         assert "|safe" not in content, f"{name} contains |safe"
 
 
-# Тест: базовый accordion рендерит Tabler-compatible chevron toggle
 def test_accordion_renders_chevron_toggle_svg() -> None:
     app = create_beeui_app(adapter=FakeProductConsoleAdapter())
     client = TestClient(app)
@@ -1244,7 +1208,6 @@ def test_accordion_renders_chevron_toggle_svg() -> None:
     assert 'aria-expanded="false"' in response.text
 
 
-# Тест: accordion header использует Tabler-compatible div, а не heading tag
 def test_accordion_uses_tabler_div_header_markup() -> None:
     app = create_beeui_app(adapter=FakeProductConsoleAdapter())
     client = TestClient(app)
@@ -1256,7 +1219,6 @@ def test_accordion_uses_tabler_div_header_markup() -> None:
     assert '<h2 class="accordion-header"' not in response.text
 
 
-# Тест: accordion variant tabs даёт class accordion accordion-tabs
 def test_accordion_variant_tabs_renders_tabs_class(tmp_path: Path) -> None:
     from beeui_module.pages.config import load_beeui_config
 
@@ -1284,7 +1246,6 @@ def test_accordion_variant_tabs_renders_tabs_class(tmp_path: Path) -> None:
     assert 'class="accordion accordion-tabs"' in response.text
 
 
-# Тест: accordion variant inverted_plus даёт plus svg и accordion-plus class
 def test_accordion_variant_inverted_plus_renders_plus_svg(tmp_path: Path) -> None:
     from beeui_module.pages.config import load_beeui_config
 
@@ -1315,7 +1276,6 @@ def test_accordion_variant_inverted_plus_renders_plus_svg(tmp_path: Path) -> Non
     assert '<path d="M5 12l14 0" />' in response.text
 
 
-# Тест: accordion variant icons даёт accordion-button-icon и chevron toggle
 def test_accordion_variant_icons_renders_icon_and_chevron(tmp_path: Path) -> None:
     from beeui_module.pages.config import load_beeui_config
 
@@ -1344,7 +1304,6 @@ def test_accordion_variant_icons_renders_icon_and_chevron(tmp_path: Path) -> Non
     assert 'class="accordion-button-toggle"' in response.text
 
 
-# Тест: нет внешних ссылок в затронутых шаблонах, включая новые блоки и общие шаблоны
 def test_no_external_refs_in_affected_templates() -> None:
     template_root = Path("src/beeui_module/web/templates")
     affected = [
@@ -1366,7 +1325,6 @@ def test_no_external_refs_in_affected_templates() -> None:
         assert "|safe" not in content, f"{name} contains |safe"
 
 
-# Тест: layout group рендерится через HTML dashboard route
 def test_layout_group_renders_through_adapter() -> None:
     class GroupLayoutAdapter(FakeProductConsoleAdapter):
         def get_dashboard(self) -> Any:
@@ -1414,7 +1372,6 @@ def test_layout_group_renders_through_adapter() -> None:
     assert "https://" not in response.text
 
 
-# Тест: нет импортов конкретных Bee-продуктов в затронутых исходных файлах, включая router и layout_renderer
 def test_no_product_imports_in_affected_source() -> None:
     source_root = Path("src/beeui_module")
     affected = [

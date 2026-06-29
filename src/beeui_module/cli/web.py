@@ -12,7 +12,6 @@ from beeui_module.core.settings import load_settings
 from beeui_module.web.app import create_beeui_app
 
 
-# Парсинг аргументов командной строки для команды web
 def _parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(prog="beeui web")
     parser.add_argument("--host", type=str, default=None)
@@ -20,7 +19,6 @@ def _parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
     return parser.parse_args(list(argv or []))
 
 
-# Запуск веб-сервера с конфигурацией из настроек и аргументов командной строки
 def run_web(argv: Iterable[str] | None = None, root: Path | str | None = None) -> int:
     args = _parse_args(argv)
 

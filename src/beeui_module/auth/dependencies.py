@@ -10,7 +10,6 @@ _CSRF_HEADER = "X-CSRF-Token"
 _CSRF_FORM_FIELD = "csrf_token"
 
 
-# Зависимости для маршрутов аутентификации
 def _get_auth_service(request: Request) -> AuthService:
     service: AuthService | None = getattr(request.app.state, "beeui_auth_service", None)
     if service is None:
@@ -18,7 +17,6 @@ def _get_auth_service(request: Request) -> AuthService:
     return service
 
 
-# Извлечение и проверка сессии из cookie
 def require_session(request: Request) -> SessionData:
     service = _get_auth_service(request)
 
@@ -52,7 +50,6 @@ def require_session(request: Request) -> SessionData:
     return session
 
 
-# Фабрика зависимости: требование сессии с определенной минимальной ролью
 def require_role(minimum_role: UserRole):
     async def _check_role(request: Request) -> SessionData:
         session = require_session(request)
@@ -79,7 +76,6 @@ def require_role(minimum_role: UserRole):
     return _check_role
 
 
-# Валидация секции security
 async def require_csrf(request: Request) -> None:
     service = _get_auth_service(request)
 

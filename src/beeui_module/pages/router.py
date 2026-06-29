@@ -57,7 +57,6 @@ RESERVED_CUSTOM_PAGE_PATHS: frozenset[str] = frozenset(
 )
 
 
-# Разрешение локали: default из config, ?lang= override если allowlist содержит
 def resolve_locale(
     request: Request,
     locale_cfg: LocaleConfig,
@@ -65,7 +64,6 @@ def resolve_locale(
     return _resolve_locale(request, locale_cfg.default, locale_cfg.available)
 
 
-# Сбор данных для language switcher
 def _build_language_switcher(
     request: Request,
     locale_cfg: LocaleConfig,
@@ -87,7 +85,6 @@ def _build_language_switcher(
     return items
 
 
-# Регистрация HTML routes из declarative pages config
 def register_configured_pages(
     *,
     app: FastAPI,
@@ -196,7 +193,6 @@ def register_configured_pages(
     return registered_routes
 
 
-# Билд navigation context с active/descendant_active состояниями
 def build_navigation(
     *,
     route_prefix: str,
@@ -243,7 +239,6 @@ def build_navigation(
     return items
 
 
-# Преобразование ThemeConfig в безопасные CSS class names для shell
 def build_theme_context(ui_config: BeeUiConfig) -> dict[str, Any]:
     return {
         "mode": ui_config.theme.mode,
@@ -261,7 +256,6 @@ def build_theme_context(ui_config: BeeUiConfig) -> dict[str, Any]:
     }
 
 
-# Преобразование LayoutConfig в template context для контейнера, sidebar и navbar
 def build_layout_context(ui_config: BeeUiConfig) -> dict[str, Any]:
     layout = ui_config.layout
     return {
@@ -285,7 +279,6 @@ def build_layout_context(ui_config: BeeUiConfig) -> dict[str, Any]:
     }
 
 
-# Сбор итогового набора CSS classes для body/page shell
 def build_shell_classes(theme: dict[str, Any], layout: dict[str, Any]) -> str:
     classes = [
         "layout-vertical",
@@ -309,14 +302,12 @@ def build_shell_classes(theme: dict[str, Any], layout: dict[str, Any]) -> str:
     return " ".join(class_name for class_name in classes if class_name)
 
 
-# Префиксация внутренних tab href с учетом route_prefix BeeUI
 def _prefix_internal_href(route_prefix: str, href: str) -> str:
     parsed = urlsplit(href)
     prefixed_path_value = prefixed_path(route_prefix, parsed.path)
     return urlunsplit(("", "", prefixed_path_value, parsed.query, ""))
 
 
-# Сбор безопасного контекста для URL-driven tabs на странице
 def _resolve_page_tabs_data(
     page: BeeUiPage,
     request: Request,
@@ -373,12 +364,10 @@ def _resolve_page_tabs_data(
     }
 
 
-# Разрешение CSS-классов tabs из валидированного variant
 def tabs_class_for_variant(variant: str) -> str:
     return TABS_VARIANT_CLASSES.get(variant, TABS_VARIANT_CLASSES["default"])
 
 
-# Разрешение CSS-классов accordion из валидированного variant
 def accordion_class_for_variant(variant: str) -> str:
     return ACCORDION_VARIANT_CLASSES.get(
         variant,
@@ -386,7 +375,6 @@ def accordion_class_for_variant(variant: str) -> str:
     )
 
 
-# Сбор component context для Jinja templates
 def build_components_context(components: ComponentConfig) -> dict[str, Any]:
     tabs_variant = components.tabs.variant
     accordion_variant = components.accordion.variant
@@ -400,7 +388,6 @@ def build_components_context(components: ComponentConfig) -> dict[str, Any]:
     }
 
 
-# Регистрация маршрутов только для запросов GET для пользовательских страниц, поддерживаемых адаптером и объявленных в конфигурации
 def register_adapter_custom_pages(
     *,
     app: FastAPI,
@@ -608,7 +595,6 @@ def register_adapter_custom_pages(
     return registered_routes
 
 
-# Рендер degraded-state для adapter-backed custom page
 def _render_page_unavailable(
     request: Request,
     templates: Jinja2Templates,
@@ -686,7 +672,6 @@ def _render_page_unavailable(
     )
 
 
-# Добавление route_prefix без изменения корневого пути
 def prefixed_path(route_prefix: str, path: str) -> str:
     if path == "/":
         return route_prefix or "/"

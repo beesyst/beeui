@@ -39,7 +39,6 @@ from beeui_module.pages.router import (
 )
 
 
-# Регистрация routes для продуктовой консоли, использующей ProductUiAdapter
 def register_product_console_routes(
     *,
     app: FastAPI,
@@ -416,7 +415,6 @@ def _build_page_context(
     }
 
 
-# Рендер страницы с сообщением об недоступности адаптера
 def _render_unavailable(
     request: Request,
     templates: Jinja2Templates,
@@ -456,7 +454,6 @@ def _render_unavailable(
     )
 
 
-# Рендер страницы с сообщением об невалидности идентификатора
 def _render_invalid_id(
     request: Request,
     templates: Jinja2Templates,
@@ -494,7 +491,6 @@ def _render_invalid_id(
     )
 
 
-# Adapter-backed dashboard context.
 def _dashboard_html_context(
     *,
     base_context: dict[str, Any],
@@ -567,7 +563,6 @@ def _dashboard_html_context(
     return context, 200
 
 
-# Adapter-backed runs context.
 def _runs_html_context(
     *,
     base_context: dict[str, Any],
@@ -660,7 +655,6 @@ def _runs_html_context(
     return context, 200
 
 
-# Adapter-backed run detail context.
 def _run_detail_html_context(
     *,
     base_context: dict[str, Any],
@@ -729,7 +723,6 @@ def _run_detail_html_context(
     return context, 200
 
 
-# Adapter-backed venue context.
 def _venue_html_context(
     *,
     base_context: dict[str, Any],
@@ -794,7 +787,6 @@ def _venue_html_context(
     return context, 200
 
 
-# Safe run link normalization.
 def _normalize_run_link(item: Any) -> dict[str, Any] | None:
     if not isinstance(item, dict):
         return None
@@ -811,7 +803,6 @@ def _normalize_run_link(item: Any) -> dict[str, Any] | None:
     return normalized
 
 
-# KPI list normalization.
 def _normalize_kpi_items(raw_data: Any) -> list[dict[str, str]]:
     if not isinstance(raw_data, list):
         return []
@@ -833,14 +824,12 @@ def _normalize_kpi_items(raw_data: Any) -> list[dict[str, str]]:
     return normalized
 
 
-# Mapping-to-display-items conversion.
 def _mapping_items(raw_data: Any) -> list[dict[str, Any]]:
     if not isinstance(raw_data, dict):
         return []
     return [{"key": str(key), "value": value} for key, value in raw_data.items()]
 
 
-# Safe artifact link normalization.
 def _normalize_artifacts(
     raw_data: Any,
     run_id: str,

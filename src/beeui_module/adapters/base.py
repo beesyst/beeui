@@ -12,7 +12,6 @@ from beeui_module.adapters.envelopes import (
 from beeui_module.adapters.errors import UnavailableError
 
 
-# Интерфейс адаптера для продуктов и базовая реализация
 class ProductUiAdapter(Protocol):
     metadata: AdapterMetadata
 
@@ -55,7 +54,6 @@ class ProductUiAdapter(Protocol):
     ) -> AdapterResult | AdapterErrorResult: ...
 
 
-# Базовая реализация адаптера с не реализованными методами
 class ProductUiAdapterBase(ABC):
     def __init__(self, metadata: AdapterMetadata) -> None:
         self.metadata = metadata

@@ -17,7 +17,6 @@ ALLOWED_BLOCK_TYPES = {
 ALLOWED_BLOCK_STATES = {"normal", "empty", "degraded", "error"}
 
 
-# Размещение блока на странице с Bootstrap-подобной шириной 1..12
 @dataclass(frozen=True)
 class BlockPlacement:
     block_id: str
@@ -26,7 +25,6 @@ class BlockPlacement:
     size: str | None = None
 
 
-# Валидированное описание блока из schema.yml
 @dataclass(frozen=True)
 class BlockDefinition:
     block_id: str
@@ -38,7 +36,6 @@ class BlockDefinition:
     bindings: dict[str, str] = field(default_factory=dict)
 
 
-# Данные, подготовленные registry для конкретного Jinja template
 @dataclass(frozen=True)
 class RenderedBlock:
     block_id: str

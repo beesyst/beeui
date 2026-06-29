@@ -12,7 +12,6 @@ from beeui_module.core.paths import (
 from beeui_module.pages.config import load_beeui_config
 
 
-# Запуск чека окружения и конфигурации проекта
 def run_doctor(root: Path | str | None = None) -> int:
     resolved_root = project_root(root)
     config_path = settings_path(resolved_root)

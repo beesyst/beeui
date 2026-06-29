@@ -12,7 +12,6 @@ from beeui_module.pages.config import load_beeui_config
 from beeui_module.web.app import create_beeui_app
 
 
-# Страницы из schema.yml должны рендериться как HTML routes
 def test_configured_pages_render_from_yaml() -> None:
     settings = load_settings(settings_path())
     ui_config = load_beeui_config(settings_path().parent / "schema.yml")
@@ -33,7 +32,6 @@ def test_configured_pages_render_from_yaml() -> None:
     assert "Placeholder page for future run overview" in runs.text
 
 
-# Тест: текущий route должен помечать соответствующий navigation item active-классом
 def test_active_navigation_item_is_rendered() -> None:
     settings = load_settings(settings_path())
     ui_config = load_beeui_config(settings_path().parent / "schema.yml")
@@ -50,7 +48,6 @@ def test_active_navigation_item_is_rendered() -> None:
     assert "beeui-nav-children" in response.text
 
 
-# Тест: disabled navigation item рендерится без href и с aria-disabled
 def test_disabled_navigation_item_is_rendered_safely() -> None:
     settings = load_settings(settings_path())
     ui_config = load_beeui_config(settings_path().parent / "schema.yml")
@@ -64,7 +61,6 @@ def test_disabled_navigation_item_is_rendered_safely() -> None:
     assert "beeui-nav-disabled" in response.text
 
 
-# Тест: необъявленные страницы должны оставаться 404
 def test_unknown_page_returns_404() -> None:
     settings = load_settings(settings_path())
     ui_config = load_beeui_config(settings_path().parent / "schema.yml")
@@ -76,7 +72,6 @@ def test_unknown_page_returns_404() -> None:
     assert response.status_code == 404
 
 
-# Тест: schema-provided строки должны экранироваться Jinja autoescape
 def test_config_provided_page_strings_are_escaped(tmp_path: Path) -> None:
     settings = load_settings(settings_path())
 
@@ -151,7 +146,6 @@ def test_config_provided_page_strings_are_escaped(tmp_path: Path) -> None:
     assert "&lt;script&gt;alert(9)&lt;/script&gt;" in response.text
 
 
-# Тест: страница без placements показывает общий empty state component
 def test_empty_state_component_is_rendered() -> None:
     settings = load_settings(settings_path())
     ui_config = load_beeui_config(settings_path().parent / "schema.yml")
@@ -168,7 +162,6 @@ def test_empty_state_component_is_rendered() -> None:
     )
 
 
-# Тест: dashboard собирается из всех block types, объявленных в demo schema
 def test_dashboard_blocks_are_rendered_from_schema() -> None:
     settings = load_settings(settings_path())
     ui_config = load_beeui_config(settings_path().parent / "schema.yml")
@@ -190,7 +183,6 @@ def test_dashboard_blocks_are_rendered_from_schema() -> None:
     assert 'style="' not in response.text
 
 
-# Тест: non-normal block states должны быть видимы в HTML без runtime resolver
 def test_block_non_normal_states_are_rendered(tmp_path: Path) -> None:
     settings = load_settings(settings_path())
 
@@ -223,7 +215,6 @@ def test_block_non_normal_states_are_rendered(tmp_path: Path) -> None:
     assert ">error</span>" in response.text
 
 
-# Тест: invalid selector syntax в резолвере должен возвращать envelope с ошибкой и предупреждением
 def test_resolver_missing_selector_renders_degraded_block_state(tmp_path: Path) -> None:
     settings = load_settings(settings_path())
 
@@ -250,7 +241,6 @@ def test_resolver_missing_selector_renders_degraded_block_state(tmp_path: Path) 
     assert "Unavailable" in response.text
 
 
-# Тест: invalid selector syntax в резолвере должен возвращать envelope с ошибкой и предупреждением
 def test_resolver_invalid_table_rows_render_error_state(tmp_path: Path) -> None:
     settings = load_settings(settings_path())
 
@@ -278,7 +268,6 @@ def test_resolver_invalid_table_rows_render_error_state(tmp_path: Path) -> None:
     assert "Resolved data is unavailable." in response.text
 
 
-# Тест: invalid selector syntax в резолвере должен возвращать envelope с ошибкой и предупреждением
 def test_resolved_static_values_are_escaped(tmp_path: Path) -> None:
     settings = load_settings(settings_path())
     fixture_path = Path("tests/fixtures/demo_static/dashboard_unsafe.json")
@@ -309,7 +298,6 @@ def test_resolved_static_values_are_escaped(tmp_path: Path) -> None:
     assert "&lt;script&gt;alert(7)&lt;/script&gt;" in response.text
 
 
-# Тест: theme/layout schema values должны попадать только в валидированные classes
 def test_theme_and_layout_schema_are_rendered() -> None:
     settings = load_settings(settings_path())
     ui_config = load_beeui_config(settings_path().parent / "schema.yml")
@@ -327,7 +315,6 @@ def test_theme_and_layout_schema_are_rendered() -> None:
     assert "container-xl" in response.text
 
 
-# Тест: dark sidebar получает локальный Bootstrap theme context
 def test_dark_sidebar_renders_dark_theme_attribute() -> None:
     response = TestClient(create_beeui_app()).get("/")
 
@@ -339,7 +326,6 @@ def test_dark_sidebar_renders_dark_theme_attribute() -> None:
     ) in response.text
 
 
-# Тест: page blocks используют canonical Tabler grid без wrapper card
 def test_page_blocks_use_tabler_grid_without_wrapper_card() -> None:
     response = TestClient(create_beeui_app()).get("/")
 
@@ -352,7 +338,6 @@ def test_page_blocks_use_tabler_grid_without_wrapper_card() -> None:
     assert 'class="row row-deck row-cards beeui-block-grid"' in page_blocks
 
 
-# Тест: navigation icon names рендерятся только через inline allowlist
 def test_sidebar_renders_allowlisted_navigation_icons() -> None:
     response = TestClient(create_beeui_app()).get("/")
 
@@ -364,7 +349,6 @@ def test_sidebar_renders_allowlisted_navigation_icons() -> None:
     assert "https://" not in response.text.lower()
 
 
-# Тест: light mode должен менять только theme attribute/classes
 def test_light_theme_fixture_renders_from_schema() -> None:
     settings = load_settings(settings_path())
     ui_config = load_beeui_config(settings_path().parent / "schema.yml")
@@ -379,7 +363,6 @@ def test_light_theme_fixture_renders_from_schema() -> None:
     assert "beeui-theme-mode-light" in response.text
 
 
-# Тест: auto theme не должен включать client-side persistence через localStorage
 def test_auto_theme_fixture_renders_without_localstorage_mutation() -> None:
     settings = load_settings(settings_path())
     ui_config = load_beeui_config(settings_path().parent / "schema.yml")
@@ -395,7 +378,6 @@ def test_auto_theme_fixture_renders_without_localstorage_mutation() -> None:
     assert "localStorage" not in response.text
 
 
-# Тест: navbar можно отключить schema-флагом без влияния на sidebar
 def test_navbar_disabled_fixture_does_not_render_top_navbar() -> None:
     settings = load_settings(settings_path())
     ui_config = load_beeui_config(settings_path().parent / "schema.yml")
@@ -414,7 +396,6 @@ def test_navbar_disabled_fixture_does_not_render_top_navbar() -> None:
     assert "beeui-sidebar beeui-sidebar-variant-dark" in response.text
 
 
-# Тест: logo_text из schema остаётся plain text и экранируется
 def test_logo_text_from_schema_is_escaped(tmp_path: Path) -> None:
     settings = load_settings(settings_path())
 
@@ -441,7 +422,6 @@ def test_logo_text_from_schema_is_escaped(tmp_path: Path) -> None:
     assert "&lt;script&gt;alert(3)&lt;/script&gt;" in response.text
 
 
-# Тест: catalog section экранирует unsafe sample strings
 def test_component_catalog_escapes_unsafe_sample_strings() -> None:
     settings = load_settings(settings_path())
     ui_config = load_beeui_config(settings_path().parent / "schema.yml")
@@ -457,7 +437,6 @@ def test_component_catalog_escapes_unsafe_sample_strings() -> None:
     assert "&lt;svg onload=&#34;alert(1)&#34;&gt;&lt;/svg&gt;" in response.text
 
 
-# Тест: plugin placeholders остаются инертными и не тянут внешние assets
 def test_component_catalog_plugin_placeholders_are_inert() -> None:
     settings = load_settings(settings_path())
     ui_config = load_beeui_config(settings_path().parent / "schema.yml")
@@ -475,7 +454,6 @@ def test_component_catalog_plugin_placeholders_are_inert() -> None:
     assert "https://" not in response.text.lower()
 
 
-# Тест: catalog progress primitive не использует inline style
 def test_component_catalog_progress_uses_native_element_without_inline_style() -> None:
     settings = load_settings(settings_path())
     ui_config = load_beeui_config(settings_path().parent / "schema.yml")
@@ -489,7 +467,6 @@ def test_component_catalog_progress_uses_native_element_without_inline_style() -
     assert 'style="' not in response.text
 
 
-# Тест: primitives catalog template не использует unsafe Jinja filter
 def test_component_primitives_template_avoids_safe_filter() -> None:
     template_text = Path(
         "src/beeui_module/web/templates/components/primitives/catalog_primitives.html"
@@ -498,7 +475,6 @@ def test_component_primitives_template_avoids_safe_filter() -> None:
     assert "|safe" not in template_text
 
 
-# Тест: locale разрешается из config default
 def test_locale_resolved_from_config() -> None:
     settings = load_settings(settings_path())
     ui_config = load_beeui_config(settings_path().parent / "schema.yml")
@@ -509,7 +485,6 @@ def test_locale_resolved_from_config() -> None:
     assert response.status_code == 200
 
 
-# Тест: ?lang= override разрешается только если allowlist содержит
 def test_locale_lang_query_updates_html_lang() -> None:
     settings = load_settings(settings_path())
     ui_config = load_beeui_config(settings_path().parent / "schema.yml")
@@ -522,7 +497,6 @@ def test_locale_lang_query_updates_html_lang() -> None:
     assert '<html lang="ru"' in response.text
 
 
-# Тест: ?lang= override игнорируется если allowlist не содержит
 def test_locale_invalid_lang_falls_back_to_default_html_lang() -> None:
     settings = load_settings(settings_path())
     ui_config = load_beeui_config(settings_path().parent / "schema.yml")
@@ -535,7 +509,6 @@ def test_locale_invalid_lang_falls_back_to_default_html_lang() -> None:
     assert '<html lang="en"' in response.text
 
 
-# Тест: locale не падает без locale в config (fallback default)
 def test_locale_missing_uses_default(tmp_path: Path) -> None:
     ui_cfg_path = tmp_path / "schema.yml"
     ui_cfg_path.write_text(
@@ -584,7 +557,6 @@ def test_locale_missing_uses_default(tmp_path: Path) -> None:
     assert response.status_code == 200
 
 
-# Тест: URL-driven tabs в каталоге используют ?tab= для active
 def test_component_catalog_url_tabs_use_query_active_state() -> None:
     settings = load_settings(settings_path())
     ui_config = load_beeui_config(settings_path().parent / "schema.yml")
@@ -612,7 +584,6 @@ def test_component_catalog_url_tabs_use_query_active_state() -> None:
     )
 
 
-# Тест: невалидный ?tab= fallback к default
 def test_component_catalog_url_tabs_invalid_tab_falls_back() -> None:
     settings = load_settings(settings_path())
     ui_config = load_beeui_config(settings_path().parent / "schema.yml")
@@ -631,7 +602,6 @@ def test_component_catalog_url_tabs_invalid_tab_falls_back() -> None:
     )
 
 
-# Тест: fallback disclosure использует BeeUI accordion primitive, а не raw <details>
 def test_product_dashboard_disclosure_uses_accordion_primitive() -> None:
     from beeui_module.adapters.base import ProductUiAdapterBase
     from beeui_module.adapters.envelopes import AdapterMetadata, ok_result
@@ -682,7 +652,6 @@ def test_product_dashboard_disclosure_uses_accordion_primitive() -> None:
     assert 'data-bs-toggle="collapse"' in response.text
 
 
-# Тест: accordion variant из config влияет на rendered class
 def test_accordion_variant_from_config_affects_rendered_class(tmp_path: Path) -> None:
     from beeui_module.adapters.base import ProductUiAdapterBase
     from beeui_module.adapters.envelopes import AdapterMetadata, ok_result
@@ -742,7 +711,6 @@ def test_accordion_variant_from_config_affects_rendered_class(tmp_path: Path) ->
     assert 'class="accordion accordion-tabs"' in response.text
 
 
-# Тест: custom page, объявленная в schema с path, рендерится через adapter get_page
 def _custom_page_schema(
     tmp_path: Path,
     custom_path: str,
@@ -806,7 +774,6 @@ def _custom_page_schema(
     return schema_path
 
 
-# Генерация schema с кастомной страницей для тестов ниже
 def _app_route_paths(app) -> set[str]:
     return {
         route.path
@@ -815,7 +782,6 @@ def _app_route_paths(app) -> set[str]:
     }
 
 
-# Тест: custom page, объявленная в schema с path, рендерится через adapter get_page
 def test_custom_adapter_page_renders_through_adapter(tmp_path: Path) -> None:
     from beeui_module.adapters.base import ProductUiAdapterBase
     from beeui_module.adapters.envelopes import AdapterMetadata, ok_result
@@ -878,7 +844,6 @@ def test_custom_adapter_page_renders_through_adapter(tmp_path: Path) -> None:
     assert "42" in response.text
 
 
-# Тест: если get_page возвращает ошибку, рендерится degraded/empty state для страницы
 def test_custom_adapter_page_unavailable_degraded(tmp_path: Path) -> None:
     from beeui_module.adapters.base import ProductUiAdapterBase
     from beeui_module.adapters.envelopes import AdapterMetadata, error_result, ok_result
@@ -927,7 +892,6 @@ def test_custom_adapter_page_unavailable_degraded(tmp_path: Path) -> None:
     assert "Custom Page" in response.text
 
 
-# Тест: системные BeeUI paths (/health) с matching page проходят config validation
 def test_custom_page_route_health_is_not_registered(tmp_path: Path) -> None:
     from beeui_module.adapters.base import ProductUiAdapterBase
     from beeui_module.adapters.envelopes import AdapterMetadata, ok_result
@@ -975,7 +939,6 @@ def test_custom_page_route_health_is_not_registered(tmp_path: Path) -> None:
     assert response.json().get("app") == "beeui"
 
 
-# Тест: GET пользовательской страницы не должен мутировать исходный конфиг (например, через resolver с side effect)
 def test_custom_page_get_does_not_mutate_config(tmp_path: Path) -> None:
     from beeui_module.adapters.base import ProductUiAdapterBase
     from beeui_module.adapters.envelopes import AdapterMetadata, ok_result
@@ -1022,7 +985,6 @@ def test_custom_page_get_does_not_mutate_config(tmp_path: Path) -> None:
     assert ui_cfg_path.read_text(encoding="utf-8") == original_content
 
 
-# Тест: page tabs рендерятся с разметкой nav nav-tabs card-header-tabs
 def test_page_tabs_render_in_html(tmp_path: Path) -> None:
     from beeui_module.web.app import create_beeui_app
 
@@ -1175,7 +1137,6 @@ def test_page_tabs_disabled_query_falls_back_to_first_enabled(tmp_path: Path) ->
     assert disabled_span is not None
 
 
-# Тест: page tabs href должен учитывать route_prefix из settings
 def test_page_tabs_href_respects_route_prefix(tmp_path: Path) -> None:
     schema_path = tmp_path / "schema.yml"
     schema_path.write_text(
@@ -1242,7 +1203,6 @@ def test_page_tabs_href_respects_route_prefix(tmp_path: Path) -> None:
     assert 'href="/rop?tab=overview"' not in response.text
 
 
-# Тест: если get_page возвращает malformed payload, рендерится degraded/empty state для страницы
 def test_custom_adapter_page_malformed_payload_degrades(tmp_path: Path) -> None:
     from beeui_module.adapters.base import ProductUiAdapterBase
     from beeui_module.adapters.envelopes import AdapterMetadata, ok_result
@@ -1293,7 +1253,6 @@ def test_custom_adapter_page_malformed_payload_degrades(tmp_path: Path) -> None:
     assert "Adapter returned malformed payload" in response.text
 
 
-# Тест: если get_page возвращает payload с секретными данными, они редактируются перед рендером
 def test_custom_adapter_page_redacts_payload_before_render(tmp_path: Path) -> None:
     from beeui_module.adapters.base import ProductUiAdapterBase
     from beeui_module.adapters.envelopes import AdapterMetadata, ok_result
@@ -1354,7 +1313,6 @@ def test_custom_adapter_page_redacts_payload_before_render(tmp_path: Path) -> No
     assert "secret-value" not in response.text
 
 
-# Тест: page tabs рендерятся внутри карточки и после subtitle страницы
 def test_page_tabs_renders_attached_card(tmp_path: Path) -> None:
     from beeui_module.web.app import create_beeui_app
 
@@ -1443,7 +1401,6 @@ def test_page_tabs_renders_attached_card(tmp_path: Path) -> None:
     assert 'href="/?tab=details"' in response.text
 
 
-# Тест: page tabs nav находится внутри header той же attached card
 def test_page_tabs_nav_is_inside_attached_card_header(tmp_path: Path) -> None:
     from beeui_module.web.app import create_beeui_app
 
@@ -1519,7 +1476,6 @@ def test_page_tabs_nav_is_inside_attached_card_header(tmp_path: Path) -> None:
     assert header_idx < nav_idx < body_idx < blocks_idx
 
 
-# Тест: page tabs рендерятся без дублирующей standalone карточки с card-header-tabs
 def test_page_tabs_no_standalone_tabs_card(tmp_path: Path) -> None:
     from beeui_module.web.app import create_beeui_app
 
@@ -1586,7 +1542,6 @@ def test_page_tabs_no_standalone_tabs_card(tmp_path: Path) -> None:
     assert '<div class="card mb-3">' not in before_tabs_card
 
 
-# Тест: страница без tabs рендерит blocks без tabs-card и nav-tabs
 def test_page_without_tabs_renders_blocks_normally(tmp_path: Path) -> None:
     from beeui_module.web.app import create_beeui_app
 
@@ -1641,7 +1596,6 @@ def test_page_without_tabs_renders_blocks_normally(tmp_path: Path) -> None:
     assert '<section aria-label="Page blocks">' in response.text
 
 
-# Тест: /rop регистрируется как adapter-backed custom page route
 def test_custom_route_rop_registers_with_adapter(tmp_path: Path) -> None:
     from beeui_module.adapters.base import ProductUiAdapterBase
     from beeui_module.adapters.envelopes import AdapterMetadata, ok_result
@@ -1694,7 +1648,6 @@ def test_custom_route_rop_registers_with_adapter(tmp_path: Path) -> None:
     assert "42" in response.text
 
 
-# Тест: /venues/mrkt с route.mode=metadata не регистрирует concrete page route
 def test_metadata_route_venues_mrkt_skipped(tmp_path: Path) -> None:
     from beeui_module.adapters.base import ProductUiAdapterBase
     from beeui_module.adapters.envelopes import AdapterMetadata, ok_result
@@ -1749,7 +1702,6 @@ def test_metadata_route_venues_mrkt_skipped(tmp_path: Path) -> None:
     assert "Custom Page" not in response.text
 
 
-# Тест: /venues/binance с route.mode=metadata не регистрирует concrete page route
 def test_metadata_route_venues_binance_skipped(tmp_path: Path) -> None:
     from beeui_module.adapters.base import ProductUiAdapterBase
     from beeui_module.adapters.envelopes import AdapterMetadata, ok_result
@@ -1804,7 +1756,6 @@ def test_metadata_route_venues_binance_skipped(tmp_path: Path) -> None:
     assert "Custom Page" not in response.text
 
 
-# Тест: /runs/run_001 с route.mode=metadata не регистрирует concrete page route
 def test_metadata_route_runs_skipped(tmp_path: Path) -> None:
     from beeui_module.adapters.base import ProductUiAdapterBase
     from beeui_module.adapters.envelopes import AdapterMetadata, ok_result
@@ -1860,7 +1811,6 @@ def test_metadata_route_runs_skipped(tmp_path: Path) -> None:
     assert "Run run_001" in response.text or "run_001" in response.text
 
 
-# Тест: arbitrary nested route.mode=adapter регистрируется и вызывает adapter.get_page
 def test_adapter_route_hidra_binance_registers(tmp_path: Path) -> None:
     from beeui_module.adapters.base import ProductUiAdapterBase
     from beeui_module.adapters.envelopes import AdapterMetadata, ok_result
@@ -1932,7 +1882,6 @@ def test_adapter_route_hidra_binance_registers(tmp_path: Path) -> None:
     assert adapter.page_calls == [("hidra_binance", {"tab": "orders"})]
 
 
-# Тест: arbitrary nested route.mode=configured регистрируется как schema page
 def test_configured_route_likes_top_registers_without_adapter_get_page(
     tmp_path: Path,
 ) -> None:
@@ -2110,7 +2059,6 @@ def test_modes_live_metadata_route_skipped(tmp_path: Path) -> None:
     assert "/modes/live" not in route_paths
 
 
-# Тест: system reserved paths не регистрируются как custom pages
 def test_custom_route_system_paths_skipped(tmp_path: Path) -> None:
     from beeui_module.adapters.base import ProductUiAdapterBase
     from beeui_module.adapters.envelopes import AdapterMetadata, ok_result
@@ -2169,7 +2117,6 @@ def test_custom_route_system_paths_skipped(tmp_path: Path) -> None:
             assert response.status_code in {404, 405}
 
 
-# --- Locale-aware rendering tests ---
 
 
 def test_locale_resolved_page_title_renders_from_query(tmp_path: Path) -> None:
@@ -2489,10 +2436,8 @@ def test_language_switcher_href_preserves_current_path_and_replaces_lang(
     response = client.get("/?lang=en&period=7d")
     assert response.status_code == 200
     assert "beeui-language-switcher" in response.text
-    # RU link should have lang=ru and preserve period=7d
     assert "lang=ru" in response.text
     assert "period=7d" in response.text
-    # Active EN label should be present
     assert "beeui-lang-active" in response.text
     assert 'beeui-lang-active">EN<' in response.text
 
@@ -2553,7 +2498,6 @@ def test_language_switcher_href_does_not_include_unknown_params(
 
     response = client.get("/?lang=en&evil=yes&secret=bad")
     assert response.status_code == 200
-    # RU link should only have lang=ru, not evil or secret
     assert "secret" not in response.text
     assert "evil" not in response.text
     assert "Ru" not in response.text  # casing: RU not Ru
@@ -2621,7 +2565,6 @@ def test_component_catalog_locale_works(tmp_path: Path) -> None:
     assert "БИУ" in ru_response.text
     assert "beeui-language-switcher" in ru_response.text
     assert "{" not in ru_response.text  # no raw dict
-    # Catalog section links should preserve lang=ru when locale != default
     assert "lang=ru" in ru_response.text
 
 
@@ -2679,7 +2622,6 @@ def test_invalid_lang_not_preserved_in_nav_hrefs(tmp_path: Path) -> None:
 
     response = client.get("/?lang=bad")
     assert response.status_code == 200
-    # lang=bad must not appear in sidebar hrefs (falls back to en, no lang param added)
     assert "lang=bad" not in response.text
 
 

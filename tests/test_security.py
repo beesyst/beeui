@@ -29,7 +29,6 @@ _TEST_OPERATOR_TOKEN = "test-operator-token"
 _TEST_ADMIN_TOKEN = "test-admin-token"
 
 
-# Хелперы для тестов
 def _set_viewer_session(client: TestClient) -> None:
     session = SessionData(
         user_id="viewer_user",
@@ -57,7 +56,6 @@ def _make_auth_settings(
     }
 
 
-# Хелпер: создание приложения с определенной auth конфигурацией для тестов
 def _create_app_with_auth(
     auth_cfg: dict[str, Any] | None = None,
 ) -> FastAPI:
@@ -67,7 +65,6 @@ def _create_app_with_auth(
     return create_beeui_app(settings=settings)
 
 
-# Хелпер: логин в тестах и получение клиента с сессией
 def _login(
     client: TestClient,
     user_id: str = "test_user",
@@ -86,34 +83,29 @@ def _login(
     return client
 
 
-# Тест: извлечение AuthService из запроса и его свойства
 def test_auth_service_disabled_by_default() -> None:
     service = AuthService({"enabled": False})
     assert not service.enabled
     service.validate_startup()
 
 
-# Тест: чек конфигурации, аутентификации и проверки ролей
 def test_auth_service_enabled_fails_without_secret() -> None:
     service = AuthService({"enabled": True})
     with pytest.raises(ValueError, match="session_secret"):
         service.validate_startup()
 
 
-# Тест: включение auth без operator_token должно провалиться
 def test_auth_service_enabled_fails_without_tokens() -> None:
     service = AuthService({"enabled": True, "session_secret": _TEST_SECRET})
     with pytest.raises(ValueError, match="operator_token"):
         service.validate_startup()
 
 
-# Тест: успешная аутентификация с правильными токенами и ролями
 def test_auth_service_enabled_succeeds_with_all_config() -> None:
     service = AuthService(_make_auth_settings(enabled=True))
     service.validate_startup()
 
 
-# Тест: аутентификация с валидными токенами возвращает правильные роли
 def test_auth_service_authenticate_valid_admin() -> None:
     service = AuthService(_make_auth_settings(enabled=True))
     session, cookie = service.authenticate("admin_user", _TEST_ADMIN_TOKEN)
@@ -123,7 +115,6 @@ def test_auth_service_authenticate_valid_admin() -> None:
     assert session.user_id == "admin_user"
 
 
-# Тест: аутентификация с валидным операторским токеном возвращает роль оператора
 def test_auth_service_authenticate_valid_operator() -> None:
     service = AuthService(_make_auth_settings(enabled=True))
     session, cookie = service.authenticate("op_user", _TEST_OPERATOR_TOKEN)
@@ -131,7 +122,6 @@ def test_auth_service_authenticate_valid_operator() -> None:
     assert session.role == UserRole.operator
 
 
-# Тест: аутентификация с невалидным токеном возвращает None
 def test_auth_service_authenticate_invalid_token() -> None:
     service = AuthService(_make_auth_settings(enabled=True))
     session, cookie = service.authenticate("bad_user", "wrong-token")
@@ -139,7 +129,6 @@ def test_auth_service_authenticate_invalid_token() -> None:
     assert cookie is None
 
 
-# Тест: при отключенном auth аутентификация возвращает None без ошибок
 def test_auth_service_authenticate_disabled() -> None:
     service = AuthService({"enabled": False})
     session, cookie = service.authenticate("user", "any-token")
@@ -147,7 +136,6 @@ def test_auth_service_authenticate_disabled() -> None:
     assert cookie is None
 
 
-# Тест: чек ролей возвращает правильные результаты для разных комбинаций ролей и требований
 def test_auth_service_role_check() -> None:
     service = AuthService(_make_auth_settings(enabled=True))
 
@@ -165,7 +153,6 @@ def test_auth_service_role_check() -> None:
     assert service.check_role(admin, UserRole.admin)
 
 
-# Тест: создание и проверка cookie сессии с правильным секретом
 def test_session_cookie_roundtrip() -> None:
     session = SessionData(
         user_id="test",
@@ -183,7 +170,6 @@ def test_session_cookie_roundtrip() -> None:
     assert verified.csrf_token == "csrf123"
 
 
-# Тест: чек cookie с неправильным секретом возвращает None
 def test_session_cookie_invalid_signature() -> None:
     session = SessionData(
         user_id="test",
@@ -195,7 +181,6 @@ def test_session_cookie_invalid_signature() -> None:
     assert verify_session_cookie(tampered, _TEST_SECRET) is None
 
 
-# Тест: чек cookie с правильным форматом, но неправильным секретом возвращает None
 def test_session_cookie_wrong_secret() -> None:
     session = SessionData(
         user_id="test",
@@ -206,18 +191,15 @@ def test_session_cookie_wrong_secret() -> None:
     assert verify_session_cookie(cookie, "wrong-secret") is None
 
 
-# Тест: чек cookie с истекшим временем (если реализовано) возвращает None
 def test_session_cookie_empty() -> None:
     assert verify_session_cookie("", _TEST_SECRET) is None
     assert verify_session_cookie(None, _TEST_SECRET) is None  # type: ignore
 
 
-# Тест: чек cookie с неправильным форматом возвращает None
 def test_session_cookie_malformed() -> None:
     assert verify_session_cookie("not-a-cookie", _TEST_SECRET) is None
 
 
-# Тест: при отключенном auth приложение запускается и базовый маршрут доступен
 def test_auth_disabled_app_starts() -> None:
     app = _create_app_with_auth({"enabled": False})
     client = TestClient(app)
@@ -225,7 +207,6 @@ def test_auth_disabled_app_starts() -> None:
     assert response.status_code == 200
 
 
-# Тест: при отключенном auth попытка доступа к странице логина показывает предупреждение, что auth отключен
 def test_auth_disabled_login_returns_warning() -> None:
     app = _create_app_with_auth({"enabled": False})
     client = TestClient(app)
@@ -234,7 +215,6 @@ def test_auth_disabled_login_returns_warning() -> None:
     assert "auth is disabled" in response.text.lower()
 
 
-# Тест: при отключенном auth попытка логина показывает ошибку, что auth отключен
 def test_login_success_creates_session() -> None:
     app = _create_app_with_auth(_make_auth_settings(enabled=True))
     client = TestClient(app)
@@ -248,7 +228,6 @@ def test_login_success_creates_session() -> None:
     assert session_cookie_name() in response.cookies
 
 
-# Тест: при отключенном auth попытка логина показывает ошибку, что auth отключен
 def test_login_failure_no_session() -> None:
     app = _create_app_with_auth(_make_auth_settings(enabled=True))
     client = TestClient(app)
@@ -261,7 +240,6 @@ def test_login_failure_no_session() -> None:
     assert session_cookie_name() not in response.cookies
 
 
-# Тест: при отключенном auth попытка доступа к защищенному маршруту возвращает 401
 def test_logout_clears_session() -> None:
     app = _create_app_with_auth(_make_auth_settings(enabled=True))
     client = TestClient(app)
@@ -275,7 +253,6 @@ def test_logout_clears_session() -> None:
     assert response.status_code == 302
 
 
-# Тест: при отключенном auth попытка доступа к защищенному маршруту возвращает 401
 def test_unauthenticated_post_returns_401() -> None:
     settings = load_settings(settings_path())
     settings["auth"] = _make_auth_settings(enabled=True)
@@ -299,7 +276,6 @@ def test_unauthenticated_post_returns_401() -> None:
         assert payload["error"]["code"] == "unauthenticated"
 
 
-# Тест: при включенном auth попытка POST без CSRF токена возвращает 403
 def test_missing_csrf_returns_403() -> None:
     settings = load_settings(settings_path())
     settings["auth"] = _make_auth_settings(enabled=True)
@@ -316,7 +292,6 @@ def test_missing_csrf_returns_403() -> None:
     assert payload["error"]["code"] == "csrf_failed"
 
 
-# Тест: при включенном auth и правильном CSRF токене запрос проходит дальше (может вернуть 503, если адаптер не настроен, но не 401/403)
 def test_valid_csrf_accepted() -> None:
     settings = load_settings(settings_path())
     settings["auth"] = _make_auth_settings(enabled=True)
@@ -340,7 +315,6 @@ def test_valid_csrf_accepted() -> None:
     )
 
 
-# Тест: пользователь с ролью viewer не может вызвать защищенный маршрут, требующий admin
 def test_viewer_cannot_call_config_apply() -> None:
     settings = load_settings(settings_path())
     settings["auth"] = _make_auth_settings(enabled=True)
@@ -364,7 +338,6 @@ def test_viewer_cannot_call_config_apply() -> None:
     assert payload["error"]["code"] == "forbidden"
 
 
-# Тест: пользователь с ролью operator может вызвать маршрут, требующий operator
 def test_operator_can_call_action_preview() -> None:
     settings = load_settings(settings_path())
     settings["auth"] = _make_auth_settings(enabled=True)
@@ -385,7 +358,6 @@ def test_operator_can_call_action_preview() -> None:
     assert response.status_code not in (401, 403)
 
 
-# Тест: при включенном auth и невалидном токене адаптер не должен быть вызван, и должна вернуться 401 без сессии
 def test_no_adapter_call_when_unauthenticated() -> None:
     settings = load_settings(settings_path())
     settings["auth"] = _make_auth_settings(enabled=True)
@@ -464,7 +436,6 @@ def test_no_adapter_call_when_unauthenticated() -> None:
     assert call_count == 0, "Adapter called without authentication"
 
 
-# Тест: при включенном auth и правильных учетных данных устанавливается сессия и возвращается cookie
 def test_config_routes_not_registered_when_disabled() -> None:
     settings = load_settings(settings_path())
     settings["auth"] = _make_auth_settings(enabled=True)
@@ -488,7 +459,6 @@ def test_config_routes_not_registered_when_disabled() -> None:
         assert response.status_code == 404, f"{path} should be 404 when disabled"
 
 
-# Тест: при включенном auth и правильных учетных данных устанавливается сессия и возвращается cookie
 def test_settings_validation_rejects_auth_without_secret() -> None:
     from beeui_module.core.settings import _validate_auth
 
@@ -505,7 +475,6 @@ def test_settings_validation_rejects_auth_without_secret() -> None:
         )
 
 
-# Тест: при включенном auth и правильных учетных данных устанавливается сессия и возвращается cookie
 def test_settings_validation_accepts_disabled_auth() -> None:
     from beeui_module.core.settings import _validate_auth
 
@@ -521,7 +490,6 @@ def test_settings_validation_accepts_disabled_auth() -> None:
     )
 
 
-# Тест: аутентификация включена с использованием ссылок на окружение, которые должны разрешаться
 def test_auth_env_ref_resolved_successfully() -> None:
     import os
 
@@ -546,7 +514,6 @@ def test_auth_env_ref_resolved_successfully() -> None:
         del os.environ["TEST_BEEUI_ADMIN_TOKEN"]
 
 
-# Тест: при включенной аутентификации с неразрешимой ссылкой на окружение необходимо быстро завершить работу с ошибкой
 def test_auth_env_ref_missing_fails_fast() -> None:
     from beeui_module.core.settings import load_settings
 
@@ -565,7 +532,6 @@ def test_auth_env_ref_missing_fails_fast() -> None:
         create_beeui_app(settings=settings)
 
 
-# Тест: при включенном auth и невалидном токене адаптер не должен быть вызван, и должна вернуться 401 без сессии
 def test_unauthenticated_returns_top_level_envelope() -> None:
     settings = load_settings(settings_path())
     settings["auth"] = _make_auth_settings(enabled=True)
@@ -581,7 +547,6 @@ def test_unauthenticated_returns_top_level_envelope() -> None:
     assert payload["error"]["code"] == "unauthenticated"
 
 
-# Тест: при включенном auth и правильном CSRF токене запрос проходит дальше (может вернуть 503, если адаптер не настроен, но не 401/403)
 def test_forbidden_returns_top_level_envelope() -> None:
     settings = load_settings(settings_path())
     settings["auth"] = _make_auth_settings(enabled=True)
@@ -605,7 +570,6 @@ def test_forbidden_returns_top_level_envelope() -> None:
     assert payload["error"]["code"] == "forbidden"
 
 
-# Тест: при включенном auth и невалидном CSRF токене адаптер не должен быть вызван, и должна вернуться 403 без сессии
 def test_csrf_failed_returns_top_level_envelope() -> None:
     settings = load_settings(settings_path())
     settings["auth"] = _make_auth_settings(enabled=True)
@@ -622,7 +586,6 @@ def test_csrf_failed_returns_top_level_envelope() -> None:
     assert payload["error"]["code"] == "csrf_failed"
 
 
-# Тест: при включенном auth и правильных учетных данных устанавливается сессия и возвращается cookie
 def test_config_apply_calls_apply_callback() -> None:
     settings = load_settings(settings_path())
     settings["auth"] = _make_auth_settings(enabled=True)
@@ -693,7 +656,6 @@ def test_config_apply_calls_apply_callback() -> None:
     assert "role" in received_actor
 
 
-# Тест: при включенном auth и правильных учетных данных устанавливается сессия и возвращается cookie
 def test_config_apply_without_adapter_method_returns_501() -> None:
     settings = load_settings(settings_path())
     settings["auth"] = _make_auth_settings(enabled=True)
@@ -746,7 +708,6 @@ def test_config_apply_without_adapter_method_returns_501() -> None:
     assert payload["error"]["code"] == "feature_unavailable"
 
 
-# Тест: при включенном auth и правильных учетных данных устанавливается сессия и возвращается cookie
 def test_auth_failure_does_not_call_validate_or_apply() -> None:
     settings = load_settings(settings_path())
     settings["auth"] = _make_auth_settings(enabled=True)
@@ -813,7 +774,6 @@ def test_auth_failure_does_not_call_validate_or_apply() -> None:
     assert not apply_called, "apply_config_candidate called without auth"
 
 
-# Тест: действие execute должно получить словарь actor, содержащий user_id и role.
 def test_action_execute_receives_actor() -> None:
     settings = load_settings(settings_path())
     settings["auth"] = _make_auth_settings(enabled=True)
@@ -875,7 +835,6 @@ def test_action_execute_receives_actor() -> None:
     assert "role" in received_actor
 
 
-# Тест: сравнение токенов должно использовать hmac.compare_digest (constant-time).
 def test_token_comparison_uses_hmac() -> None:
     service = AuthService(_make_auth_settings(enabled=True))
     assert service._resolve_role(_TEST_ADMIN_TOKEN) == UserRole.admin
@@ -884,7 +843,6 @@ def test_token_comparison_uses_hmac() -> None:
     assert service._resolve_role("") is None
 
 
-# Тест: если в адаптере отсутствует параметр validate_config_candidate, функция предварительного просмотра конфигурации должна возвращать ошибку 501.
 def test_config_preview_without_adapter_method_returns_501() -> None:
     settings = load_settings(settings_path())
     settings["auth"] = _make_auth_settings(enabled=True)
@@ -931,7 +889,6 @@ def test_config_preview_without_adapter_method_returns_501() -> None:
     assert payload["error"]["code"] == "feature_unavailable"
 
 
-# Тест: если в адаптере отсутствует параметр execute_action, функция предварительного просмотра действия должна возвращать ошибку 501.
 def test_action_preview_without_adapter_method_returns_501() -> None:
     settings = load_settings(settings_path())
     settings["auth"] = _make_auth_settings(enabled=True)
@@ -978,7 +935,6 @@ def test_action_preview_without_adapter_method_returns_501() -> None:
     assert payload["error"]["code"] == "feature_unavailable"
 
 
-# Тест: если в адаптере отсутствует параметр execute_action, функция выполнения действия должна возвращать ошибку 501.
 def test_action_execute_without_adapter_method_returns_501() -> None:
     settings = load_settings(settings_path())
     settings["auth"] = _make_auth_settings(enabled=True)
@@ -1025,7 +981,6 @@ def test_action_execute_without_adapter_method_returns_501() -> None:
     assert payload["error"]["code"] == "feature_unavailable"
 
 
-# Тест: callback должен передавать параметры candidate, expected_hash и actor
 def test_config_apply_passes_expected_hash_and_actor() -> None:
     settings = load_settings(settings_path())
     settings["auth"] = _make_auth_settings(enabled=True)
@@ -1095,7 +1050,6 @@ def test_config_apply_passes_expected_hash_and_actor() -> None:
     assert "role" in received["actor"]
 
 
-# Тест: превью конфигурации должна передавать адаптеру только тело кандидата, а не весь обертку с extra и другими полями
 def test_config_preview_unwraps_candidate() -> None:
     settings = load_settings(settings_path())
     settings["auth"] = _make_auth_settings(enabled=True)
@@ -1153,7 +1107,6 @@ def test_config_preview_unwraps_candidate() -> None:
     )
 
 
-# Тест: если тело запроса не является JSON-объектом, превью конфигурации должна возвращать ошибку 400 и не вызывать адаптер
 def test_config_preview_rejects_non_object_body() -> None:
     settings = load_settings(settings_path())
     settings["auth"] = _make_auth_settings(enabled=True)
@@ -1214,7 +1167,6 @@ def test_config_preview_rejects_non_object_body() -> None:
     assert call_count == 0, "Adapter callback must not be called"
 
 
-# Тест: если тело запроса не является JSON-объектом, применение конфигурации должно возвращать ошибку 400 и не вызывать адаптер
 def test_config_apply_rejects_non_object_candidate() -> None:
     settings = load_settings(settings_path())
     settings["auth"] = _make_auth_settings(enabled=True)
@@ -1275,7 +1227,6 @@ def test_config_apply_rejects_non_object_candidate() -> None:
     assert call_count == 0, "Adapter callback must not be called"
 
 
-# Тест: если expected_hash не является строкой, применение конфигурации должно возвращать ошибку 400 и не вызывать адаптер
 def test_config_apply_rejects_non_string_expected_hash() -> None:
     settings = load_settings(settings_path())
     settings["auth"] = _make_auth_settings(enabled=True)
@@ -1336,7 +1287,6 @@ def test_config_apply_rejects_non_string_expected_hash() -> None:
     assert call_count == 0, "Adapter callback must not be called"
 
 
-# Тест: если action_id отсутствует или не является строкой, превью действия должно возвращать ошибку 400 и не вызывать адаптер
 def test_action_preview_rejects_missing_action_id() -> None:
     settings = load_settings(settings_path())
     settings["auth"] = _make_auth_settings(enabled=True)
@@ -1394,7 +1344,6 @@ def test_action_preview_rejects_missing_action_id() -> None:
     assert call_count == 0, "Adapter callback must not be called"
 
 
-# Тест: если action_id отсутствует или не является строкой, превью действия должно возвращать ошибку 400 и не вызывать адаптер
 def test_action_preview_rejects_non_string_action_id() -> None:
     settings = load_settings(settings_path())
     settings["auth"] = _make_auth_settings(enabled=True)
@@ -1452,7 +1401,6 @@ def test_action_preview_rejects_non_string_action_id() -> None:
     assert call_count == 0, "Adapter callback must not be called"
 
 
-# Тест: если payload не является JSON-объектом, превью действия должно возвращать ошибку 400 и не вызывать адаптер
 def test_action_preview_rejects_non_object_payload() -> None:
     settings = load_settings(settings_path())
     settings["auth"] = _make_auth_settings(enabled=True)
@@ -1510,7 +1458,6 @@ def test_action_preview_rejects_non_object_payload() -> None:
     assert call_count == 0, "Adapter callback must not be called"
 
 
-# Тест: если payload не является JSON-объектом, выполнение действия должно возвращать ошибку 400 и не вызывать адаптер
 def test_action_execute_rejects_non_object_payload() -> None:
     settings = load_settings(settings_path())
     settings["auth"] = _make_auth_settings(enabled=True)
@@ -1568,7 +1515,6 @@ def test_action_execute_rejects_non_object_payload() -> None:
     assert call_count == 0, "Adapter callback must not be called"
 
 
-# Тест: оболочка превью конфигурации должна иметь read_only: true, чтобы фронтенд знал, что результат нельзя применять напрямую
 def test_preview_success_envelope_is_read_only() -> None:
     settings = load_settings(settings_path())
     settings["auth"] = _make_auth_settings(enabled=True)
@@ -1621,7 +1567,6 @@ def test_preview_success_envelope_is_read_only() -> None:
     assert payload["read_only"] is True, "Preview envelope must be read_only=true"
 
 
-# Тест: оболочка выполнения действия не должна иметь read_only
 def test_execute_success_envelope_is_not_read_only() -> None:
     settings = load_settings(settings_path())
     settings["auth"] = _make_auth_settings(enabled=True)
@@ -1674,7 +1619,6 @@ def test_execute_success_envelope_is_not_read_only() -> None:
     assert payload["read_only"] is False, "Execute envelope must be read_only=false"
 
 
-# Тест: при включенной аутентификации и отсутствии cookie_secure должно выбрасываться исключение при загрузке настроек
 def test_auth_enabled_requires_cookie_secure() -> None:
     from beeui_module.core.settings import _validate_auth
 
@@ -1691,7 +1635,6 @@ def test_auth_enabled_requires_cookie_secure() -> None:
         )
 
 
-# Тест: при включенной аутентификации и cookie_secure: false должно устанавливаться cookie без атрибута Secure
 def test_auth_cookie_secure_flag_false_for_local() -> None:
     settings = load_settings(settings_path())
     settings["auth"]["enabled"] = True
@@ -1713,7 +1656,6 @@ def test_auth_cookie_secure_flag_false_for_local() -> None:
     assert session_cookie_name() in set_cookie
 
 
-# Тест: при включенной аутентификации и cookie_secure: true должно устанавливаться cookie с атрибутом Secure
 def test_auth_cookie_secure_flag_true_sets_secure_cookie() -> None:
     settings = load_settings(settings_path())
     settings["auth"]["enabled"] = True
@@ -1735,7 +1677,6 @@ def test_auth_cookie_secure_flag_true_sets_secure_cookie() -> None:
     assert session_cookie_name() in set_cookie
 
 
-# Тест: все маршруты должны включать заголовки безопасности X-Content-Type-Options и X-Frame-Options
 def test_security_headers_on_html_route() -> None:
     app = create_beeui_app()
     client = TestClient(app)
@@ -1744,7 +1685,6 @@ def test_security_headers_on_html_route() -> None:
     assert response.headers.get("X-Frame-Options") == "DENY"
 
 
-# Тест: маршрут входа в систему должен включать заголовки безопасности, даже если аутентификация отключена (для защиты от clickjacking и других атак)
 def test_security_headers_on_auth_route() -> None:
     settings = load_settings(settings_path())
     settings["auth"]["enabled"] = True
@@ -1761,7 +1701,6 @@ def test_security_headers_on_auth_route() -> None:
     assert response.headers.get("X-Frame-Options") == "DENY"
 
 
-# Тест: маршрут получения CSRF-токена должен включать заголовок Cache-Control
 def test_auth_csrf_route_is_no_store() -> None:
     settings = load_settings(settings_path())
     settings["auth"] = _make_auth_settings(enabled=True)
@@ -1776,7 +1715,6 @@ def test_auth_csrf_route_is_no_store() -> None:
     assert response.headers.get("Cache-Control") == "no-store"
 
 
-# Тест: если пользователь не аутентифицирован, маршруты API должны возвращать 401 и включать заголовки безопасности
 def test_security_headers_on_api_error() -> None:
     settings = load_settings(settings_path())
     settings["auth"]["enabled"] = True
@@ -1794,7 +1732,6 @@ def test_security_headers_on_api_error() -> None:
     assert response.headers.get("X-Frame-Options") == "DENY"
 
 
-# Тест: при включенном auth и правильных учетных данных устанавливается сессия и возвращается cookie
 def test_auth_routes_follow_route_prefix() -> None:
     settings = load_settings(settings_path())
     settings["auth"] = _make_auth_settings(enabled=True)
@@ -1816,7 +1753,6 @@ def test_auth_routes_follow_route_prefix() -> None:
     assert session_cookie_name() in response.cookies
 
 
-# Тест: если CSRF-токен недействителен, запрос должен быть отклонен с ошибкой 403, и адаптер не должен быть вызван
 def test_invalid_csrf_does_not_call_adapter() -> None:
     settings = load_settings(settings_path())
     settings["auth"] = _make_auth_settings(enabled=True)
@@ -1872,7 +1808,6 @@ def test_invalid_csrf_does_not_call_adapter() -> None:
     assert call_count == 0, "Adapter callback must not be called with invalid CSRF"
 
 
-# Тест: функция валидации auth не должна мутировать строки с ссылками на переменные окружения
 def test_validate_auth_does_not_mutate_env_refs() -> None:
     import os
 

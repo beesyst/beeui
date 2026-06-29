@@ -15,7 +15,6 @@ from beeui_module.data.resolver import DataResolver
 _SAFE_IDENTIFIER_RE = re.compile(r"^[a-z][a-z0-9_-]*$")
 
 
-# Чтение top-level blocks и валидация каждого описания через renderer contract
 def parse_blocks_registry(
     blocks_payload: Any,
     available_source_ids: set[str] | None = None,
@@ -38,7 +37,6 @@ def parse_blocks_registry(
     return blocks
 
 
-# Чтение pages[].blocks[]: static placements и product-side page refs
 def parse_page_block_placements(
     *,
     page_blocks: Any,
@@ -83,7 +81,6 @@ def parse_page_block_placements(
     return placements
 
 
-# Валидация page block reference
 def _validate_page_block_ref(
     item: dict[str, Any],
     *,
@@ -117,7 +114,6 @@ def _validate_page_block_ref(
         placements.append(BlockPlacement(block_id=block_id, width=12))
 
 
-# Валидация block placement: {block, width} | {block, span} | {block, size}
 def _validate_block_placement(
     item: dict[str, Any],
     *,
@@ -174,11 +170,9 @@ def _validate_block_placement(
         placements.append(BlockPlacement(block_id=block_id, size=size.upper()))
         return
 
-    # Нет sizing key — default width 12
     placements.append(BlockPlacement(block_id=block_id, width=12))
 
 
-# Разрешение effective width из placement, поддерживающего span и size
 _SIZE_TO_WIDTH: dict[str, int] = {"S": 4, "M": 6, "L": 8, "XL": 12}
 
 
@@ -190,7 +184,6 @@ def _resolve_placement_width(placement: BlockPlacement) -> int:
     return placement.width
 
 
-# Коннект placement и definition в модель, которую можно передать в template
 def resolve_page_blocks(
     *,
     placements: list[BlockPlacement],
@@ -210,7 +203,6 @@ def resolve_page_blocks(
     return rendered
 
 
-# Принятие разрешенного блока и данных из резолвера, их объединение и повторная валидация для рендера, с учётом возможных ошибок разрешения данных
 def _resolve_block_definition(
     block: BlockDefinition,
     resolver: DataResolver,
@@ -238,7 +230,6 @@ def _resolve_block_definition(
     return coerce_resolved_block(block, resolved_values, resolution_status, message)
 
 
-# Объединение статусов разрешения данных, где "error" > "partial" > "ok"
 def _merge_resolution_status(current_status: str, next_status: str) -> str:
     if "error" in {current_status, next_status}:
         return "error"

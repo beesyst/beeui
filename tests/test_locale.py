@@ -36,7 +36,6 @@ def test_resolve_localized_text_none_returns_empty() -> None:
 
 def test_validate_localized_text_plain_string() -> None:
     validate_localized_text("Hello", _AVAILABLE, _DEFAULT, "test")
-    # No exception means pass
 
 
 def test_validate_localized_text_valid_dict() -> None:
