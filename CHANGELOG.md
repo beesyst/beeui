@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.21.1](https://github.com/beesyst/beeui/compare/beeui-v0.21.0...beeui-v0.21.1) (2026-06-29)
+
+
+### Bug Fixes
+
+* **ui:** preserve locale across shell navigation ([#78](https://github.com/beesyst/beeui/issues/78)) ([f989ecd](https://github.com/beesyst/beeui/commit/f989ecd30620f3ac5d2b17c3a0fb7f752ed5b891))
+
 ## [0.21.0](https://github.com/beesyst/beeui/compare/beeui-v0.20.1...beeui-v0.21.0) (2026-06-19)
 
 
