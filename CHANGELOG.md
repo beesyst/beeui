@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.21.2](https://github.com/beesyst/beeui/compare/beeui-v0.21.1...beeui-v0.21.2) (2026-06-30)
+
+
+### Bug Fixes
+
+* **ui:** add generic detail page renderer ([#81](https://github.com/beesyst/beeui/issues/81)) ([bc70035](https://github.com/beesyst/beeui/commit/bc70035bdb7776941c35bfd053702baed234d755))
+
 ## [0.21.1](https://github.com/beesyst/beeui/compare/beeui-v0.21.0...beeui-v0.21.1) (2026-06-29)
 
 
