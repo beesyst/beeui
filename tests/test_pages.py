@@ -2117,8 +2117,6 @@ def test_custom_route_system_paths_skipped(tmp_path: Path) -> None:
             assert response.status_code in {404, 405}
 
 
-
-
 def test_locale_resolved_page_title_renders_from_query(tmp_path: Path) -> None:
     from beeui_module.web.app import create_beeui_app
 
@@ -2707,3 +2705,637 @@ def test_component_catalog_index_link_preserves_lang() -> None:
 
     assert response.status_code == 200
     assert 'href="/components?lang=ru"' in response.text
+
+
+def _response_body_text(response) -> str:
+    return bytes(response.body).decode("utf-8")
+
+
+def test_detail_page_renders_title_subtitle_back_href() -> None:
+    from unittest.mock import MagicMock
+
+    from fastapi.templating import Jinja2Templates
+
+    from beeui_module.pages.detail import render_beeui_detail_page
+    from beeui_module.web.app import _resolve_templates_dir
+
+    ui_config = load_beeui_config(settings_path().parent / "schema.yml")
+
+    templates = Jinja2Templates(directory=str(_resolve_templates_dir()))
+    templates.env.autoescape = True
+
+    detail_data = {
+        "page_id": "event_detail",
+        "title": "Event Detail",
+        "subtitle": "Read-only event details",
+        "back_href": "/events",
+        "warnings": [],
+        "sections": [],
+    }
+
+    request = MagicMock()
+    request.query_params = {}
+
+    response = render_beeui_detail_page(
+        request=request,
+        page=detail_data,
+        templates=templates,
+        route_prefix="",
+        ui_config=ui_config,
+        product_title="BeeUI Demo",
+        product_id="demo",
+    )
+    body = _response_body_text(response)
+    assert "Event Detail" in body
+    assert "Read-only event details" in body
+    assert 'href="/events"' in body
+
+
+def test_detail_page_key_value_section_renders() -> None:
+    from unittest.mock import MagicMock
+
+    from fastapi.templating import Jinja2Templates
+
+    from beeui_module.pages.detail import render_beeui_detail_page
+    from beeui_module.web.app import _resolve_templates_dir
+
+    ui_config = load_beeui_config(settings_path().parent / "schema.yml")
+
+    templates = Jinja2Templates(directory=str(_resolve_templates_dir()))
+    templates.env.autoescape = True
+
+    detail_data = {
+        "page_id": "test",
+        "title": "Test",
+        "sections": [
+            {
+                "title": "Summary",
+                "kind": "key_value",
+                "items": [
+                    {"label": "Subject", "value": "Test subject"},
+                    {"label": "Sender", "value": "test@example.com"},
+                ],
+            }
+        ],
+    }
+
+    request = MagicMock()
+    request.query_params = {}
+
+    response = render_beeui_detail_page(
+        request=request,
+        page=detail_data,
+        templates=templates,
+        route_prefix="",
+        ui_config=ui_config,
+        product_title="BeeUI Demo",
+        product_id="demo",
+    )
+    body = _response_body_text(response)
+    assert "Summary" in body
+    assert "Subject" in body
+    assert "Test subject" in body
+    assert "Sender" in body
+    assert "test@example.com" in body
+
+
+def test_detail_page_text_section_renders() -> None:
+    from unittest.mock import MagicMock
+
+    from fastapi.templating import Jinja2Templates
+
+    from beeui_module.pages.detail import render_beeui_detail_page
+    from beeui_module.web.app import _resolve_templates_dir
+
+    ui_config = load_beeui_config(settings_path().parent / "schema.yml")
+
+    templates = Jinja2Templates(directory=str(_resolve_templates_dir()))
+    templates.env.autoescape = True
+
+    detail_data = {
+        "page_id": "test",
+        "title": "Test",
+        "sections": [
+            {
+                "title": "Preview",
+                "kind": "text",
+                "body": "This is a text body with multiple\nlines.",
+            }
+        ],
+    }
+
+    request = MagicMock()
+    request.query_params = {}
+
+    response = render_beeui_detail_page(
+        request=request,
+        page=detail_data,
+        templates=templates,
+        route_prefix="",
+        ui_config=ui_config,
+        product_title="BeeUI Demo",
+        product_id="demo",
+    )
+    body = _response_body_text(response)
+    assert "Preview" in body
+    assert "This is a text body with multiple" in body
+
+
+def test_detail_page_table_section_renders() -> None:
+    from unittest.mock import MagicMock
+
+    from fastapi.templating import Jinja2Templates
+
+    from beeui_module.pages.detail import render_beeui_detail_page
+    from beeui_module.web.app import _resolve_templates_dir
+
+    ui_config = load_beeui_config(settings_path().parent / "schema.yml")
+
+    templates = Jinja2Templates(directory=str(_resolve_templates_dir()))
+    templates.env.autoescape = True
+
+    detail_data = {
+        "page_id": "test",
+        "title": "Test",
+        "sections": [
+            {
+                "title": "Rows",
+                "kind": "table",
+                "columns": [
+                    {"key": "name", "label": "Name"},
+                    {"key": "value", "label": "Value"},
+                ],
+                "rows": [
+                    {"name": "Status", "value": "ok"},
+                    {"name": "Count", "value": "42"},
+                ],
+            }
+        ],
+    }
+
+    request = MagicMock()
+    request.query_params = {}
+
+    response = render_beeui_detail_page(
+        request=request,
+        page=detail_data,
+        templates=templates,
+        route_prefix="",
+        ui_config=ui_config,
+        product_title="BeeUI Demo",
+        product_id="demo",
+    )
+    body = _response_body_text(response)
+    assert "Rows" in body
+    assert "Name" in body
+    assert "Value" in body
+    assert "Status" in body
+    assert "ok" in body
+    assert "42" in body
+
+
+def test_detail_page_links_section_renders_internal_links() -> None:
+    from unittest.mock import MagicMock
+
+    from fastapi.templating import Jinja2Templates
+
+    from beeui_module.pages.detail import render_beeui_detail_page
+    from beeui_module.web.app import _resolve_templates_dir
+
+    ui_config = load_beeui_config(settings_path().parent / "schema.yml")
+
+    templates = Jinja2Templates(directory=str(_resolve_templates_dir()))
+    templates.env.autoescape = True
+
+    detail_data = {
+        "page_id": "test",
+        "title": "Test",
+        "sections": [
+            {
+                "title": "Links",
+                "kind": "links",
+                "items": [
+                    {"label": "Open source", "href": "/runs/run_001"},
+                    {"label": "View details", "href": "/events/evt_001"},
+                ],
+            }
+        ],
+    }
+
+    request = MagicMock()
+    request.query_params = {}
+
+    response = render_beeui_detail_page(
+        request=request,
+        page=detail_data,
+        templates=templates,
+        route_prefix="",
+        ui_config=ui_config,
+        product_title="BeeUI Demo",
+        product_id="demo",
+    )
+    body = _response_body_text(response)
+    assert "Links" in body
+    assert 'href="/runs/run_001"' in body
+    assert 'href="/events/evt_001"' in body
+    assert "Open source" in body
+    assert "View details" in body
+
+
+def test_detail_page_hrefs_preserve_allowlisted_query_params_and_route_prefix() -> None:
+    from unittest.mock import MagicMock
+
+    from fastapi.templating import Jinja2Templates
+
+    from beeui_module.pages.detail import render_beeui_detail_page
+    from beeui_module.web.app import _resolve_templates_dir
+
+    ui_config = load_beeui_config(settings_path().parent / "schema.yml")
+
+    templates = Jinja2Templates(directory=str(_resolve_templates_dir()))
+    templates.env.autoescape = True
+
+    detail_data = {
+        "page_id": "test",
+        "title": "Test",
+        "back_href": "/events",
+        "sections": [
+            {
+                "title": "Links",
+                "kind": "links",
+                "items": [
+                    {"label": "Safe", "href": "/events/evt_001"},
+                ],
+            }
+        ],
+    }
+
+    request = MagicMock()
+    request.query_params = {
+        "lang": "ru",
+        "period": "24h",
+        "run_id": "run_001",
+        "secret": "leak-me",
+    }
+
+    response = render_beeui_detail_page(
+        request=request,
+        page=detail_data,
+        templates=templates,
+        route_prefix="/ui",
+        ui_config=ui_config,
+        product_title="BeeUI Demo",
+        product_id="demo",
+    )
+    body = _response_body_text(response)
+    assert 'href="/ui/events?lang=ru&amp;period=24h&amp;run_id=run_001"' in body
+    assert 'href="/ui/events/evt_001?lang=ru&amp;period=24h&amp;run_id=run_001"' in body
+    assert "secret=leak-me" not in body
+
+
+def test_detail_page_unsafe_internal_looking_hrefs_are_inert() -> None:
+    from unittest.mock import MagicMock
+
+    from fastapi.templating import Jinja2Templates
+
+    from beeui_module.pages.detail import render_beeui_detail_page
+    from beeui_module.web.app import _resolve_templates_dir
+
+    ui_config = load_beeui_config(settings_path().parent / "schema.yml")
+
+    templates = Jinja2Templates(directory=str(_resolve_templates_dir()))
+    templates.env.autoescape = True
+
+    detail_data = {
+        "page_id": "test",
+        "title": "Test",
+        "back_href": "/events\\evt_002",
+        "sections": [
+            {
+                "title": "Links",
+                "kind": "links",
+                "items": [
+                    {"label": "Safe", "href": "/events/evt_001"},
+                    {"label": "Backslash", "href": "/events\\evt_002"},
+                    {"label": "Traversal", "href": "/events/../admin"},
+                    {"label": "Double slash", "href": "/events//evt_003"},
+                    {"label": "Encoded traversal", "href": "/events/%2e%2e/admin"},
+                ],
+            }
+        ],
+    }
+
+    request = MagicMock()
+    request.query_params = {
+        "lang": "bad",
+        "period": "24h",
+        "run_id": "run_001",
+        "secret": "leak-me",
+    }
+
+    response = render_beeui_detail_page(
+        request=request,
+        page=detail_data,
+        templates=templates,
+        route_prefix="",
+        ui_config=ui_config,
+        product_title="BeeUI Demo",
+        product_id="demo",
+    )
+    body = _response_body_text(response)
+    assert 'href="/events?period=24h&amp;run_id=run_001"' not in body
+    assert 'href="/events/evt_001?period=24h&amp;run_id=run_001"' in body
+    assert 'href="/events\\\\evt_002' not in body
+    assert 'href="/events/../admin' not in body
+    assert 'href="/events//evt_003' not in body
+    assert 'href="/events/%2e%2e/admin' not in body
+    assert '<span class="list-group-item text-secondary">Backslash</span>' in body
+    assert '<span class="list-group-item text-secondary">Traversal</span>' in body
+    assert '<span class="list-group-item text-secondary">Double slash</span>' in body
+    assert (
+        '<span class="list-group-item text-secondary">Encoded traversal</span>' in body
+    )
+    assert "secret=leak-me" not in body
+
+
+def test_detail_page_unsafe_external_links_omitted() -> None:
+    from unittest.mock import MagicMock
+
+    from fastapi.templating import Jinja2Templates
+
+    from beeui_module.pages.detail import render_beeui_detail_page
+    from beeui_module.web.app import _resolve_templates_dir
+
+    ui_config = load_beeui_config(settings_path().parent / "schema.yml")
+
+    templates = Jinja2Templates(directory=str(_resolve_templates_dir()))
+    templates.env.autoescape = True
+
+    detail_data = {
+        "page_id": "test",
+        "title": "Test",
+        "sections": [
+            {
+                "title": "Links",
+                "kind": "links",
+                "items": [
+                    {"label": "Safe", "href": "/events/evt_001"},
+                    {"label": "External", "href": "https://evil.com/steal"},
+                    {"label": "Protocol relative", "href": "//evil.com/steal"},
+                    {"label": "JavaScript", "href": "javascript:alert(1)"},
+                ],
+            }
+        ],
+    }
+
+    request = MagicMock()
+    request.query_params = {}
+
+    response = render_beeui_detail_page(
+        request=request,
+        page=detail_data,
+        templates=templates,
+        route_prefix="",
+        ui_config=ui_config,
+        product_title="BeeUI Demo",
+        product_id="demo",
+    )
+    body = _response_body_text(response)
+    assert 'href="/events/evt_001"' in body
+    assert "https://evil.com" not in body
+    assert "//evil.com" not in body
+    assert "javascript:alert" not in body
+
+
+def test_detail_page_unsafe_text_is_escaped() -> None:
+    from unittest.mock import MagicMock
+
+    from fastapi.templating import Jinja2Templates
+
+    from beeui_module.pages.detail import render_beeui_detail_page
+    from beeui_module.web.app import _resolve_templates_dir
+
+    ui_config = load_beeui_config(settings_path().parent / "schema.yml")
+
+    templates = Jinja2Templates(directory=str(_resolve_templates_dir()))
+    templates.env.autoescape = True
+
+    detail_data = {
+        "page_id": "test",
+        "title": "Test",
+        "sections": [
+            {
+                "title": "Unsafe",
+                "kind": "key_value",
+                "items": [
+                    {
+                        "label": '<script>alert("x")</script>',
+                        "value": '<img src=x onerror="alert(1)">',
+                    }
+                ],
+            },
+            {
+                "title": "Text",
+                "kind": "text",
+                "body": "<script>alert(2)</script>",
+            },
+        ],
+    }
+
+    request = MagicMock()
+    request.query_params = {}
+
+    response = render_beeui_detail_page(
+        request=request,
+        page=detail_data,
+        templates=templates,
+        route_prefix="",
+        ui_config=ui_config,
+        product_title="BeeUI Demo",
+        product_id="demo",
+    )
+    body = _response_body_text(response)
+    assert "<script>alert" not in body
+    assert "<img src=x" not in body
+    assert "&lt;script&gt;alert" in body
+    assert "&lt;img src=x" in body
+
+
+def test_detail_page_unsupported_section_does_not_crash() -> None:
+    from unittest.mock import MagicMock
+
+    from fastapi.templating import Jinja2Templates
+
+    from beeui_module.pages.detail import render_beeui_detail_page
+    from beeui_module.web.app import _resolve_templates_dir
+
+    ui_config = load_beeui_config(settings_path().parent / "schema.yml")
+
+    templates = Jinja2Templates(directory=str(_resolve_templates_dir()))
+    templates.env.autoescape = True
+
+    detail_data = {
+        "page_id": "test",
+        "title": "Test",
+        "sections": [
+            {
+                "title": "Unknown",
+                "kind": "unknown_kind",
+                "items": [{"label": "X", "value": "Y"}],
+            },
+            {
+                "title": "Malformed",
+                "kind": "key_value",
+            },
+            {"title": "Not a dict"},
+            "string section",
+            42,
+        ],
+    }
+
+    request = MagicMock()
+    request.query_params = {}
+
+    response = render_beeui_detail_page(
+        request=request,
+        page=detail_data,
+        templates=templates,
+        route_prefix="",
+        ui_config=ui_config,
+        product_title="BeeUI Demo",
+        product_id="demo",
+    )
+    body = _response_body_text(response)
+    assert response.status_code == 200
+    assert "Unknown" not in body
+    assert "Malformed" not in body
+    assert "No content" in body
+    assert "Test" in body
+
+
+def test_detail_page_missing_values_render_as_n_a() -> None:
+    from unittest.mock import MagicMock
+
+    from fastapi.templating import Jinja2Templates
+
+    from beeui_module.pages.detail import render_beeui_detail_page
+    from beeui_module.web.app import _resolve_templates_dir
+
+    ui_config = load_beeui_config(settings_path().parent / "schema.yml")
+
+    templates = Jinja2Templates(directory=str(_resolve_templates_dir()))
+    templates.env.autoescape = True
+
+    detail_data = {
+        "page_id": "test",
+        "title": "Test",
+        "sections": [
+            {
+                "title": "KV",
+                "kind": "key_value",
+                "items": [
+                    {"label": "Missing value"},
+                    {"label": "Null value", "value": None},
+                    {"label": "Normal", "value": "works"},
+                ],
+            }
+        ],
+    }
+
+    request = MagicMock()
+    request.query_params = {}
+
+    response = render_beeui_detail_page(
+        request=request,
+        page=detail_data,
+        templates=templates,
+        route_prefix="",
+        ui_config=ui_config,
+        product_title="BeeUI Demo",
+        product_id="demo",
+    )
+    body = _response_body_text(response)
+    assert "n/a" in body
+    assert "works" in body
+
+
+def test_detail_page_raw_extra_fields_not_rendered() -> None:
+    from beeui_module.pages.detail import normalize_detail_page
+
+    raw = {
+        "page_id": "test",
+        "title": "Test",
+        "raw_eml": "RAW EMAIL CONTENT",
+        "attachment_content": b"BINARY DATA",
+        "payload_bytes": b"\x00\x01\x02",
+        "content_bytes": b"SECRET CONTENT",
+        "sections": [
+            {
+                "title": "Summary",
+                "kind": "key_value",
+                "items": [{"label": "Status", "value": "ok"}],
+            }
+        ],
+    }
+
+    normalized = normalize_detail_page(raw)
+
+    assert "raw_eml" not in normalized
+    assert "attachment_content" not in normalized
+    assert "payload_bytes" not in normalized
+    assert "content_bytes" not in normalized
+    assert normalized["title"] == "Test"
+
+
+def test_detail_page_no_product_specific_strings() -> None:
+    """Verify no ROP/Bitrix/lead/manager/MRKT/Binance/broker/strategy strings
+    exist in detail module and template."""
+    import re
+
+    detail_py = Path("src/beeui_module/pages/detail.py").read_text(encoding="utf-8")
+    detail_html = Path("src/beeui_module/web/templates/detail.html").read_text(
+        encoding="utf-8"
+    )
+
+    for forbidden in (
+        "ROP",
+        "Bitrix",
+        "lead",
+        "manager",
+        "MRKT",
+        "Binance",
+        "broker",
+        "strategy",
+    ):
+        pattern = re.escape(forbidden)
+        assert not re.search(pattern, detail_py), (
+            f"Forbidden string '{forbidden}' found in detail.py"
+        )
+        assert not re.search(pattern, detail_html), (
+            f"Forbidden string '{forbidden}' found in detail.html"
+        )
+
+
+def test_detail_page_template_has_no_unsafe_safe_filter() -> None:
+    detail_html = Path("src/beeui_module/web/templates/detail.html").read_text(
+        encoding="utf-8"
+    )
+    assert "|safe" not in detail_html
+
+
+def test_detail_page_ghost_section_omitted() -> None:
+    from beeui_module.pages.detail import normalize_detail_page
+
+    raw = {
+        "page_id": "test",
+        "title": "Test",
+        "sections": [
+            {"title": "Empty KV", "kind": "key_value", "items": []},
+            {"title": "Empty table", "kind": "table", "columns": [], "rows": []},
+            {"title": "Empty links", "kind": "links", "items": []},
+        ],
+    }
+
+    normalized = normalize_detail_page(raw)
+
+    assert len(normalized["sections"]) == 0

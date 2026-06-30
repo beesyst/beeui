@@ -27,7 +27,7 @@ from beeui_module.api.envelopes import (
 from beeui_module.artifacts.redaction import redact_value
 from beeui_module.blocks.layout_renderer import layout_has_charts, render_layout
 from beeui_module.pages.locale import resolve_localized_text
-from beeui_module.pages.models import BeeUiConfig, LocaleConfig
+from beeui_module.pages.models import BeeUiConfig, BeeUiPage, LocaleConfig
 from beeui_module.pages.router import (
     _build_language_switcher,
     build_components_context,
@@ -90,6 +90,7 @@ def register_product_console_routes(
 
     @app.get(dashboard_path, response_class=HTMLResponse, include_in_schema=False)
     async def dashboard_html(request: Request) -> HTMLResponse:
+        locale = resolve_locale(request, ui_config.locale)
         adapter = _resolve_adapter(request)
         if adapter is None:
             return _render_unavailable(
@@ -97,7 +98,18 @@ def register_product_console_routes(
                 templates,
                 "product_dashboard.html",
                 base_context,
-                title="Dashboard",
+                title=_resolve_product_page_title(
+                    ui_config,
+                    path="/",
+                    locale=locale,
+                    fallback="Dashboard",
+                ),
+                subtitle=_resolve_product_page_subtitle(
+                    ui_config,
+                    path="/",
+                    locale=locale,
+                    fallback="Adapter-backed product overview",
+                ),
                 active_path="/",
             )
 
@@ -106,8 +118,21 @@ def register_product_console_routes(
             base_context=base_context,
             active_path="/",
             result=result,
+            page_title=_resolve_product_page_title(
+                ui_config,
+                path="/",
+                locale=locale,
+                fallback="Dashboard",
+            ),
+            page_subtitle=_resolve_product_page_subtitle(
+                ui_config,
+                path="/",
+                locale=locale,
+                fallback="Adapter-backed product overview",
+            ),
         )
         context = _with_request_context(context, request)
+        _apply_product_console_labels(context)
         return templates.TemplateResponse(
             request=request,
             name="product_dashboard.html",
@@ -117,6 +142,7 @@ def register_product_console_routes(
 
     @app.get(runs_path, response_class=HTMLResponse, include_in_schema=False)
     async def runs_html(request: Request) -> HTMLResponse:
+        locale = resolve_locale(request, ui_config.locale)
         adapter = _resolve_adapter(request)
         if adapter is None:
             return _render_unavailable(
@@ -124,7 +150,18 @@ def register_product_console_routes(
                 templates,
                 "product_runs.html",
                 base_context,
-                title="Runs",
+                title=_resolve_product_page_title(
+                    ui_config,
+                    path="/runs",
+                    locale=locale,
+                    fallback="Runs",
+                ),
+                subtitle=_resolve_product_page_subtitle(
+                    ui_config,
+                    path="/runs",
+                    locale=locale,
+                    fallback="Adapter-backed run list",
+                ),
                 active_path="/runs",
             )
 
@@ -133,8 +170,21 @@ def register_product_console_routes(
             base_context=base_context,
             active_path="/runs",
             result=result,
+            page_title=_resolve_product_page_title(
+                ui_config,
+                path="/runs",
+                locale=locale,
+                fallback="Runs",
+            ),
+            page_subtitle=_resolve_product_page_subtitle(
+                ui_config,
+                path="/runs",
+                locale=locale,
+                fallback="Adapter-backed run list",
+            ),
         )
         context = _with_request_context(context, request)
+        _apply_product_console_labels(context)
         return templates.TemplateResponse(
             request=request,
             name="product_runs.html",
@@ -177,6 +227,7 @@ def register_product_console_routes(
             result=result,
         )
         context = _with_request_context(context, request)
+        _apply_product_console_labels(context)
         return templates.TemplateResponse(
             request=request,
             name="product_run_detail.html",
@@ -422,6 +473,7 @@ def _render_unavailable(
     base_context: dict[str, Any],
     *,
     title: str,
+    subtitle: str | None = None,
     active_path: str,
     run_id: str | None = None,
     venue_id: str | None = None,
@@ -436,7 +488,7 @@ def _render_unavailable(
                 active_path=active_path,
             ),
             "page_title": title,
-            "page_subtitle": None,
+            "page_subtitle": subtitle,
             "error": "Adapter is not available",
             "warnings": [],
             "meta": {},
@@ -496,6 +548,8 @@ def _dashboard_html_context(
     base_context: dict[str, Any],
     active_path: str,
     result: AdapterResult | AdapterErrorResult,
+    page_title: str,
+    page_subtitle: str | None,
 ) -> tuple[dict[str, Any], int]:
     context = dict(base_context)
     context.update(
@@ -506,8 +560,8 @@ def _dashboard_html_context(
                 navigation=base_context["ui_navigation"],
                 active_path=active_path,
             ),
-            "page_title": "Dashboard",
-            "page_subtitle": "Adapter-backed product overview",
+            "page_title": page_title,
+            "page_subtitle": page_subtitle,
             "warnings": [],
             "meta": {},
             "status": "ok",
@@ -568,6 +622,8 @@ def _runs_html_context(
     base_context: dict[str, Any],
     active_path: str,
     result: AdapterResult | AdapterErrorResult,
+    page_title: str,
+    page_subtitle: str | None,
 ) -> tuple[dict[str, Any], int]:
     context = dict(base_context)
     context.update(
@@ -578,8 +634,8 @@ def _runs_html_context(
                 navigation=base_context["ui_navigation"],
                 active_path=active_path,
             ),
-            "page_title": "Runs",
-            "page_subtitle": "Adapter-backed run list",
+            "page_title": page_title,
+            "page_subtitle": page_subtitle,
             "warnings": [],
             "meta": {},
             "status": "ok",
@@ -785,6 +841,79 @@ def _venue_html_context(
     context["meta"] = redact_value(result.meta)
     context["status"] = result.status
     return context, 200
+
+
+def _resolve_product_page(
+    ui_config: BeeUiConfig,
+    path: str,
+) -> BeeUiPage | None:
+    for page in ui_config.pages:
+        if page.path == path:
+            return page
+    return None
+
+
+def _resolve_product_page_title(
+    ui_config: BeeUiConfig,
+    *,
+    path: str,
+    locale: str,
+    fallback: str,
+) -> str:
+    page = _resolve_product_page(ui_config, path)
+    if page is None:
+        return fallback
+    return resolve_localized_text(page.title, locale, ui_config.locale.default)
+
+
+def _resolve_product_page_subtitle(
+    ui_config: BeeUiConfig,
+    *,
+    path: str,
+    locale: str,
+    fallback: str | None,
+) -> str | None:
+    page = _resolve_product_page(ui_config, path)
+    if page is not None and page.subtitle is not None:
+        return resolve_localized_text(page.subtitle, locale, ui_config.locale.default)
+    return fallback
+
+
+def _product_console_labels(locale: str) -> dict[str, str]:
+    if locale == "ru":
+        return {
+            "latest_run": "Последний запуск",
+            "status": "Статус",
+            "open_run": "Открыть запуск",
+            "kpis": "KPI",
+            "summary": "Сводка",
+            "technical_details": "Технические детали",
+            "run_list": "Список запусков",
+            "run_id": "ID запуска",
+            "started": "Начат",
+            "completed": "Завершён",
+            "open": "Открыть",
+            "back_to_runs": "Назад к запускам",
+        }
+    return {
+        "latest_run": "Latest run",
+        "status": "Status",
+        "open_run": "Open run",
+        "kpis": "KPIs",
+        "summary": "Summary",
+        "technical_details": "Technical details",
+        "run_list": "Run list",
+        "run_id": "Run ID",
+        "started": "Started",
+        "completed": "Completed",
+        "open": "Open",
+        "back_to_runs": "Back to runs",
+    }
+
+
+def _apply_product_console_labels(context: dict[str, Any]) -> None:
+    locale = str(context.get("locale", "en"))
+    context["pc_labels"] = _product_console_labels(locale)
 
 
 def _normalize_run_link(item: Any) -> dict[str, Any] | None:

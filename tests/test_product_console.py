@@ -989,6 +989,64 @@ def test_operator_hero_block_renders_through_layout() -> None:
         assert forbidden not in response.text
 
 
+def test_operator_hero_groups_period_links_into_dropdown() -> None:
+    class PeriodHeroAdapter(FakeProductConsoleAdapter):
+        def get_dashboard(self) -> Any:
+            return ok_result(
+                {
+                    "layout": [
+                        {
+                            "type": "operator_hero",
+                            "title": "ROP Control Center",
+                            "width": 12,
+                            "items": [],
+                            "primary_links": [
+                                {
+                                    "label": "Today",
+                                    "href": "/rop?tab=overview&period=today",
+                                    "period": "today",
+                                    "active": False,
+                                },
+                                {
+                                    "label": "Last 7 days",
+                                    "href": "/rop?tab=overview&period=7d",
+                                    "period": "7d",
+                                    "active": True,
+                                },
+                                {
+                                    "label": "Last 30 days",
+                                    "href": "/rop?tab=overview&period=30d",
+                                    "period": "30d",
+                                    "active": False,
+                                },
+                                {
+                                    "label": "Open Queue",
+                                    "href": "/rop?tab=queue&period=7d",
+                                },
+                                {
+                                    "label": "Open Bitrix",
+                                    "href": "/rop?tab=bitrix&period=7d",
+                                },
+                            ],
+                        }
+                    ]
+                }
+            )
+
+    response = TestClient(create_beeui_app(adapter=PeriodHeroAdapter())).get("/")
+
+    assert response.status_code == 200
+    assert 'class="dropdown me-1 d-inline-block"' in response.text
+    assert "dropdown-menu dropdown-menu-end" in response.text
+    assert 'dropdown-item active"' in response.text
+    assert "Today" in response.text
+    assert "Last 7 days" in response.text
+    assert "Last 30 days" in response.text
+    assert "Open Queue" in response.text
+    assert "Open Bitrix" in response.text
+    assert 'btn btn-outline-primary btn-sm me-1">Today<' not in response.text
+
+
 def test_new_blocks_escape_unsafe_adapter_values() -> None:
     class UnsafeNewBlocksAdapter(FakeProductConsoleAdapter):
         def get_dashboard(self) -> Any:
@@ -1416,4 +1474,80 @@ def test_adapter_dashboard_navigation_follows_locale() -> None:
     en = client.get("/")
     assert en.status_code == 200
     assert "Dashboard" in en.text
-    assert "?lang=" not in en.text  # no lang param in nav links when default locale
+    assert '/runs?lang=' not in en.text
+    assert '/?lang=ru' in en.text
+
+
+def test_product_console_page_metadata_localizes_dashboard_and_runs() -> None:
+    from beeui_module.pages.config import load_beeui_config
+    from beeui_module.pages.models import LocaleConfig
+
+    adapter = FakeProductConsoleAdapter()
+    settings = load_settings(settings_path())
+    settings["product"]["title"] = "Fake"
+    ui_config = load_beeui_config(settings_path().parent / "schema.yml")
+
+    from dataclasses import replace
+
+    localized_pages = []
+    for page in ui_config.pages:
+        if page.path == "/":
+            localized_pages.append(
+                replace(
+                    page,
+                    title={"en": "Dashboard", "ru": "Дашборд BeeAgent"},
+                    subtitle={
+                        "en": "Adapter-backed product overview",
+                        "ru": "Read-only дашборд оператора",
+                    },
+                )
+            )
+        elif page.path == "/runs":
+            localized_pages.append(
+                replace(
+                    page,
+                    title={"en": "Runs", "ru": "Запуски"},
+                    subtitle={
+                        "en": "Adapter-backed run list",
+                        "ru": "История запусков",
+                    },
+                )
+            )
+        else:
+            localized_pages.append(page)
+
+    ui_config = replace(
+        ui_config,
+        locale=LocaleConfig(default="en", available=("en", "ru")),
+        navigation=[
+            replace(n, title={"en": "Dashboard", "ru": "Дашборд"})
+            for n in ui_config.navigation
+        ],
+        pages=localized_pages,
+    )
+
+    client = TestClient(
+        create_beeui_app(settings=settings, ui_config=ui_config, adapter=adapter)
+    )
+
+    dashboard = client.get("/?lang=ru")
+    runs = client.get("/runs?lang=ru")
+
+    assert dashboard.status_code == 200
+    assert "Дашборд BeeAgent" in dashboard.text
+    assert "Read-only дашборд оператора" in dashboard.text
+    assert "Последний запуск" in dashboard.text
+    assert "Сводка" in dashboard.text
+    assert "Технические детали" in dashboard.text
+    assert "Открыть запуск" in dashboard.text
+    assert '<strong class="beeui-lang-active">RU</strong>' in dashboard.text
+
+    assert runs.status_code == 200
+    assert "Запуски" in runs.text
+    assert "История запусков" in runs.text
+    assert "Список запусков" in runs.text
+    assert "ID запуска" in runs.text
+    assert "Статус" in runs.text
+    assert "Начат" in runs.text
+    assert "Завершён" in runs.text
+    assert '<strong class="beeui-lang-active">RU</strong>' in runs.text

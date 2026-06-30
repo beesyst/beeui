@@ -1,16 +1,7 @@
 {% extends "base.html" %} {% from
 "components/primitives/catalog_primitives.html" import accordion %} {% block
 title %}{{ page_title }} · {{ app_title }}{% endblock %} {% block content %}
-<div class="page-header d-print-none">
-  <div class="{{ layout.container_class }}">
-    <div class="row g-2 align-items-center">
-      <div class="col">
-        <h2 class="page-title">{{ page_title }}</h2>
-        <div class="text-secondary mt-1">{{ page_subtitle }}</div>
-      </div>
-    </div>
-  </div>
-</div>
+{% include "components/page_header.html" %}
 
 <div class="page-body">
   <div class="{{ layout.container_class }}">
@@ -26,17 +17,17 @@ title %}{{ page_title }} · {{ app_title }}{% endblock %} {% block content %}
     <div class="row g-3">
       <div class="col-12 col-lg-4">
         <div class="card h-100">
-          <div class="card-header"><h3 class="card-title">Latest run</h3></div>
+          <div class="card-header"><h3 class="card-title">{{ pc_labels.latest_run }}</h3></div>
           <div class="card-body">
             {% if latest_run %}
             <div class="fs-3 fw-bold">{{ latest_run.id }}</div>
             <div class="text-secondary mt-1">
-              Status: {{ latest_run.status }}
+              {{ pc_labels.status }}: {{ latest_run.status }}
             </div>
             <a
               class="btn btn-outline-primary btn-sm mt-3"
               href="{{ url_prefix }}/runs/{{ latest_run.id }}"
-              >Open run</a
+              >{{ pc_labels.open_run }}</a
             >
             {% else %}
             <div class="text-secondary">No latest run available.</div>
@@ -47,7 +38,7 @@ title %}{{ page_title }} · {{ app_title }}{% endblock %} {% block content %}
 
       <div class="col-12 col-lg-4">
         <div class="card h-100">
-          <div class="card-header"><h3 class="card-title">KPIs</h3></div>
+          <div class="card-header"><h3 class="card-title">{{ pc_labels.kpis }}</h3></div>
           <div class="card-body">
             {% if kpi_items %} {% for item in kpi_items %}
             <div
@@ -65,7 +56,7 @@ title %}{{ page_title }} · {{ app_title }}{% endblock %} {% block content %}
 
       <div class="col-12 col-lg-4">
         <div class="card h-100">
-          <div class="card-header"><h3 class="card-title">Summary</h3></div>
+          <div class="card-header"><h3 class="card-title">{{ pc_labels.summary }}</h3></div>
           <div class="card-body">
             {% if summary_items %}
             <dl class="row mb-0">
@@ -82,7 +73,7 @@ title %}{{ page_title }} · {{ app_title }}{% endblock %} {% block content %}
       </div>
 
       <div class="col-12">
-        {% set technical_details_items = [{'title': 'Technical details', 'open':
+        {% set technical_details_items = [{'title': pc_labels.technical_details, 'open':
         false}] %} {% call(item) accordion( items=technical_details_items,
         accordion_id='technical-details-accordion',
         accordion_class=components.accordion_class,

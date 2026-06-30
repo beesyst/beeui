@@ -6,6 +6,16 @@
 
 ## Текущий статус
 
+**Iteration 13.8** — Generic detail page template and render helper.
+
+- BeeUI provides `render_beeui_detail_page()` product-neutral detail page renderer.
+- Detail page supports section kinds: `key_value`, `text`, `table`, `links`.
+- Detail page нормализует read-model, валидирует internal links, экранирует HTML.
+- Detail page template использует общий BeeUI shell (theme, layout, locale, navigation, route prefix).
+- Product routes могут вызывать `render_beeui_detail_page()` вместо ручной сборки HTML.
+- Detail page не является JSON API endpoint и не меняет API contract.
+- Detail page не добавляет keys в `config/settings.yml`.
+
 **Iteration 13.7** — Locale-aware shell labels, language switcher and query-preserving navigation.
 
 - Product-side `beeui.yml` может передавать localized shell labels.
@@ -290,6 +300,83 @@ Rules:
 - BeeUI does not infer ROP/BeeCap/BeeAgent semantics;
 - malformed payload degrades;
 - payload is redacted before HTML rendering.
+
+## Generic detail page integration (Iteration 13.8)
+
+Product routes or adapter-backed custom pages can use the generic detail page
+renderer instead of assembling HTML manually.
+
+### Entrypoint
+
+```python
+from beeui_module.pages.detail import render_beeui_detail_page
+
+response = render_beeui_detail_page(
+    request=request,
+    page=page_data,
+    templates=templates,
+    route_prefix=route_prefix,
+    ui_config=ui_config,
+    product_title=product_title,
+    product_id=product_id,
+)
+```
+
+### Detail page model
+
+```python
+page_data = {
+    "page_id": "event_detail",
+    "title": "Event detail",
+    "subtitle": "Read-only details",
+    "back_href": "/events",
+    "warnings": [],
+    "sections": [
+        {
+            "title": "Summary",
+            "kind": "key_value",
+            "items": [
+                {"label": "Subject", "value": "..."},
+            ],
+        },
+        {
+            "title": "Preview",
+            "kind": "text",
+            "body": "...",
+        },
+        {
+            "title": "Rows",
+            "kind": "table",
+            "columns": [{"key": "name", "label": "Name"}],
+            "rows": [{"name": "Status", "value": "ok"}],
+        },
+        {
+            "title": "Links",
+            "kind": "links",
+            "items": [{"label": "Open", "href": "/runs/run_001"}],
+        },
+    ],
+}
+```
+
+### Normalization
+
+The renderer normalizes the model before rendering:
+
+- unsupported/malformed sections are safely omitted;
+- missing values render as `n/a`;
+- `back_href` and link hrefs are validated as safe internal paths;
+- external/unsafe links are rendered as inert text;
+- raw fields (`raw_eml`, `attachment_content`, `payload_bytes`, `content_bytes`)
+  are not implicitly rendered;
+- text remains HTML-escaped (autoescape, no `|safe`).
+
+### Template
+
+Template: `src/beeui_module/web/templates/detail.html`.
+
+Extends `base.html` with the same shell context (theme, layout, locale,
+navigation, route prefix). No JS required. No external assets.
 
 ## Security notes / Замечания по безопасности
 
