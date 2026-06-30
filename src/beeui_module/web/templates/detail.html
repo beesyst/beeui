@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+{% block title %}{{ page_title }} · {{ app_title }}{% endblock %}
+{% block content %}
+{% include "components/page_header.html" %}
+
+<div class="page-body">
+  <div class="{{ layout.container_class }}">
+
+    {% if back_href %}
+    <div class="mb-3">
+      <a href="{{ route_prefix }}{{ back_href }}" class="btn btn-ghost-secondary btn-sm">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-1">
+          <path d="M5 12l14 0" />
+          <path d="M5 12l6 6" />
+          <path d="M5 12l6 -6" />
+        </svg>
+        Back
+      </a>
+    </div>
+    {% endif %}
+
+    {% if has_warnings %}
+    <div class="mb-3">
+      {% for warning in warnings %}
+      <div class="alert alert-warning" role="alert">{{ warning }}</div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if has_sections %}
+    <div class="row row-deck row-cards g-3">
+      {% for section in sections %}
+        {% if section["kind"] == "key_value" %}
+        <div class="col-12 col-lg-6">
+          <div class="card">
+            {% if section.get("title") %}
+            <div class="card-header">
+              <h3 class="card-title">{{ section["title"] }}</h3>
+            </div>
+            {% endif %}
+            <div class="card-body">
+              <div class="datagrid">
+                {% for item in section["items"] %}
+                <div class="datagrid-item">
+                  <div class="datagrid-title">{{ item["label"] }}</div>
+                  <div class="datagrid-content">{{ item["value"] }}</div>
+                </div>
+                {% endfor %}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {% elif section["kind"] == "text" %}
+        <div class="col-12">
+          <div class="card">
+            {% if section.get("title") %}
+            <div class="card-header">
+              <h3 class="card-title">{{ section["title"] }}</h3>
+            </div>
+            {% endif %}
+            <div class="card-body">
+              <pre class="mb-0 text-break">{{ section["body"] }}</pre>
+            </div>
+          </div>
+        </div>
+
+        {% elif section["kind"] == "table" %}
+        <div class="col-12">
+          <div class="card">
+            {% if section.get("title") %}
+            <div class="card-header">
+              <h3 class="card-title">{{ section["title"] }}</h3>
+            </div>
+            {% endif %}
+            <div class="table-responsive">
+              <table class="table table-vcenter card-table">
+                <thead>
+                  <tr>
+                    {% for col in section["columns"] %}
+                    <th>{{ col["label"] }}</th>
+                    {% endfor %}
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for row in section["rows"] %}
+                  <tr>
+                    {% for col in section["columns"] %}
+                    <td>{{ row[col["key"]] }}</td>
+                    {% endfor %}
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        {% elif section["kind"] == "links" %}
+        <div class="col-12 col-lg-6">
+          <div class="card">
+            {% if section.get("title") %}
+            <div class="card-header">
+              <h3 class="card-title">{{ section["title"] }}</h3>
+            </div>
+            {% endif %}
+            <div class="list-group list-group-flush">
+              {% for item in section["items"] %}
+                {% if item["href"] %}
+                <a href="{{ route_prefix }}{{ item["href"] }}" class="list-group-item list-group-item-action">
+                  {{ item["label"] }}
+                </a>
+                {% else %}
+                <span class="list-group-item text-secondary">{{ item["label"] }}</span>
+                {% endif %}
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+
+        {% endif %}
+      {% endfor %}
+    </div>
+
+    {% else %}
+    <div class="empty">
+      <div class="empty-header">No content</div>
+      <p class="empty-subtitle text-secondary">No sections available for this page.</p>
+    </div>
+    {% endif %}
+
+  </div>
+</div>
+{% endblock %}

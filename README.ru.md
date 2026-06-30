@@ -2,6 +2,26 @@
 
 **BeeUI** — общий UI-фреймворк на Python для Bee-продуктов: `beecap`, `beeagent` и будущих модулей экосистемы Bee.
 
+## Iteration 13.8 — Generic detail page template and render helper
+
+Текущий результат — generic detail page renderer, позволяющий product routes
+рендерить safe read-model через BeeUI/Jinja/Tabler вместо ручной сборки HTML
+строками.
+
+В Iteration 13.8 добавлены:
+
+- `src/beeui_module/pages/detail.py` — product-neutral detail page normalizer и render helper;
+- `src/beeui_module/web/templates/detail.html` — Jinja template с Tabler-совместимыми section kinds;
+- поддерживаемые section kinds: `key_value`, `text`, `table`, `links`;
+- unsupported/malformed sections безопасно опускаются;
+- missing значения рендерятся как `n/a`;
+- `back_href` и link hrefs валидируются как safe internal paths;
+- external/unsafe links рендерятся как inert text;
+- raw поля (`raw_eml`, `attachment_content`, `payload_bytes`, `content_bytes`) не рендерятся;
+- HTML autoescape остаётся включённым;
+- без JS, без external assets, без `|safe`;
+- route prefix / embedded mount поддерживаются через существующие link helpers.
+
 ## Iteration 13.7 — Locale-aware shell labels, language switcher and query-preserving navigation
 
 Текущий результат — locale-aware shell labels, простой language switcher и

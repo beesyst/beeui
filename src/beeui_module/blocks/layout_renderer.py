@@ -549,16 +549,22 @@ def _render_operator_hero(raw: dict[str, Any], width_class: str) -> dict[str, An
             }
         )
 
-    primary_links: list[dict[str, str]] = []
+    primary_links: list[dict[str, Any]] = []
     for link in _safe_dict_list(raw.get("primary_links")):
         href = _validate_link(link.get("href"))
         if href is not None:
-            primary_links.append(
-                {
-                    "label": _display_value(link.get("label")),
-                    "href": href,
-                }
-            )
+            normalized_link: dict[str, Any] = {
+                "label": _display_value(link.get("label")),
+                "href": href,
+            }
+            period = _safe_str(link.get("period", ""))
+            if period:
+                normalized_link["period"] = period
+                normalized_link["active"] = bool(link.get("active", False))
+            else:
+                normalized_link["period"] = ""
+                normalized_link["active"] = False
+            primary_links.append(normalized_link)
 
     return {
         "type": "operator_hero",

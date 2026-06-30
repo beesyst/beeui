@@ -3,22 +3,13 @@
 {% block title %}{{ page_title }} · {{ app_title }}{% endblock %}
 
 {% block content %}
-<div class="page-header d-print-none">
-  <div class="{{ layout.container_class }}">
-    <div class="row g-2 align-items-center">
-      <div class="col">
-        <h2 class="page-title">{{ page_title }}</h2>
-        <div class="text-secondary mt-1">{{ page_subtitle }}</div>
-      </div>
-      <div class="col-auto ms-auto d-print-none">
-        <a href="{{ url_prefix }}/runs" class="btn btn-outline-secondary">Back to runs</a>
-      </div>
-    </div>
-  </div>
-</div>
+{% include "components/page_header.html" %}
 
 <div class="page-body">
   <div class="{{ layout.container_class }}">
+    <div class="mb-3 d-print-none">
+      <a href="{{ url_prefix }}/runs" class="btn btn-outline-secondary">{{ pc_labels.back_to_runs }}</a>
+    </div>
     {% include "components/product_console_state.html" %}
 
     {% if has_layout %}

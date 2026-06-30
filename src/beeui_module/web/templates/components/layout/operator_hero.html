@@ -29,7 +29,31 @@
     {% endif %}
     {% if block.primary_links %}
       <div class="mt-auto">
+        {% set ns = namespace(period_links=[], regular_links=[]) %}
         {% for link in block.primary_links %}
+          {% if link.period %}
+            {% set ns.period_links = ns.period_links + [link] %}
+          {% else %}
+            {% set ns.regular_links = ns.regular_links + [link] %}
+          {% endif %}
+        {% endfor %}
+        {% if ns.period_links %}
+          {% set active_period_link = ns.period_links | selectattr('active') | list | first %}
+          {% if not active_period_link %}
+            {% set active_period_link = ns.period_links[0] %}
+          {% endif %}
+          <div class="dropdown me-1 d-inline-block">
+            <button class="btn btn-outline-primary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+              {{ active_period_link.label }}
+            </button>
+            <div class="dropdown-menu dropdown-menu-end">
+              {% for link in ns.period_links %}
+                <a href="{{ url_prefix }}{{ link.href }}" class="dropdown-item{% if link.active %} active{% endif %}"{% if link.active %} aria-current="true"{% endif %}>{{ link.label }}</a>
+              {% endfor %}
+            </div>
+          </div>
+        {% endif %}
+        {% for link in ns.regular_links %}
           <a href="{{ url_prefix }}{{ link.href }}" class="btn btn-outline-primary btn-sm me-1">{{ link.label }}</a>
         {% endfor %}
       </div>

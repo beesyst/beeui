@@ -572,6 +572,67 @@ Doctor:
 
 Отдельный `--config` не является текущим CLI contract.
 
+## Generic detail page renderer (Iteration 13.8)
+
+BeeUI provides a product-neutral detail page renderer that product routes or
+adapter-backed pages can use to render safe read-models through BeeUI/Jinja/Tabler.
+
+### Entrypoint
+
+```python
+from beeui_module.pages.detail import render_beeui_detail_page
+
+response = render_beeui_detail_page(
+    request=request,
+    page=page_data,
+    templates=templates,
+    route_prefix=route_prefix,
+    ui_config=ui_config,
+    product_title=product_title,
+    product_id=product_id,
+)
+```
+
+Returns `TemplateResponse` using `detail.html`.
+
+### Detail page model
+
+```json
+{
+  "page_id": "event_detail",
+  "title": "Event detail",
+  "subtitle": "Read-only event details",
+  "back_href": "/events",
+  "warnings": [],
+  "sections": [...]
+}
+```
+
+### Supported section kinds
+
+| Kind | Template output | Fields |
+|------|----------------|--------|
+| `key_value` | Tabler card with `datagrid` | `title`, `items[]` (label, value) |
+| `text` | Tabler card with `<pre>` | `title`, `body` |
+| `table` | Tabler card with `table-vcenter card-table` | `title`, `columns[]` (key, label), `rows[]` |
+| `links` | Tabler card with `list-group list-group-flush` | `title`, `items[]` (label, href) |
+
+### Normalization rules
+
+- Unsupported/malformed sections are safely omitted, no `500`.
+- Missing values render as `n/a`.
+- `back_href` and section links are validated as safe internal paths only.
+- External/unsafe links are rendered as inert text.
+- Raw fields (`raw_eml`, `attachment_content`, `payload_bytes`, `content_bytes`) are not implicitly rendered.
+- HTML autoescape remains enabled; no `|safe` for adapter/product values.
+
+### Template
+
+Template location: `src/beeui_module/web/templates/detail.html`.
+
+Extends `base.html`, uses the same shell context (theme, layout, locale,
+navigation, route_prefix) as other BeeUI pages.
+
 ---
 
 ## Product integration

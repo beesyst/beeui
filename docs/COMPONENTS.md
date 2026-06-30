@@ -334,6 +334,46 @@ Existing `attention_list` handles all severity values (`warning`, `error`, `info
 
 A new `_display_value` helper in `blocks/layout_renderer.py` ensures user-visible values never render as `None` — missing/empty values render as `n/a` by default.
 
+## Iteration 13.8 — Generic detail page section kinds
+
+Iteration 13.8 adds a product-neutral detail page renderer with controlled section kinds.
+
+Detail page template: `src/beeui_module/web/templates/detail.html`.
+
+Normalizer/helper: `src/beeui_module/pages/detail.py`.
+
+Public entrypoint: `render_beeui_detail_page(request, page, *, templates, route_prefix, ui_config, product_title, product_id)`.
+
+### Section kinds
+
+| Kind | Template output | Normalizer | Fields |
+|------|----------------|------------|--------|
+| `key_value` | Tabler card with `datagrid` | `_normalize_key_value_section()` | `title`, `items[]` (label, value) |
+| `text` | Tabler card with `<pre class="mb-0 text-break">` | `_normalize_text_section()` | `title`, `body` |
+| `table` | Tabler card with `table table-vcenter card-table` | `_normalize_table_section()` | `title`, `columns[]` (key, label), `rows[]` |
+| `links` | Tabler card with `list-group list-group-flush` | `_normalize_links_section()` | `title`, `items[]` (label, href) |
+
+### Normalization rules
+
+- Unsupported kinds are safely omitted.
+- Missing `items`, `columns`, `rows` or `body` cause the section to be omitted.
+- Missing label/value renders as `n/a`.
+- Links are validated as safe internal paths.
+- External/unsafe links render as inert text.
+- Raw implicit fields (`raw_eml`, `attachment_content`, `payload_bytes`, `content_bytes`) are not included in normalized output.
+- HTML autoescape remains enabled; no `|safe` for adapter/product values.
+
+### Template markup
+
+The template uses the same Tabler-compatible primitives as the rest of BeeUI:
+
+- `datagrid` for key_value sections;
+- `pre.text-break` for text sections;
+- `table.table-vcenter.card-table` for table sections;
+- `list-group.list-group-flush` for links sections.
+
+No JS is required. No external assets are referenced.
+
 ## Рекомендации по переиспользованию
 
 При добавлении будущих pages/blocks:

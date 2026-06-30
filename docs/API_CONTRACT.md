@@ -9,6 +9,9 @@ Iteration 13.6 также расширяет только adapter-backed present
 `layout[]`: добавлены `chart` и `data_table`.
 JSON API envelope, route behavior и artifact API contract не менялись.
 Это не schema/demo block contract и не `config/settings.yml`.
+Iteration 13.8 добавляет generic detail page presentation contract.
+JSON API envelope, route behavior и artifact API contract не менялись.
+Новый `render_beeui_detail_page()` helper — это Python render entrypoint, не JSON API endpoint.
 
 Iteration 12 определяет стабильный read-only envelope для adapter-backed
 маршрутов product console:
@@ -379,3 +382,45 @@ Existing schema/demo `table_card` остаётся без изменений.
 - Table visual tokens проходят allowlist перед CSS class suffix rendering.
 - Table links являются internal-only и prefix-aware.
 - Browser-executed chart path остаётся product-neutral.
+
+## Iteration 13.8 — Generic detail page presentation contract
+
+Iteration 13.8 добавляет detail page presentation contract для
+product-neutral detail page renderer. Это Python render entrypoint, не JSON API endpoint.
+
+JSON API envelope, route behavior и artifact API contract не меняются.
+
+### Detail page model
+
+```json
+{
+  "page_id": "event_detail",
+  "title": "Event detail",
+  "subtitle": "Read-only event details",
+  "back_href": "/events",
+  "warnings": [],
+  "sections": [...]
+}
+```
+
+### Section kinds
+
+| Kind | Fields | Description |
+|------|--------|-------------|
+| `key_value` | `title`, `items[]` (label, value) | Tabler card with datagrid |
+| `text` | `title`, `body` | Tabler card with preformatted text |
+| `table` | `title`, `columns[]` (key, label), `rows[]` | Tabler card with responsive table |
+| `links` | `title`, `items[]` (label, href) | Tabler card with list-group |
+
+### Rules
+
+- Detail page не является `layout[]` block contract и не добавляет keys в `config/settings.yml`.
+- Detail page не является JSON API endpoint.
+- `render_beeui_detail_page()` принимает dict, нормализует и рендерит через Jinja template.
+- Unsupported/malformed sections безопасно опускаются, без 500.
+- Missing значения рендерятся как `n/a`.
+- `back_href` и link hrefs валидируются как safe internal paths.
+- Raw поля (`raw_eml`, `attachment_content`, `payload_bytes`, `content_bytes`) не рендерятся.
+- HTML autoescape остаётся включённым.
+- Unsafe `|safe` не используется.
+- Route prefix / embedded mount поддерживаются через существующие link helpers.

@@ -5229,6 +5229,344 @@ Expected:
 - Docs reflect the actual locale/navigation contract.
 - PR is ready for review before BeeAgent UI-6 closure.
 
+### Итерация 13.8 — Generic detail page template and render helper
+
+**Status:** DONE
+
+#### Goal
+
+Добавить в BeeUI product-neutral generic detail page template и render helper, чтобы Bee-продукты могли рендерить detail/read-model pages через общий BeeUI/Jinja/Tabler слой, без ручной сборки HTML строками в product routes.
+
+#### Why
+
+После Iteration 13.7 BeeUI умеет рендерить localized shell/navigation/tabs и сохранять query params. Но BeeAgent It31 выявила следующий UI architecture debt: отдельные detail pages вроде `/rop/events/{event_id}` могут работать функционально, но HTML всё ещё собирается вручную внутри product-side route через Python f-string/manual markup.
+
+Это нарушает целевое правило:
+
+```text
+BeeUI renders.
+Product decides.
+```
+
+Правильная граница:
+
+- Product adapter/product route готовит safe read-model;
+- BeeUI рендерит HTML через generic template/component;
+- BeeUI не знает ROP/Bitrix/email classification semantics;
+- product не копирует Tabler/Jinja templates и не склеивает HTML вручную.
+
+Эта итерация нужна до BeeAgent Iteration 14, чтобы не тащить UI debt в BeeAgent adapter MVP и не плодить product-owned HTML templates.
+
+#### Change level
+
+**runtime-risk**
+
+Причина:
+
+- добавляется новый reusable HTML rendering path;
+- adapter/product-provided read-model values рендерятся в operator-facing HTML;
+- меняется integration/rendering contract для product detail pages;
+- требуется сохранить escaping, safe links, route prefix compatibility и отсутствие raw sensitive content exposure.
+
+Требуются security-sensitive checks для:
+
+- HTML escaping;
+- safe internal links;
+- no unsafe `|safe`;
+- no external assets/scripts/tracking;
+- no raw email/attachment payload exposure from rendered model;
+- no product-specific imports/logic;
+- no mutation from GET routes.
+
+#### Scope
+
+**Включено:**
+
+- добавить generic detail page model contract для BeeUI rendering layer:
+
+```json
+{
+  "page_id": "event_detail",
+  "title": "Event detail",
+  "subtitle": "Read-only event details",
+  "back_href": "/events",
+  "warnings": [],
+  "sections": [
+    {
+      "title": "Summary",
+      "kind": "key_value",
+      "items": [
+        { "label": "Subject", "value": "..." },
+        { "label": "Sender", "value": "..." }
+      ]
+    },
+    {
+      "title": "Preview",
+      "kind": "text",
+      "body": "..."
+    },
+    {
+      "title": "Rows",
+      "kind": "table",
+      "columns": [
+        { "key": "name", "label": "Name" },
+        { "key": "value", "label": "Value" }
+      ],
+      "rows": [{ "name": "Status", "value": "ok" }]
+    },
+    {
+      "title": "Links",
+      "kind": "links",
+      "items": [{ "label": "Open source", "href": "/runs/run_001" }]
+    }
+  ]
+}
+```
+
+- поддержать только KISS section kinds:
+
+```text
+key_value
+text
+table
+links
+```
+
+- добавить package-local Jinja template, например:
+
+```text
+src/beeui_module/web/templates/pages/detail.html
+```
+
+или ближайшее существующее место в текущей template structure.
+
+- добавить product-neutral normalizer/helper для detail page model:
+  - validates/normalizes supported section kinds;
+  - drops or degrades unsupported/malformed sections;
+  - normalizes missing display values to `n/a`;
+  - validates `back_href` and section links as safe internal links;
+  - preserves route prefix / embedded mount behavior through existing link helpers;
+  - does not render arbitrary HTML/JS;
+  - does not evaluate Jinja/Python expressions from model.
+
+- добавить public render helper или reuse existing BeeUI shell renderer, например:
+
+```python
+render_beeui_detail_page(request=request, page=page_model)
+```
+
+или equivalent existing renderer entrypoint.
+
+- detail template должен использовать общий BeeUI shell:
+  - base layout;
+  - page header;
+  - theme/layout context;
+  - locale context;
+  - route prefix/link helpers;
+  - Jinja autoescape.
+
+- adapter/product read-model remains source of semantics:
+  - BeeUI only renders normalized detail sections;
+  - product owns event lookup, artifact reading, classification, filtering and redaction.
+
+- добавить tests:
+  - template renders title/subtitle/back link;
+  - `key_value` section renders;
+  - `text` section renders;
+  - `table` section renders;
+  - `links` section renders only safe internal links;
+  - unsafe/external links are inert/omitted;
+  - unsafe text is escaped;
+  - unsupported/malformed section degrades without `500`;
+  - route prefix / embedded mount links remain correct;
+  - raw extra fields like `raw_eml`, `attachment_content`, `payload_bytes`, `content_bytes` are not rendered as implicit fields;
+  - no product-specific imports/strings in BeeUI generic code.
+
+- обновить docs:
+  - `docs/ROADMAP.md`;
+  - `docs/WEB_UI.md`;
+  - `docs/COMPONENTS.md`;
+  - `docs/API_CONTRACT.md`;
+  - `docs/INTEGRATION.md`;
+  - `README.ru.md`, если user-facing integration example меняется.
+
+**Не включено:**
+
+- ROP-specific rendering logic;
+- Bitrix-specific logic;
+- email classification logic;
+- `should_rop_see` logic;
+- reading ROP artifact contracts inside BeeUI;
+- raw `.eml` rendering;
+- raw attachment rendering;
+- dynamic route registration for `/rop/events/{event_id}` inside BeeUI, unless an existing generic route mechanism already supports it safely;
+- BeeAgent production adapter implementation;
+- modifying `beeagent-rop`;
+- review save;
+- POST actions;
+- Bitrix write-back;
+- AI assist changes;
+- auth/session/CSRF changes;
+- config apply;
+- no-code builder;
+- new dependencies;
+- `pyproject.toml.version` change;
+- `uv.lock` change.
+
+#### Deliverable
+
+BeeUI provides a reusable generic detail page renderer/template that product routes or adapter-backed pages can call with a safe read-model.
+
+Expected product-side use:
+
+```python
+page = adapter.get_page("rop_event_detail", query)
+
+return render_beeui_detail_page(
+    request=request,
+    page=page["page"],
+)
+```
+
+or equivalent existing BeeUI shell renderer.
+
+After this, BeeAgent can remove manual f-string HTML assembly for event detail and delegate rendering to BeeUI without moving ROP domain logic into BeeUI.
+
+#### Acceptance
+
+- Generic detail page template exists in BeeUI package templates.
+- Generic detail render helper or equivalent shell renderer entrypoint exists.
+- Detail page renders through Jinja template, not manual f-string HTML.
+- Detail page supports section kinds:
+  - `key_value`;
+  - `text`;
+  - `table`;
+  - `links`.
+
+- Unsupported section kinds render explicit degraded/empty state or are safely omitted without `500`.
+- Missing display values render as `n/a`, not `None`.
+- Title, subtitle, warnings and back link render correctly.
+- Back link and section links are internal-only.
+- External links are rejected, omitted or rendered inert.
+- Route prefix / embedded mount link behavior remains correct.
+- Adapter/product-provided text remains HTML-escaped.
+- No unsafe `|safe` is added for adapter/product-provided values.
+- Detail template does not expose implicit raw fields:
+  - `raw_eml`;
+  - `attachment_content`;
+  - `payload_bytes`;
+  - `content_bytes`.
+
+- BeeUI does not import:
+  - `beecap_module`;
+  - `beeagent_module`.
+
+- BeeUI generic renderer does not contain product-specific domain strings:
+  - `ROP`;
+  - `Bitrix`;
+  - `lead`;
+  - `manager`;
+  - `MRKT`;
+  - `Binance`;
+  - `broker`;
+  - `strategy`.
+
+- Existing product console routes continue to work.
+- Existing chart/data_table behavior from Iteration 13.6 remains intact.
+- Existing locale/navigation behavior from Iteration 13.7 remains intact.
+- GET routes remain read-only.
+- No external CDN/scripts/tracking are added.
+- `pyproject.toml.version` remains unchanged.
+- `uv.lock` remains unchanged.
+
+#### Checks
+
+Automated:
+
+```bash
+uv run pytest -q
+uv run pytest -q -W error::UserWarning
+```
+
+Targeted:
+
+```bash
+uv run pytest -q tests/test_pages.py
+uv run pytest -q tests/test_product_console.py
+uv run pytest -q tests/test_security.py
+uv run pytest -q tests/test_app.py
+```
+
+Smoke:
+
+```bash
+./start.sh doctor
+./start.sh routes
+./start.sh web --host 127.0.0.1 --port 8780
+```
+
+Static/security checks:
+
+```bash
+rg -n "\\|safe" src/beeui_module/web/templates || true
+rg -n "beecap_module|beeagent_module" src/beeui_module || true
+rg -n "posthog|scripts.tabler.io|preview.tabler.io|docs.tabler.io|cdn.jsdelivr|http://|https://" src/beeui_module/web/templates src/beeui_module/web/static || true
+rg -n "ROP|BeeAgent|BeeCap|MRKT|Binance|Bitrix|lead|manager|broker|strategy" src/beeui_module || true
+rg -n "_render_event_detail_html|raw_eml|attachment_content|payload_bytes|content_bytes|RAW-EML-CONTENT|RAW-ATTACHMENT-CONTENT" src/beeui_module || true
+git diff -- pyproject.toml uv.lock
+```
+
+Manual/browser smoke:
+
+```text
+GET /
+GET /runs
+GET /components
+GET /components/interface
+```
+
+If a test/demo route is added for detail rendering:
+
+```text
+GET /<detail-demo-route>
+```
+
+Expected:
+
+- no `500`;
+- detail page renders inside BeeUI shell;
+- no external network asset references in HTML;
+- unsafe values are escaped;
+- links are internal-only.
+
+#### DoD
+
+- Generic detail page template is implemented, documented and tested.
+- Product-safe detail page model is normalized before render.
+- Rendering remains product-neutral.
+- BeeUI does not move ROP/domain logic into generic code.
+- Product routes can stop assembling detail HTML manually.
+- Existing adapter-backed console behavior remains compatible.
+- Existing locale/query-preserving behavior remains compatible.
+
+#### Summary
+
+Iteration 13.8 adds:
+
+- `src/beeui_module/pages/detail.py` — product-neutral detail page normalizer and render helper. Public entrypoint: `render_beeui_detail_page(request, page, *, templates, route_prefix, ui_config, product_title, product_id)` returns `TemplateResponse`. Internal normalizer `normalize_detail_page(raw)` validates sections, normalizes values, validates internal links, drops unsupported/malformed sections and strips raw fields (`raw_eml`, `attachment_content`, `payload_bytes`, `content_bytes`).
+
+- `src/beeui_module/web/templates/detail.html` — Jinja template extending `base.html` with Tabler-compatible cards for section kinds: `key_value` (datagrid), `text` (preformatted card), `table` (responsive table with card-table), `links` (list-group with internal-link validation). No `|safe`. No JS.
+
+- Section kinds: `key_value`, `text`, `table`, `links`. Unsupported kinds degrade gracefully. Missing values render as `n/a`. External/unsafe links are omitted or rendered inert. Back link is validated as internal-only.
+
+- 12 tests in `tests/test_pages.py`: title/subtitle/back_href, key_value, text, table, links, unsafe/external links omission, escaping, unsupported section crash safety, missing values → n/a, raw fields not in normalized model, no product-specific strings in generic code, no `|safe` in template, ghost/empty sections omitted.
+- No unsafe HTML rendering is introduced.
+- No raw sensitive email/attachment fields are implicitly rendered.
+- No dependencies are added.
+- Version is not changed.
+- `uv.lock` is not changed.
+- PR is ready for review before BeeAgent event detail cleanup is closed.
+
 ---
 
 ## Этап 7 — BeeAgent integration
