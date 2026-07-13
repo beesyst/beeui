@@ -53,9 +53,12 @@
           {% endif %}
           {% for col in block.columns %}
           <th{% if col.sortable %} class="beeui-sortable"{% endif %}>
+            {% if col.sortable and col.sort_href %}
+            <a href="{{ href_prefix }}{{ col.sort_href }}" class="text-reset text-decoration-none">
+              {{ col.label }}
+            </a>
+            {% else %}
             {{ col.label }}
-            {% if col.sortable %}
-            <span class="text-secondary ms-1">&#8645;</span>
             {% endif %}
           </th>
           {% endfor %}

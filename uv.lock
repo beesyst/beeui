@@ -34,7 +34,7 @@ wheels = [
 
 [[package]]
 name = "beeui"
-version = "0.21.1"
+version = "0.21.2"
 source = { editable = "." }
 dependencies = [
     { name = "fastapi" },
@@ -51,6 +51,15 @@ dev = [
     { name = "pytest" },
 ]
 
+[package.dev-dependencies]
+dev = [
+    { name = "fastapi" },
+    { name = "httpx2" },
+    { name = "jinja2" },
+    { name = "pytest" },
+    { name = "pyyaml" },
+]
+
 [package.metadata]
 requires-dist = [
     { name = "fastapi", specifier = ">=0.135" },
@@ -63,6 +72,15 @@ requires-dist = [
     { name = "uvicorn", specifier = ">=0.44" },
 ]
 provides-extras = ["dev"]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "fastapi", specifier = ">=0.136.3" },
+    { name = "httpx2", specifier = ">=2.2.0" },
+    { name = "jinja2", specifier = ">=3.1.6" },
+    { name = "pytest", specifier = ">=9.0.3" },
+    { name = "pyyaml", specifier = ">=6.0.3" },
+]
 
 [[package]]
 name = "certifi"

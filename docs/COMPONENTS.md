@@ -166,6 +166,107 @@ Advanced Tabler-compatible data table for adapter-backed `layout[]`. Backward-co
 }
 ```
 
+### Filter form (`type: filter_form`)
+
+Controlled GET filter bar for adapter-backed `layout[]`. The filter form renders as a collapsible card with form controls and submit/reset buttons.
+
+Поля:
+
+| Field | Type | Обязательное | Описание |
+|-------|------|----------|-------------|
+| `type` | string | yes | Должно быть `"filter_form"` |
+| `title` | string | yes | Заголовок карточки |
+| `fields` | array | yes | Список полей фильтрации |
+| `actions` | object | no | `{apply: {label, method}, reset: {label, href}}` |
+
+Типы полей:
+
+| Field type | Параметры | Описание |
+|-----------|-----------|----------|
+| `date_range` | `from_value`, `to_value`, `from_label`, `to_label` | Два date input (from/to) |
+| `text` | `name`, `value`, `placeholder` | Текстовый input (search) |
+| `select` | `name`, `value`, `options[]`, `multi` | Выпадающий список |
+
+Правила:
+
+- Все значения проходят autoescaping.
+- Форма использует `method=GET`.
+- `date_range` содержит два отдельных `input[type=date]` с именами `date_from`/`date_to`.
+- `select` options с value/label.
+- Missing/invalid fields degrades to empty filter form, не 500.
+- `actions.apply` может иметь `method` (GET/POST) и `href`.
+- `actions.reset` должен иметь `href` для ссылки очистки фильтров.
+
+Пример adapter-backed payload:
+
+```json
+{
+  "type": "filter_form",
+  "title": "Queue Filters",
+  "size": "XL",
+  "fields": [
+    {
+      "type": "date_range",
+      "name": "date",
+      "label": "Date range",
+      "from_value": "2026-07-01",
+      "to_value": "2026-07-12"
+    },
+    {
+      "type": "text",
+      "name": "q",
+      "label": "Search",
+      "value": "welding",
+      "placeholder": "Search by sender or subject..."
+    },
+    {
+      "type": "select",
+      "name": "case_type",
+      "label": "Classification",
+      "value": "new_lead",
+      "options": [
+        {"value": "new_lead", "label": "New lead"},
+        {"value": "existing_deal", "label": "Existing deal"}
+      ]
+    },
+    {
+      "type": "select",
+      "name": "priority",
+      "label": "Priority",
+      "value": "high",
+      "options": [
+        {"value": "high", "label": "High"},
+        {"value": "medium", "label": "Medium"},
+        {"value": "low", "label": "Low"}
+      ]
+    },
+    {
+      "type": "select",
+      "name": "bitrix_status",
+      "label": "Bitrix status",
+      "value": "unreconciled",
+      "options": [
+        {"value": "matched", "label": "Matched"},
+        {"value": "not_found", "label": "Not found"},
+        {"value": "unreconciled", "label": "Unreconciled"}
+      ]
+    }
+  ],
+  "actions": {
+    "apply": {"label": "Apply", "method": "GET"},
+    "reset": {"label": "Clear", "href": "/rop?tab=queue"}
+  }
+}
+```
+
+Правила безопасности:
+
+- Все значения экранируются через Jinja autoescape.
+- `options` без `value` или `label` пропускаются.
+- Неизвестный `field.type` игнорируется.
+- No JS вызовов — фильтрация серверная через GET params.
+- `actions.reset.href` валидируется как internal link.
+
 ## Добавления Iteration 13.4
 
 ### Layout group (`type: group`)

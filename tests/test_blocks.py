@@ -2823,3 +2823,143 @@ def test_layout_data_table_visual_tokens_are_whitelisted() -> None:
     assert second["status"]["status"] == "ok"
     assert second["avatar"]["color"] == "red"
     assert second["progress"]["color"] == "green"
+
+
+# ── filter_form block tests ────────────────────────────────────────────────
+
+
+def test_filter_form_renders_minimal() -> None:
+    """Verify the renderer accepts a minimal filter_form block."""
+    result = render_layout(
+        [
+            {
+                "type": "filter_form",
+                "title": "Filters",
+                "size": "XL",
+                "fields": [],
+                "actions": {},
+            }
+        ]
+    )
+    assert len(result) == 1
+    block = result[0]
+    assert block["type"] == "filter_form"
+    assert block["title"] == "Filters"
+    assert block["fields"] == []
+    assert block["actions"] == {}
+
+
+def test_filter_form_renders_with_fields() -> None:
+    """Verify the renderer preserves filter field definitions."""
+    result = render_layout(
+        [
+            {
+                "type": "filter_form",
+                "title": "Queue Filters",
+                "size": "XL",
+                "fields": [
+                    {
+                        "type": "date_range",
+                        "name": "date",
+                        "label": "Date range",
+                        "from_value": "2026-06-01",
+                        "to_value": "2026-06-30",
+                    },
+                    {
+                        "type": "text",
+                        "name": "sender",
+                        "label": "Sender",
+                        "value": "lead@example.com",
+                        "placeholder": "Search by sender...",
+                    },
+                    {
+                        "type": "select",
+                        "name": "classification",
+                        "label": "Classification",
+                        "value": "new_lead",
+                        "options": [
+                            {"value": "new_lead", "label": "New lead"},
+                            {"value": "existing_deal", "label": "Existing deal"},
+                        ],
+                        "multi": True,
+                    },
+                ],
+                "actions": {
+                    "apply": {"label": "Apply", "method": "GET"},
+                    "reset": {"label": "Reset", "href": "/rop?tab=queue"},
+                },
+            }
+        ]
+    )
+    assert len(result) == 1
+    block = result[0]
+    assert block["type"] == "filter_form"
+    assert block["title"] == "Queue Filters"
+
+    # date_range field
+    dr = block["fields"][0]
+    assert dr["type"] == "date_range"
+    assert dr["from_value"] == "2026-06-01"
+    assert dr["to_value"] == "2026-06-30"
+
+    # text field
+    txt = block["fields"][1]
+    assert txt["type"] == "text"
+    assert txt["value"] == "lead@example.com"
+    assert txt["placeholder"] == "Search by sender..."
+
+    # select field
+    sel = block["fields"][2]
+    assert sel["type"] == "select"
+    assert sel["value"] == "new_lead"
+    assert len(sel["options"]) == 2
+    assert sel["multi"] is True
+
+    # actions
+    assert block["actions"]["apply"]["label"] == "Apply"
+    assert block["actions"]["apply"]["method"] == "GET"
+    assert block["actions"]["reset"]["href"] == "/rop?tab=queue"
+
+
+def test_filter_form_handles_empty_fields_gracefully() -> None:
+    """Verify that missing or invalid field data degrades safely."""
+    result = render_layout(
+        [
+            {
+                "type": "filter_form",
+                "title": "Filters",
+                "fields": None,
+                "actions": None,
+            }
+        ]
+    )
+    assert len(result) == 1
+    block = result[0]
+    assert block["type"] == "filter_form"
+    assert block["fields"] == []
+    assert block["actions"] == {}
+
+
+def test_filter_form_select_handles_invalid_options() -> None:
+    """Verify that select field rejects non-dict options."""
+    result = render_layout(
+        [
+            {
+                "type": "filter_form",
+                "title": "Filters",
+                "fields": [
+                    {
+                        "type": "select",
+                        "name": "invalid_opts",
+                        "label": "Bad options",
+                        "value": "",
+                        "options": ["just_a_string", 42, None],
+                    }
+                ],
+                "actions": {},
+            }
+        ]
+    )
+    block = result[0]
+    sel = block["fields"][0]
+    assert sel["options"] == []

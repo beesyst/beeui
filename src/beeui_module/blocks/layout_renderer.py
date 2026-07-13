@@ -40,6 +40,7 @@ _SUPPORTED_BLOCK_TYPES: set[str] = {
     "run_table",
     "group",
     "data_table",
+    "filter_form",
 }
 _RUN_TABLE_COLUMNS: tuple[str, ...] = (
     "Run",
@@ -1049,6 +1050,146 @@ def _render_data_table_cell(cell_raw: Any, cell_type: str) -> dict[str, Any]:
     }
 
 
+def _render_filter_form(raw: dict[str, Any], width_class: str) -> dict[str, Any]:
+    """Render a filter form block for the queue page.
+
+    The raw block contains:
+    - title: str
+    - fields: list of filter field definitions
+    - actions: dict with apply/reset action metadata
+    """
+    title = _safe_str(raw.get("title", "Filters"))
+    fields_raw = raw.get("fields", [])
+    if not isinstance(fields_raw, list):
+        fields_raw = []
+    actions_raw = raw.get("actions", {})
+    if not isinstance(actions_raw, dict):
+        actions_raw = {}
+
+    fields: list[dict[str, Any]] = []
+    for field in fields_raw:
+        if not isinstance(field, dict):
+            continue
+        ft = _safe_str(field.get("type"))
+        name = _safe_str(field.get("name"))
+        label = _safe_str(field.get("label", name))
+        value = field.get("value", "")
+        if not isinstance(value, str):
+            value = str(value) if value is not None else ""
+
+        entry: dict[str, Any] = {
+            "type": ft,
+            "name": name,
+            "label": label,
+            "value": value,
+        }
+
+        if ft == "date_range":
+            entry["from_value"] = _safe_str(field.get("from_value", ""))
+            entry["to_value"] = _safe_str(field.get("to_value", ""))
+            entry["from_label"] = _safe_str(field.get("from_label", "From"))
+            entry["to_label"] = _safe_str(field.get("to_label", "To"))
+
+        if ft in ("text",):
+            entry["placeholder"] = _safe_str(field.get("placeholder", ""))
+
+        if ft == "select":
+            options_raw = field.get("options", [])
+            if not isinstance(options_raw, list):
+                options_raw = []
+            entry["options"] = [
+                {
+                    "value": _safe_str(o.get("value")) if isinstance(o, dict) else "",
+                    "label": _safe_str(o.get("label")) if isinstance(o, dict) else _safe_str(o),
+                }
+                for o in options_raw
+                if isinstance(o, dict) and o.get("value")
+            ]
+            entry["multi"] = bool(field.get("multi", False))
+            entry["placeholder"] = _safe_str(field.get("placeholder", ""))
+
+        if ft == "checkboxes":
+            choices_raw = field.get("choices", [])
+            entry["choices"] = []
+            if isinstance(choices_raw, list):
+                for ch in choices_raw:
+                    if not isinstance(ch, dict):
+                        continue
+                    val = _safe_str(ch.get("value", ""))
+                    lbl = _safe_str(ch.get("label", val))
+                    checked = bool(ch.get("checked", False))
+                    toggle_href = _safe_str(ch.get("toggle_href", ""))
+                    entry["choices"].append({
+                        "value": val,
+                        "label": lbl,
+                        "checked": checked,
+                        "toggle_href": toggle_href,
+                    })
+            entry["open"] = bool(field.get("open", False))
+            raw_count = field.get("selected_count", 0)
+            if isinstance(raw_count, (int, float)) and not isinstance(raw_count, bool):
+                entry["selected_count"] = int(raw_count)
+            else:
+                entry["selected_count"] = 0
+
+        fields.append(entry)
+
+    actions: dict[str, Any] = {}
+    for action_key in ("apply", "reset"):
+        action_raw = actions_raw.get(action_key)
+        if isinstance(action_raw, dict):
+            a: dict[str, Any] = {
+                "label": _safe_str(action_raw.get("label", action_key)),
+            }
+            method = action_raw.get("method")
+            if isinstance(method, str) and method in ("GET", "POST"):
+                a["method"] = method
+            href = action_raw.get("href")
+            if isinstance(href, str) and href:
+                a["href"] = href
+            actions[action_key] = a
+
+    # Pass through hidden fields
+    hidden_raw = raw.get("hidden", {})
+    hidden: dict[str, str] = {}
+    if isinstance(hidden_raw, dict):
+        for hk, hv in hidden_raw.items():
+            if isinstance(hk, str) and isinstance(hv, str):
+                hidden[hk] = hv
+
+    # Pass through column toggles
+    column_toggles_raw = raw.get("column_toggles", [])
+    column_toggles: list[dict[str, Any]] = []
+    if isinstance(column_toggles_raw, list):
+        for ct in column_toggles_raw:
+            if isinstance(ct, dict):
+                key = _safe_str(ct.get("key", ""))
+                label = _safe_str(ct.get("label", key))
+                visible = bool(ct.get("visible", False))
+                toggle_href = _safe_str(ct.get("toggle_href", ""))
+                column_toggles.append({
+                    "key": key,
+                    "label": label,
+                    "visible": visible,
+                    "toggle_href": toggle_href,
+                })
+
+    columns_open = bool(raw.get("columns_open", False))
+    columns_toggle_href = _safe_str(raw.get("columns_toggle_href", ""))
+
+    return {
+        "type": "filter_form",
+        "width_class": width_class,
+        "title": title,
+        "hidden": hidden,
+        "fields": fields,
+        "column_toggles": column_toggles,
+        "columns_open": columns_open,
+        "columns_toggle_href": columns_toggle_href,
+        "actions": actions,
+    }
+
+
 _BLOCK_RENDERERS: dict[str, Any] = {
     "hero_snapshot": _render_hero_snapshot,
     "metric_card": _render_metric_card,
@@ -1069,6 +1210,7 @@ _BLOCK_RENDERERS: dict[str, Any] = {
     "run_table": _render_run_table,
     "group": _render_group,
     "data_table": _render_data_table,
+    "filter_form": _render_filter_form,
 }
 
 
