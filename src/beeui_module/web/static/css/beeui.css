@@ -338,6 +338,94 @@ body {
   margin-top: 0.5rem;
 }
 
+/* Collapsible text via <details> in detail page key_value sections */
+.beeui-details-summary {
+  cursor: pointer;
+  color: var(--tblr-secondary);
+  font-size: 0.8rem;
+  font-weight: 600;
+  user-select: none;
+  transition: color 0.15s;
+}
+
+.beeui-details-summary:hover {
+  color: var(--tblr-primary);
+}
+
+.beeui-details[open] .beeui-details-summary {
+  color: var(--tblr-primary);
+}
+
+.beeui-details-content {
+  margin-top: 0.5rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 0.875rem;
+}
+
+/* No-data placeholder for empty sections */
+.beeui-no-data {
+  font-style: italic;
+  font-size: 0.875rem;
+  opacity: 0.7;
+  padding: 0.25rem 0;
+}
+
+/* Text break for long values in datagrid */
+.beeui-text-break {
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+
+/* Visual badges for key_value items */
+.beeui-badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.15rem 0.6rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  line-height: 1.4;
+}
+
+.beeui-badge-danger {
+  color: #fff;
+  background: var(--tblr-danger);
+}
+
+.beeui-badge-warning {
+  color: #000;
+  background: var(--tblr-warning);
+}
+
+.beeui-badge-success {
+  color: #fff;
+  background: var(--tblr-success);
+}
+
+.beeui-badge-yes {
+  color: #fff;
+  background: var(--tblr-success);
+}
+
+.beeui-badge-no {
+  color: var(--tblr-secondary);
+  background: var(--tblr-secondary-bg);
+  font-size: 0.72rem;
+}
+
+/* Confidence: low values highlighted */
+.beeui-confidence-low {
+  color: var(--tblr-danger);
+  font-weight: 600;
+}
+
+.beeui-confidence-ok {
+  color: var(--tblr-success);
+}
+
 .beeui-catalog-modal-shell {
   position: static;
   display: block;

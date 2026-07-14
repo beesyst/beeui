@@ -128,19 +128,25 @@ def _normalize_key_value_section(section: dict[str, Any]) -> dict[str, Any] | No
     for item in raw_items:
         if not isinstance(item, dict):
             continue
-        items.append(
-            {
-                "label": _display_value(item.get("label")),
-                "value": _display_value(item.get("value")),
-            }
-        )
+        normalized: dict[str, str] = {
+            "label": _display_value(item.get("label")),
+            "value": _display_value(item.get("value")),
+        }
+        hint = item.get("type_hint")
+        if hint and isinstance(hint, str):
+            normalized["type_hint"] = hint
+        items.append(normalized)
     if not items:
         return None
-    return {
+    result: dict[str, Any] = {
         "kind": "key_value",
         "title": _display_value(section.get("title"), default=""),
         "items": items,
     }
+    no_data = section.get("no_data")
+    if no_data:
+        result["no_data"] = True
+    return result
 
 
 def _normalize_text_section(section: dict[str, Any]) -> dict[str, Any] | None:

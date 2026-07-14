@@ -38,16 +38,55 @@
               <h3 class="card-title">{{ section["title"] }}</h3>
             </div>
             {% endif %}
+
+            {% if section.get("no_data") %}
+            <div class="card-body">
+              <div class="text-secondary beeui-no-data">
+                {% if locale == 'ru' %}Не использовалось{% else %}Not used{% endif %}
+              </div>
+            </div>
+            {% else %}
             <div class="card-body">
               <div class="datagrid">
                 {% for item in section["items"] %}
                 <div class="datagrid-item">
                   <div class="datagrid-title">{{ item["label"] }}</div>
-                  <div class="datagrid-content">{{ item["value"] }}</div>
+                  <div class="datagrid-content beeui-text-break">
+                    {% if item.get("type_hint") == "long_text" and item["value"] | length > 300 %}
+                    <details class="beeui-details">
+                      <summary class="beeui-details-summary">
+                        {% if locale == 'ru' %}Показать текст{% else %}Show text{% endif %}
+                      </summary>
+                      <div class="beeui-details-content">{{ item["value"] }}</div>
+                    </details>
+                    {% elif item.get("type_hint") == "priority" and item["value"] | lower in ("high", "high priority") %}
+                    <span class="beeui-badge beeui-badge-danger">{{ item["value"] }}</span>
+                    {% elif item.get("type_hint") == "priority" and item["value"] | lower in ("medium", "medium priority") %}
+                    <span class="beeui-badge beeui-badge-warning">{{ item["value"] }}</span>
+                    {% elif item.get("type_hint") == "priority" and item["value"] | lower in ("low", "low priority") %}
+                    <span class="beeui-badge beeui-badge-success">{{ item["value"] }}</span>
+                    {% elif item.get("type_hint") == "boolean" and item["value"] == "True" %}
+                    <span class="beeui-badge beeui-badge-yes">✓</span>
+                    {% elif item.get("type_hint") == "boolean" and item["value"] == "False" %}
+                    <span class="beeui-badge beeui-badge-no">✗</span>
+                    {% elif item.get("type_hint") == "confidence" %}
+                    <span class="{% if item["value"] | float(default=1) < 0.7 and item["value"] != "n/a" %}beeui-confidence-low{% else %}beeui-confidence-ok{% endif %}">{{ item["value"] }}</span>
+                    {% elif item["value"] | length > 300 %}
+                    <details class="beeui-details">
+                      <summary class="beeui-details-summary">
+                        {% if locale == 'ru' %}Показать текст{% else %}Show text{% endif %}
+                      </summary>
+                      <div class="beeui-details-content">{{ item["value"] }}</div>
+                    </details>
+                    {% else %}
+                    {{ item["value"] }}
+                    {% endif %}
+                  </div>
                 </div>
                 {% endfor %}
               </div>
             </div>
+            {% endif %}
           </div>
         </div>
 
