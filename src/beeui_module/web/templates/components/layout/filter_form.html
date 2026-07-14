@@ -119,6 +119,14 @@
 
         {% endif %}
       {% endfor %}
+
+      {% if block.actions.reset and block.actions.reset.href %}
+      <div class="col-auto">
+        <a href="{{ href_prefix }}{{ block.actions.reset.href }}" class="btn btn-sm btn-ghost-secondary">
+          {{ block.actions.reset.label }}
+        </a>
+      </div>
+      {% endif %}
     </form>
 
   <script>
