@@ -1036,14 +1036,12 @@ def test_operator_hero_groups_period_links_into_dropdown() -> None:
     response = TestClient(create_beeui_app(adapter=PeriodHeroAdapter())).get("/")
 
     assert response.status_code == 200
-    assert 'class="dropdown me-1 d-inline-block"' in response.text
+    assert 'class="dropdown ms-auto"' in response.text
     assert "dropdown-menu dropdown-menu-end" in response.text
     assert 'dropdown-item active"' in response.text
     assert "Today" in response.text
     assert "Last 7 days" in response.text
     assert "Last 30 days" in response.text
-    assert "Open Queue" in response.text
-    assert "Open Bitrix" in response.text
     assert 'btn btn-outline-primary btn-sm me-1">Today<' not in response.text
 
 

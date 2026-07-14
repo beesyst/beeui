@@ -502,7 +502,11 @@ def _render_chart(raw: dict[str, Any], width_class: str) -> dict[str, Any]:
             chart_config["xaxis"]["categories"] = categories
 
     title = _safe_str(raw.get("title", ""))
-    chart_id = _chart_id_from_config(title, chart_config)
+    raw_chart_id = raw.get("chart_id")
+    if isinstance(raw_chart_id, str) and raw_chart_id.strip():
+        chart_id = raw_chart_id.strip()
+    else:
+        chart_id = _chart_id_from_config(title, chart_config)
 
     return {
         "type": "chart",
@@ -542,13 +546,18 @@ def _render_operator_hero(raw: dict[str, Any], width_class: str) -> dict[str, An
     items: list[dict[str, Any]] = []
     for item in _safe_dict_list(raw.get("items")):
         href = _validate_link(item.get("href"))
-        items.append(
-            {
-                "label": _display_value(item.get("label")),
-                "value": _display_value(item.get("value")),
-                "href": href,
-            }
-        )
+        normalized_item: dict[str, Any] = {
+            "label": _display_value(item.get("label")),
+            "value": _display_value(item.get("value")),
+            "href": href,
+        }
+        progress = item.get("progress")
+        if isinstance(progress, (int, float)):
+            normalized_item["progress"] = progress
+            progress_tone = item.get("progress_tone")
+            if isinstance(progress_tone, str) and progress_tone:
+                normalized_item["progress_tone"] = progress_tone
+        items.append(normalized_item)
 
     primary_links: list[dict[str, Any]] = []
     for link in _safe_dict_list(raw.get("primary_links")):
@@ -617,6 +626,7 @@ def _render_venue_card(raw: dict[str, Any], width_class: str) -> dict[str, Any]:
         "title": _display_value(raw.get("title")),
         "subtitle": _display_value(raw.get("subtitle")),
         "status": _safe_str(raw.get("status", "")),
+        "compact": bool(raw.get("compact", False)),
         "items": items,
         "alerts": alerts,
         "links": links,
