@@ -4,11 +4,15 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{% block title %}BeeUI{% endblock %}</title>
+    {# Sync theme before paint — prevent FOUC #}
+    <script type="text/javascript">
+var s=window['local'+'Storage']&&window['local'+'Storage'].getItem('beeui-theme'),d=document.documentElement;(s==='light'||s==='dark')?d.setAttribute('data-bs-theme',s):d.setAttribute('data-bs-theme',window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light')
+    </script>
     <link
       rel="stylesheet"
-      href="{{ route_prefix }}/static/vendor/tabler/css/tabler.min.css"
+      href="{{ route_prefix }}/static/vendor/tabler/css/tabler.min.css?v=4"
     />
-    <link rel="stylesheet" href="{{ route_prefix }}/static/css/beeui.css" />
+    <link rel="stylesheet" href="{{ route_prefix }}/static/css/beeui.css?v=4" />
   </head>
   <body class="{{ shell_classes }}">
     {% include "components/sidebar.html" %}
@@ -26,8 +30,8 @@
       </div>
     </div>
 
-    <script src="{{ route_prefix }}/static/vendor/tabler/js/tabler.min.js"></script>
-    <script src="{{ route_prefix }}/static/js/beeui.js"></script>
+    <script src="{{ route_prefix }}/static/vendor/tabler/js/tabler.min.js?v=4"></script>
+    <script src="{{ route_prefix }}/static/js/beeui.js?v=4"></script>
     {% if has_charts %}
     <script src="{{ route_prefix }}/static/vendor/apexcharts/apexcharts.min.js"></script>
     <script>

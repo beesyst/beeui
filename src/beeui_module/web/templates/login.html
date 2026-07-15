@@ -1,15 +1,49 @@
 <!doctype html>
-<html lang="{{ locale|default('en') }}" data-bs-theme="dark">
+<html lang="{{ locale|default('en') }}" data-bs-theme="auto">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{% if locale == 'ru' %}Вход — BeeUI{% else %}Login — BeeUI{% endif %}</title>
-    <link rel="stylesheet" href="{{ route_prefix }}/static/vendor/tabler/css/tabler.min.css" />
-    <link rel="stylesheet" href="{{ route_prefix }}/static/css/beeui.css" />
+    {# Sync theme before paint — prevent FOUC #}
+    <script type="text/javascript">
+var s=window['local'+'Storage']&&window['local'+'Storage'].getItem('beeui-theme'),d=document.documentElement;(s==='light'||s==='dark')?d.setAttribute('data-bs-theme',s):d.setAttribute('data-bs-theme',window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light')
+    </script>
+    <link rel="stylesheet" href="{{ route_prefix }}/static/vendor/tabler/css/tabler.min.css?v=4" />
+    <link rel="stylesheet" href="{{ route_prefix }}/static/css/beeui.css?v=4" />
   </head>
   <body class="border-top-wide border-primary d-flex flex-column">
     <div class="page page-center">
       <div class="container container-tight py-4">
+        {# Theme toggle — top right #}
+        <div class="text-end mb-3" id="beeui-theme-buttons">
+          <div class="beeui-theme-toggle-group d-inline-flex">
+            <button type="button" class="beeui-theme-toggle-btn" data-theme-mode="auto" onclick="beeuiSetTheme('auto')" aria-label="System theme" title="System">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
+                <path d="M8 21h8" />
+                <path d="M12 17v4" />
+              </svg>
+            </button>
+            <button type="button" class="beeui-theme-toggle-btn" data-theme-mode="light" onclick="beeuiSetTheme('light')" aria-label="Light theme" title="Light">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="5" />
+                <path d="M12 1v2" />
+                <path d="M12 21v2" />
+                <path d="M4.22 4.22l1.42 1.42" />
+                <path d="M18.36 18.36l1.42 1.42" />
+                <path d="M1 12h2" />
+                <path d="M21 12h2" />
+                <path d="M4.22 19.78l1.42-1.42" />
+                <path d="M18.36 5.64l1.42-1.42" />
+              </svg>
+            </button>
+            <button type="button" class="beeui-theme-toggle-btn" data-theme-mode="dark" onclick="beeuiSetTheme('dark')" aria-label="Dark theme" title="Dark">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+              </svg>
+            </button>
+          </div>
+        </div>
         <div class="text-center mb-4">
           <h1 class="h2">BeeUI</h1>
           <p class="text-muted">{% if locale == 'ru' %}Вход в консоль оператора{% else %}Operator console login{% endif %}</p>
@@ -64,5 +98,8 @@
         {% endif %}
       </div>
     </div>
+
+    <script src="{{ route_prefix }}/static/vendor/tabler/js/tabler.min.js?v=4"></script>
+    <script src="{{ route_prefix }}/static/js/beeui.js?v=4"></script>
   </body>
 </html>

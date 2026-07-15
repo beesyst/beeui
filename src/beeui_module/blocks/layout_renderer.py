@@ -501,6 +501,22 @@ def _render_chart(raw: dict[str, Any], width_class: str) -> dict[str, Any]:
         if categories:
             chart_config["xaxis"]["categories"] = categories
 
+    # Pass product-defined colors if provided
+    raw_colors = raw.get("colors")
+    if isinstance(raw_colors, list) and raw_colors:
+        chart_config["colors"] = raw_colors
+
+    # Area chart: gradient fill
+    if resolved_kind == "area":
+        chart_config["fill"] = {
+            "type": "gradient",
+            "gradient": {
+                "shadeIntensity": 1,
+                "opacityFrom": 0.45,
+                "opacityTo": 0.05,
+            },
+        }
+
     title = _safe_str(raw.get("title", ""))
     raw_chart_id = raw.get("chart_id")
     if isinstance(raw_chart_id, str) and raw_chart_id.strip():
