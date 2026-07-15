@@ -19,6 +19,15 @@ def register_auth_routes(
 ) -> None:
     router = APIRouter(prefix=route_prefix or "")
 
+    def _auth_locale(request: Request) -> str:
+        lang = request.query_params.get("lang")
+        if lang == "ru":
+            return "ru"
+        cookie_lang = request.cookies.get("beeui_lang")
+        if cookie_lang == "ru":
+            return "ru"
+        return "en"
+
     login_path = "/auth/login"
     logout_path = "/auth/logout"
     csrf_path = "/auth/csrf"
@@ -38,6 +47,7 @@ def register_auth_routes(
                 context={
                     "request": request,
                     "route_prefix": route_prefix or "",
+                    "locale": _auth_locale(request),
                     "auth_disabled": True,
                     "error": None,
                 },
@@ -56,6 +66,7 @@ def register_auth_routes(
             context={
                 "request": request,
                 "route_prefix": route_prefix or "",
+                "locale": _auth_locale(request),
                 "auth_disabled": False,
                 "error": None,
             },
@@ -72,8 +83,9 @@ def register_auth_routes(
                 context={
                     "request": request,
                     "route_prefix": route_prefix or "",
+                    "locale": _auth_locale(request),
                     "auth_disabled": True,
-                    "error": "Auth is disabled in local/dev mode",
+                    "error": "Аутентификация отключена в локальном режиме" if _auth_locale(request) == 'ru' else "Auth is disabled in local/dev mode",
                 },
                 status_code=400,
             )
@@ -95,8 +107,9 @@ def register_auth_routes(
                     context={
                         "request": request,
                         "route_prefix": route_prefix or "",
-                        "auth_disabled": False,
-                        "error": "Invalid form data",
+                        "locale": _auth_locale(request),
+                    "auth_disabled": False,
+                        "error": "Неверные данные формы" if _auth_locale(request) == 'ru' else "Invalid form data",
                     },
                     status_code=400,
                 )
@@ -123,8 +136,9 @@ def register_auth_routes(
                     context={
                         "request": request,
                         "route_prefix": route_prefix or "",
+                        "locale": _auth_locale(request),
                         "auth_disabled": False,
-                        "error": "User ID and token are required",
+                        "error": "Необходимы ID пользователя и токен" if _auth_locale(request) == 'ru' else "User ID and token are required",
                     },
                     status_code=400,
                 )
@@ -153,8 +167,9 @@ def register_auth_routes(
                     context={
                         "request": request,
                         "route_prefix": route_prefix or "",
+                        "locale": _auth_locale(request),
                         "auth_disabled": False,
-                        "error": "Invalid credentials",
+                        "error": "Неверные учётные данные" if _auth_locale(request) == 'ru' else "Invalid credentials",
                     },
                     status_code=401,
                 )

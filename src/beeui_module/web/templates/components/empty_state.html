@@ -1,5 +1,5 @@
 <div class="empty beeui-empty-state" role="status" aria-live="polite">
-  <div class="empty-header">No blocks configured</div>
-  <p class="empty-title">Empty state</p>
-  <p class="empty-subtitle text-secondary">Add block placements in config/schema.yml to render dashboard cards.</p>
+  <div class="empty-header">{% if locale == 'ru' %}Блоки не настроены{% else %}No blocks configured{% endif %}</div>
+  <p class="empty-title">{% if locale == 'ru' %}Пусто{% else %}Empty state{% endif %}</p>
+  <p class="empty-subtitle text-secondary">{% if locale == 'ru' %}Добавьте размещения блоков в config/schema.yml для отображения карточек панели.{% else %}Add block placements in config/schema.yml to render dashboard cards.{% endif %}</p>
 </div>

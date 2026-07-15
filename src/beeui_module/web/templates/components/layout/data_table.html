@@ -15,11 +15,11 @@
       <div class="d-flex gap-2 align-items-center">
         {% if block.toolbar.entries %}
         <div class="text-secondary small beeui-table-entries">
-          Show <select class="form-select form-select-sm d-inline-block w-auto" disabled>
+          {% if locale == 'ru' %}Показать{% else %}Show{% endif %} <select class="form-select form-select-sm d-inline-block w-auto" disabled>
             <option>10</option>
             <option>25</option>
             <option>50</option>
-          </select> entries
+          </select> {% if locale == 'ru' %}записей{% else %}entries{% endif %}
         </div>
         {% endif %}
       </div>
@@ -33,7 +33,7 @@
         {% endfor %}
         {% if block.toolbar.search %}
         <div class="ms-auto beeui-table-search">
-          <input type="search" class="form-control form-control-sm" placeholder="Search..." disabled>
+          <input type="search" class="form-control form-control-sm" placeholder="{% if locale == 'ru' %}Поиск...{% else %}Search...{% endif %}" disabled>
         </div>
         {% endif %}
       </div>
@@ -149,7 +149,7 @@
               {% endfor %}
               </div>
             {% else %}
-              {{ cell.value if cell.value else "n/a" }}
+              {{ cell.value if cell.value else ("н/д" if locale == 'ru' else "n/a") }}
             {% endif %}
           </td>
           {% endfor %}

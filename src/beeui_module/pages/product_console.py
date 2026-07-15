@@ -466,6 +466,17 @@ def _build_page_context(
     }
 
 
+def _resolve_locale_from_request(
+    request: Request,
+    base_context: dict[str, Any],
+) -> str:
+    locale_cfg = base_context.get("locale_cfg")
+    if isinstance(locale_cfg, LocaleConfig):
+        from beeui_module.pages.router import resolve_locale as _router_resolve_locale
+        return _router_resolve_locale(request, locale_cfg)
+    return "en"
+
+
 def _render_unavailable(
     request: Request,
     templates: Jinja2Templates,
@@ -478,6 +489,7 @@ def _render_unavailable(
     run_id: str | None = None,
     venue_id: str | None = None,
 ) -> HTMLResponse:
+    locale = _resolve_locale_from_request(request, base_context)
     context = dict(base_context)
     context.update(
         {
@@ -489,7 +501,7 @@ def _render_unavailable(
             ),
             "page_title": title,
             "page_subtitle": subtitle,
-            "error": "Adapter is not available",
+            "error": "Адаптер недоступен" if locale == "ru" else "Adapter is not available",
             "warnings": [],
             "meta": {},
             "status": "unavailable",
@@ -516,6 +528,12 @@ def _render_invalid_id(
     *,
     active_path: str,
 ) -> HTMLResponse:
+    locale = _resolve_locale_from_request(request, base_context)
+    ru_field_names = {
+        "run_id": "ID запуска",
+        "venue_id": "ID площадки",
+        "artifact_id": "ID артефакта",
+    }
     context = dict(base_context)
     context.update(
         {
@@ -525,9 +543,9 @@ def _render_invalid_id(
                 navigation=base_context["ui_navigation"],
                 active_path=active_path,
             ),
-            "page_title": "Invalid identifier",
+            "page_title": "Неверный идентификатор" if locale == "ru" else "Invalid identifier",
             "page_subtitle": None,
-            "error": f"Invalid {field_name}: {value}",
+            "error": (f"Неверный {ru_field_names.get(field_name, field_name)}: {value}" if locale == "ru" else f"Invalid {field_name}: {value}"),
             "warnings": [],
             "meta": {},
             "status": "error",

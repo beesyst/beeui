@@ -1,7 +1,7 @@
 <div class="card beeui-chart-card">
   <div class="card-header">
     <div>
-      <h3 class="card-title mb-0">{{ block.title or "Chart" }}</h3>
+      <h3 class="card-title mb-0">{{ block.title or ("График" if locale == 'ru' else "Chart") }}</h3>
       {% if block.subtitle %}
         <div class="text-secondary small">{{ block.subtitle }}</div>
       {% endif %}
@@ -24,13 +24,13 @@
         class="beeui-chart-config"
       >{{ block.chart_config | tojson }}</script>
       {% if block.unit %}
-        <div class="text-secondary small mt-2 text-center">Unit: {{ block.unit }}</div>
+        <div class="text-secondary small mt-2 text-center">{% if locale == 'ru' %}Ед.:{% else %}Unit:{% endif %} {{ block.unit }}</div>
       {% endif %}
     {% else %}
       <div class="empty">
         <div class="empty-title">{{ block.empty_message }}</div>
         <p class="empty-subtitle text-secondary">
-          Chart data is missing or invalid.
+          {% if locale == 'ru' %}Данные графика отсутствуют или недействительны.{% else %}Chart data is missing or invalid.{% endif %}
         </p>
       </div>
     {% endif %}

@@ -31,9 +31,9 @@ def _collect_nav_paths(items: list) -> set[str]:
 def test_load_beeui_config_valid_payload() -> None:
     config = load_beeui_config(Path("config/schema.yml"))
 
-    assert config.app_title == "BeeUI Demo"
+    assert config.app_title == {"en": "BeeUI Demo", "ru": "BeeUI Демо"}
     assert config.product == "demo"
-    assert config.logo_text == "BeeUI"
+    assert config.logo_text == {"en": "BeeUI", "ru": "BeeUI"}
     assert config.theme.mode == "dark"
     assert config.layout.container == "xl"
     assert [page.path for page in config.pages] == ["/", "/runs"]
@@ -45,7 +45,7 @@ def test_load_beeui_config_valid_payload() -> None:
 def test_load_beeui_config_fails_on_missing_app_title(tmp_path: Path) -> None:
     config_path = _write_config(
         tmp_path,
-        _base_config().replace("  title: BeeUI Demo\n", "", 1),
+        _base_config().replace("  title:\n    en: BeeUI Demo\n    ru: BeeUI Демо\n", "  title:\n", 1),
     )
 
     try:
@@ -479,10 +479,12 @@ def test_load_beeui_config_accepts_nested_safe_page_paths(
         config_path = _write_config(
             tmp_path,
             _base_config().replace(
-                "    subtitle: Placeholder page for future run overview\n    blocks: []\n",
-                f"    subtitle: Placeholder page for future run overview\n    blocks: []\n"
+                "  - id: runs\n    path: /runs\n    title:\n      en: Runs\n      ru: Запуски\n    subtitle:\n      en: Placeholder page for future run overview\n      ru: Страница-заполнитель для будущего обзора запусков\n    blocks: []",
+                "  - id: runs\n    path: /runs\n    title:\n      en: Runs\n      ru: Запуски\n    subtitle:\n      en: Placeholder page for future run overview\n      ru: Страница-заполнитель для будущего обзора запусков\n    blocks: []\n"
                 f"  - id: meta\n    path: {page_path}\n"
-                f"    title: Metadata\n    subtitle: Console ref\n    blocks: []\n",
+                f"    title:\n      en: Metadata\n      ru: Метаданные\n"
+                f"    subtitle:\n      en: Console ref\n      ru: Справочная консоль\n"
+                f"    blocks: []",
                 1,
             ),
         )
@@ -501,25 +503,38 @@ def test_load_beeui_config_accepts_nested_safe_navigation_paths(
         tmp_path,
         _base_config()
         .replace(
-            "    subtitle: Placeholder page for future run overview\n    blocks: []\n",
-            "    subtitle: Placeholder page for future run overview\n    blocks: []\n"
+            "  - id: runs\n    path: /runs\n    title:\n      en: Runs\n      ru: Запуски\n    subtitle:\n      en: Placeholder page for future run overview\n      ru: Страница-заполнитель для будущего обзора запусков\n    blocks: []",
+            "  - id: runs\n    path: /runs\n    title:\n      en: Runs\n      ru: Запуски\n    subtitle:\n      en: Placeholder page for future run overview\n      ru: Страница-заполнитель для будущего обзора запусков\n    blocks: []\n"
             "  - id: mrkt_meta\n    path: /venues/mrkt\n"
-            "    title: MRKT\n    subtitle: Venue\n    blocks: []\n"
+            "    title:\n      en: MRKT\n      ru: MRKT\n"
+            "    subtitle:\n      en: Venue\n      ru: Площадка\n"
+            "    blocks: []\n"
             "  - id: mode_live\n    path: /modes/live\n"
-            "    title: Live\n    subtitle: Mode\n    blocks: []\n"
+            "    title:\n      en: Live\n      ru: Live\n"
+            "    subtitle:\n      en: Mode\n      ru: Режим\n"
+            "    blocks: []\n"
             "  - id: hidra_binance\n    path: /hidra/binance\n"
-            "    title: Hidra Binance\n    subtitle: Adapter page\n    blocks: []\n"
+            "    title:\n      en: Hidra Binance\n      ru: Hidra Binance\n"
+            "    subtitle:\n      en: Adapter page\n      ru: Страница адаптера\n"
+            "    blocks: []\n"
             "  - id: likes_top\n    path: /likes/top\n"
-            "    title: Likes\n    subtitle: Configured page\n    blocks: []\n",
+            "    title:\n      en: Likes\n      ru: Likes\n"
+            "    subtitle:\n      en: Configured page\n      ru: Настроенная страница\n"
+            "    blocks: []",
             1,
         )
         .replace(
-            "        path: /runs\n        icon: runs\n",
-            "        path: /runs\n        icon: runs\n"
-            "      - title: MRKT\n        path: /venues/mrkt\n        icon: venue\n"
-            "      - title: Live\n        path: /modes/live\n        icon: mode\n"
-            "      - title: Hidra Binance\n        path: /hidra/binance\n        icon: venue\n"
-            "      - title: Likes\n        path: /likes/top\n        icon: list\n",
+            "        icon: runs\n      - title:",
+            "        icon: runs\n"
+            "      - title:\n          en: MRKT\n          ru: MRKT\n"
+            "        path: /venues/mrkt\n        icon: venue\n"
+            "      - title:\n          en: Live\n          ru: Live\n"
+            "        path: /modes/live\n        icon: mode\n"
+            "      - title:\n          en: Hidra Binance\n          ru: Hidra Binance\n"
+            "        path: /hidra/binance\n        icon: venue\n"
+            "      - title:\n          en: Likes\n          ru: Likes\n"
+            "        path: /likes/top\n        icon: list\n"
+            "      - title:",
             1,
         ),
     )

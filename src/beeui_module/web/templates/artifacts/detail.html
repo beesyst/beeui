@@ -1,18 +1,18 @@
-{% extends "base.html" %} {% block title %}Artifact · {{ artifact_id }} · {{
+{% extends "base.html" %} {% block title %}{% if locale == 'ru' %}Артефакт{% else %}Artifact{% endif %} · {{ artifact_id }} · {{
 app_title }}{% endblock %} {% block content %}
 <div class="page-header d-print-none">
   <div class="container-xl">
     <div class="row g-2 align-items-center">
       <div class="col">
-        <h2 class="page-title">Artifact: {{ artifact_id }}</h2>
-        <div class="text-secondary mt-1">Run: {{ run_id }}</div>
+        <h2 class="page-title">{% if locale == 'ru' %}Артефакт:{% else %}Artifact:{% endif %} {{ artifact_id }}</h2>
+        <div class="text-secondary mt-1">{% if locale == 'ru' %}Запуск:{% else %}Run:{% endif %} {{ run_id }}</div>
       </div>
       <div class="col-auto ms-auto d-print-none">
         <a
           href="{{ route_prefix }}/runs/{{ run_id }}/artifacts"
           class="btn btn-outline-secondary"
         >
-          Back to artifacts
+          {% if locale == 'ru' %}Назад к артефактам{% else %}Back to artifacts{% endif %}
         </a>
       </div>
     </div>
@@ -23,58 +23,58 @@ app_title }}{% endblock %} {% block content %}
   <div class="container-xl">
     {% if not adapter_available %}
     <div class="alert alert-warning" role="alert">
-      <h4 class="alert-title">Adapter unavailable</h4>
+      <h4 class="alert-title">{% if locale == 'ru' %}Адаптер недоступен{% else %}Adapter unavailable{% endif %}</h4>
       <p class="mb-0">{{ error }}</p>
     </div>
     {% elif error %}
     <div class="alert alert-danger" role="alert">
-      <h4 class="alert-title">Error</h4>
+      <h4 class="alert-title">{% if locale == 'ru' %}Ошибка{% else %}Error{% endif %}</h4>
       <p class="mb-0">{{ error }}</p>
     </div>
     {% elif preview is none %}
     <div class="empty">
-      <div class="empty-header">No data</div>
+      <div class="empty-header">{% if locale == 'ru' %}Нет данных{% else %}No data{% endif %}</div>
       <p class="empty-subtitle text-secondary">
-        Artifact data could not be loaded.
+        {% if locale == 'ru' %}Не удалось загрузить данные артефакта.{% else %}Artifact data could not be loaded.{% endif %}
       </p>
     </div>
     {% elif preview.metadata_only and not preview.error %}
     <div class="card">
       <div class="card-header">
-        <h3 class="card-title">Artifact metadata</h3>
+        <h3 class="card-title">{% if locale == 'ru' %}Метаданные артефакта{% else %}Artifact metadata{% endif %}</h3>
       </div>
       <div class="card-body">
         <dl class="row">
-          <dt class="col-3">Artifact ID</dt>
+          <dt class="col-3">{% if locale == 'ru' %}ID артефакта{% else %}Artifact ID{% endif %}</dt>
           <dd class="col-9">{{ preview.artifact_id }}</dd>
-          <dt class="col-3">Content Type</dt>
+          <dt class="col-3">{% if locale == 'ru' %}Тип содержимого{% else %}Content Type{% endif %}</dt>
           <dd class="col-9">
             <span class="badge bg-secondary">{{ preview.content_type }}</span>
           </dd>
-          <dt class="col-3">Preview Type</dt>
+          <dt class="col-3">{% if locale == 'ru' %}Тип предпросмотра{% else %}Preview Type{% endif %}</dt>
           <dd class="col-9">
             <span class="badge bg-info">{{ preview.preview_type }}</span>
           </dd>
         </dl>
         <p class="text-secondary">
-          Preview not available for this artifact type.
+          {% if locale == 'ru' %}Предпросмотр недоступен для этого типа артефакта.{% else %}Preview not available for this artifact type.{% endif %}
         </p>
       </div>
     </div>
     {% elif preview.error %}
     <div class="alert alert-danger" role="alert">
-      <h4 class="alert-title">Preview error</h4>
+      <h4 class="alert-title">{% if locale == 'ru' %}Ошибка предпросмотра{% else %}Preview error{% endif %}</h4>
       <p class="mb-0">{{ preview.error }}</p>
     </div>
     <div class="card mt-3">
       <div class="card-header">
-        <h3 class="card-title">Artifact metadata</h3>
+        <h3 class="card-title">{% if locale == 'ru' %}Метаданные артефакта{% else %}Artifact metadata{% endif %}</h3>
       </div>
       <div class="card-body">
         <dl class="row">
-          <dt class="col-3">Artifact ID</dt>
+          <dt class="col-3">{% if locale == 'ru' %}ID артефакта{% else %}Artifact ID{% endif %}</dt>
           <dd class="col-9">{{ preview.artifact_id }}</dd>
-          <dt class="col-3">Content Type</dt>
+          <dt class="col-3">{% if locale == 'ru' %}Тип содержимого{% else %}Content Type{% endif %}</dt>
           <dd class="col-9">
             <span class="badge bg-secondary">{{ preview.content_type }}</span>
           </dd>
@@ -94,9 +94,9 @@ app_title }}{% endblock %} {% block content %}
           {% elif preview.preview_type == "jsonl" %}
           <span class="badge bg-info ms-1">JSONL</span>
           {% elif preview.preview_type == "text" %}
-          <span class="badge bg-info ms-1">Text</span>
+          <span class="badge bg-info ms-1">{% if locale == 'ru' %}Текст{% else %}Text{% endif %}</span>
           {% endif %} {% if preview.truncated %}
-          <span class="badge bg-warning ms-1">Truncated</span>
+          <span class="badge bg-warning ms-1">{% if locale == 'ru' %}Обрезано{% else %}Truncated{% endif %}</span>
           {% endif %}
         </h3>
       </div>
@@ -129,15 +129,14 @@ app_title }}{% endblock %} {% block content %}
 
       {% if preview.row_count is not none %}
       <div class="card-footer text-secondary">
-        {{ preview.row_count }} row(s){% if preview.truncated %} (showing first
+        {% if locale == 'ru' %}{{ preview.row_count }} стр.{% else %}{{ preview.row_count }} row(s){% endif %}{% if preview.truncated %} ({% if locale == 'ru' %}показаны первые{% else %}showing first{% endif %}
         {{ preview.preview_data | length if preview.preview_data is iterable
-        else 0 }} rows){% endif %}
+        else 0 }} {% if locale == 'ru' %}строк{% else %}rows{% endif %}){% endif %}
       </div>
       {% endif %} {% if preview.truncated and preview.preview_type == "text" and
       preview.preview_data %}
       <div class="card-footer text-secondary">
-        Content truncated (showing first {{ preview.preview_data | length }}
-        characters).
+        {% if locale == 'ru' %}Содержимое обрезано (показаны первые {{ preview.preview_data | length }} симв.).{% else %}Content truncated (showing first {{ preview.preview_data | length }} characters).{% endif %}
       </div>
       {% endif %}
     </div>

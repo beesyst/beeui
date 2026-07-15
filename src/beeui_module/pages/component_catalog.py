@@ -48,7 +48,24 @@ def _catalog_sections_for_locale(
     if locale == default_locale:
         return sections
 
-    for section in sections.values():
+    ru_titles = {
+        "interface": "Примитивы интерфейса",
+        "forms": "Примитивы форм",
+        "layout": "Примитивы макета",
+        "extra": "Дополнительные примитивы",
+        "plugins": "Заполнители плагинов",
+    }
+    ru_descriptions = {
+        "interface": "Уведомления, значки, кнопки, вкладки и базовая оболочка компонентов.",
+        "forms": "Контролируемые примитивы форм только для чтения для будущих форм.",
+        "layout": "Карточки, заголовки, хлебные крошки и пагинация в едином стиле.",
+        "extra": "Модальные окна, offcanvas, toast и заполнители аватаров.",
+        "plugins": "Неактивные контейнеры для интеграции графиков, карт и таблиц.",
+    }
+
+    for section_id, section in sections.items():
+        section["title"] = ru_titles.get(section_id, section["title"])
+        section["description"] = ru_descriptions.get(section_id, section["description"])
         section["href"] = add_preserved_params_to_href(
             section["href"],
             {"lang": locale},
@@ -111,11 +128,11 @@ def register_component_catalog_routes(
                 "theme": theme,
                 "layout": layout,
                 "page": {
-                    "title": "Component Catalog",
-                    "subtitle": "Internal read-only Tabler-compatible primitives",
+                    "title": "Каталог компонентов" if locale == "ru" else "Component Catalog",
+                    "subtitle": "Внутренние примитивы только для чтения, совместимые с Tabler" if locale == "ru" else "Internal read-only Tabler-compatible primitives",
                 },
-                "page_title": "Component Catalog",
-                "page_subtitle": "Internal read-only Tabler-compatible primitives",
+                "page_title": "Каталог компонентов" if locale == "ru" else "Component Catalog",
+                "page_subtitle": "Внутренние примитивы только для чтения, совместимые с Tabler" if locale == "ru" else "Internal read-only Tabler-compatible primitives",
                 "navigation": _catalog_navigation(
                     route_prefix=route_prefix,
                     ui_config=ui_config,
@@ -179,11 +196,11 @@ def register_component_catalog_routes(
                     "theme": theme,
                     "layout": layout,
                     "page": {
-                        "title": _section["title"],
-                        "subtitle": _section["description"],
+                        "title": catalog_section["title"],
+                        "subtitle": catalog_section["description"],
                     },
-                    "page_title": _section["title"],
-                    "page_subtitle": _section["description"],
+                    "page_title": catalog_section["title"],
+                    "page_subtitle": catalog_section["description"],
                     "navigation": _catalog_navigation(
                         route_prefix=route_prefix,
                         ui_config=ui_config,
@@ -278,7 +295,7 @@ def _catalog_navigation(
         )
     navigation.append(
         {
-            "title": "Components",
+            "title": "Компоненты" if locale == "ru" else "Components",
             "path": None,
             "href": None,
             "icon": "components",
@@ -287,7 +304,7 @@ def _catalog_navigation(
             "disabled": False,
             "children": [
                 {
-                    "title": "Catalog index",
+                    "title": "Каталог" if locale == "ru" else "Catalog index",
                     "path": "/components",
                     "href": catalog_index_href,
                     "icon": None,

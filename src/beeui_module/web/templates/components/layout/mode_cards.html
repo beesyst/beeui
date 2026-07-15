@@ -20,7 +20,7 @@
           {% endif %}
           {% if item.latest %}
           <div class="text-secondary small mt-1">
-            Latest:
+            {% if locale == 'ru' %}Последнее:{% else %}Latest:{% endif %}
             {% if item.latest_href %}
             <a href="{{ url_prefix }}{{ item.latest_href }}">{{ item.latest }}</a>
             {% else %}

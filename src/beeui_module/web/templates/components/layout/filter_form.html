@@ -6,7 +6,7 @@
       <a href="{{ href_prefix }}{{ block.columns_toggle_href }}"
          class="btn btn-sm btn-ghost-secondary dropdown-toggle"
          role="button">
-        Columns
+        {% if locale == 'ru' %}Колонки{% else %}Columns{% endif %}
       </a>
       {% if block.columns_open %}
       <div class="dropdown-menu show" style="position:absolute;right:0;top:100%;z-index:1050;margin-top:2px">
@@ -85,7 +85,7 @@
             {% if field.multi %}multiple{% endif %}
             onchange="this.form.submit()"
           >
-            <option value="">{{ field.placeholder|default("Any", true) }}</option>
+            <option value="">{{ field.placeholder|default("Любой" if locale == 'ru' else "Any", true) }}</option>
             {% for opt in field.options %}
             <option value="{{ opt.value }}"{% if field.value == opt.value %} selected{% endif %}>
               {{ opt.label }}

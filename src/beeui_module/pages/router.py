@@ -659,7 +659,7 @@ def _render_page_unavailable(
         "language_switcher": _build_language_switcher(
             request, ui_config.locale, route_prefix
         ),
-        "error": error,
+        "error": _translate_adapter_error(error, locale),
         "warnings": [],
         "meta": {},
         "status": "unavailable",
@@ -670,6 +670,28 @@ def _render_page_unavailable(
         context=context,
         status_code=status_code,
     )
+
+
+def _translate_adapter_error(error: str, locale: str) -> str:
+    if locale != "ru":
+        return error
+    translations = {
+        "Adapter is not available": "Адаптер недоступен",
+        "Page unavailable": "Страница недоступна",
+    }
+    for eng, rus in translations.items():
+        if error == eng:
+            return rus
+        if error.startswith("Page ") and error.endswith(" is unavailable"):
+            page_id = error[5:-15]
+            return f"Страница {page_id} недоступна"
+        if error.startswith("Failed to load page "):
+            page_id = error[20:]
+            return f"Не удалось загрузить страницу {page_id}"
+        if error.startswith("Adapter returned malformed payload for page "):
+            page_id = error[46:]
+            return f"Адаптер вернул повреждённые данные для страницы {page_id}"
+    return error
 
 
 def prefixed_path(route_prefix: str, path: str) -> str:

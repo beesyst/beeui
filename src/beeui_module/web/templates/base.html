@@ -55,7 +55,10 @@
 
           var title = document.createElement('div');
           title.className = 'empty-title';
-          title.textContent = 'No chart data for this period';
+          var lang = document.documentElement.lang;
+          title.textContent = lang === 'ru'
+            ? 'Нет данных графика за этот период'
+            : 'No chart data for this period';
 
           empty.appendChild(title);
           el.appendChild(empty);

@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="en" data-bs-theme="dark">
+<html lang="{{ locale|default('en') }}" data-bs-theme="dark">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Login — BeeUI</title>
+    <title>{% if locale == 'ru' %}Вход — BeeUI{% else %}Login — BeeUI{% endif %}</title>
     <link rel="stylesheet" href="{{ route_prefix }}/static/vendor/tabler/css/tabler.min.css" />
     <link rel="stylesheet" href="{{ route_prefix }}/static/css/beeui.css" />
   </head>
@@ -12,15 +12,15 @@
       <div class="container container-tight py-4">
         <div class="text-center mb-4">
           <h1 class="h2">BeeUI</h1>
-          <p class="text-muted">Operator console login</p>
+          <p class="text-muted">{% if locale == 'ru' %}Вход в консоль оператора{% else %}Operator console login{% endif %}</p>
         </div>
 
         {% if auth_disabled %}
         <div class="alert alert-warning" role="alert">
-          Auth is disabled (local/dev mode).
+          {% if locale == 'ru' %}Авторизация отключена (локальный/режим разработки).{% else %}Auth is disabled (local/dev mode).{% endif %}
         </div>
         <div class="text-center mt-3">
-          <a href="{{ route_prefix }}/" class="btn btn-primary">Continue to dashboard</a>
+          <a href="{{ route_prefix }}/" class="btn btn-primary">{% if locale == 'ru' %}Перейти к панели{% else %}Continue to dashboard{% endif %}</a>
         </div>
         {% else %}
 
@@ -33,7 +33,7 @@
         <form method="POST" action="{{ route_prefix }}/auth/login" class="card card-md">
           <div class="card-body">
             <div class="mb-3">
-              <label class="form-label" for="user_id">User ID</label>
+              <label class="form-label" for="user_id">{% if locale == 'ru' %}ID пользователя{% else %}User ID{% endif %}</label>
               <input
                 type="text"
                 id="user_id"
@@ -45,19 +45,19 @@
               />
             </div>
             <div class="mb-3">
-              <label class="form-label" for="token">Token</label>
+              <label class="form-label" for="token">{% if locale == 'ru' %}Токен{% else %}Token{% endif %}</label>
               <input
                 type="password"
                 id="token"
                 name="token"
                 class="form-control"
-                placeholder="Your operator/admin token"
+                placeholder="{% if locale == 'ru' %}Ваш токен оператора/администратора{% else %}Your operator/admin token{% endif %}"
                 autocomplete="current-password"
                 required
               />
             </div>
             <div class="form-footer">
-              <button type="submit" class="btn btn-primary w-100">Sign in</button>
+              <button type="submit" class="btn btn-primary w-100">{% if locale == 'ru' %}Войти{% else %}Sign in{% endif %}</button>
             </div>
           </div>
         </form>

@@ -262,11 +262,11 @@ def normalize_sections(
     return normalized
 
 
-def normalize_detail_page(raw: dict[str, Any]) -> dict[str, Any]:
+def normalize_detail_page(raw: dict[str, Any], locale: str = "en") -> dict[str, Any]:
     if not isinstance(raw, dict):
         return {
             "page_id": "",
-            "title": "Unavailable",
+            "title": "Недоступно" if locale == "ru" else "Unavailable",
             "subtitle": None,
             "back_href": None,
             "warnings": [],
@@ -307,9 +307,9 @@ def render_beeui_detail_page(
     product_title: str,
     product_id: str,
 ) -> HTMLResponse:
-    normalized = normalize_detail_page(page)
-
     locale = resolve_locale(request, ui_config.locale)
+    normalized = normalize_detail_page(page, locale=locale)
+
     theme = build_theme_context(ui_config)
     layout = build_layout_context(ui_config)
     shell_classes = build_shell_classes(theme, layout)

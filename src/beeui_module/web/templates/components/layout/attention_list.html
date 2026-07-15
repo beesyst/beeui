@@ -26,7 +26,7 @@
     </div>
     {% endfor %}
     {% else %}
-    <div class="list-group-item text-secondary">No attention items.</div>
+    <div class="list-group-item text-secondary">{% if locale == 'ru' %}Нет элементов требующих внимания.{% else %}No attention items.{% endif %}</div>
     {% endif %}
   </div>
 </div>

@@ -14,7 +14,7 @@
           <path d="M5 12l6 6" />
           <path d="M5 12l6 -6" />
         </svg>
-        Back
+        {% if locale == 'ru' %}Назад{% else %}Back{% endif %}
       </a>
     </div>
     {% endif %}
@@ -163,8 +163,8 @@
 
     {% else %}
     <div class="empty">
-      <div class="empty-header">No content</div>
-      <p class="empty-subtitle text-secondary">No sections available for this page.</p>
+      <div class="empty-header">{% if locale == 'ru' %}Нет содержимого{% else %}No content{% endif %}</div>
+      <p class="empty-subtitle text-secondary">{% if locale == 'ru' %}Для этой страницы нет разделов.{% else %}No sections available for this page.{% endif %}</p>
     </div>
     {% endif %}
 

@@ -24,7 +24,7 @@
         {% endfor %}
         {% else %}
         <tr>
-          <td colspan="{{ block.columns | length if block.columns else 1 }}" class="text-secondary">No data available.</td>
+          <td colspan="{{ block.columns | length if block.columns else 1 }}" class="text-secondary">{% if locale == 'ru' %}Нет доступных данных.{% else %}No data available.{% endif %}</td>
         </tr>
         {% endif %}
       </tbody>

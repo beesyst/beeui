@@ -14,7 +14,7 @@
           <div class="card-body">
             <h3 class="card-title h4 mb-2">{{ section.title }}</h3>
             <p class="text-secondary mb-3">{{ section.description }}</p>
-            <a class="btn btn-outline-primary" href="{{ section.href }}">Open section</a>
+            <a class="btn btn-outline-primary" href="{{ section.href }}">{% if locale == 'ru' %}Открыть раздел{% else %}Open section{% endif %}</a>
           </div>
         </article>
       </div>

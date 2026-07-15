@@ -404,8 +404,8 @@ def test_logo_text_from_schema_is_escaped(tmp_path: Path) -> None:
         (settings_path().parent / "schema.yml")
         .read_text(encoding="utf-8")
         .replace(
-            "  logo_text: BeeUI\n",
-            '  logo_text: "<script>alert(3)</script>"\n',
+            "  logo_text:\n    en: BeeUI\n    ru: BeeUI\n",
+            '  logo_text:\n    en: "<script>alert(3)</script>"\n    ru: "<script>alert(3)</script>"\n',
             1,
         ),
         encoding="utf-8",
