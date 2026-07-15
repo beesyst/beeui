@@ -488,25 +488,90 @@ def _render_chart(raw: dict[str, Any], width_class: str) -> dict[str, Any]:
             "height": height,
             "toolbar": {"show": False},
             "zoom": {"enabled": False},
+            "background": "transparent",
         },
         "series": series,
         "dataLabels": {"enabled": False},
         "stroke": {"curve": "smooth", "width": 2},
+        "theme": {"mode": "light"},
+        "grid": {
+            "borderColor": "transparent",
+            "row": {"colors": ["transparent", "transparent"]},
+        },
+        "yaxis": {
+            "labels": {
+                "style": {"colors": "var(--beeui-text-secondary)", "fontSize": "11px"},
+            },
+        },
+        "legend": {
+            "show": True,
+            "position": "bottom",
+            "fontSize": "12px",
+            "labels": {"colors": "var(--beeui-text-secondary)"},
+            "markers": {"width": 8, "height": 8, "radius": 4},
+        },
     }
     if resolved_kind == "donut":
         chart_config["labels"] = labels
         chart_config["plotOptions"] = {"pie": {"donut": {"size": "65%"}}}
     else:
-        chart_config["xaxis"] = {}
+        xaxis: dict[str, Any] = {
+            "labels": {
+                "style": {"colors": "var(--beeui-text-muted)", "fontSize": "11px"},
+            },
+        }
         if categories:
-            chart_config["xaxis"]["categories"] = categories
+            xaxis["categories"] = categories
+        chart_config["xaxis"] = xaxis
 
     # Pass product-defined colors if provided
     raw_colors = raw.get("colors")
     if isinstance(raw_colors, list) and raw_colors:
         chart_config["colors"] = raw_colors
 
-    # Area chart: gradient fill
+    # Vertical bar polish: rounded tops, data labels on bars, thin columns
+    if resolved_kind == "bar" and not raw.get("horizontal"):
+        chart_config.setdefault("plotOptions", {})
+        chart_config["plotOptions"]["bar"] = {
+            "borderRadius": 4,
+            "columnWidth": "55%",
+        }
+        chart_config["dataLabels"] = {
+            "enabled": True,
+            "offsetY": -4,
+            "style": {"fontSize": "11px", "colors": ["var(--beeui-text-muted)"]},
+        }
+        chart_config["grid"] = {
+            "xaxis": {"lines": {"show": False}},
+            "yaxis": {"lines": {"show": True}},
+        }
+
+    # Horizontal bar support — thin list-like bars by default
+    if resolved_kind == "bar" and raw.get("horizontal"):
+        chart_config.setdefault("plotOptions", {})
+        bar_height = raw.get("barHeight", "50%")
+        chart_config["plotOptions"]["bar"] = {
+            "horizontal": True,
+            "barHeight": bar_height,
+        }
+        # Clean list-like appearance: hide axis lines, show data labels on bars
+        chart_config["xaxis"] = {
+            "labels": {"show": False},
+            "axisBorder": {"show": False},
+            "axisTicks": {"show": False},
+        }
+        chart_config.pop("yaxis", None)
+        chart_config["grid"] = {
+            "xaxis": {"lines": {"show": False}},
+            "yaxis": {"lines": {"show": False}},
+        }
+        chart_config["dataLabels"] = {
+            "enabled": True,
+            "offsetX": 4,
+            "style": {"fontSize": "12px", "colors": ["var(--beeui-text-secondary)"]},
+        }
+
+    # Area chart: gradient fill with theme-aware colors
     if resolved_kind == "area":
         chart_config["fill"] = {
             "type": "gradient",

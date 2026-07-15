@@ -51,7 +51,19 @@ var s=window['local'+'Storage']&&window['local'+'Storage'].getItem('beeui-theme'
           config.chart = config.chart || {};
           config.chart.el = el;
 
-          new ApexCharts(el, config).render();
+          // Apply current theme mode to chart
+          var html = document.documentElement;
+          var themeMode = html.getAttribute('data-bs-theme') === 'dark' ? 'dark' : 'light';
+          config.theme = config.theme || {};
+          config.theme.mode = themeMode;
+
+          var chart = new ApexCharts(el, config);
+          chart.render();
+
+          // Register for theme updates
+          if (typeof window.beeuiRegisterChart === 'function') {
+            window.beeuiRegisterChart(chart);
+          }
         } catch(e) {
           el.textContent = '';
           var empty = document.createElement('div');

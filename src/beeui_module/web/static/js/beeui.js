@@ -85,6 +85,34 @@
       });
   }
 
+  /* ─── Chart theme registry ─── */
+  var chartInstances = [];
+
+  window.beeuiRegisterChart = function (chart) {
+    if (chart && typeof chart.updateOptions === 'function') {
+      chartInstances.push(chart);
+    }
+  };
+
+  function updateChartThemes() {
+    var effective = getEffectiveTheme();
+    var mode = effective === 'dark' ? 'dark' : 'light';
+    chartInstances.forEach(function (chart) {
+      try {
+        chart.updateOptions({
+          theme: { mode: mode },
+        });
+      } catch (_) { /* ignore single chart failures */ }
+    });
+  }
+
+  /* Patch setTheme to also update charts */
+  var _origSetTheme = setTheme;
+  setTheme = function (mode) {
+    _origSetTheme(mode);
+    try { updateChartThemes(); } catch (_) { }
+  };
+
   /* ─── Boot ─── */
   try { initTheme(); } catch (e) { console.error('beeui initTheme error:', e); }
 

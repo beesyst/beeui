@@ -306,6 +306,86 @@ body {
   border-bottom: 1px solid var(--beeui-border-light);
 }
 
+/* ─── Chart card refinements ─── */
+.beeui-chart-card {
+  height: 100%;
+  border: 1px solid var(--beeui-border);
+  border-radius: var(--beeui-radius);
+  background: var(--beeui-surface);
+  box-shadow: var(--beeui-card-shadow);
+  transition: box-shadow 0.25s ease;
+  overflow: hidden;
+}
+
+.beeui-chart-card:hover {
+  box-shadow: var(--beeui-card-shadow-hover);
+}
+
+.beeui-chart-card .card-header {
+  background: color-mix(in srgb, var(--beeui-surface), var(--beeui-accent) 2%);
+  border-bottom: 1px solid var(--beeui-border-light);
+  padding: 0.75rem 1rem;
+}
+
+.beeui-chart-card .card-body {
+  padding: 0.5rem 1rem 0.75rem;
+}
+
+.beeui-chart-card .card-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.beeui-chart-card .apexcharts-canvas {
+  margin: 0 auto;
+}
+
+.beeui-chart-card .apexcharts-text tspan {
+  font-family: inherit;
+}
+
+/* ApexCharts dark mode overrides via CSS */
+[data-bs-theme="dark"] .beeui-chart-card .apexcharts-grid line {
+  stroke: rgba(255, 255, 255, 0.05);
+}
+
+[data-bs-theme="dark"] .beeui-chart-card .apexcharts-grid-borders line {
+  stroke: rgba(255, 255, 255, 0.08);
+}
+
+[data-bs-theme="dark"] .beeui-chart-card .apexcharts-tooltip {
+  background: var(--beeui-surface) !important;
+  border: 1px solid var(--beeui-border) !important;
+  color: var(--beeui-text) !important;
+}
+
+[data-bs-theme="dark"] .beeui-chart-card .apexcharts-tooltip-title {
+  background: var(--beeui-surface-hover) !important;
+  border-bottom: 1px solid var(--beeui-border) !important;
+}
+
+[data-bs-theme="dark"] .beeui-chart-card .apexcharts-xaxis-label tspan,
+[data-bs-theme="dark"] .beeui-chart-card .apexcharts-yaxis-label tspan {
+  fill: var(--beeui-text-secondary) !important;
+}
+
+[data-bs-theme="dark"] .beeui-chart-card .apexcharts-legend-text {
+  color: var(--beeui-text-secondary) !important;
+}
+
+/* Chart kind badge */
+.beeui-chart-kind-badge {
+  font-size: 0.65rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--beeui-surface), var(--beeui-accent) 6%);
+  color: var(--beeui-text-muted);
+  border: 1px solid var(--beeui-border-light);
+}
+
 .beeui-block-state {
   margin-bottom: 0.5rem;
 }
