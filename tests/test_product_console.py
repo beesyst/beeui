@@ -1469,7 +1469,13 @@ def test_adapter_dashboard_navigation_follows_locale() -> None:
     assert "Дашборд" in ru.text
     assert "lang=ru" in ru.text
 
-    en = client.get("/")
+    # Language persists in cookie — subsequent request without ?lang= still shows RU
+    ru2 = client.get("/")
+    assert ru2.status_code == 200
+    assert "Дашборд" in ru2.text
+
+    # Explicit switch back to English
+    en = client.get("/?lang=en")
     assert en.status_code == 200
     assert "Dashboard" in en.text
     assert '/runs?lang=' not in en.text

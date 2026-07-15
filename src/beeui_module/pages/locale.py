@@ -15,7 +15,12 @@ def resolve_locale(
     default: str,
     available: tuple[str, ...],
 ) -> str:
+    # 1. Query parameter has highest priority
     lang = request.query_params.get("lang")
+    if lang and lang in available:
+        return lang
+    # 2. Fall back to cookie for persistence across navigations
+    lang = request.cookies.get("beeui_lang")
     if lang and lang in available:
         return lang
     return default

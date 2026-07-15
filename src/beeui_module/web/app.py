@@ -229,6 +229,17 @@ def create_beeui_app(
     async def add_read_only_headers(request: Request, call_next):
         response = await call_next(request)
 
+        # Persist language choice in a cookie when ?lang= is present
+        lang_param = request.query_params.get("lang")
+        if lang_param:
+            response.set_cookie(
+                key="beeui_lang",
+                value=lang_param,
+                max_age=31536000,  # 1 year
+                path=route_prefix or "/",
+                samesite="lax",
+            )
+
         response.headers.setdefault("X-Content-Type-Options", "nosniff")
         response.headers.setdefault("X-Frame-Options", "DENY")
 
