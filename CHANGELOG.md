@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.22.0](https://github.com/beesyst/beeui/compare/beeui-v0.21.2...beeui-v0.22.0) (2026-07-21)
+
+
+### Features
+
+* 83 adapt web inteface design for improved user experience ([#84](https://github.com/beesyst/beeui/issues/84)) ([8a09928](https://github.com/beesyst/beeui/commit/8a099284fc52efcf7c77f34fba04cb2370840aa3))
+
 ## [0.21.2](https://github.com/beesyst/beeui/compare/beeui-v0.21.1...beeui-v0.21.2) (2026-06-30)
 
 
