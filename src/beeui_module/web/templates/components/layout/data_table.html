@@ -1,4 +1,3 @@
-{% set href_prefix = url_prefix|default(route_prefix, true) %}
 <div class="card beeui-data-table">
   <div class="card-header">
     <div>
@@ -15,25 +14,25 @@
       <div class="d-flex gap-2 align-items-center">
         {% if block.toolbar.entries %}
         <div class="text-secondary small beeui-table-entries">
-          Show <select class="form-select form-select-sm d-inline-block w-auto" disabled>
+          {% if locale == 'ru' %}Показать{% else %}Show{% endif %} <select class="form-select form-select-sm d-inline-block w-auto" disabled>
             <option>10</option>
             <option>25</option>
             <option>50</option>
-          </select> entries
+          </select> {% if locale == 'ru' %}записей{% else %}entries{% endif %}
         </div>
         {% endif %}
       </div>
       <div class="d-flex gap-2 align-items-center">
         {% for action in block.toolbar.actions %}
           {% if action.href %}
-            <a href="{{ href_prefix }}{{ action.href }}" class="btn btn-sm btn-outline-primary">{{ action.label }}</a>
+            <a href="{{ action.href }}" class="btn btn-sm btn-outline-primary">{{ action.label }}</a>
           {% else %}
             <span class="btn btn-sm btn-outline-primary disabled">{{ action.label }}</span>
           {% endif %}
         {% endfor %}
         {% if block.toolbar.search %}
         <div class="ms-auto beeui-table-search">
-          <input type="search" class="form-control form-control-sm" placeholder="Search..." disabled>
+          <input type="search" class="form-control form-control-sm" placeholder="{% if locale == 'ru' %}Поиск...{% else %}Search...{% endif %}" disabled>
         </div>
         {% endif %}
       </div>
@@ -52,10 +51,14 @@
           </th>
           {% endif %}
           {% for col in block.columns %}
-          <th{% if col.sortable %} class="beeui-sortable"{% endif %}>
+          <th{% if col.sortable and col.sort_href %} class="beeui-sortable"{% endif %}{% if col.sort_active %} aria-sort="{{ col.sort_direction }}"{% endif %}>
+            {% if col.sortable and col.sort_href %}
+            <a href="{{ col.sort_href }}" class="text-reset text-decoration-none">
+              {{ col.label }}
+              {% if col.sort_active %}<span aria-hidden="true">{% if col.sort_direction == 'descending' %}↓{% else %}↑{% endif %}</span>{% endif %}
+            </a>
+            {% else %}
             {{ col.label }}
-            {% if col.sortable %}
-            <span class="text-secondary ms-1">&#8645;</span>
             {% endif %}
           </th>
           {% endfor %}
@@ -80,7 +83,7 @@
               {% endif %}
             {% elif cell.type == "link" %}
               {% if cell.href %}
-                <a href="{{ href_prefix }}{{ cell.href }}">{{ cell.label }}</a>
+                <a href="{{ cell.href }}">{{ cell.label }}</a>
               {% else %}
                 <span class="text-secondary">{{ cell.label }}</span>
               {% endif %}
@@ -139,14 +142,14 @@
               <div class="btn-list flex-nowrap">
               {% for action in cell.get("items", []) %}
                 {% if action.href %}
-                  <a href="{{ href_prefix }}{{ action.href }}" class="btn btn-sm btn-ghost-primary">{{ action.label }}</a>
+                  <a href="{{ action.href }}" class="btn btn-sm btn-ghost-primary">{{ action.label }}</a>
                 {% else %}
                   <span class="btn btn-sm btn-ghost-primary disabled">{{ action.label }}</span>
                 {% endif %}
               {% endfor %}
               </div>
             {% else %}
-              {{ cell.value if cell.value else "n/a" }}
+              {{ cell.value if cell.value else ("н/д" if locale == 'ru' else "n/a") }}
             {% endif %}
           </td>
           {% endfor %}
@@ -166,7 +169,7 @@
       <ul class="pagination pagination-sm mb-0">
         {% for page in block.pagination.pages %}
         <li class="page-item{% if page.active %} active{% endif %}">
-          <a class="page-link" href="{{ href_prefix }}{{ page.href }}">{{ page.label }}</a>
+          <a class="page-link" href="{{ page.href }}">{{ page.label }}</a>
         </li>
         {% endfor %}
       </ul>

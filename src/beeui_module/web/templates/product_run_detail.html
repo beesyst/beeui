@@ -24,12 +24,12 @@
     <div class="row g-3">
       <div class="col-12 col-lg-6">
         <div class="card h-100">
-          <div class="card-header"><h3 class="card-title">Run payload</h3></div>
+          <div class="card-header"><h3 class="card-title">{% if locale == 'ru' %}Полезная нагрузка запуска{% else %}Run payload{% endif %}</h3></div>
           <div class="card-body">
             {% if run %}
             <pre class="mb-0"><code>{{ run | tojson(indent=2) }}</code></pre>
             {% else %}
-            <div class="text-secondary">No run payload available.</div>
+            <div class="text-secondary">{% if locale == 'ru' %}Нет данных запуска.{% else %}No run payload available.{% endif %}</div>
             {% endif %}
           </div>
         </div>
@@ -37,14 +37,14 @@
 
       <div class="col-12 col-lg-6">
         <div class="card h-100">
-          <div class="card-header"><h3 class="card-title">Artifacts</h3></div>
+          <div class="card-header"><h3 class="card-title">{% if locale == 'ru' %}Артефакты{% else %}Artifacts{% endif %}</h3></div>
           <div class="card-body p-0">
             {% if artifacts %}
             <table class="table table-hover table-vcenter card-table mb-0">
               <thead>
                 <tr>
-                  <th>Artifact ID</th>
-                  <th>Content Type</th>
+                  <th>{% if locale == 'ru' %}ID артефакта{% else %}Artifact ID{% endif %}</th>
+                  <th>{% if locale == 'ru' %}Тип содержимого{% else %}Content Type{% endif %}</th>
                   <th class="w-1"></th>
                 </tr>
               </thead>
@@ -53,13 +53,13 @@
                 <tr>
                   <td>{{ artifact.artifact_id }}</td>
                   <td>{{ artifact.content_type }}</td>
-                  <td><a class="btn btn-sm btn-outline-primary" href="{{ url_prefix }}/runs/{{ run_id }}/artifacts/{{ artifact.artifact_id }}">Open</a></td>
+                  <td><a class="btn btn-sm btn-outline-primary" href="{{ url_prefix }}/runs/{{ run_id }}/artifacts/{{ artifact.artifact_id }}">{% if locale == 'ru' %}Открыть{% else %}Open{% endif %}</a></td>
                 </tr>
                 {% endfor %}
               </tbody>
             </table>
             {% else %}
-            <div class="p-3 text-secondary">No artifacts available.</div>
+            <div class="p-3 text-secondary">{% if locale == 'ru' %}Нет доступных артефактов.{% else %}No artifacts available.{% endif %}</div>
             {% endif %}
           </div>
         </div>

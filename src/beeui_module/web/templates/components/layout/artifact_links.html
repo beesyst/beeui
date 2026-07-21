@@ -23,7 +23,7 @@
     </div>
     {% endfor %}
     {% else %}
-    <div class="list-group-item text-secondary">No artifacts available.</div>
+    <div class="list-group-item text-secondary">{% if locale == 'ru' %}Нет доступных артефактов.{% else %}No artifacts available.{% endif %}</div>
     {% endif %}
   </div>
 </div>

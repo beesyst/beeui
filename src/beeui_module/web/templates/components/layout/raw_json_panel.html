@@ -6,7 +6,7 @@
     {% if block.data is not none %}
     <pre class="mb-0"><code>{{ block.data | tojson(indent=2) }}</code></pre>
     {% else %}
-    <div class="text-secondary">No data available.</div>
+    <div class="text-secondary">{% if locale == 'ru' %}Нет доступных данных.{% else %}No data available.{% endif %}</div>
     {% endif %}
   </div>
 </div>

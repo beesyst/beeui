@@ -22,6 +22,8 @@ from beeui_module.pages.component_catalog import register_component_catalog_rout
 from beeui_module.pages.config import load_beeui_config
 from beeui_module.pages.models import BeeUiConfig, BeeUiPage
 from beeui_module.pages.product_console import register_product_console_routes
+from beeui_module.pages.links import effective_external_prefix, prefix_internal_href
+from beeui_module.pages.locale import translate
 from beeui_module.pages.router import (
     register_adapter_custom_pages,
     register_configured_pages,
@@ -35,6 +37,10 @@ def _normalize_prefix(route_prefix: str) -> str:
     if not cleaned.startswith("/"):
         cleaned = f"/{cleaned}"
     return cleaned.rstrip("/")
+
+
+def _effective_route_prefix(request: Request, route_prefix: str) -> str:
+    return effective_external_prefix(request, route_prefix) or "/"
 
 
 def _resolve_page_route_mode(page: BeeUiPage, *, adapter_available: bool) -> str:
@@ -188,6 +194,8 @@ def create_beeui_app(
 
     templates = Jinja2Templates(directory=str(_resolve_templates_dir()))
     templates.env.autoescape = bool(security_cfg["html_autoescape"])
+    templates.env.globals["prefixed_internal_href"] = prefix_internal_href
+    templates.env.globals["translate"] = translate
 
     static_path = f"{route_prefix}/static" if route_prefix else "/static"
     app.mount(
@@ -204,6 +212,7 @@ def create_beeui_app(
     )
 
     app.state.beeui_adapter = adapter
+    app.state.beeui_ui_config = resolved_ui_config
     app.state.beeui_product = product_meta
     auth_cfg = dict(resolved_settings.get("auth", {}))
 
@@ -228,6 +237,16 @@ def create_beeui_app(
     @app.middleware("http")
     async def add_read_only_headers(request: Request, call_next):
         response = await call_next(request)
+
+        lang_param = request.query_params.get("lang")
+        if lang_param in resolved_ui_config.locale.available:
+            response.set_cookie(
+                key="beeui_lang",
+                value=lang_param,
+                max_age=31536000,
+                path=_effective_route_prefix(request, route_prefix),
+                samesite="lax",
+            )
 
         response.headers.setdefault("X-Content-Type-Options", "nosniff")
         response.headers.setdefault("X-Frame-Options", "DENY")

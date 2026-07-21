@@ -43,7 +43,7 @@ from beeui_module.pages.models import (
 
 _SAFE_IDENTIFIER_RE = re.compile(r"^[a-z][a-z0-9_-]*$")
 _SAFE_SEGMENT_RE = re.compile(r"^[a-z0-9][a-z0-9._-]*$")
-_THEME_MODES = {"light", "dark", "auto"}
+_THEME_MODES = {"auto", "system", "light", "dark"}
 _THEME_PRIMARYS = {
     "blue",
     "azure",
@@ -127,7 +127,12 @@ def load_beeui_config(config_path: Path) -> BeeUiConfig:
                 raise ValueError(
                     f"app.locale.available[{idx}] must be a non-empty string"
                 )
-            available.append(lang.strip())
+            normalized_lang = lang.strip()
+            if normalized_lang not in {"en", "ru"}:
+                raise ValueError(
+                    f"app.locale.available[{idx}] must be one of ['en', 'ru']"
+                )
+            available.append(normalized_lang)
         if locale_default not in available:
             raise ValueError(
                 f"app.locale.default ({locale_default}) must be in app.locale.available"
@@ -152,8 +157,9 @@ def load_beeui_config(config_path: Path) -> BeeUiConfig:
         {"mode", "primary", "base", "font", "radius", "density"},
         "app.theme",
     )
+    theme_mode = _required_enum(theme_cfg, "mode", "app.theme", _THEME_MODES)
     theme = ThemeConfig(
-        mode=_required_enum(theme_cfg, "mode", "app.theme", _THEME_MODES),
+        mode="system" if theme_mode == "auto" else theme_mode,
         primary=_required_enum(theme_cfg, "primary", "app.theme", _THEME_PRIMARYS),
         base=_required_enum(theme_cfg, "base", "app.theme", _THEME_BASES),
         font=_required_enum(theme_cfg, "font", "app.theme", _THEME_FONTS),

@@ -36,6 +36,8 @@
   {% include "components/layout/run_table.html" %}
 {% elif block.type == "data_table" %}
   {% include "components/layout/data_table.html" %}
+{% elif block.type == "filter_form" %}
+  {% include "components/layout/filter_form.html" %}
 {% elif block.type == "degraded" %}
   {% include "components/layout/degraded.html" %}
 {% endif %}

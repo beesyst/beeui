@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from typing import Any
-from urllib.parse import unquote, urlsplit
 
 from fastapi import Request
 from fastapi.responses import HTMLResponse
@@ -9,10 +8,12 @@ from fastapi.templating import Jinja2Templates
 
 from beeui_module.pages.links import (
     add_preserved_params_to_href,
-    is_safe_internal_href,
+    effective_external_prefix,
+    prefix_internal_href,
+    validate_internal_href,
     preserve_allowed_params,
 )
-from beeui_module.pages.locale import resolve_localized_text
+from beeui_module.pages.locale import resolve_localized_text, translate
 from beeui_module.pages.models import BeeUiConfig
 from beeui_module.pages.router import (
     _build_language_switcher,
@@ -30,33 +31,7 @@ ALLOWED_SECTION_KINDS: frozenset[str] = frozenset(
 
 
 def _validate_internal_href(href: Any) -> str | None:
-    if not isinstance(href, str):
-        return None
-
-    value = href.strip()
-    if not value:
-        return None
-    if not value.startswith("/"):
-        return None
-    if "\\" in value:
-        return None
-    if not is_safe_internal_href(value):
-        return None
-
-    try:
-        parsed = urlsplit(value)
-    except Exception:
-        return None
-
-    decoded_path = unquote(parsed.path)
-    if "\\" in decoded_path:
-        return None
-    if "//" in decoded_path:
-        return None
-    if any(part in {".", ".."} for part in decoded_path.split("/")):
-        return None
-
-    return value
+    return validate_internal_href(href)
 
 
 def _detail_preserved_params(
@@ -120,6 +95,26 @@ def _display_value(value: Any, default: str = "n/a") -> str:
     return default
 
 
+_ALLOWED_TONES: frozenset[str] = frozenset(
+    {"default", "muted", "success", "warning", "danger"}
+)
+_ALLOWED_VARIANTS: frozenset[str] = frozenset(
+    {"text", "badge", "boolean", "confidence", "long_text"}
+)
+
+
+def _safe_tone(value: Any) -> str:
+    if isinstance(value, str) and value in _ALLOWED_TONES:
+        return value
+    return "default"
+
+
+def _safe_variant(value: Any) -> str:
+    if isinstance(value, str) and value in _ALLOWED_VARIANTS:
+        return value
+    return "text"
+
+
 def _normalize_key_value_section(section: dict[str, Any]) -> dict[str, Any] | None:
     raw_items = section.get("items")
     if not isinstance(raw_items, list):
@@ -128,19 +123,38 @@ def _normalize_key_value_section(section: dict[str, Any]) -> dict[str, Any] | No
     for item in raw_items:
         if not isinstance(item, dict):
             continue
-        items.append(
-            {
-                "label": _display_value(item.get("label")),
-                "value": _display_value(item.get("value")),
-            }
-        )
+        normalized: dict[str, str] = {
+            "label": _display_value(item.get("label")),
+            "value": _display_value(item.get("value")),
+        }
+        explicit_variant = "variant" in item
+        if explicit_variant:
+            variant = _safe_variant(item.get("variant"))
+        else:
+            type_hint = item.get("type_hint")
+            variant = (
+                type_hint
+                if type_hint in {"long_text", "boolean", "confidence"}
+                else "text"
+            )
+        normalized["variant"] = variant
+        tone = _safe_tone(item.get("tone")) if explicit_variant or variant != "text" else "default"
+        normalized["tone"] = tone
+        display = item.get("display")
+        normalized["display"] = _display_value(display, default=normalized["value"])
+        normalized["collapsible"] = bool(item.get("collapsible", False)) and variant == "long_text"
+        items.append(normalized)
     if not items:
         return None
-    return {
+    result: dict[str, Any] = {
         "kind": "key_value",
         "title": _display_value(section.get("title"), default=""),
         "items": items,
     }
+    no_data = section.get("no_data")
+    if no_data:
+        result["no_data"] = True
+    return result
 
 
 def _normalize_text_section(section: dict[str, Any]) -> dict[str, Any] | None:
@@ -256,11 +270,11 @@ def normalize_sections(
     return normalized
 
 
-def normalize_detail_page(raw: dict[str, Any]) -> dict[str, Any]:
+def normalize_detail_page(raw: dict[str, Any], locale: str = "en") -> dict[str, Any]:
     if not isinstance(raw, dict):
         return {
             "page_id": "",
-            "title": "Unavailable",
+            "title": translate("detail.unavailable", locale),
             "subtitle": None,
             "back_href": None,
             "warnings": [],
@@ -301,25 +315,36 @@ def render_beeui_detail_page(
     product_title: str,
     product_id: str,
 ) -> HTMLResponse:
-    normalized = normalize_detail_page(page)
-
     locale = resolve_locale(request, ui_config.locale)
+    normalized = normalize_detail_page(page, locale=locale)
+
     theme = build_theme_context(ui_config)
     layout = build_layout_context(ui_config)
     shell_classes = build_shell_classes(theme, layout)
     current_params = _detail_preserved_params(request, locale, ui_config.locale.default)
+    external_prefix = effective_external_prefix(request, route_prefix)
 
     back_href = normalized["back_href"]
     if back_href:
         back_href = add_preserved_params_to_href(back_href, current_params)
+        if isinstance(back_href, str):
+            back_href = prefix_internal_href(external_prefix, back_href)
 
     sections = _apply_preserved_params_to_sections(
         normalized["sections"],
         current_params,
     )
+    for section in sections:
+        for item in section.get("items", []):
+            if (
+                isinstance(item, dict)
+                and isinstance(item.get("href"), str)
+                and item["href"]
+            ):
+                item["href"] = prefix_internal_href(external_prefix, item["href"])
 
     context = {
-        "route_prefix": route_prefix,
+        "route_prefix": external_prefix,
         "product_title": product_title,
         "product_id": product_id,
         "app_title": resolve_localized_text(
@@ -329,13 +354,14 @@ def render_beeui_detail_page(
             ui_config.logo_text, locale, ui_config.locale.default
         ),
         "locale": locale,
+        "translate": translate,
         "available_locales": list(ui_config.locale.available),
         "locale_cfg": ui_config.locale,
         "theme": theme,
         "layout": layout,
         "components": build_components_context(ui_config.components),
         "navigation": build_navigation(
-            route_prefix=route_prefix,
+            route_prefix=external_prefix,
             navigation=ui_config.navigation,
             active_path="",
             locale=locale,
@@ -343,7 +369,7 @@ def render_beeui_detail_page(
         ),
         "shell_classes": shell_classes,
         "language_switcher": _build_language_switcher(
-            request, ui_config.locale, route_prefix
+            request, ui_config.locale, external_prefix
         ),
         "page_title": normalized["title"],
         "page_subtitle": normalized["subtitle"],

@@ -9,6 +9,8 @@ from fastapi.templating import Jinja2Templates
 from beeui_module.auth.dependencies import require_session
 from beeui_module.auth.models import SessionData
 from beeui_module.auth.service import AuthService
+from beeui_module.pages.links import effective_external_prefix
+from beeui_module.pages.locale import resolve_locale as _resolve_locale, translate
 
 
 def register_auth_routes(
@@ -18,6 +20,29 @@ def register_auth_routes(
     route_prefix: str,
 ) -> None:
     router = APIRouter(prefix=route_prefix or "")
+
+    def _external_prefix(request: Request) -> str:
+        return effective_external_prefix(request, route_prefix)
+
+    def _root_href(request: Request) -> str:
+        return f"{_external_prefix(request)}/" if _external_prefix(request) else "/"
+
+    def _auth_locale(request: Request) -> str:
+        state = getattr(request.app, "state", None)
+        ui_config = getattr(state, "beeui_ui_config", None) if state else None
+        if ui_config is not None:
+            locale_cfg = getattr(ui_config, "locale", None)
+            if locale_cfg is not None:
+                return _resolve_locale(
+                    request, locale_cfg.default, locale_cfg.available
+                )
+        lang = request.query_params.get("lang")
+        if lang == "ru":
+            return "ru"
+        cookie_lang = request.cookies.get("beeui_lang")
+        if cookie_lang == "ru":
+            return "ru"
+        return "en"
 
     login_path = "/auth/login"
     logout_path = "/auth/logout"
@@ -37,7 +62,8 @@ def register_auth_routes(
                 name="login.html",
                 context={
                     "request": request,
-                    "route_prefix": route_prefix or "",
+                    "route_prefix": _external_prefix(request),
+                    "locale": _auth_locale(request),
                     "auth_disabled": True,
                     "error": None,
                 },
@@ -46,7 +72,7 @@ def register_auth_routes(
         session = _get_session_if_valid(request, service)
         if session is not None:
             return RedirectResponse(
-                url=f"{route_prefix or ''}/",
+                url=_root_href(request),
                 status_code=302,
             )
 
@@ -55,7 +81,8 @@ def register_auth_routes(
             name="login.html",
             context={
                 "request": request,
-                "route_prefix": route_prefix or "",
+                "route_prefix": _external_prefix(request),
+                "locale": _auth_locale(request),
                 "auth_disabled": False,
                 "error": None,
             },
@@ -71,9 +98,10 @@ def register_auth_routes(
                 name="login.html",
                 context={
                     "request": request,
-                    "route_prefix": route_prefix or "",
+                    "route_prefix": _external_prefix(request),
+                    "locale": _auth_locale(request),
                     "auth_disabled": True,
-                    "error": "Auth is disabled in local/dev mode",
+                    "error": translate("auth.disabled", _auth_locale(request)),
                 },
                 status_code=400,
             )
@@ -94,9 +122,10 @@ def register_auth_routes(
                     name="login.html",
                     context={
                         "request": request,
-                        "route_prefix": route_prefix or "",
-                        "auth_disabled": False,
-                        "error": "Invalid form data",
+                        "route_prefix": _external_prefix(request),
+                        "locale": _auth_locale(request),
+                    "auth_disabled": False,
+                        "error": translate("auth.invalid_form", _auth_locale(request)),
                     },
                     status_code=400,
                 )
@@ -122,9 +151,10 @@ def register_auth_routes(
                     name="login.html",
                     context={
                         "request": request,
-                        "route_prefix": route_prefix or "",
+                        "route_prefix": _external_prefix(request),
+                        "locale": _auth_locale(request),
                         "auth_disabled": False,
-                        "error": "User ID and token are required",
+                        "error": translate("auth.required", _auth_locale(request)),
                     },
                     status_code=400,
                 )
@@ -152,9 +182,10 @@ def register_auth_routes(
                     name="login.html",
                     context={
                         "request": request,
-                        "route_prefix": route_prefix or "",
+                        "route_prefix": _external_prefix(request),
+                        "locale": _auth_locale(request),
                         "auth_disabled": False,
-                        "error": "Invalid credentials",
+                        "error": "Неверные учётные данные" if _auth_locale(request) == 'ru' else "Invalid credentials",
                     },
                     status_code=401,
                 )
@@ -174,7 +205,7 @@ def register_auth_routes(
             )
 
         response = RedirectResponse(
-            url=f"{route_prefix or ''}/",
+            url=_root_href(request),
             status_code=302,
         )
         response.set_cookie(
@@ -184,7 +215,7 @@ def register_auth_routes(
             secure=service.cookie_secure,
             samesite="lax",
             max_age=86400,
-            path=route_prefix or "/",
+            path=_external_prefix(request) or "/",
         )
         return response
 
@@ -199,7 +230,7 @@ def register_auth_routes(
 
         if wants_html:
             response = RedirectResponse(
-                url=f"{route_prefix or ''}/auth/login",
+                url=f"{_external_prefix(request)}/auth/login",
                 status_code=302,
             )
         else:
@@ -216,7 +247,7 @@ def register_auth_routes(
 
         response.delete_cookie(
             key=service.cookie_name(),
-            path=route_prefix or "/",
+            path=_external_prefix(request) or "/",
         )
         return response
 

@@ -99,7 +99,7 @@
       </div>
       <div class="modal-body">{{ body }}</div>
       <div class="modal-footer">
-        {{ button(label='Close', tone='secondary') }}
+        {{ button(label='Закрыть' if locale == 'ru' else 'Close', tone='secondary') }}
       </div>
     </div>
   </div>
@@ -263,7 +263,7 @@
 {% macro pagination(page, total_pages) %}
 <ul class="pagination">
   <li class="page-item{% if page <= 1 %} disabled{% endif %}">
-    <span class="page-link">Prev</span>
+    <span class="page-link">{% if locale == 'ru' %}Назад{% else %}Prev{% endif %}</span>
   </li>
   <li class="page-item active">
     <span class="page-link">{{ page }}</span>
@@ -272,7 +272,7 @@
     <span class="page-link">/{{ total_pages }}</span>
   </li>
   <li class="page-item{% if page >= total_pages %} disabled{% endif %}">
-    <span class="page-link">Next</span>
+    <span class="page-link">{% if locale == 'ru' %}Вперёд{% else %}Next{% endif %}</span>
   </li>
 </ul>
 {% endmacro %}
@@ -334,7 +334,7 @@
 >
   <h4 class="mb-1">{{ title }}</h4>
   <p class="text-secondary mb-0">
-    Inert placeholder. No runtime chart library is loaded.
+    {% if locale == 'ru' %}Неактивный заполнитель. Библиотека графиков не загружена.{% else %}Inert placeholder. No runtime chart library is loaded.{% endif %}
   </p>
 </div>
 {% endmacro %}
@@ -347,7 +347,7 @@
 >
   <h4 class="mb-1">{{ title }}</h4>
   <p class="text-secondary mb-0">
-    Inert placeholder. No external maps provider is loaded.
+    {% if locale == 'ru' %}Неактивный заполнитель. Внешний картографический провайдер не загружен.{% else %}Inert placeholder. No external maps provider is loaded.{% endif %}
   </p>
 </div>
 {% endmacro %}
@@ -360,7 +360,7 @@
 >
   <h4 class="mb-1">{{ title }}</h4>
   <p class="text-secondary mb-0">
-    Inert placeholder. No external datatable plugin is loaded.
+    {% if locale == 'ru' %}Неактивный заполнитель. Внешний плагин таблиц не загружен.{% else %}Inert placeholder. No external datatable plugin is loaded.{% endif %}
   </p>
 </div>
 {% endmacro %}

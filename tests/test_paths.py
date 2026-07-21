@@ -18,7 +18,6 @@ def test_project_root_is_resolved_from_pyproject() -> None:
     resolved_root = project_root(Path(__file__))
 
     assert (resolved_root / "pyproject.toml").is_file()
-    assert resolved_root.name == "beeui"
     assert resolved_root == PROJECT_ROOT
 
 

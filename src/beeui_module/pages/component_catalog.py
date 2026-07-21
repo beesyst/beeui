@@ -6,7 +6,10 @@ from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
-from beeui_module.pages.links import add_preserved_params_to_href
+from beeui_module.pages.links import (
+    add_preserved_params_to_href,
+    effective_external_prefix,
+)
 from beeui_module.pages.locale import resolve_localized_text
 from beeui_module.pages.models import BeeUiConfig
 from beeui_module.pages.router import (
@@ -48,7 +51,24 @@ def _catalog_sections_for_locale(
     if locale == default_locale:
         return sections
 
-    for section in sections.values():
+    ru_titles = {
+        "interface": "Примитивы интерфейса",
+        "forms": "Примитивы форм",
+        "layout": "Примитивы макета",
+        "extra": "Дополнительные примитивы",
+        "plugins": "Заполнители плагинов",
+    }
+    ru_descriptions = {
+        "interface": "Уведомления, значки, кнопки, вкладки и базовая оболочка компонентов.",
+        "forms": "Контролируемые примитивы форм только для чтения для будущих форм.",
+        "layout": "Карточки, заголовки, хлебные крошки и пагинация в едином стиле.",
+        "extra": "Модальные окна, offcanvas, toast и заполнители аватаров.",
+        "plugins": "Неактивные контейнеры для интеграции графиков, карт и таблиц.",
+    }
+
+    for section_id, section in sections.items():
+        section["title"] = ru_titles.get(section_id, section["title"])
+        section["description"] = ru_descriptions.get(section_id, section["description"])
         section["href"] = add_preserved_params_to_href(
             section["href"],
             {"lang": locale},
@@ -78,12 +98,13 @@ def register_component_catalog_routes(
 
     async def render_catalog_index(request: Request) -> HTMLResponse:
         locale = resolve_locale(request, ui_config.locale)
+        external_prefix = effective_external_prefix(request, route_prefix)
         catalog_sections = _catalog_sections_for_locale(
-            route_prefix,
+            external_prefix,
             locale,
             ui_config.locale.default,
         )
-        samples = _catalog_samples(route_prefix)
+        samples = _catalog_samples(external_prefix)
         samples["active_url_tab"] = _resolve_url_tab(
             request,
             samples["tabs"],
@@ -93,7 +114,7 @@ def register_component_catalog_routes(
             request=request,
             name="components/catalog/index.html",
             context={
-                "route_prefix": route_prefix,
+                "route_prefix": external_prefix,
                 "product_title": product_title,
                 "product_id": product_id,
                 "app_title": resolve_localized_text(
@@ -105,19 +126,19 @@ def register_component_catalog_routes(
                 "available_locales": list(ui_config.locale.available),
                 "locale_cfg": ui_config.locale,
                 "language_switcher": _build_language_switcher(
-                    request, ui_config.locale, route_prefix
+                    request, ui_config.locale, external_prefix
                 ),
                 "locale": locale,
                 "theme": theme,
                 "layout": layout,
                 "page": {
-                    "title": "Component Catalog",
-                    "subtitle": "Internal read-only Tabler-compatible primitives",
+                    "title": "Каталог компонентов" if locale == "ru" else "Component Catalog",
+                    "subtitle": "Внутренние примитивы только для чтения, совместимые с Tabler" if locale == "ru" else "Internal read-only Tabler-compatible primitives",
                 },
-                "page_title": "Component Catalog",
-                "page_subtitle": "Internal read-only Tabler-compatible primitives",
+                "page_title": "Каталог компонентов" if locale == "ru" else "Component Catalog",
+                "page_subtitle": "Внутренние примитивы только для чтения, совместимые с Tabler" if locale == "ru" else "Internal read-only Tabler-compatible primitives",
                 "navigation": _catalog_navigation(
-                    route_prefix=route_prefix,
+                    route_prefix=external_prefix,
                     ui_config=ui_config,
                     active_path="/components",
                     locale=locale,
@@ -145,13 +166,14 @@ def register_component_catalog_routes(
             request: Request, _section: dict[str, str] = section
         ) -> HTMLResponse:
             locale = resolve_locale(request, ui_config.locale)
+            external_prefix = effective_external_prefix(request, route_prefix)
             catalog_sections = _catalog_sections_for_locale(
-                route_prefix,
+                external_prefix,
                 locale,
                 ui_config.locale.default,
             )
             catalog_section = catalog_sections[_section["id"]]
-            samples = _catalog_samples(route_prefix)
+            samples = _catalog_samples(external_prefix)
             samples["active_url_tab"] = _resolve_url_tab(
                 request,
                 samples["tabs"],
@@ -161,7 +183,7 @@ def register_component_catalog_routes(
                 request=request,
                 name="components/catalog/page.html",
                 context={
-                    "route_prefix": route_prefix,
+                    "route_prefix": external_prefix,
                     "product_title": product_title,
                     "product_id": product_id,
                     "app_title": resolve_localized_text(
@@ -173,19 +195,19 @@ def register_component_catalog_routes(
                     "available_locales": list(ui_config.locale.available),
                     "locale_cfg": ui_config.locale,
                     "language_switcher": _build_language_switcher(
-                        request, ui_config.locale, route_prefix
+                        request, ui_config.locale, external_prefix
                     ),
                     "locale": locale,
                     "theme": theme,
                     "layout": layout,
                     "page": {
-                        "title": _section["title"],
-                        "subtitle": _section["description"],
+                        "title": catalog_section["title"],
+                        "subtitle": catalog_section["description"],
                     },
-                    "page_title": _section["title"],
-                    "page_subtitle": _section["description"],
+                    "page_title": catalog_section["title"],
+                    "page_subtitle": catalog_section["description"],
                     "navigation": _catalog_navigation(
-                        route_prefix=route_prefix,
+                        route_prefix=external_prefix,
                         ui_config=ui_config,
                         active_path=_section["path"],
                         locale=locale,
@@ -278,7 +300,7 @@ def _catalog_navigation(
         )
     navigation.append(
         {
-            "title": "Components",
+            "title": "Компоненты" if locale == "ru" else "Components",
             "path": None,
             "href": None,
             "icon": "components",
@@ -287,7 +309,7 @@ def _catalog_navigation(
             "disabled": False,
             "children": [
                 {
-                    "title": "Catalog index",
+                    "title": "Каталог" if locale == "ru" else "Catalog index",
                     "path": "/components",
                     "href": catalog_index_href,
                     "icon": None,

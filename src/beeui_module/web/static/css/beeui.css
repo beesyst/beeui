@@ -1,24 +1,56 @@
 :root {
-  --beeui-sidebar-bg: #f7f9fc;
-  --beeui-sidebar-border: #dbe2ea;
+  --beeui-body-bg: #f4f6fb;
+  --beeui-body-bg-secondary: #eef1f7;
   --beeui-surface: #ffffff;
-  --beeui-accent: #206bc4;
-  --beeui-accent-soft: rgba(var(--tblr-primary-rgb), 0.12);
+  --beeui-surface-hover: #f8f9fe;
+  --beeui-sidebar-bg: #e6eaf2;
+  --beeui-sidebar-border: #d9dfeb;
+  --beeui-accent: #4f46e5;
+  --beeui-accent-hover: #4338ca;
+  --beeui-accent-soft: rgba(79, 70, 229, 0.08);
+  --beeui-accent-soft-hover: rgba(79, 70, 229, 0.14);
+  --beeui-text: #0b121f;
+  --beeui-text-secondary: #5b6779;
+  --beeui-text-muted: #909cad;
+  --beeui-border: #e0e6ef;
+  --beeui-border-light: #eef1f7;
+  --beeui-card-shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 2px 4px rgba(0, 0, 0, 0.02);
+  --beeui-card-shadow-hover: 0 4px 12px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.04);
+  --beeui-sidebar-shadow: inset -1px 0 0 var(--beeui-sidebar-border);
   --beeui-radius: 0.65rem;
   --beeui-page-gap: 1rem;
   --beeui-sidebar-width: 18rem;
 }
 
-:root[data-bs-theme="dark"] {
-  --beeui-sidebar-bg: #0b1220;
-  --beeui-sidebar-border: #334155;
-  --beeui-surface: #111827;
-  --beeui-accent: #6ea8fe;
-  --beeui-accent-soft: rgba(var(--tblr-primary-rgb), 0.18);
+[data-bs-theme="dark"] {
+  --beeui-body-bg: #141720;
+  --beeui-body-bg-secondary: #181b26;
+  --beeui-surface: #1d202d;
+  --beeui-surface-hover: #222637;
+  --beeui-sidebar-bg: #0d0f18;
+  --beeui-sidebar-border: #262a3c;
+  --beeui-accent: #818cf8;
+  --beeui-accent-hover: #6d78f0;
+  --beeui-accent-soft: rgba(129, 140, 248, 0.1);
+  --beeui-accent-soft-hover: rgba(129, 140, 248, 0.18);
+  --beeui-text: #e2e8f0;
+  --beeui-text-secondary: #94a3b8;
+  --beeui-text-muted: #64748b;
+  --beeui-border: #262a3c;
+  --beeui-border-light: #202436;
+  --beeui-card-shadow: 0 1px 2px rgba(0, 0, 0, 0.25), 0 2px 8px rgba(0, 0, 0, 0.2);
+  --beeui-card-shadow-hover: 0 4px 16px rgba(0, 0, 0, 0.35), 0 2px 4px rgba(0, 0, 0, 0.25);
+  --beeui-sidebar-shadow: inset -1px 0 0 var(--beeui-sidebar-border);
 }
 
-.beeui-theme-mode-light,
-.beeui-theme-mode-dark,
+.beeui-theme-mode-light {
+  color-scheme: light;
+}
+
+.beeui-theme-mode-dark {
+  color-scheme: dark;
+}
+
 .beeui-theme-mode-auto {
   color-scheme: auto;
 }
@@ -140,61 +172,108 @@
   display: none;
 }
 
-body {
-  background:
-    radial-gradient(circle at 8% 0%, rgba(var(--tblr-primary-rgb), 0.18), transparent 32%),
-    var(--tblr-body-bg);
+/* ─── Global transitions ─── */
+*,
+*::before,
+*::after {
+  transition: background-color 0.25s ease,
+    color 0.25s ease,
+    border-color 0.25s ease,
+    box-shadow 0.25s ease;
 }
 
+@media (prefers-reduced-motion: reduce) {
+
+  *,
+  *::before,
+  *::after {
+    transition: none;
+  }
+}
+
+/* ─── Body ─── */
+body {
+  background:
+    radial-gradient(circle at 30% 0%, rgba(79, 70, 229, 0.035), transparent 60%),
+    var(--beeui-body-bg);
+}
+
+[data-bs-theme="dark"] body {
+  background:
+    radial-gradient(circle at 30% 0%, rgba(129, 140, 248, 0.06), transparent 55%),
+    radial-gradient(circle at 70% 100%, rgba(129, 140, 248, 0.03), transparent 45%),
+    var(--beeui-body-bg);
+}
+
+/* ─── Sidebar ─── */
 .beeui-sidebar {
   border-right: 1px solid var(--beeui-sidebar-border);
-  background: linear-gradient(180deg, var(--beeui-sidebar-bg), color-mix(in srgb, var(--beeui-sidebar-bg), #dbe2ea 7%));
+  background: var(--beeui-sidebar-bg);
+  box-shadow: var(--beeui-sidebar-shadow);
+}
+
+.beeui-sidebar .navbar-brand {
+  padding-bottom: 0.75rem;
+  margin-bottom: 0.25rem;
+  border-bottom: 1px solid var(--beeui-sidebar-border);
 }
 
 .navbar-brand a {
   color: inherit;
   text-decoration: none;
   font-size: 1.1rem;
+  font-weight: 700;
 }
 
 .beeui-sidebar .navbar-nav {
-  gap: 0.4rem;
+  gap: 0.25rem;
 }
 
 .sidebar__link {
   border-radius: var(--beeui-radius);
-  padding: 0.55rem 0.7rem;
-  color: var(--tblr-body-color);
-  font-weight: 600;
+  padding: 0.5rem 0.7rem;
+  color: var(--beeui-text);
+  font-weight: 500;
+  font-size: 0.9rem;
+  border-left: 3px solid transparent;
 }
 
 .sidebar__link:hover {
-  background: color-mix(in srgb, var(--beeui-accent-soft), transparent 22%);
+  background: var(--beeui-accent-soft-hover);
+  color: var(--beeui-accent);
 }
 
 .sidebar__link.is-active {
   background: var(--beeui-accent-soft);
   color: var(--beeui-accent);
+  font-weight: 600;
+  border-left-color: var(--beeui-accent);
 }
 
 .beeui-nav-group-title {
   cursor: default;
-  opacity: 0.92;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--beeui-text-muted);
+  padding: 0.5rem 0.7rem 0.25rem !important;
 }
 
 .beeui-nav-disabled {
-  opacity: 0.48;
+  opacity: 0.4;
   pointer-events: none;
 }
 
 .beeui-nav-children {
   margin-left: 0.6rem;
-  margin-top: 0.25rem;
+  margin-top: 0.15rem;
 }
 
+/* ─── Navbar ─── */
 .beeui-navbar {
-  border-bottom: 1px solid var(--tblr-border-color);
-  background: color-mix(in srgb, var(--beeui-surface), #eaf1fb 8%);
+  border-bottom: 1px solid var(--beeui-border);
+  background: color-mix(in srgb, var(--beeui-surface), var(--beeui-accent) 2%);
 }
 
 .beeui-card-title {
@@ -202,21 +281,109 @@ body {
   margin-bottom: 0.5rem;
 }
 
+/* ─── Card / Block refinements ─── */
 .beeui-empty-state {
-  border: 1px dashed var(--tblr-border-color);
+  border: 1px dashed var(--beeui-border);
   border-radius: var(--beeui-radius);
-  background: color-mix(in srgb, var(--beeui-surface), #f1f5fb 10%);
+  background: color-mix(in srgb, var(--beeui-surface), var(--beeui-accent) 2%);
 }
 
 .beeui-block {
   height: 100%;
-  border: 1px solid var(--tblr-border-color);
+  border: 1px solid var(--beeui-border);
   border-radius: var(--beeui-radius);
-  background: color-mix(in srgb, var(--beeui-surface), #f8faff 4%);
+  background: var(--beeui-surface);
+  box-shadow: var(--beeui-card-shadow);
+  transition: box-shadow 0.25s ease;
+}
+
+.beeui-block:hover {
+  box-shadow: var(--beeui-card-shadow-hover);
 }
 
 .beeui-block .card-header {
-  background: color-mix(in srgb, var(--beeui-surface), #eef3fb 7%);
+  background: color-mix(in srgb, var(--beeui-surface), var(--beeui-accent) 2%);
+  border-bottom: 1px solid var(--beeui-border-light);
+}
+
+/* ─── Chart card refinements ─── */
+.beeui-chart-card {
+  height: 100%;
+  border: 1px solid var(--beeui-border);
+  border-radius: var(--beeui-radius);
+  background: var(--beeui-surface);
+  box-shadow: var(--beeui-card-shadow);
+  transition: box-shadow 0.25s ease;
+  overflow: hidden;
+}
+
+.beeui-chart-card:hover {
+  box-shadow: var(--beeui-card-shadow-hover);
+}
+
+.beeui-chart-card .card-header {
+  background: color-mix(in srgb, var(--beeui-surface), var(--beeui-accent) 2%);
+  border-bottom: 1px solid var(--beeui-border-light);
+  padding: 0.75rem 1rem;
+}
+
+.beeui-chart-card .card-body {
+  padding: 0.5rem 1rem 0.75rem;
+}
+
+.beeui-chart-card .card-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.beeui-chart-card .apexcharts-canvas {
+  margin: 0 auto;
+}
+
+.beeui-chart-card .apexcharts-text tspan {
+  font-family: inherit;
+}
+
+/* ApexCharts dark mode overrides via CSS */
+[data-bs-theme="dark"] .beeui-chart-card .apexcharts-grid line {
+  stroke: rgba(255, 255, 255, 0.05);
+}
+
+[data-bs-theme="dark"] .beeui-chart-card .apexcharts-grid-borders line {
+  stroke: rgba(255, 255, 255, 0.08);
+}
+
+[data-bs-theme="dark"] .beeui-chart-card .apexcharts-tooltip {
+  background: var(--beeui-surface) !important;
+  border: 1px solid var(--beeui-border) !important;
+  color: var(--beeui-text) !important;
+}
+
+[data-bs-theme="dark"] .beeui-chart-card .apexcharts-tooltip-title {
+  background: var(--beeui-surface-hover) !important;
+  border-bottom: 1px solid var(--beeui-border) !important;
+}
+
+[data-bs-theme="dark"] .beeui-chart-card .apexcharts-xaxis-label tspan,
+[data-bs-theme="dark"] .beeui-chart-card .apexcharts-yaxis-label tspan {
+  fill: var(--beeui-text-secondary) !important;
+}
+
+[data-bs-theme="dark"] .beeui-chart-card .apexcharts-legend-text {
+  color: var(--beeui-text-secondary) !important;
+}
+
+/* Chart kind badge */
+.beeui-chart-kind-badge {
+  font-size: 0.65rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--beeui-surface), var(--beeui-accent) 6%);
+  color: var(--beeui-text-muted);
+  border: 1px solid var(--beeui-border-light);
 }
 
 .beeui-block-state {
@@ -248,9 +415,11 @@ body {
 }
 
 .beeui-kpi-item {
-  border: 1px solid var(--tblr-border-color);
+  border: 1px solid var(--beeui-border);
   border-radius: var(--beeui-radius);
   padding: 0.6rem 0.7rem;
+  background: var(--beeui-surface);
+  box-shadow: var(--beeui-card-shadow);
 }
 
 .beeui-kpi-value {
@@ -317,6 +486,42 @@ body {
   vertical-align: middle;
 }
 
+.beeui-table-card th {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--beeui-text-secondary);
+}
+
+.beeui-table-card tbody tr:hover {
+  background: var(--beeui-accent-soft);
+}
+
+/* ─── Data table refinements ─── */
+.beeui-data-table .table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: color-mix(in srgb, var(--beeui-surface), var(--beeui-accent) 3%);
+  box-shadow: 0 1px 0 var(--beeui-border);
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--beeui-text-secondary);
+  padding: 0.6rem 0.75rem;
+}
+
+.beeui-data-table .table tbody tr:hover {
+  background: var(--beeui-accent-soft);
+}
+
+.beeui-data-table .table td {
+  padding: 0.5rem 0.75rem;
+  vertical-align: middle;
+}
+
 .beeui-footer {
   background: transparent;
   border-top: 0;
@@ -336,6 +541,94 @@ body {
   display: block;
   float: none;
   margin-top: 0.5rem;
+}
+
+/* Collapsible text via <details> in detail page key_value sections */
+.beeui-details-summary {
+  cursor: pointer;
+  color: var(--tblr-secondary);
+  font-size: 0.8rem;
+  font-weight: 600;
+  user-select: none;
+  transition: color 0.15s;
+}
+
+.beeui-details-summary:hover {
+  color: var(--tblr-primary);
+}
+
+.beeui-details[open] .beeui-details-summary {
+  color: var(--tblr-primary);
+}
+
+.beeui-details-content {
+  margin-top: 0.5rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 0.875rem;
+}
+
+/* No-data placeholder for empty sections */
+.beeui-no-data {
+  font-style: italic;
+  font-size: 0.875rem;
+  opacity: 0.7;
+  padding: 0.25rem 0;
+}
+
+/* Text break for long values in datagrid */
+.beeui-text-break {
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+
+/* Visual badges for key_value items */
+.beeui-badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.15rem 0.6rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  line-height: 1.4;
+}
+
+.beeui-badge-danger {
+  color: #fff;
+  background: var(--tblr-danger);
+}
+
+.beeui-badge-warning {
+  color: #000;
+  background: var(--tblr-warning);
+}
+
+.beeui-badge-success {
+  color: #fff;
+  background: var(--tblr-success);
+}
+
+.beeui-badge-yes {
+  color: #fff;
+  background: var(--tblr-success);
+}
+
+.beeui-badge-no {
+  color: var(--tblr-secondary);
+  background: var(--tblr-secondary-bg);
+  font-size: 0.72rem;
+}
+
+/* Confidence: low values highlighted */
+.beeui-confidence-low {
+  color: var(--tblr-danger);
+  font-weight: 600;
+}
+
+.beeui-confidence-ok {
+  color: var(--tblr-success);
 }
 
 .beeui-catalog-modal-shell {
@@ -360,10 +653,101 @@ body {
 .beeui-plugin-placeholder {
   height: 100%;
   min-height: 10rem;
-  border: 1px dashed var(--tblr-border-color);
+  border: 1px dashed var(--beeui-border);
   border-radius: var(--beeui-radius);
   padding: 1rem;
-  background: color-mix(in srgb, var(--beeui-surface), #f0f5fc 10%);
+  background: color-mix(in srgb, var(--beeui-surface), var(--beeui-accent) 2%);
+}
+
+/* ─── Pre / code blocks ─── */
+html[data-bs-theme] pre,
+html[data-bs-theme] code {
+  background: color-mix(in srgb, var(--beeui-surface), var(--beeui-accent) 2%) !important;
+  color: var(--beeui-text) !important;
+  border-radius: var(--beeui-radius);
+}
+
+html[data-bs-theme] pre {
+  padding: 1rem;
+  border: 1px solid var(--beeui-border-light);
+}
+
+html[data-bs-theme] code {
+  padding: 0.15rem 0.3rem;
+}
+
+/* ─── Focus rings ─── */
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+button:focus-visible,
+a:focus-visible {
+  outline: 2px solid var(--beeui-accent);
+  outline-offset: 2px;
+}
+
+/* ─── Theme selector — 3 icon buttons ─── */
+.beeui-theme-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 0.7rem;
+  margin-top: 0.5rem;
+  border-top: 1px solid var(--beeui-sidebar-border);
+}
+
+.beeui-theme-toggle-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--beeui-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  flex-shrink: 0;
+}
+
+.beeui-theme-toggle-group {
+  display: flex;
+  gap: 0.2rem;
+  margin-left: auto;
+  background: color-mix(in srgb, var(--beeui-sidebar-bg), #000 4%);
+  border-radius: 0.5rem;
+  padding: 0.2rem;
+}
+
+.beeui-theme-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: none;
+  border-radius: 0.4rem;
+  background: transparent;
+  color: var(--beeui-text-muted);
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+  flex-shrink: 0;
+}
+
+.beeui-theme-toggle-btn:hover {
+  background: var(--beeui-accent-soft);
+  color: var(--beeui-accent);
+}
+
+.beeui-theme-toggle-btn.is-active {
+  background: var(--beeui-surface);
+  color: var(--beeui-accent);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+[data-bs-theme="dark"] .beeui-theme-toggle-btn.is-active {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.beeui-theme-toggle-btn svg {
+  width: 1.1rem;
+  height: 1.1rem;
 }
 
 @media (max-width: 991px) {

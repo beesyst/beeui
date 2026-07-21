@@ -1,7 +1,11 @@
 app:
-  title: BeeUI Demo
+  title:
+    en: BeeUI Demo
+    ru: BeeUI Демо
   product: demo
-  logo_text: BeeUI
+  logo_text:
+    en: BeeUI
+    ru: BeeUI
   locale:
     default: en
     available:
@@ -26,15 +30,23 @@ app:
       sticky: false
 
 navigation:
-  - title: Workspace
+  - title:
+      en: Workspace
+      ru: Рабочее пространство
     children:
-      - title: Dashboard
+      - title:
+          en: Dashboard
+          ru: Панель управления
         path: /
         icon: dashboard
-      - title: Runs
+      - title:
+          en: Runs
+          ru: Запуски
         path: /runs
         icon: runs
-      - title: Reports
+      - title:
+          en: Reports
+          ru: Отчёты
         icon: reports
         disabled: true
 
@@ -102,8 +114,12 @@ blocks:
 pages:
   - id: dashboard
     path: /
-    title: Dashboard
-    subtitle: Demo operator dashboard
+    title:
+      en: Dashboard
+      ru: Панель управления
+    subtitle:
+      en: Demo operator dashboard
+      ru: Демо-панель оператора
     blocks:
       - block: latest_run
         width: 3
@@ -124,6 +140,10 @@ pages:
 
   - id: runs
     path: /runs
-    title: Runs
-    subtitle: Placeholder page for future run overview
+    title:
+      en: Runs
+      ru: Запуски
+    subtitle:
+      en: Placeholder page for future run overview
+      ru: Страница-заполнитель для будущего обзора запусков
     blocks: []

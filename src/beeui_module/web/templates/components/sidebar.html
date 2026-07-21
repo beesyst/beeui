@@ -135,5 +135,57 @@
 
       {{ render_items(navigation) }}
     </div>
+
+    <div class="beeui-theme-toggle" id="beeui-theme-buttons">
+      <span class="beeui-theme-toggle-label">{{ translate("theme.label", locale) }}</span>
+      <div class="beeui-theme-toggle-group">
+        <button
+          type="button"
+          class="beeui-theme-toggle-btn"
+          data-theme-mode="system"
+          onclick="beeuiSetTheme('system')"
+          aria-label="{{ translate("theme.system_aria", locale) }}"
+          title="{{ translate("theme.system", locale) }}"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
+            <path d="M8 21h8" />
+            <path d="M12 17v4" />
+          </svg>
+        </button>
+        <button
+          type="button"
+          class="beeui-theme-toggle-btn"
+          data-theme-mode="light"
+          onclick="beeuiSetTheme('light')"
+          aria-label="{{ translate("theme.light_aria", locale) }}"
+          title="{{ translate("theme.light", locale) }}"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="5" />
+            <path d="M12 1v2" />
+            <path d="M12 21v2" />
+            <path d="M4.22 4.22l1.42 1.42" />
+            <path d="M18.36 18.36l1.42 1.42" />
+            <path d="M1 12h2" />
+            <path d="M21 12h2" />
+            <path d="M4.22 19.78l1.42-1.42" />
+            <path d="M18.36 5.64l1.42-1.42" />
+          </svg>
+        </button>
+        <button
+          type="button"
+          class="beeui-theme-toggle-btn"
+          data-theme-mode="dark"
+          onclick="beeuiSetTheme('dark')"
+          aria-label="{{ translate("theme.dark_aria", locale) }}"
+          title="{{ translate("theme.dark", locale) }}"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+          </svg>
+        </button>
+      </div>
+    </div>
   </div>
 </aside>

@@ -1,18 +1,18 @@
 {% if error %}
 <div class="alert alert-danger" role="alert">
-  <h4 class="alert-title">Error</h4>
+  <h4 class="alert-title">{% if locale == 'ru' %}Ошибка{% else %}Error{% endif %}</h4>
   <p class="mb-0">{{ error }}</p>
 </div>
 {% elif status != "ok" %}
 <div class="alert alert-warning" role="alert">
-  <h4 class="alert-title">Partial data</h4>
-  <p class="mb-0">Adapter returned degraded or partial data.</p>
+  <h4 class="alert-title">{% if locale == 'ru' %}Неполные данные{% else %}Partial data{% endif %}</h4>
+  <p class="mb-0">{% if locale == 'ru' %}Адаптер вернул повреждённые или неполные данные.{% else %}Adapter returned degraded or partial data.{% endif %}</p>
 </div>
 {% endif %}
 
 {% if warnings %}
 <div class="card mb-3">
-  <div class="card-header"><h3 class="card-title">Warnings</h3></div>
+  <div class="card-header"><h3 class="card-title">{% if locale == 'ru' %}Предупреждения{% else %}Warnings{% endif %}</h3></div>
   <div class="list-group list-group-flush">
     {% for warning in warnings %}
     <div class="list-group-item">

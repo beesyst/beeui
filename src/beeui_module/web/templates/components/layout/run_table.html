@@ -3,7 +3,7 @@
     <h3 class="card-title">{{ block.title }}</h3>
     {% if block.filters %}
       <div class="card-actions">
-        <input type="text" class="form-control" placeholder="Filter..." disabled>
+        <input type="text" class="form-control" placeholder="{% if locale == 'ru' %}Фильтр...{% else %}Filter...{% endif %}" disabled>
       </div>
     {% endif %}
   </div>
@@ -50,7 +50,7 @@
           {% endfor %}
         {% else %}
           <tr>
-            <td colspan="{{ block.columns | length if block.columns else 1 }}" class="text-secondary">No runs available.</td>
+            <td colspan="{{ block.columns | length if block.columns else 1 }}" class="text-secondary">{% if locale == 'ru' %}Нет доступных запусков.{% else %}No runs available.{% endif %}</td>
           </tr>
         {% endif %}
       </tbody>

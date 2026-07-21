@@ -8,13 +8,13 @@
 
     {% if back_href %}
     <div class="mb-3">
-      <a href="{{ route_prefix }}{{ back_href }}" class="btn btn-ghost-secondary btn-sm">
+      <a href="{{ back_href }}" class="btn btn-ghost-secondary btn-sm">
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-1">
           <path d="M5 12l14 0" />
           <path d="M5 12l6 6" />
           <path d="M5 12l6 -6" />
         </svg>
-        Back
+        {% if locale == 'ru' %}Назад{% else %}Back{% endif %}
       </a>
     </div>
     {% endif %}
@@ -38,16 +38,61 @@
               <h3 class="card-title">{{ section["title"] }}</h3>
             </div>
             {% endif %}
+
+            {% if section.get("no_data") %}
+            <div class="card-body">
+              <div class="text-secondary beeui-no-data">
+                {% if locale == 'ru' %}Не использовалось{% else %}Not used{% endif %}
+              </div>
+            </div>
+            {% else %}
             <div class="card-body">
               <div class="datagrid">
                 {% for item in section["items"] %}
                 <div class="datagrid-item">
                   <div class="datagrid-title">{{ item["label"] }}</div>
-                  <div class="datagrid-content">{{ item["value"] }}</div>
+                  <div class="datagrid-content beeui-text-break">
+                    {% set variant = item.get("variant", "text") %}
+                    {% set tone = item.get("tone", "default") %}
+                    {% if variant == "long_text" and item.get("collapsible") %}
+                    <details class="beeui-details">
+                      <summary class="beeui-details-summary">
+                        {{ translate("detail.show_text", locale) }}
+                      </summary>
+                      <div class="beeui-details-content">{{ item["display"] }}</div>
+                    </details>
+                    {% elif variant == "badge" and tone in ("success", "warning", "danger") %}
+                    <span class="badge bg-{{ tone }}-lt">{{ item["display"] }}</span>
+                    {% elif variant == "boolean" %}
+                    <span>{{ item["display"] }}</span>
+                    {% elif variant == "confidence" %}
+                    <span>{{ item["display"] }}</span>
+                    {% elif item["display"] | length > 300 %}
+                    <details class="beeui-details">
+                      <summary class="beeui-details-summary">
+                        {{ translate("detail.show_text", locale) }}
+                      </summary>
+                      <div class="beeui-details-content">{{ item["display"] }}</div>
+                    </details>
+                    {% elif variant == "badge" %}
+                    <span class="badge bg-secondary-lt">{{ item["display"] }}</span>
+                    {% elif tone == "muted" %}
+                    <span class="text-secondary">{{ item["display"] }}</span>
+                    {% elif tone == "success" %}
+                    <span class="text-success">{{ item["display"] }}</span>
+                    {% elif tone == "warning" %}
+                    <span class="text-warning">{{ item["display"] }}</span>
+                    {% elif tone == "danger" %}
+                    <span class="text-danger">{{ item["display"] }}</span>
+                    {% else %}
+                    {{ item["display"] }}
+                    {% endif %}
+                  </div>
                 </div>
                 {% endfor %}
               </div>
             </div>
+            {% endif %}
           </div>
         </div>
 
@@ -107,7 +152,7 @@
             <div class="list-group list-group-flush">
               {% for item in section["items"] %}
                 {% if item["href"] %}
-                <a href="{{ route_prefix }}{{ item["href"] }}" class="list-group-item list-group-item-action">
+                <a href="{{ item["href"] }}" class="list-group-item list-group-item-action">
                   {{ item["label"] }}
                 </a>
                 {% else %}
@@ -124,8 +169,8 @@
 
     {% else %}
     <div class="empty">
-      <div class="empty-header">No content</div>
-      <p class="empty-subtitle text-secondary">No sections available for this page.</p>
+      <div class="empty-header">{% if locale == 'ru' %}Нет содержимого{% else %}No content{% endif %}</div>
+      <p class="empty-subtitle text-secondary">{% if locale == 'ru' %}Для этой страницы нет разделов.{% else %}No sections available for this page.{% endif %}</p>
     </div>
     {% endif %}
 

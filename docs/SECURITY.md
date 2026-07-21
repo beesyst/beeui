@@ -197,7 +197,24 @@ Safe practice:
 - never serialize raw secrets into JSON/JSONL;
 - never expose sensitive request headers.
 
-### 5. Logs must be useful but safe
+### 5. Locale cookie is a user preference, not a security token
+
+Starting from Iteration 13.9:
+
+- `beeui_lang` cookie is a user-preference cache, not a config source of truth.
+- Cookie value is validated against `app.locale.available` before setting and reading.
+- Invalid locale values are rejected — no cookie is set for invalid values.
+- `samesite="lax"` prevents CSRF-style locale manipulation from external sites.
+- Cookie path matches the configured `route_prefix`.
+- Locale does not affect auth decisions, RBAC, or product behavior.
+- `localStorage` theme key `beeui-theme` is validated against allowlist (`light`, `dark`, `system`).
+- Invalid stored theme falls back to system default.
+- Browser state (`localStorage`, cookie) is not a product/config source of truth.
+- Locale resolution is valid query → valid cookie → configured default.
+- Rejected chart render promises render a bounded localized error state without
+  logging raw adapter payloads.
+
+### 6. Logs must be useful but safe
 
 Logs should be:
 

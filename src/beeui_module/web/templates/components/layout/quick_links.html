@@ -14,7 +14,7 @@
         </div>
       {% endfor %}
     {% else %}
-      <div class="list-group-item text-secondary">No links available.</div>
+      <div class="list-group-item text-secondary">{% if locale == 'ru' %}Нет доступных ссылок.{% else %}No links available.{% endif %}</div>
     {% endif %}
   </div>
 </div>

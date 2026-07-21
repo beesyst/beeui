@@ -1,14 +1,17 @@
 <!doctype html>
-<html lang="{{ locale|default('en') }}" data-bs-theme="{{ theme.mode }}">
+<html lang="{{ locale|default('en') }}" data-bs-theme="{{ theme.mode }}" data-beeui-theme-config="{{ theme.selection }}">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{% block title %}BeeUI{% endblock %}</title>
+    <script type="text/javascript">
+try{var d=document.documentElement,c=d.getAttribute('data-beeui-theme-config'),s=window.localStorage.getItem('beeui-theme');if(s!=='system'&&s!=='light'&&s!=='dark'){if(s)window.localStorage.removeItem('beeui-theme');s=null}var m=s||((c==='system'||c==='light'||c==='dark')?c:'system');d.setAttribute('data-bs-theme',m==='system'&&window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':m==='system'?'light':m)}catch(e){}
+    </script>
     <link
       rel="stylesheet"
-      href="{{ route_prefix }}/static/vendor/tabler/css/tabler.min.css"
+      href="{{ route_prefix }}/static/vendor/tabler/css/tabler.min.css?v=4"
     />
-    <link rel="stylesheet" href="{{ route_prefix }}/static/css/beeui.css" />
+    <link rel="stylesheet" href="{{ route_prefix }}/static/css/beeui.css?v=4" />
   </head>
   <body class="{{ shell_classes }}">
     {% include "components/sidebar.html" %}
@@ -26,39 +29,66 @@
       </div>
     </div>
 
-    <script src="{{ route_prefix }}/static/vendor/tabler/js/tabler.min.js"></script>
-    <script src="{{ route_prefix }}/static/js/beeui.js"></script>
+    <script src="{{ route_prefix }}/static/vendor/tabler/js/tabler.min.js?v=4"></script>
+    <script src="{{ route_prefix }}/static/js/beeui.js?v=4"></script>
     {% if has_charts %}
     <script src="{{ route_prefix }}/static/vendor/apexcharts/apexcharts.min.js"></script>
     <script>
     (function() {
       'use strict';
+      var chartMessages = {{ {
+        "empty": translate("chart.empty", locale),
+        "unavailable": translate("chart.unavailable", locale),
+        "error": translate("chart.error", locale),
+      } | tojson }};
+
+      function renderChartError(el, state) {
+        el.textContent = '';
+        var empty = document.createElement('div');
+        empty.className = 'empty';
+        var title = document.createElement('div');
+        title.className = 'empty-title';
+        title.textContent = chartMessages[state] || chartMessages.error;
+        empty.appendChild(title);
+        el.appendChild(empty);
+      }
+
+      function registerChart(chart) {
+        if (typeof window.beeuiRegisterChart === 'function') {
+          window.beeuiRegisterChart(chart);
+        }
+      }
 
       document.querySelectorAll('.beeui-chart-container[data-chart-config-id]').forEach(function(el) {
+        var configNode = null;
         try {
           var configId = el.getAttribute('data-chart-config-id');
-          var configNode = document.getElementById(configId);
+          configNode = document.getElementById(configId);
 
-          if (!configNode) {
-            throw new Error('Missing chart config');
-          }
+          if (!configNode) throw new Error('Missing chart config');
 
           var config = JSON.parse(configNode.textContent || '{}');
           config.chart = config.chart || {};
           config.chart.el = el;
 
-          new ApexCharts(el, config).render();
-        } catch(e) {
-          el.textContent = '';
-          var empty = document.createElement('div');
-          empty.className = 'empty';
+          var html = document.documentElement;
+          var themeMode = html.getAttribute('data-bs-theme') === 'dark' ? 'dark' : 'light';
+          config.theme = config.theme || {};
+          config.theme.mode = themeMode;
 
-          var title = document.createElement('div');
-          title.className = 'empty-title';
-          title.textContent = 'Chart render error';
-
-          empty.appendChild(title);
-          el.appendChild(empty);
+          var chart = new ApexCharts(el, config);
+          var renderResult = chart.render();
+          if (renderResult && typeof renderResult.then === 'function') {
+            renderResult.then(function() {
+              registerChart(chart);
+            }).catch(function() {
+              renderChartError(el, 'error');
+            });
+          } else {
+            registerChart(chart);
+          }
+        } catch (_) {
+          renderChartError(el, configNode ? 'error' : 'unavailable');
         }
       });
     })();

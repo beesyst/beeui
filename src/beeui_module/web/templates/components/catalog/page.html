@@ -8,11 +8,11 @@
 <div class="{{ layout.container_class }}">
   <section class="card p-3" aria-label="Catalog primitives section">
     <nav class="nav nav-pills mb-3 beeui-catalog-pills" aria-label="Catalog section navigation">
-      <a class="nav-link{% if catalog_section.id == 'interface' %} active{% endif %}" href="{{ catalog_sections.interface.href }}">Interface</a>
-      <a class="nav-link{% if catalog_section.id == 'forms' %} active{% endif %}" href="{{ catalog_sections.forms.href }}">Forms</a>
-      <a class="nav-link{% if catalog_section.id == 'layout' %} active{% endif %}" href="{{ catalog_sections.layout.href }}">Layout</a>
-      <a class="nav-link{% if catalog_section.id == 'extra' %} active{% endif %}" href="{{ catalog_sections.extra.href }}">Extra</a>
-      <a class="nav-link{% if catalog_section.id == 'plugins' %} active{% endif %}" href="{{ catalog_sections.plugins.href }}">Plugins</a>
+      <a class="nav-link{% if catalog_section.id == 'interface' %} active{% endif %}" href="{{ catalog_sections.interface.href }}">{% if locale == 'ru' %}Интерфейс{% else %}Interface{% endif %}</a>
+      <a class="nav-link{% if catalog_section.id == 'forms' %} active{% endif %}" href="{{ catalog_sections.forms.href }}">{% if locale == 'ru' %}Формы{% else %}Forms{% endif %}</a>
+      <a class="nav-link{% if catalog_section.id == 'layout' %} active{% endif %}" href="{{ catalog_sections.layout.href }}">{% if locale == 'ru' %}Макет{% else %}Layout{% endif %}</a>
+      <a class="nav-link{% if catalog_section.id == 'extra' %} active{% endif %}" href="{{ catalog_sections.extra.href }}">{% if locale == 'ru' %}Дополнительно{% else %}Extra{% endif %}</a>
+      <a class="nav-link{% if catalog_section.id == 'plugins' %} active{% endif %}" href="{{ catalog_sections.plugins.href }}">{% if locale == 'ru' %}Плагины{% else %}Plugins{% endif %}</a>
     </nav>
 
     {% include catalog_section.template_name %}

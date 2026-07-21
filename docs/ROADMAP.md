@@ -1813,7 +1813,7 @@ Iteration 12 должна дать reusable generic console layer. BeeCap-specif
 
 #### Change level
 
-**runtime-risk**
+**security-sensitive**
 
 Причина:
 
@@ -2051,7 +2051,7 @@ BeeCap/BeeAgent остаются владельцами product semantics. BeeUI
 
 #### Change level
 
-**runtime-risk**
+**security-sensitive**
 
 Требуются security-sensitive checks для:
 
@@ -2144,7 +2144,7 @@ BeeUI должен владеть rendering/layout/templates/static/common UI. B
 
 #### Change level
 
-**runtime-risk**
+**security-sensitive**
 
 Причина:
 
@@ -2329,7 +2329,7 @@ Security/static проверки:
 
 #### Change level
 
-**runtime-risk**
+**security-sensitive**
 
 Требуются security-sensitive checks для:
 
@@ -5566,6 +5566,198 @@ Iteration 13.8 adds:
 - Version is not changed.
 - `uv.lock` is not changed.
 - PR is ready for review before BeeAgent event detail cleanup is closed.
+
+### Итерация 13.9 — Operator UX presentation contracts, locale persistence, theme, and chart state handling
+
+**Status:** IN PROGRESS
+
+#### Goal
+
+Закрепить и расширить generic operator-facing presentation contracts: filter form, sortable data tables, locale persistence, theme selection, chart empty/error states и product-neutral detail rendering. Все изменения остаются bounded generic BeeUI improvements без product-specific логики.
+
+#### Why
+
+После Iteration 13.8 BeeUI имеет generic detail page template и render helper. Но несколько operator-facing presentation gaps остаются незакрытыми до начала BeeAgent integration.
+
+Эта итерация bounded: только generic BeeUI rendering contracts, locale persistence, theme, chart state и безопасные link helpers. Никакой product-specific логики.
+
+#### Change level
+
+**security-sensitive**
+
+Причина:
+
+- меняются adapter-backed block contracts;
+- добавляется locale persistence через cookie;
+- добавляется theme persistence через localStorage;
+- меняется chart renderer;
+- меняются detail presentation semantics;
+- добавляются новые generic block types и поля.
+
+Работа выполняется по утверждённому Issue Iteration 13.9.
+
+Требуются security-sensitive checks для:
+
+- HTML escaping;
+- safe internal links (filter form, sortable headers, all hrefs);
+- locale cookie validation;
+- theme localStorage validation;
+- отсутствие external assets/scripts/tracking;
+- отсутствие product-specific semantics;
+- отсутствие mutation из GET routes.
+
+#### Scope
+
+**Включено:**
+
+- **Generic filter form (`filter_form`)**
+  - adapter-backed `filter_form` block type в `layout[]`;
+  - поддерживаемые field types: `date_range`, `text`, `select`, `checkboxes`;
+  - column toggles с safe internal toggle_href;
+  - reset href;
+  - apply href;
+  - form action через route-prefix-aware contract;
+  - все активные href проходят единый safe internal-link contract.
+
+- **Sortable data table (`data_table`)**
+  - сохранение `sort_href` в normalised column model;
+  - `sort_href` проходит safe internal-link validator;
+  - template показывает link только при валидном sort_href;
+  - inactive и active sort states;
+  - route prefix compatibility.
+
+- **Product-neutral detail presentation**
+  - удаление hardcoded product thresholds (priority, confidence);
+  - allowlisted tones: `default`, `muted`, `success`, `warning`, `danger`;
+  - allowlisted variants: `text`, `badge`, `boolean`, `confidence`, `long_text`;
+  - неизвестный tone/variant безопасно деградирует в plain text;
+  - product решает tone и display semantics;
+  - `type_hint` временно принимается, но не инициирует product-specific decisions.
+
+- **Locale persistence**
+  - единый порядок locale resolution:
+    1. валидный `?lang=`;
+    2. валидный `beeui_lang` cookie;
+    3. configured default locale.
+  - query value и cookie value валидируются через `app.locale.available`;
+  - middleware не устанавливает cookie для invalid locale;
+  - cookie сохраняет только allowlisted locale code;
+  - auth routes используют единый resolver;
+  - `samesite="lax"`;
+  - path соответствует route prefix;
+  - centralized generic translation mechanism для собственных BeeUI-строк без Babel/gettext.
+
+- **Theme persistence**
+  - режимы: `system`, `light`, `dark`;
+  - theme — только presentation preference;
+  - `localStorage` не влияет на product behavior или authorization;
+  - значение валидируется через allowlist;
+  - invalid stored value → configured/default system behavior;
+  - FOUC bootstrap не принимает произвольный JS/data;
+  - system mode реагирует на `prefers-color-scheme`;
+  - chart theme синхронизируется с текущей resolved theme.
+
+- **Chart empty и error states**
+  - различие empty data, unavailable/degraded config и runtime render error;
+  - empty state определяется до вызова render по нормализованным данным;
+  - render exception показывает generic user-readable error;
+  - browser error state не выводит raw adapter payload в console;
+  - EN/RU локализация всех состояний.
+
+- **Generic contracts review**
+  - `progress` / `progress_tone`;
+  - `compact`;
+  - `chart_id`;
+  - chart colors;
+  - vertical/horizontal bar options;
+  - `no_data`;
+  - `type_hint`;
+  - filter-form fields;
+  - pagination labels;
+  - locale-aware empty/error states.
+
+- **Documentation**
+  - `docs/THEME.md`;
+
+- **Tests**
+  - filter-form safe links;
+  - embedded route prefix;
+  - sortable header rendering;
+  - detail neutral presentation metadata;
+  - invalid presentation values;
+  - locale query/cookie validation;
+  - auth/artifact locale consistency;
+  - theme allowlist and fallback;
+  - chart empty vs error state;
+  - no product-specific semantics in generic BeeUI;
+  - no external dependencies/resources.
+
+**Не включено:**
+
+- ROP-specific semantics;
+- Bitrix-specific semantics;
+- BeeAgent imports;
+- product classification rules;
+- product confidence thresholds;
+- product queue/filter taxonomies;
+- product read-model composition;
+- BeeAgent production integration;
+- config apply/write;
+- auth/RBAC changes beyond locale cookie;
+- standalone service mode;
+- no-code builder.
+
+#### Deliverable
+
+BeeUI предоставляет complete generic operator UX presentation contracts с locale persistence, theme selection, chart state handling и product-neutral detail rendering.
+
+#### Checks
+
+- `uv run pytest -q`;
+- `uv run pytest -q -W error::UserWarning`;
+- `./start.sh doctor`;
+- `./start.sh routes`;
+- `./start.sh web --host 127.0.0.1 --port 8780`;
+
+Targeted tests:
+
+- filter-form safe links (external, protocol-relative, traversal, control chars);
+- embedded route prefix for filter form;
+- data table sortable header rendering with valid/invalid sort_href;
+- detail neutral presentation metadata (allowlisted tones, invalid tone fallback);
+- locale query/cookie validation and priority;
+- auth page locale consistency;
+- artifact page locale consistency;
+- theme allowlist and fallback;
+- chart empty vs error state;
+- no ROP/Bitrix/BeeAgent/MRKT/Binance strings in generic BeeUI code;
+- no `|safe` in templates for adapter-provided values;
+- no external CDN/scripts/tracking.
+
+Security checks:
+
+```bash
+rg -n "\\|safe" src/beeui_module/web/templates || true
+rg -n "beecap_module|beeagent_module" src/beeui_module || true
+rg -n "posthog|scripts.tabler.io|preview.tabler.io|docs.tabler.io|cdn.jsdelivr|http://|https://" src/beeui_module/web/templates src/beeui_module/web/static || true
+rg -n "ROP|BeeAgent|BeeCap|MRKT|Binance|Bitrix|lead|manager|broker|strategy" src/beeui_module || true
+git diff -- pyproject.toml uv.lock
+```
+
+#### DoD
+
+- filter_form contract реализован, документирован и протестирован;
+- data_table sort_href сохранён и валидирован;
+- detail renderer не содержит product thresholds;
+- locale resolution единый и документированный;
+- theme persistence безопасный и документированный;
+- chart states различают empty/error/degraded;
+- docs обновлены (ROADMAP, COMPONENTS, WEB_UI, API_CONTRACT, INTEGRATION, SECURITY, THEME, README);
+- tests покрывают security, presentation, locale, theme и chart contracts;
+- BeeUI остаётся product-neutral;
+- product-specific логика не добавляется;
+- external assets/scripts/tracking не добавляются;
+- dependency/version/lockfile остаются без изменений.
 
 ---
 

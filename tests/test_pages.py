@@ -4,11 +4,13 @@ import re
 from dataclasses import replace
 from pathlib import Path
 
+from fastapi import Request
 from fastapi.testclient import TestClient
 
 from beeui_module.core.paths import settings_path
 from beeui_module.core.settings import load_settings
 from beeui_module.pages.config import load_beeui_config
+from beeui_module.pages.locale import translate
 from beeui_module.web.app import create_beeui_app
 
 
@@ -363,19 +365,50 @@ def test_light_theme_fixture_renders_from_schema() -> None:
     assert "beeui-theme-mode-light" in response.text
 
 
-def test_auto_theme_fixture_renders_without_localstorage_mutation() -> None:
+def test_system_theme_fixture_renders_resolved_default_theme() -> None:
     settings = load_settings(settings_path())
     ui_config = load_beeui_config(settings_path().parent / "schema.yml")
-    ui_config = replace(ui_config, theme=replace(ui_config.theme, mode="auto"))
+    ui_config = replace(ui_config, theme=replace(ui_config.theme, mode="system"))
     app = create_beeui_app(settings=settings, ui_config=ui_config)
     client = TestClient(app)
 
     response = client.get("/")
 
     assert response.status_code == 200
-    assert 'data-bs-theme="auto"' in response.text
-    assert "beeui-theme-mode-auto" in response.text
-    assert "localStorage" not in response.text
+    assert 'data-bs-theme="light"' in response.text
+    assert "beeui-theme-mode-light" in response.text
+    assert "localStorage" in response.text
+
+
+def test_login_uses_configured_theme_contract() -> None:
+    settings = load_settings(settings_path())
+    ui_config = load_beeui_config(settings_path().parent / "schema.yml")
+    ui_config = replace(ui_config, theme=replace(ui_config.theme, mode="dark"))
+    client = TestClient(create_beeui_app(settings=settings, ui_config=ui_config))
+
+    response = client.get("/auth/login")
+
+    assert response.status_code == 200
+    assert 'data-bs-theme="dark"' in response.text
+    assert 'data-beeui-theme-config="dark"' in response.text
+    assert "beeui-theme" in response.text
+
+
+def test_theme_controls_use_beeui_catalog_for_russian_locale() -> None:
+    client = TestClient(create_beeui_app())
+
+    sidebar = client.get("/?lang=ru")
+    login = client.get("/auth/login?lang=ru")
+
+    for response in (sidebar, login):
+        assert response.status_code == 200
+        assert 'aria-label="Системная тема"' in response.text
+        assert 'title="Системная"' in response.text
+        assert 'aria-label="Светлая тема"' in response.text
+        assert 'title="Светлая"' in response.text
+        assert 'aria-label="Тёмная тема"' in response.text
+        assert 'title="Тёмная"' in response.text
+    assert "Тема" in sidebar.text
 
 
 def test_navbar_disabled_fixture_does_not_render_top_navbar() -> None:
@@ -404,8 +437,8 @@ def test_logo_text_from_schema_is_escaped(tmp_path: Path) -> None:
         (settings_path().parent / "schema.yml")
         .read_text(encoding="utf-8")
         .replace(
-            "  logo_text: BeeUI\n",
-            '  logo_text: "<script>alert(3)</script>"\n',
+            "  logo_text:\n    en: BeeUI\n    ru: BeeUI\n",
+            '  logo_text:\n    en: "<script>alert(3)</script>"\n    ru: "<script>alert(3)</script>"\n',
             1,
         ),
         encoding="utf-8",
@@ -1597,9 +1630,10 @@ def test_page_without_tabs_renders_blocks_normally(tmp_path: Path) -> None:
 
 
 def test_custom_route_rop_registers_with_adapter(tmp_path: Path) -> None:
+    from fastapi import FastAPI
     from beeui_module.adapters.base import ProductUiAdapterBase
     from beeui_module.adapters.envelopes import AdapterMetadata, ok_result
-    from beeui_module.web.app import create_beeui_app
+    from beeui_module.web.app import mount_beeui
 
     class RopPageAdapter(ProductUiAdapterBase):
         def __init__(self):
@@ -1632,20 +1666,83 @@ def test_custom_route_rop_registers_with_adapter(tmp_path: Path) -> None:
 
         def get_page(self, page_id, query):
             return ok_result(
-                {"layout": [{"type": "metric_card", "title": "ROP", "value": "42"}]}
+                {
+                    "layout": [
+                        {
+                            "type": "filter_form",
+                            "title": "Filters",
+                            "actions": {
+                                "apply": {"href": "https://invalid.example/apply", "label": "Apply"},
+                                "reset": {"href": "/rop?reset=1", "label": "Reset"},
+                            },
+                            "columns_toggle_href": "/rop?columns=1",
+                            "columns_open": True,
+                            "column_toggles": [
+                                {"key": "state", "label": "State", "visible": True, "toggle_href": "/rop?column=state"}
+                            ],
+                            "fields": [
+                                {"type": "checkboxes", "name": "state", "choices": [{"value": "ok", "label": "OK", "toggle_href": "/rop?state=ok"}, {"value": "bad", "label": "Bad", "toggle_href": "https://invalid.example"}]}
+                            ],
+                        },
+                        {
+                            "type": "data_table",
+                            "title": "ROP",
+                            "columns": [{"key": "run", "label": "Run", "sortable": True, "sort_href": "/rop?sort=run", "sort_active": True, "sort_direction": "asc"}],
+                            "rows": [{"run": "42"}],
+                        },
+                    ]
+                }
             )
 
-    ui_cfg_path = _custom_page_schema(tmp_path, "/rop")
-    app = create_beeui_app(
+    ui_cfg_path = _custom_page_schema(
+        tmp_path,
+        "/rop",
+        page_blocks=(
+            "    tabs:\n"
+            "      active_param: tab\n"
+            "      items:\n"
+            "        - id: overview\n"
+            "          title: Overview\n"
+            "          href: /rop?tab=overview\n"
+            "    blocks: []\n"
+        ),
+    )
+    ui_cfg_path.write_text(
+        ui_cfg_path.read_text(encoding="utf-8").replace(
+            "  layout:\n",
+            "  locale:\n    default: en\n    available:\n      - en\n      - ru\n  layout:\n",
+            1,
+        ),
+        encoding="utf-8",
+    )
+    parent = FastAPI()
+    mount_beeui(
+        parent,
+        path="/ui",
         config_path=str(ui_cfg_path),
         adapter=RopPageAdapter(),
     )
-    client = TestClient(app)
+    client = TestClient(parent)
 
-    response = client.get("/rop")
+    response = client.get("/ui/rop")
     assert response.status_code == 200
     assert "ROP" in response.text
     assert "42" in response.text
+    assert 'action="/ui/rop"' in response.text
+    assert 'method="GET"' in response.text
+    assert ">Apply</button>" in response.text
+    assert 'href="/ui/rop?reset=1"' in response.text
+    assert 'href="/ui/rop?column=state"' in response.text
+    assert 'href="/ui/rop?state=ok"' in response.text
+    assert 'href="/ui/rop?sort=run"' in response.text
+    assert 'aria-sort="ascending"' in response.text
+    assert "↑" in response.text
+    assert 'href="/ui/static/css/beeui.css?v=4"' in response.text
+    assert 'href="/ui/"' in response.text
+    assert 'href="/ui/rop?lang=ru"' in response.text
+    assert 'href="/ui/rop?tab=overview"' in response.text
+    assert "/ui/ui/" not in response.text
+    assert "invalid.example" not in response.text
 
 
 def test_metadata_route_venues_mrkt_skipped(tmp_path: Path) -> None:
@@ -2562,7 +2659,7 @@ def test_component_catalog_locale_works(tmp_path: Path) -> None:
     assert "beeui-language-switcher" in ru_response.text
     assert "БИУ" in ru_response.text
     assert "beeui-language-switcher" in ru_response.text
-    assert "{" not in ru_response.text  # no raw dict
+    assert "{'en':" not in ru_response.text
     assert "lang=ru" in ru_response.text
 
 
@@ -3259,6 +3356,59 @@ def test_detail_page_missing_values_render_as_n_a() -> None:
     assert "works" in body
 
 
+def test_detail_display_is_used_for_long_and_automatic_collapsible_content() -> None:
+    from unittest.mock import MagicMock
+
+    from fastapi.templating import Jinja2Templates
+
+    from beeui_module.pages.detail import render_beeui_detail_page
+    from beeui_module.web.app import _resolve_templates_dir
+
+    ui_config = load_beeui_config(settings_path().parent / "schema.yml")
+    templates = Jinja2Templates(directory=str(_resolve_templates_dir()))
+    templates.env.autoescape = True
+    request = MagicMock()
+    request.query_params = {}
+
+    response = render_beeui_detail_page(
+        request=request,
+        page={
+            "page_id": "detail",
+            "title": "Detail",
+            "sections": [
+                {
+                    "kind": "key_value",
+                    "items": [
+                        {
+                            "label": "Long",
+                            "value": "RAW_LONG_MARKER",
+                            "display": "<b>Safe long text</b>",
+                            "variant": "long_text",
+                            "collapsible": True,
+                        },
+                        {
+                            "label": "Automatic",
+                            "value": "RAW_AUTO_MARKER",
+                            "display": "<i>" + ("safe" * 80) + "</i>",
+                        },
+                    ],
+                }
+            ],
+        },
+        templates=templates,
+        route_prefix="",
+        ui_config=ui_config,
+        product_title="BeeUI",
+        product_id="beeui",
+    )
+    body = _response_body_text(response)
+
+    assert "RAW_LONG_MARKER" not in body
+    assert "RAW_AUTO_MARKER" not in body
+    assert "&lt;b&gt;Safe long text&lt;/b&gt;" in body
+    assert "&lt;i&gt;" in body
+
+
 def test_detail_page_raw_extra_fields_not_rendered() -> None:
     from beeui_module.pages.detail import normalize_detail_page
 
@@ -3339,3 +3489,150 @@ def test_detail_page_ghost_section_omitted() -> None:
     normalized = normalize_detail_page(raw)
 
     assert len(normalized["sections"]) == 0
+
+
+def test_detail_type_hint_legacy_aliases_are_neutral() -> None:
+    from beeui_module.pages.detail import normalize_detail_page
+
+    normalized = normalize_detail_page(
+        {
+            "page_id": "event",
+            "title": "Event",
+            "sections": [
+                {
+                    "kind": "key_value",
+                    "items": [
+                        {"label": "Body", "value": "text", "type_hint": "long_text"},
+                        {"label": "Enabled", "value": True, "type_hint": "boolean"},
+                        {"label": "Score", "value": 0.8, "type_hint": "confidence"},
+                        {"label": "Priority", "value": "high", "type_hint": "priority", "tone": "danger"},
+                        {"label": "Other", "value": "x", "type_hint": "unknown", "tone": "warning"},
+                    ],
+                }
+            ],
+        }
+    )
+
+    items = normalized["sections"][0]["items"]
+    assert [item["variant"] for item in items] == [
+        "long_text",
+        "boolean",
+        "confidence",
+        "text",
+        "text",
+    ]
+    assert items[3]["tone"] == "default"
+    assert items[4]["tone"] == "default"
+
+
+def test_detail_explicit_variant_takes_priority_over_type_hint() -> None:
+    from beeui_module.pages.detail import normalize_detail_page
+
+    normalized = normalize_detail_page(
+        {
+            "page_id": "event",
+            "title": "Event",
+            "sections": [
+                {
+                    "kind": "key_value",
+                    "items": [
+                        {"label": "Value", "value": "x", "variant": "badge", "type_hint": "long_text", "tone": "success"}
+                    ],
+                }
+            ],
+        }
+    )
+
+    item = normalized["sections"][0]["items"][0]
+    assert item["variant"] == "badge"
+    assert item["tone"] == "success"
+
+
+def test_beeui_translation_catalog_uses_configured_default_and_safe_fallback() -> None:
+    assert translate("filter.columns", "en") == "Columns"
+    assert translate("filter.columns", "ru") == "Колонки"
+    assert translate("chart.error", "unknown", "ru") == "Ошибка рендеринга графика"
+    assert translate("unknown.key", "ru") == "unknown.key"
+    assert translate("detail.show_text", "ru") == "Показать текст"
+
+
+def test_mounted_locale_cookie_uses_effective_boundary_path() -> None:
+    from fastapi import FastAPI
+
+    from beeui_module.web.app import mount_beeui
+
+    root = TestClient(create_beeui_app())
+    root_response = root.get("/?lang=ru")
+    assert "Path=/" in root_response.headers["set-cookie"]
+
+    prefixed_settings = load_settings(settings_path())
+    prefixed_settings["web"] = dict(prefixed_settings["web"])
+    prefixed_settings["web"]["route_prefix"] = "/ui"
+    prefixed = TestClient(create_beeui_app(settings=prefixed_settings))
+    prefixed_response = prefixed.get("/ui/?lang=ru")
+    assert "Path=/ui" in prefixed_response.headers["set-cookie"]
+
+    parent = FastAPI()
+    mount_beeui(parent, path="/ui")
+    client = TestClient(parent)
+
+    valid = client.get("/ui/?lang=ru")
+    assert valid.status_code == 200
+    assert "beeui_lang=ru" in valid.headers["set-cookie"]
+    assert "Path=/ui" in valid.headers["set-cookie"]
+    assert "SameSite=lax" in valid.headers["set-cookie"]
+
+    invalid = client.get("/ui/?lang=fr")
+    assert invalid.status_code == 200
+    assert "beeui_lang" not in invalid.headers.get("set-cookie", "")
+
+
+def test_mounted_detail_links_use_effective_prefix_once() -> None:
+    from fastapi import FastAPI
+    from fastapi.templating import Jinja2Templates
+
+    from beeui_module.pages.detail import render_beeui_detail_page
+    from beeui_module.pages.locale import translate
+    from beeui_module.web.app import _resolve_templates_dir, create_beeui_app
+
+    ui_config = load_beeui_config(settings_path().parent / "schema.yml")
+    child = create_beeui_app(ui_config=ui_config)
+    templates = Jinja2Templates(directory=str(_resolve_templates_dir()))
+    templates.env.autoescape = True
+    templates.env.globals["translate"] = translate
+
+    @child.get("/detail", include_in_schema=False)
+    async def detail(request: Request):
+        return render_beeui_detail_page(
+            request=request,
+            page={
+                "page_id": "detail",
+                "title": "Detail",
+                "back_href": "/runs",
+                "sections": [
+                    {
+                        "kind": "links",
+                        "items": [
+                            {"label": "Safe", "href": "/runs/one"},
+                            {"label": "Unsafe", "href": "https://invalid.example"},
+                        ],
+                    }
+                ],
+            },
+            templates=templates,
+            route_prefix="",
+            ui_config=ui_config,
+            product_title="Test",
+            product_id="test",
+        )
+
+    parent = FastAPI()
+    parent.mount("/ui", child)
+    response = TestClient(parent).get("/ui/detail")
+
+    assert response.status_code == 200
+    assert 'href="/ui/runs"' in response.text
+    assert 'href="/ui/runs/one"' in response.text
+    assert "invalid.example" not in response.text
+    assert not re.search(r'<a[^>]+href="[^"]+"[^>]*>\s*Unsafe\s*</a>', response.text)
+    assert "/ui/ui/" not in response.text

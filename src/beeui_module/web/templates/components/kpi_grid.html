@@ -8,7 +8,7 @@
   <div class="card-body">
     {% if block.state != "normal" %}
     <div class="alert alert-secondary beeui-block-state beeui-block-state-{{ block.state }}" role="status">
-      Block state: {{ block.state }}
+      {% if locale == 'ru' %}Состояние блока:{% else %}Block state:{% endif %} {{ block.state }}
     </div>
     {% endif %}
     <div class="beeui-kpi-grid">

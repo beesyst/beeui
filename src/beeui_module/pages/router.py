@@ -1,17 +1,24 @@
 from __future__ import annotations
 
 from typing import Any
-from urllib.parse import urlsplit, urlunsplit
 
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
 from beeui_module.artifacts.redaction import redact_value
-from beeui_module.blocks.layout_renderer import layout_has_charts, render_layout
+from beeui_module.blocks.layout_renderer import (
+    layout_has_charts,
+    render_layout,
+    resolve_layout_links,
+)
 from beeui_module.blocks.registry import resolve_page_blocks
 from beeui_module.pages.config import is_custom_route_reserved_path
-from beeui_module.pages.links import add_preserved_params_to_href
+from beeui_module.pages.links import (
+    add_preserved_params_to_href,
+    effective_external_prefix,
+    prefix_internal_href,
+)
 from beeui_module.pages.locale import (
     build_lang_switch_href,
     resolve_localized_text,
@@ -112,6 +119,7 @@ def register_configured_pages(
         async def render_page(
             request: Request, _page: BeeUiPage = page
         ) -> HTMLResponse:
+            external_prefix = effective_external_prefix(request, route_prefix)
             theme = build_theme_context(ui_config)
             layout = build_layout_context(ui_config)
             rendered_blocks = resolve_page_blocks(
@@ -124,7 +132,7 @@ def register_configured_pages(
             page_tabs_data = _resolve_page_tabs_data(
                 _page,
                 request,
-                route_prefix=route_prefix,
+                route_prefix=external_prefix,
                 locale=locale,
                 default_locale=ui_config.locale.default,
             )
@@ -146,7 +154,7 @@ def register_configured_pages(
                 request=request,
                 name="page.html",
                 context={
-                    "route_prefix": route_prefix,
+                    "route_prefix": external_prefix,
                     "product_title": product_title,
                     "product_id": product_id,
                     "app_title": resolve_localized_text(
@@ -166,7 +174,7 @@ def register_configured_pages(
                     "components": build_components_context(ui_config.components),
                     "page_tabs": page_tabs_data,
                     "navigation": build_navigation(
-                        route_prefix=route_prefix,
+                        route_prefix=external_prefix,
                         navigation=ui_config.navigation,
                         active_path=_page.path,
                         locale=locale,
@@ -179,7 +187,7 @@ def register_configured_pages(
                     "layout_blocks": [],
                     "has_charts": has_charts,
                     "language_switcher": _build_language_switcher(
-                        request, ui_config.locale, route_prefix
+                        request, ui_config.locale, external_prefix
                     ),
                     "error": None,
                     "status": "ok",
@@ -240,14 +248,17 @@ def build_navigation(
 
 
 def build_theme_context(ui_config: BeeUiConfig) -> dict[str, Any]:
+    mode = ui_config.theme.mode
+    resolved_mode = "light" if mode == "system" else mode
     return {
-        "mode": ui_config.theme.mode,
+        "mode": resolved_mode,
+        "selection": mode,
         "primary": ui_config.theme.primary,
         "base": ui_config.theme.base,
         "font": ui_config.theme.font,
         "radius": ui_config.theme.radius,
         "density": ui_config.theme.density,
-        "mode_class": f"beeui-theme-mode-{ui_config.theme.mode}",
+        "mode_class": f"beeui-theme-mode-{resolved_mode}",
         "primary_class": f"beeui-theme-primary-{ui_config.theme.primary}",
         "base_class": f"beeui-theme-base-{ui_config.theme.base}",
         "font_class": f"beeui-theme-font-{ui_config.theme.font}",
@@ -302,12 +313,6 @@ def build_shell_classes(theme: dict[str, Any], layout: dict[str, Any]) -> str:
     return " ".join(class_name for class_name in classes if class_name)
 
 
-def _prefix_internal_href(route_prefix: str, href: str) -> str:
-    parsed = urlsplit(href)
-    prefixed_path_value = prefixed_path(route_prefix, parsed.path)
-    return urlunsplit(("", "", prefixed_path_value, parsed.query, ""))
-
-
 def _resolve_page_tabs_data(
     page: BeeUiPage,
     request: Request,
@@ -336,7 +341,7 @@ def _resolve_page_tabs_data(
     items_list = []
     for item in page.tabs.items:
         resolved_title = resolve_localized_text(item.title, locale, default_locale)
-        href = _prefix_internal_href(route_prefix, item.href)
+        href = prefix_internal_href(route_prefix, item.href)
         href = add_preserved_params_to_href(href, preserved)
         items_list.append(
             {
@@ -515,6 +520,12 @@ def register_adapter_custom_pages(
                 )
 
             layout_blocks = render_layout(payload.get("layout"))
+            effective_prefix = effective_external_prefix(request, route_prefix)
+            resolve_layout_links(
+                layout_blocks,
+                effective_prefix,
+                str(request.url.path),
+            )
             has_layout = bool(layout_blocks)
 
             locale = resolve_locale(request, ui_config.locale)
@@ -522,7 +533,7 @@ def register_adapter_custom_pages(
             page_tabs_data = _resolve_page_tabs_data(
                 _page,
                 request,
-                route_prefix=route_prefix,
+                route_prefix=effective_prefix,
                 locale=locale,
                 default_locale=ui_config.locale.default,
             )
@@ -530,7 +541,8 @@ def register_adapter_custom_pages(
             has_charts = layout_has_charts(layout_blocks)
 
             context = {
-                "route_prefix": route_prefix,
+                "route_prefix": effective_prefix,
+                "url_prefix": effective_prefix,
                 "product_title": product_title,
                 "product_id": product_id,
                 "app_title": resolve_localized_text(
@@ -548,7 +560,7 @@ def register_adapter_custom_pages(
                 "components": build_components_context(ui_config.components),
                 "page_tabs": page_tabs_data,
                 "navigation": build_navigation(
-                    route_prefix=route_prefix,
+                    route_prefix=effective_prefix,
                     navigation=ui_config.navigation,
                     active_path=_page.path,
                     locale=locale,
@@ -571,7 +583,7 @@ def register_adapter_custom_pages(
                     else None
                 ),
                 "language_switcher": _build_language_switcher(
-                    request, ui_config.locale, route_prefix
+                    request, ui_config.locale, effective_prefix
                 ),
                 "error": None,
                 "warnings": [],
@@ -607,18 +619,19 @@ def _render_page_unavailable(
     error: str,
     status_code: int = 503,
 ) -> HTMLResponse:
+    external_prefix = effective_external_prefix(request, route_prefix)
     theme = build_theme_context(ui_config)
     layout = build_layout_context(ui_config)
     locale = resolve_locale(request, ui_config.locale)
     page_tabs_data = _resolve_page_tabs_data(
         page,
         request,
-        route_prefix=route_prefix,
+        route_prefix=external_prefix,
         locale=locale,
         default_locale=ui_config.locale.default,
     )
     context = {
-        "route_prefix": route_prefix,
+        "route_prefix": external_prefix,
         "product_title": product_title,
         "product_id": product_id,
         "app_title": resolve_localized_text(
@@ -636,7 +649,7 @@ def _render_page_unavailable(
         "components": build_components_context(ui_config.components),
         "page_tabs": page_tabs_data,
         "navigation": build_navigation(
-            route_prefix=route_prefix,
+            route_prefix=external_prefix,
             navigation=ui_config.navigation,
             active_path=page.path,
             locale=locale,
@@ -657,9 +670,9 @@ def _render_page_unavailable(
             else None
         ),
         "language_switcher": _build_language_switcher(
-            request, ui_config.locale, route_prefix
+            request, ui_config.locale, external_prefix
         ),
-        "error": error,
+        "error": _translate_adapter_error(error, locale),
         "warnings": [],
         "meta": {},
         "status": "unavailable",
@@ -670,6 +683,28 @@ def _render_page_unavailable(
         context=context,
         status_code=status_code,
     )
+
+
+def _translate_adapter_error(error: str, locale: str) -> str:
+    if locale != "ru":
+        return error
+    translations = {
+        "Adapter is not available": "Адаптер недоступен",
+        "Page unavailable": "Страница недоступна",
+    }
+    for eng, rus in translations.items():
+        if error == eng:
+            return rus
+        if error.startswith("Page ") and error.endswith(" is unavailable"):
+            page_id = error[5:-15]
+            return f"Страница {page_id} недоступна"
+        if error.startswith("Failed to load page "):
+            page_id = error[20:]
+            return f"Не удалось загрузить страницу {page_id}"
+        if error.startswith("Adapter returned malformed payload for page "):
+            page_id = error[46:]
+            return f"Адаптер вернул повреждённые данные для страницы {page_id}"
+    return error
 
 
 def prefixed_path(route_prefix: str, path: str) -> str:
