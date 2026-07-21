@@ -6,7 +6,10 @@ from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
-from beeui_module.pages.links import add_preserved_params_to_href
+from beeui_module.pages.links import (
+    add_preserved_params_to_href,
+    effective_external_prefix,
+)
 from beeui_module.pages.locale import resolve_localized_text
 from beeui_module.pages.models import BeeUiConfig
 from beeui_module.pages.router import (
@@ -95,12 +98,13 @@ def register_component_catalog_routes(
 
     async def render_catalog_index(request: Request) -> HTMLResponse:
         locale = resolve_locale(request, ui_config.locale)
+        external_prefix = effective_external_prefix(request, route_prefix)
         catalog_sections = _catalog_sections_for_locale(
-            route_prefix,
+            external_prefix,
             locale,
             ui_config.locale.default,
         )
-        samples = _catalog_samples(route_prefix)
+        samples = _catalog_samples(external_prefix)
         samples["active_url_tab"] = _resolve_url_tab(
             request,
             samples["tabs"],
@@ -110,7 +114,7 @@ def register_component_catalog_routes(
             request=request,
             name="components/catalog/index.html",
             context={
-                "route_prefix": route_prefix,
+                "route_prefix": external_prefix,
                 "product_title": product_title,
                 "product_id": product_id,
                 "app_title": resolve_localized_text(
@@ -122,7 +126,7 @@ def register_component_catalog_routes(
                 "available_locales": list(ui_config.locale.available),
                 "locale_cfg": ui_config.locale,
                 "language_switcher": _build_language_switcher(
-                    request, ui_config.locale, route_prefix
+                    request, ui_config.locale, external_prefix
                 ),
                 "locale": locale,
                 "theme": theme,
@@ -134,7 +138,7 @@ def register_component_catalog_routes(
                 "page_title": "Каталог компонентов" if locale == "ru" else "Component Catalog",
                 "page_subtitle": "Внутренние примитивы только для чтения, совместимые с Tabler" if locale == "ru" else "Internal read-only Tabler-compatible primitives",
                 "navigation": _catalog_navigation(
-                    route_prefix=route_prefix,
+                    route_prefix=external_prefix,
                     ui_config=ui_config,
                     active_path="/components",
                     locale=locale,
@@ -162,13 +166,14 @@ def register_component_catalog_routes(
             request: Request, _section: dict[str, str] = section
         ) -> HTMLResponse:
             locale = resolve_locale(request, ui_config.locale)
+            external_prefix = effective_external_prefix(request, route_prefix)
             catalog_sections = _catalog_sections_for_locale(
-                route_prefix,
+                external_prefix,
                 locale,
                 ui_config.locale.default,
             )
             catalog_section = catalog_sections[_section["id"]]
-            samples = _catalog_samples(route_prefix)
+            samples = _catalog_samples(external_prefix)
             samples["active_url_tab"] = _resolve_url_tab(
                 request,
                 samples["tabs"],
@@ -178,7 +183,7 @@ def register_component_catalog_routes(
                 request=request,
                 name="components/catalog/page.html",
                 context={
-                    "route_prefix": route_prefix,
+                    "route_prefix": external_prefix,
                     "product_title": product_title,
                     "product_id": product_id,
                     "app_title": resolve_localized_text(
@@ -190,7 +195,7 @@ def register_component_catalog_routes(
                     "available_locales": list(ui_config.locale.available),
                     "locale_cfg": ui_config.locale,
                     "language_switcher": _build_language_switcher(
-                        request, ui_config.locale, route_prefix
+                        request, ui_config.locale, external_prefix
                     ),
                     "locale": locale,
                     "theme": theme,
@@ -202,7 +207,7 @@ def register_component_catalog_routes(
                     "page_title": catalog_section["title"],
                     "page_subtitle": catalog_section["description"],
                     "navigation": _catalog_navigation(
-                        route_prefix=route_prefix,
+                        route_prefix=external_prefix,
                         ui_config=ui_config,
                         active_path=_section["path"],
                         locale=locale,

@@ -25,7 +25,12 @@ from beeui_module.api.envelopes import (
     safe_adapter_call,
 )
 from beeui_module.artifacts.redaction import redact_value
-from beeui_module.blocks.layout_renderer import layout_has_charts, render_layout
+from beeui_module.blocks.layout_renderer import (
+    layout_has_charts,
+    render_layout,
+    resolve_layout_links,
+)
+from beeui_module.pages.links import effective_external_prefix
 from beeui_module.pages.locale import resolve_localized_text
 from beeui_module.pages.models import BeeUiConfig, BeeUiPage, LocaleConfig
 from beeui_module.pages.router import (
@@ -394,9 +399,7 @@ def _normalize_runs_result_for_api(
 
 
 def _resolve_url_prefix(request: Request, route_prefix: str) -> str:
-    root_path = str(request.scope.get("root_path") or "").rstrip("/")
-    local_prefix = route_prefix.rstrip("/")
-    return f"{root_path}{local_prefix}"
+    return effective_external_prefix(request, route_prefix)
 
 
 def _with_request_context(
@@ -404,7 +407,16 @@ def _with_request_context(
     request: Request,
 ) -> dict[str, Any]:
     route_prefix = str(context.get("route_prefix", ""))
-    context["url_prefix"] = _resolve_url_prefix(request, route_prefix)
+    external_prefix = _resolve_url_prefix(request, route_prefix)
+    context["route_prefix"] = external_prefix
+    context["url_prefix"] = external_prefix
+    layout_blocks = context.get("layout_blocks")
+    if isinstance(layout_blocks, list):
+        resolve_layout_links(
+            layout_blocks,
+            context["url_prefix"],
+            str(request.url.path),
+        )
 
     locale_cfg = context.get("locale_cfg")
     if isinstance(locale_cfg, LocaleConfig):
@@ -417,14 +429,14 @@ def _with_request_context(
             context.get("logo_text", ""), locale, locale_cfg.default
         )
         context["language_switcher"] = _build_language_switcher(
-            request, locale_cfg, route_prefix
+            request, locale_cfg, external_prefix
         )
 
         ui_navigation = context.get("ui_navigation")
         active_path = context.get("active_path")
         if isinstance(ui_navigation, list) and isinstance(active_path, str):
             context["navigation"] = build_navigation(
-                route_prefix=route_prefix,
+                route_prefix=external_prefix,
                 navigation=ui_navigation,
                 active_path=active_path,
                 locale=locale,

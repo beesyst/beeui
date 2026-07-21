@@ -163,6 +163,13 @@ class LegacyProductConsoleAdapter:
         return ok_result({"read_only": True})
 
 
+class MountedArtifactAdapter(FakeProductConsoleAdapter):
+    def list_artifacts(self, run_id: str) -> Any:
+        return ok_result(
+            [{"artifact_id": "report_json", "content_type": "application/json"}]
+        )
+
+
 def test_adapter_dashboard_html_and_api_work() -> None:
     app = create_beeui_app(adapter=FakeProductConsoleAdapter())
     client = TestClient(app)
@@ -183,6 +190,29 @@ def test_adapter_dashboard_html_and_api_work() -> None:
     assert payload["read_only"] is True
     assert payload["data"]["latest_run"]["id"] == "run_safe_001"
     assert payload["meta"]["status"] == "partial"
+
+
+def test_mounted_artifact_and_catalog_links_use_effective_external_prefix() -> None:
+    parent = FastAPI()
+    mount_beeui(parent, path="/ui", adapter=MountedArtifactAdapter())
+    client = TestClient(parent)
+
+    catalog = client.get("/ui/components?lang=ru")
+    assert catalog.status_code == 200
+    assert 'href="/ui/static/css/beeui.css?v=4"' in catalog.text
+    assert 'href="/ui/"' in catalog.text
+    assert 'href="/ui/components/interface?lang=ru"' in catalog.text
+    assert 'href="/ui/components?lang=en"' in catalog.text
+
+    artifact_list = client.get("/ui/runs/run_safe_001/artifacts")
+    assert artifact_list.status_code == 200
+    assert 'href="/ui/runs"' in artifact_list.text
+    assert 'href="/ui/runs/run_safe_001/artifacts/report_json"' in artifact_list.text
+
+    artifact_detail = client.get("/ui/runs/run_safe_001/artifacts/report_json")
+    assert artifact_detail.status_code == 200
+    assert 'href="/ui/runs/run_safe_001/artifacts"' in artifact_detail.text
+    assert "/ui/ui/" not in artifact_detail.text
 
 
 def test_adapter_dashboard_uses_page_body_container_wrapper() -> None:
@@ -599,6 +629,18 @@ def test_chart_templates_do_not_use_unsafe_serialization() -> None:
     assert "|safe" not in chart
     assert 'data-chart-config="{{' not in chart
     assert "innerHTML" not in base
+
+
+def test_chart_runtime_handles_sync_and_async_render_failures() -> None:
+    base = Path("src/beeui_module/web/templates/base.html").read_text(encoding="utf-8")
+
+    assert "function renderChartError(el, state)" in base
+    assert "var renderResult = chart.render();" in base
+    assert "renderResult.then(function()" in base
+    assert "renderChartError(el, 'error');" in base
+    assert "registerChart(chart);" in base
+    assert "catch (_)" in base
+    assert "e.message" not in base
 
 
 def test_nested_chart_in_group_loads_chart_asset() -> None:
@@ -1555,3 +1597,59 @@ def test_product_console_page_metadata_localizes_dashboard_and_runs() -> None:
     assert "Начат" in runs.text
     assert "Завершён" in runs.text
     assert '<strong class="beeui-lang-active">RU</strong>' in runs.text
+
+
+def test_mounted_filter_and_beeagent_sort_layout_render_end_to_end() -> None:
+    class LayoutAdapter(FakeProductConsoleAdapter):
+        def get_dashboard(self) -> Any:
+            return ok_result(
+                {
+                    "layout": [
+                        {
+                            "type": "filter_form",
+                            "title": "Filters",
+                            "actions": {
+                                "apply": {"href": "/runs", "label": "Apply"},
+                                "reset": {"href": "/runs?reset=1", "label": "Reset"},
+                            },
+                            "column_toggles": [
+                                {"key": "status", "label": "Status", "visible": True, "toggle_href": "/runs?column=status"}
+                            ],
+                            "columns_toggle_href": "/runs?columns=1",
+                            "columns_open": True,
+                            "fields": [
+                                {
+                                    "type": "checkboxes",
+                                    "name": "state",
+                                    "choices": [
+                                        {"value": "open", "label": "Open", "toggle_href": "/runs?state=open"},
+                                        {"value": "bad", "label": "Bad", "toggle_href": "https://invalid.example"},
+                                    ],
+                                }
+                            ],
+                        },
+                        {
+                            "type": "data_table",
+                            "title": "BeeAgent runs",
+                            "columns": [
+                                {"key": "run", "label": "Run", "sortable": True, "sort_href": "/runs?sort=run", "sort_active": True, "sort_direction": "desc"}
+                            ],
+                            "rows": [{"run": "run-1"}],
+                        },
+                    ]
+                }
+            )
+
+    parent = FastAPI()
+    mount_beeui(parent, path="/ui", adapter=LayoutAdapter())
+    response = TestClient(parent).get("/ui/")
+
+    assert response.status_code == 200
+    assert 'action="/ui/runs"' in response.text
+    assert 'href="/ui/runs?reset=1"' in response.text
+    assert 'href="/ui/runs?column=status"' in response.text
+    assert 'href="/ui/runs?state=open"' in response.text
+    assert "/ui/ui/" not in response.text
+    assert "invalid.example" not in response.text
+    assert 'aria-sort="descending"' in response.text
+    assert "↓" in response.text

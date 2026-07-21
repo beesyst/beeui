@@ -53,22 +53,28 @@ Safe local chart renderer for adapter-backed `layout[]`. Supports controlled cha
 | `subtitle` | string | `""` | Card subtitle |
 | `kind` | string | `"line"` | Chart kind: `line`, `bar`, `area`, `donut` |
 | `height` | int | `300` | Chart height in px (50..800, clamped) |
-| `series` | list | `[]` | Line/bar/area: `[{"name": str, "data": [num]}]`; donut: `[num]` |
+| `series` | list | `[]` | Line/bar/area: `[{"name": str, "data": [finite number]}]`; donut: non-empty `[finite number]` |
 | `categories` | list | `[]` | X-axis labels for line/bar/area |
 | `labels` | list | `[]` | Segment labels for donut |
 | `unit` | string | `""` | Display unit below chart |
 | `empty_message` | string | `"No chart data"` | Message when data is empty |
 | `status` | string | `""` | Badge text in card header |
 | `hint` | string | `""` | Hint text below chart |
+| `chart_id` | string | deterministic id | `[A-Za-z][A-Za-z0-9_-]{0,63}`; invalid value uses deterministic fallback |
+| `colors` | list | `[]` | Up to 12 generic BeeUI tokens or strict `#[0-9A-Fa-f]{6}` values |
+| `horizontal` | bool | `false` | Horizontal bar layout only for `bar` charts |
+| `barHeight` | string | `"50%"` | Horizontal bar height from `1%` to `100%` |
 
 Правила:
 
 - No arbitrary ApexCharts options passthrough.
 - Only controlled fields are serialized.
 - Chart script is package-local (`static/vendor/apexcharts/apexcharts.min.js`).
-- Chart DOM ids are deterministic.
-- Missing/empty series render as empty state, not 500.
-- Unsupported kind falls back to `line`.
+- Chart DOM ids are deterministic unless `chart_id` passes the bounded identifier contract.
+- Generic color tokens map to Tabler CSS variables; strict six-digit hex colors remain hex. CSS functions, alpha formats, URLs and other arbitrary CSS are omitted.
+- Series accepts only finite numeric values; booleans, `NaN`, infinities, strings and nested objects are malformed.
+- `ready` has valid non-empty normalized data; `empty` has a correct empty series; `degraded` has malformed or unsupported payload; runtime browser render failure is `error`.
+- Unsupported kind renders an explicit degraded state.
 - Malformed payload degrades visibly.
 
 Пример adapter-backed payload:
@@ -177,7 +183,7 @@ Controlled GET filter bar for adapter-backed `layout[]`. The filter form renders
 | `type` | string | yes | Должно быть `"filter_form"` |
 | `title` | string | yes | Заголовок карточки |
 | `fields` | array | yes | Список полей фильтрации |
-| `actions` | object | no | `{apply: {label, method}, reset: {label, href}}` |
+| `actions` | object | no | `{apply: {label, href}, reset: {label, href}}` |
 
 Типы полей:
 
@@ -186,6 +192,7 @@ Controlled GET filter bar for adapter-backed `layout[]`. The filter form renders
 | `date_range` | `from_value`, `to_value`, `from_label`, `to_label` | Два date input (from/to) |
 | `text` | `name`, `value`, `placeholder` | Текстовый input (search) |
 | `select` | `name`, `value`, `options[]`, `multi` | Выпадающий список |
+| `checkboxes` | `choices[]` (`value`, `label`, `checked`, `toggle_href`) | Группа checkbox с internal toggle links |
 
 Правила:
 
@@ -194,8 +201,9 @@ Controlled GET filter bar for adapter-backed `layout[]`. The filter form renders
 - `date_range` содержит два отдельных `input[type=date]` с именами `date_from`/`date_to`.
 - `select` options с value/label.
 - Missing/invalid fields degrades to empty filter form, не 500.
-- `actions.apply` может иметь `method` (GET/POST) и `href`.
-- `actions.reset` должен иметь `href` для ссылки очистки фильтров.
+- `actions.apply` is a GET submit button; `method` is not an adapter-configurable field. A safe `href` becomes the form action; an unsafe href falls back to the safe prefixed current route.
+- Safe `actions.reset.href`, checkbox toggle hrefs and column-toggle hrefs render as prefixed internal links; unsafe values are inert or omitted.
+- JavaScript auto-submit is optional progressive enhancement; the form remains server-side GET-only.
 
 Пример adapter-backed payload:
 
@@ -253,7 +261,7 @@ Controlled GET filter bar for adapter-backed `layout[]`. The filter form renders
     }
   ],
   "actions": {
-    "apply": {"label": "Apply", "method": "GET"},
+    "apply": {"label": "Apply", "href": "/rop?tab=queue"},
     "reset": {"label": "Clear", "href": "/rop?tab=queue"}
   }
 }
@@ -265,7 +273,7 @@ Controlled GET filter bar for adapter-backed `layout[]`. The filter form renders
 - `options` без `value` или `label` пропускаются.
 - Неизвестный `field.type` игнорируется.
 - No JS вызовов — фильтрация серверная через GET params.
-- `actions.reset.href` валидируется как internal link.
+- `actions.apply.href`, `actions.reset.href` and toggle hrefs validate as internal links; unsafe apply keeps a GET submit using the safe prefixed current route.
 
 ## Добавления Iteration 13.4
 
@@ -428,6 +436,11 @@ Iteration 12.4 adds 6 new adapter-backed `layout[]` block types for product-neut
 | `quick_links` | `components/layout/quick_links.html` | List group of internal operator links |
 | `run_table` | `components/layout/run_table.html` | Operator run/event/artifact table with internal links for run_id and artifact |
 
+`operator_hero.items[].progress` accepts only finite numeric values and is clamped
+to `0..100`. `progress_tone` accepts only generic `bg-primary`, `bg-secondary`,
+`bg-success`, `bg-warning`, `bg-danger`, or `bg-info`; invalid values use
+`bg-primary`.
+
 All block templates use Tabler-compatible markup (`card`, `card-header`, `card-body`, `datagrid`, `table table-vcenter card-table`, `list-group`, `badge`, `status-dot`, `alert`) and pass through Jinja autoescaping.
 
 Existing `mode_cards` now supports optional fields: `href`, `latest`, `latest_href`.
@@ -474,6 +487,72 @@ The template uses the same Tabler-compatible primitives as the rest of BeeUI:
 - `list-group.list-group-flush` for links sections.
 
 No JS is required. No external assets are referenced.
+
+## Iteration 13.9 — Filter form (`type: filter_form`)
+
+Controlled GET filter bar for adapter-backed `layout[]`.
+
+### Supported field types
+
+| Field type | Parameters | Description |
+|-----------|-----------|-------------|
+| `date_range` | `from_value`, `to_value`, `from_label`, `to_label` | Two date inputs (from/to) with auto-submit |
+| `text` | `name`, `value`, `placeholder` | Text search input |
+| `select` | `name`, `value`, `options[]`, `multi` | Dropdown with auto-submit |
+| `checkboxes` | `choices[]` (value, label, checked, toggle_href), `open`, `selected_count` | Dropdown checkbox group with toggle links |
+
+### Safe href contract
+
+All active hrefs validate through the shared internal-link contract:
+
+| Href source | Validation | Invalid behavior |
+|------------|-----------|-----------------|
+| checkbox `toggle_href` | internal-link validator | Rendered as inert text |
+| columns `toggle_href` | internal-link validator | Rendered as inert text |
+| columns `toggle_href` (header) | internal-link validator | Columns button not shown |
+| `reset` href | internal-link validator | Reset button not shown |
+| `apply` href | internal-link validator | GET submit remains; safe prefixed current-route action is used |
+
+### Data table sortable columns
+
+Columns in `data_table` blocks support `sort_href`:
+
+```json
+{
+  "key": "status",
+  "label": "Status",
+  "sortable": true,
+  "sort_href": "/runs?sort=status&dir=asc"
+}
+```
+
+- `sort_href` is validated through the shared internal-link contract.
+- Invalid `sort_href` is rendered as plain label, not a link.
+- Template renders sort link only when `sort_href` is valid.
+- `asc`/`ascending` normalize to `ascending`; `desc`/`descending` normalize to `descending`.
+- Unknown direction renders an inactive safe header.
+
+## Iteration 13.9 — Detail presentation metadata
+
+Detail page `key_value` items support product-neutral presentation fields:
+
+| Field | Type | Allowed values | Description |
+|-------|------|---------------|-------------|
+| `variant` | string | `text`, `badge`, `boolean`, `confidence`, `long_text` | Renders as badge, boolean display, etc. |
+| `tone` | string | `default`, `muted`, `success`, `warning`, `danger` | Color tone for the value |
+| `display` | string | any | Display string for boolean variants |
+
+Product decides tone and display semantics. BeeUI validates allowlisted values.
+Unknown variant/tone safely degrades to plain text.
+
+Built-in labels introduced by this contract use the BeeUI `en`/`ru` catalog;
+adapter-provided labels remain escaped product text.
+
+### Backward compatibility
+
+- When explicit `variant` is absent, neutral `type_hint` aliases `long_text`, `boolean`, and `confidence` map to the matching variant. `priority` and unknown values map to plain text without tone.
+- Explicit `variant` takes precedence over `type_hint`.
+- Plain text items without variant/tone render as before.
 
 ## Рекомендации по переиспользованию
 

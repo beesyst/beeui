@@ -14,7 +14,8 @@
 
 - locale-aware shell labels: `app.title`, `app.logo_text`, `navigation[].title`, `navigation[].children[].title`, `pages[].title`, `pages[].subtitle`, `pages[].tabs.items[].title` поддерживают как plain string, так и mapping `{en: ..., ru: ...}`;
 - разрешение локали через `?lang=XX` с fallback к `app.locale.default` при невалидном значении;
-- query-param based language switcher (`RU / EN`) в page header, без JS/cookies/session/localStorage;
+- built-in locale support ограничен `en` и `ru`; `app.locale.available` — непустое подмножество этих значений;
+- language switcher (`RU / EN`) в page header; valid selection persists in `beeui_lang` cookie without JS, session or localStorage;
 - сохранение `lang`, `period`, `run_id` в tab hrefs;
 - сохранение `lang` в sidebar/navigation hrefs (когда locale не default);
 - product-neutral helpers: `resolve_localized_text()`, `validate_localized_text()`, `preserve_allowed_params()`, `add_preserved_params_to_href()`;
@@ -114,7 +115,7 @@
   - метки: `RU`, `EN` и т.д. (uppercase locale codes);
   - активная локаль выделена (`beeui-lang-active`);
   - ссылка переключателя сохраняет path и allowlisted query params (`lang`, `period`, `run_id`), заменяя `lang`;
-  - без JS, cookies, session, localStorage;
+  - без JS, session, localStorage; query-only behavior superseded by Iteration 13.9 cookie persistence;
   - корректно работает под route prefix и embedded mount.
 - generic dashboard fallback cleanup (Iteration 13.1):
   - raw/debug technical payload in BeeUI accordion «Technical details»;
@@ -856,6 +857,81 @@ unavailable state.
 BeeUI трактует возвращённый payload как read-model, рендерит только `layout[]`,
 редактирует payload перед HTML render и переводит malformed payload в degraded
 state.
+
+### Iteration 13.9 — Locale persistence
+
+Starting from Iteration 13.9, locale is persisted through a `beeui_lang` cookie
+in addition to the existing `?lang=` query parameter.
+
+#### Locale resolution order
+
+1. Valid `?lang=` query parameter;
+2. Valid `beeui_lang` cookie;
+3. Configured `app.locale.default`.
+
+#### Cookie behavior
+
+- Set via middleware when `?lang=` is present and valid.
+- Value is validated against `app.locale.available` before setting.
+- Invalid locale values are rejected — no cookie is set.
+- `samesite="lax"`.
+- Path matches the configured `route_prefix` (default `/`).
+- Cookie is a user-preference cache, not a config source of truth.
+- Cookie does not affect auth/RBAC/security decisions.
+
+#### Auth route locale
+
+Auth routes (login, logout) use the same unified `resolve_locale()` as other
+routes, with the same resolution order (query → cookie → default).
+
+### Iteration 13.9 — Theme persistence
+
+Theme selection (`system`, `light`, `dark`) is persisted in `localStorage`
+under the key `beeui-theme`.
+
+`auto` remains a configuration compatibility alias for `system`; browser storage and HTML use only canonical tokens.
+
+See `docs/THEME.md` for full documentation.
+
+### Iteration 13.9 — Chart empty and error states
+
+Chart initialization distinguishes three states:
+
+| State | Description | Render |
+|-------|-------------|--------|
+| Ready | Valid bounded chart data | ApexCharts container and config |
+| Empty | Correct empty dataset | "No data to display" (localized) |
+| Degraded | Malformed or unsupported adapter chart payload | Generic degraded block |
+| Error | ApexCharts render exception, including rejected `render()` promise | "Chart render error" without raw adapter payload in console |
+
+Empty and degraded states are resolved server-side before chart initialization;
+the runtime renderer handles only unavailable config and render errors.
+
+### Iteration 13.9 — Safe href contract for filter form and data tables
+
+All active hrefs in adapter-backed `filter_form` and `data_table` blocks must
+pass the unified internal-link contract:
+
+- No external scheme or netloc.
+- No protocol-relative `//...`.
+- No path traversal (`..` segments).
+- No control characters.
+- Must start with `/`.
+- Invalid href becomes `None` and is rendered as inert text or omitted.
+
+This applies to:
+
+- `checkbox toggle_href`;
+- `columns toggle_href`;
+- `reset href`;
+- `apply href`;
+- `sort_href` in data table columns;
+- column toggle hrefs.
+
+`filter_form` is GET-only. Optional JavaScript auto-submit is progressive
+enhancement; submission remains a server-side GET form.
+
+---
 
 ## BeeUI config
 
@@ -1976,14 +2052,13 @@ app:
 
 Поддерживаемые fields:
 
-- `mode`: `light | dark | auto`;
+- `mode`: `system | light | dark`;
 - `primary`: controlled color token;
 - `font`: controlled font token;
 - `radius`: small integer scale;
 - `density`: controlled density token.
 
-`mode: auto` — controlled schema token для будущей runtime/browser preference integration.
-Текущий runtime сохраняет KISS behavior: безопасно рендерит `data-bs-theme="auto"` и `beeui-theme-mode-auto`, без `localStorage` persistence или client-side theme mutation.
+`mode: system` resolves to `light` or `dark` in HTML; browser preference is a presentation-only localStorage preference.
 
 Правила:
 

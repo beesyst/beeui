@@ -23,7 +23,7 @@
 - BeeUI preserves locale в shell / navigation / page tabs / catalog, где это practically applicable.
 - Product adapter по-прежнему владеет product-specific labels и semantics.
 - Query, передаваемый в `get_page(page_id, query)`, остаётся untrusted input.
-- Locale persistence не использует cookies, session или localStorage.
+- Старый query-only locale contract Iteration 13.7 superseded Iteration 13.9: BeeUI использует cookie `beeui_lang`, но не session или localStorage.
 
 - Generic contract `ProductUiAdapter` существует в `src/beeui_module/adapters/`.
 - `BeeCapFixtureAdapter` в `src/beeui_module/adapters/beecap.py` — только
@@ -233,6 +233,71 @@ mount_beeui(
 - `route.mode: metadata` не создаёт отдельный route.
 - `route.mode: adapter` создаёт route и вызывает `adapter.get_page(page_id, query)`.
 - `route.mode: configured` создаёт route и рендерит schema/config blocks.
+
+### Iteration 13.9 — Locale persistence
+
+Starting from Iteration 13.9, the locale cookie `beeui_lang` is set by BeeUI
+middleware when `?lang=` is present and valid. The cookie path matches the
+configured `route_prefix`.
+
+Products do not need to set or manage the locale cookie. BeeUI handles:
+
+- cookie setting on valid `?lang=`;
+- cookie reading on subsequent requests after valid query param;
+- validation against `app.locale.available`;
+- safe fallback to configured default locale.
+
+### Iteration 13.9 — Theme persistence
+
+Theme is persisted via `localStorage` under `beeui-theme`. Valid values:
+`system`, `light`, `dark`. `auto` is accepted only as a configuration compatibility alias for `system`; invalid stored values are removed.
+
+Theme is a presentation preference only and does not affect product behavior,
+authorization, or business logic.
+
+### Iteration 13.9 — Safe href contract
+
+All active hrefs in adapter-provided `filter_form` and `data_table` blocks
+must pass the shared internal-link contract:
+
+- External scheme/netloc → rejected.
+- Protocol-relative `//...` → rejected.
+- Path traversal → rejected.
+- Control characters → rejected.
+- Must start with `/`.
+
+Invalid hrefs become `None` and render as inert text or are omitted.
+
+Products should pass only safe internal paths for:
+
+- `checkbox toggle_href`;
+- `columns toggle_href`;
+- `reset href`;
+- `sort_href` in data table columns.
+
+`filter_form` is a GET-only server-side form. JavaScript auto-submit is optional
+progressive enhancement; it does not change the GET contract.
+
+### Iteration 13.9 — Detail presentation metadata
+
+Detail page `key_value` items support product-neutral presentation fields:
+
+```json
+{
+  "label": "Status",
+  "value": "ok",
+  "display": "✓",
+  "tone": "success",
+  "variant": "badge",
+  "collapsible": false
+}
+```
+
+- `variant`: `text`, `badge`, `boolean`, `confidence`, `long_text`.
+- `tone`: `default`, `muted`, `success`, `warning`, `danger`.
+- Product decides tone and display semantics.
+- BeeUI validates allowlisted values.
+- Unknown variant/tone safely degrades to plain text.
 
 ## Page route ownership
 

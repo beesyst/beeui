@@ -13,6 +13,15 @@ Iteration 13.8 добавляет generic detail page presentation contract.
 JSON API envelope, route behavior и artifact API contract не менялись.
 Новый `render_beeui_detail_page()` helper — это Python render entrypoint, не JSON API endpoint.
 
+Iteration 13.9 добавляет generic operator UX presentation contracts:
+`filter_form`, `data_table` sortable columns, locale persistence, theme,
+chart state handling. JSON API envelope, route behavior и artifact API
+contract не менялись.
+
+Locale resolution is `valid ?lang=` → valid `beeui_lang` cookie → configured
+default. Built-in BeeUI-owned presentation labels use the bounded `en`/`ru`
+catalog; product labels remain product-owned.
+
 Iteration 12 определяет стабильный read-only envelope для adapter-backed
 маршрутов product console:
 
@@ -296,7 +305,7 @@ Children render through existing BeeUI block renderer. Depth is bounded at 3 lev
 | `type` | string | yes | Должно быть `"chart"` |
 | `title` | string | no | Заголовок |
 | `subtitle` | string | no | Подзаголовок |
-| `kind` | string | no | `line`, `bar`, `area`, `donut`; unsupported kind fallback к `line` |
+| `kind` | string | no | `line`, `bar`, `area`, `donut`; unsupported or malformed kind renders `degraded` |
 | `height` | int | no | Ограниченная высота |
 | `series` | array | no | Series payload для выбранного kind |
 | `categories` | array | no | X-axis categories для line/bar/area |
@@ -314,7 +323,7 @@ Children render through existing BeeUI block renderer. Depth is bounded at 3 lev
 - CDN не используется; renderer использует package-local ApexCharts asset.
 - Chart config сериализуется через Jinja `tojson` в JSON script node.
 - Empty/malformed data рендерится как empty/degraded state, без 500.
-- Unsupported `kind` нормализуется к `line`.
+- Unsupported or malformed `kind` renders the explicit `degraded` state.
 - Chart asset загружается только если на странице есть chart blocks.
 - Nested chart внутри `group.children` определяется рекурсивно.
 
@@ -382,6 +391,9 @@ Existing schema/demo `table_card` остаётся без изменений.
 - Table visual tokens проходят allowlist перед CSS class suffix rendering.
 - Table links являются internal-only и prefix-aware.
 - Browser-executed chart path остаётся product-neutral.
+- Unsupported chart kind renders an explicit degraded state; it never falls back to `line`.
+- Chart runtime errors, including rejected `render()` promises, render a localized
+  bounded error state and do not log raw adapter payloads.
 
 ## Iteration 13.8 — Generic detail page presentation contract
 

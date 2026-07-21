@@ -9,7 +9,7 @@ app_title }}{% endblock %} {% block content %}
       </div>
       <div class="col-auto ms-auto d-print-none">
         <a
-          href="{{ route_prefix }}/runs/{{ run_id }}/artifacts"
+          href="{{ artifacts_href }}"
           class="btn btn-outline-secondary"
         >
           {% if locale == 'ru' %}Назад к артефактам{% else %}Back to artifacts{% endif %}

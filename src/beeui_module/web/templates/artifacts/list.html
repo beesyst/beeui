@@ -8,7 +8,7 @@ app_title }}{% endblock %} {% block content %}
         <div class="text-secondary mt-1">{% if locale == 'ru' %}Запуск:{% else %}Run:{% endif %} {{ run_id }}</div>
       </div>
       <div class="col-auto ms-auto d-print-none">
-        <a href="{{ route_prefix }}/runs" class="btn btn-outline-secondary">
+        <a href="{{ runs_href }}" class="btn btn-outline-secondary">
           {% if locale == 'ru' %}Назад к запускам{% else %}Back to runs{% endif %}
         </a>
       </div>
@@ -54,7 +54,7 @@ app_title }}{% endblock %} {% block content %}
             <tr>
               <td>
                 <a
-                  href="{{ route_prefix }}/runs/{{ run_id }}/artifacts/{{ artifact.artifact_id }}"
+                  href="{{ artifact.href }}"
                 >
                   {{ artifact.artifact_id }}
                 </a>
@@ -66,7 +66,7 @@ app_title }}{% endblock %} {% block content %}
               </td>
               <td>
                 <a
-                  href="{{ route_prefix }}/runs/{{ run_id }}/artifacts/{{ artifact.artifact_id }}"
+                  href="{{ artifact.href }}"
                   class="btn btn-sm btn-outline-primary"
                 >
                   {% if locale == 'ru' %}Просмотр{% else %}View{% endif %}

@@ -1,7 +1,7 @@
 <div class="card beeui-chart-card">
   <div class="card-header">
     <div>
-      <h3 class="card-title mb-0">{{ block.title or ("График" if locale == 'ru' else "Chart") }}</h3>
+      <h3 class="card-title mb-0">{{ block.title or translate("chart.title", locale) }}</h3>
       {% if block.subtitle %}
         <div class="text-secondary small mt-1">{{ block.subtitle }}</div>
       {% endif %}
@@ -12,12 +12,13 @@
 
   </div>
   <div class="card-body">
-    {% if block.has_data %}
+    {% if block.state == "ready" %}
       <div
         class="beeui-chart-container"
         id="{{ block.chart_id }}"
         data-chart-config-id="{{ block.chart_id }}-config"
         data-chart-height="{{ block.height }}"
+        data-chart-empty="false"
       ></div>
       <script
         type="application/json"
@@ -25,14 +26,18 @@
         class="beeui-chart-config"
       >{{ block.chart_config | tojson }}</script>
       {% if block.unit %}
-        <div class="text-secondary small mt-2 text-center">{% if locale == 'ru' %}Ед.:{% else %}Unit:{% endif %} {{ block.unit }}</div>
+        <div class="text-secondary small mt-2 text-center">{{ translate("chart.unit", locale) }} {{ block.unit }}</div>
       {% endif %}
-    {% else %}
-      <div class="empty py-4">
+    {% elif block.state == "empty" %}
+      <div class="empty py-4" data-chart-empty="true">
         <div class="empty-title">{{ block.empty_message }}</div>
         <p class="empty-subtitle text-secondary">
-          {% if locale == 'ru' %}Данные графика отсутствуют или недействительны.{% else %}Chart data is missing or invalid.{% endif %}
+          {{ translate("chart.empty", locale) }}
         </p>
+      </div>
+    {% else %}
+      <div class="empty py-4" data-chart-state="degraded">
+        <div class="empty-title">{{ translate("chart.unavailable", locale) }}</div>
       </div>
     {% endif %}
 

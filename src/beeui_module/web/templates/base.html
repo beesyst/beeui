@@ -1,12 +1,11 @@
 <!doctype html>
-<html lang="{{ locale|default('en') }}" data-bs-theme="{{ theme.mode }}">
+<html lang="{{ locale|default('en') }}" data-bs-theme="{{ theme.mode }}" data-beeui-theme-config="{{ theme.selection }}">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{% block title %}BeeUI{% endblock %}</title>
-    {# Sync theme before paint — prevent FOUC #}
     <script type="text/javascript">
-var s=window['local'+'Storage']&&window['local'+'Storage'].getItem('beeui-theme'),d=document.documentElement;(s==='light'||s==='dark')?d.setAttribute('data-bs-theme',s):d.setAttribute('data-bs-theme',window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light')
+try{var d=document.documentElement,c=d.getAttribute('data-beeui-theme-config'),s=window.localStorage.getItem('beeui-theme');if(s!=='system'&&s!=='light'&&s!=='dark'){if(s)window.localStorage.removeItem('beeui-theme');s=null}var m=s||((c==='system'||c==='light'||c==='dark')?c:'system');d.setAttribute('data-bs-theme',m==='system'&&window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':m==='system'?'light':m)}catch(e){}
     </script>
     <link
       rel="stylesheet"
@@ -37,47 +36,59 @@ var s=window['local'+'Storage']&&window['local'+'Storage'].getItem('beeui-theme'
     <script>
     (function() {
       'use strict';
+      var chartMessages = {{ {
+        "empty": translate("chart.empty", locale),
+        "unavailable": translate("chart.unavailable", locale),
+        "error": translate("chart.error", locale),
+      } | tojson }};
+
+      function renderChartError(el, state) {
+        el.textContent = '';
+        var empty = document.createElement('div');
+        empty.className = 'empty';
+        var title = document.createElement('div');
+        title.className = 'empty-title';
+        title.textContent = chartMessages[state] || chartMessages.error;
+        empty.appendChild(title);
+        el.appendChild(empty);
+      }
+
+      function registerChart(chart) {
+        if (typeof window.beeuiRegisterChart === 'function') {
+          window.beeuiRegisterChart(chart);
+        }
+      }
 
       document.querySelectorAll('.beeui-chart-container[data-chart-config-id]').forEach(function(el) {
+        var configNode = null;
         try {
           var configId = el.getAttribute('data-chart-config-id');
-          var configNode = document.getElementById(configId);
+          configNode = document.getElementById(configId);
 
-          if (!configNode) {
-            throw new Error('Missing chart config');
-          }
+          if (!configNode) throw new Error('Missing chart config');
 
           var config = JSON.parse(configNode.textContent || '{}');
           config.chart = config.chart || {};
           config.chart.el = el;
 
-          // Apply current theme mode to chart
           var html = document.documentElement;
           var themeMode = html.getAttribute('data-bs-theme') === 'dark' ? 'dark' : 'light';
           config.theme = config.theme || {};
           config.theme.mode = themeMode;
 
           var chart = new ApexCharts(el, config);
-          chart.render();
-
-          // Register for theme updates
-          if (typeof window.beeuiRegisterChart === 'function') {
-            window.beeuiRegisterChart(chart);
+          var renderResult = chart.render();
+          if (renderResult && typeof renderResult.then === 'function') {
+            renderResult.then(function() {
+              registerChart(chart);
+            }).catch(function() {
+              renderChartError(el, 'error');
+            });
+          } else {
+            registerChart(chart);
           }
-        } catch(e) {
-          el.textContent = '';
-          var empty = document.createElement('div');
-          empty.className = 'empty';
-
-          var title = document.createElement('div');
-          title.className = 'empty-title';
-          var lang = document.documentElement.lang;
-          title.textContent = lang === 'ru'
-            ? 'Нет данных графика за этот период'
-            : 'No chart data for this period';
-
-          empty.appendChild(title);
-          el.appendChild(empty);
+        } catch (_) {
+          renderChartError(el, configNode ? 'error' : 'unavailable');
         }
       });
     })();

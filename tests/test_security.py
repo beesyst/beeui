@@ -22,7 +22,7 @@ from beeui_module.auth.sessions import (
 )
 from beeui_module.core.paths import settings_path
 from beeui_module.core.settings import load_settings
-from beeui_module.web.app import create_beeui_app
+from beeui_module.web.app import create_beeui_app, mount_beeui
 
 _TEST_SECRET = "test-session-secret-for-testing-only"
 _TEST_OPERATOR_TOKEN = "test-operator-token"
@@ -213,6 +213,12 @@ def test_auth_disabled_login_returns_warning() -> None:
     response = client.get("/auth/login")
     assert response.status_code == 200
     assert "auth is disabled" in response.text.lower()
+    russian = client.post(
+        "/auth/login?lang=ru",
+        headers={"accept": "text/html"},
+    )
+    assert russian.status_code == 400
+    assert "Аутентификация отключена в локальном режиме" in russian.text
 
 
 def test_login_success_creates_session() -> None:
@@ -251,6 +257,35 @@ def test_logout_clears_session() -> None:
         follow_redirects=False,
     )
     assert response.status_code == 302
+
+
+def test_mounted_auth_uses_effective_external_prefix() -> None:
+    settings = load_settings(settings_path())
+    settings["auth"] = _make_auth_settings(enabled=True)
+    parent = FastAPI()
+    mount_beeui(parent, path="/ui", settings=settings)
+    client = TestClient(parent)
+
+    login = client.get("/ui/auth/login")
+    assert login.status_code == 200
+    assert 'action="/ui/auth/login"' in login.text
+    assert 'href="/ui/static/css/beeui.css?v=4"' in login.text
+
+    signed_in = client.post(
+        "/ui/auth/login",
+        data={"user_id": "admin", "token": _TEST_ADMIN_TOKEN},
+        follow_redirects=False,
+    )
+    assert signed_in.headers["location"] == "/ui/"
+    assert "Path=/ui" in signed_in.headers["set-cookie"]
+
+    signed_out = client.post(
+        "/ui/auth/logout",
+        headers={"accept": "text/html"},
+        follow_redirects=False,
+    )
+    assert signed_out.headers["location"] == "/ui/auth/login"
+    assert "Path=/ui" in signed_out.headers["set-cookie"]
 
 
 def test_unauthenticated_post_returns_401() -> None:

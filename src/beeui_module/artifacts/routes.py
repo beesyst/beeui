@@ -21,6 +21,7 @@ from beeui_module.pages.locale import (
 from beeui_module.pages.locale import (
     resolve_locale as _resolve_locale,
 )
+from beeui_module.pages.links import effective_external_prefix, prefix_internal_href
 from beeui_module.pages.router import (
     _build_language_switcher,
     build_layout_context,
@@ -199,6 +200,19 @@ def _inject_locale_context(
     )
 
 
+def _prepare_html_context(
+    base: dict[str, Any],
+    request: Request,
+    ui_config: BeeUiConfig | None,
+    route_prefix: str,
+) -> tuple[dict[str, Any], str]:
+    external_prefix = effective_external_prefix(request, route_prefix)
+    ctx = {**base, "route_prefix": external_prefix}
+    ctx["runs_href"] = prefix_internal_href(external_prefix, "/runs")
+    _inject_locale_context(ctx, request, ui_config, external_prefix)
+    return ctx, external_prefix
+
+
 def register_artifact_routes(
     app: FastAPI,
     templates: Jinja2Templates,
@@ -237,14 +251,15 @@ def register_artifact_routes(
         try:
             validate_run_id(run_id)
         except Exception:
-            ctx: dict[str, Any] = {
-                **_base_ctx,
+            ctx, _ = _prepare_html_context(
+                _base_ctx, request, ui_config, route_prefix
+            )
+            ctx.update({
                 "run_id": run_id,
                 "artifacts": [],
                 "adapter_available": False,
                 "error": f"Invalid run_id: {run_id}",
-            }
-            _inject_locale_context(ctx, request, ui_config, route_prefix)
+            })
             return templates.TemplateResponse(
                 request=request,
                 name="artifacts/list.html",
@@ -254,14 +269,15 @@ def register_artifact_routes(
 
         adapter = _resolve_adapter(request)
         if adapter is None:
-            ctx = {
-                **_base_ctx,
+            ctx, _ = _prepare_html_context(
+                _base_ctx, request, ui_config, route_prefix
+            )
+            ctx.update({
                 "run_id": run_id,
                 "artifacts": [],
                 "adapter_available": False,
                 "error": "Adapter is not available",
-            }
-            _inject_locale_context(ctx, request, ui_config, route_prefix)
+            })
             return templates.TemplateResponse(
                 request=request,
                 name="artifacts/list.html",
@@ -280,14 +296,21 @@ def register_artifact_routes(
             if isinstance(raw_data, list):
                 artifacts, _warnings = _normalize_artifact_items(result.data)
 
-        ctx = {
-            **_base_ctx,
+        ctx, external_prefix = _prepare_html_context(
+            _base_ctx, request, ui_config, route_prefix
+        )
+        for artifact in artifacts:
+            artifact["href"] = prefix_internal_href(
+                external_prefix,
+                f"/runs/{run_id}/artifacts/{artifact['artifact_id']}",
+            )
+        ctx.update({
             "run_id": run_id,
             "artifacts": artifacts,
             "adapter_available": True,
             "error": error,
-        }
-        _inject_locale_context(ctx, request, ui_config, route_prefix)
+            "runs_href": prefix_internal_href(external_prefix, "/runs"),
+        })
         return templates.TemplateResponse(
             request=request,
             name="artifacts/list.html",
@@ -304,15 +327,19 @@ def register_artifact_routes(
             validate_run_id(run_id)
             validate_artifact_id(artifact_id)
         except Exception:
-            ctx: dict[str, Any] = {
-                **_base_ctx,
+            ctx, external_prefix = _prepare_html_context(
+                _base_ctx, request, ui_config, route_prefix
+            )
+            ctx.update({
                 "run_id": run_id,
                 "artifact_id": artifact_id,
                 "adapter_available": False,
                 "error": "Invalid run_id or artifact_id",
                 "preview": None,
-            }
-            _inject_locale_context(ctx, request, ui_config, route_prefix)
+                "artifacts_href": prefix_internal_href(
+                    external_prefix, f"/runs/{run_id}/artifacts"
+                ),
+            })
             return templates.TemplateResponse(
                 request=request,
                 name="artifacts/detail.html",
@@ -322,15 +349,19 @@ def register_artifact_routes(
 
         adapter = _resolve_adapter(request)
         if adapter is None:
-            ctx = {
-                **_base_ctx,
+            ctx, external_prefix = _prepare_html_context(
+                _base_ctx, request, ui_config, route_prefix
+            )
+            ctx.update({
                 "run_id": run_id,
                 "artifact_id": artifact_id,
                 "adapter_available": False,
                 "error": "Adapter is not available",
                 "preview": None,
-            }
-            _inject_locale_context(ctx, request, ui_config, route_prefix)
+                "artifacts_href": prefix_internal_href(
+                    external_prefix, f"/runs/{run_id}/artifacts"
+                ),
+            })
             return templates.TemplateResponse(
                 request=request,
                 name="artifacts/detail.html",
@@ -353,15 +384,19 @@ def register_artifact_routes(
                     content=data.get("content"),
                 )
 
-        ctx = {
-            **_base_ctx,
+        ctx, external_prefix = _prepare_html_context(
+            _base_ctx, request, ui_config, route_prefix
+        )
+        ctx.update({
             "run_id": run_id,
             "artifact_id": artifact_id,
             "adapter_available": True,
             "error": error,
             "preview": preview,
-        }
-        _inject_locale_context(ctx, request, ui_config, route_prefix)
+            "artifacts_href": prefix_internal_href(
+                external_prefix, f"/runs/{run_id}/artifacts"
+            ),
+        })
         return templates.TemplateResponse(
             request=request,
             name="artifacts/detail.html",

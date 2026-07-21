@@ -2,7 +2,6 @@
   "use strict";
   const root = document.documentElement;
 
-  /* ─── Sidebar state sync ─── */
   (function initSidebar() {
     if (!root) return;
     root.setAttribute("data-beeui", "ready");
@@ -20,41 +19,48 @@
     sidebar.addEventListener("click", syncSidebarState);
   })();
 
-  /* ─── Theme system ─── */
   function getSystemTheme() {
-    return window.matchMedia("(prefers-color-scheme: dark)").matches
+    return typeof window.matchMedia === "function" && window.matchMedia("(prefers-color-scheme: dark)").matches
       ? "dark"
       : "light";
   }
 
   function getStoredTheme() {
     try {
-      return localStorage.getItem("beeui-theme");
+      var mode = localStorage.getItem("beeui-theme");
+      if (mode === "system" || mode === "light" || mode === "dark") return mode;
+      if (mode) localStorage.removeItem("beeui-theme");
     } catch (_) {
-      return null;
     }
+    return null;
   }
 
   function setStoredTheme(mode) {
     try {
-      if (mode === "auto") {
-        localStorage.removeItem("beeui-theme");
-      } else {
+      if (mode === "system" || mode === "light" || mode === "dark") {
         localStorage.setItem("beeui-theme", mode);
       }
     } catch (_) { }
   }
 
+  function getConfiguredTheme() {
+    var mode = root.getAttribute("data-beeui-theme-config");
+    return mode === "light" || mode === "dark" || mode === "system" ? mode : "system";
+  }
+
+  function getSelectedTheme() {
+    return getStoredTheme() || getConfiguredTheme();
+  }
+
   function getEffectiveTheme() {
-    var stored = getStoredTheme();
-    if (stored === "light" || stored === "dark") return stored;
-    return getSystemTheme();
+    var selected = getSelectedTheme();
+    return selected === "system" ? getSystemTheme() : selected;
   }
 
   function setTheme(mode) {
-    var effective = mode === "auto" ? getSystemTheme() : mode;
+    var effective = mode === "system" ? getSystemTheme() : mode;
     root.setAttribute("data-bs-theme", effective);
-    highlightActiveButton(mode || "auto");
+    highlightActiveButton(mode || "system");
   }
 
   function highlightActiveButton(mode) {
@@ -72,20 +78,16 @@
   }
 
   function initTheme() {
-    var stored = getStoredTheme();
-    setTheme(stored || "auto");
+    setTheme(getSelectedTheme());
 
-    /* Listen for system theme changes — only when no explicit choice stored */
-    window
-      .matchMedia("(prefers-color-scheme: dark)")
-      .addEventListener("change", function () {
-        if (!getStoredTheme()) {
-          setTheme("auto");
+    var media = typeof window.matchMedia === "function" ? window.matchMedia("(prefers-color-scheme: dark)") : null;
+    if (media && typeof media.addEventListener === "function") media.addEventListener("change", function () {
+        if (getSelectedTheme() === "system") {
+          setTheme("system");
         }
       });
   }
 
-  /* ─── Chart theme registry ─── */
   var chartInstances = [];
 
   window.beeuiRegisterChart = function (chart) {
@@ -102,23 +104,22 @@
         chart.updateOptions({
           theme: { mode: mode },
         });
-      } catch (_) { /* ignore single chart failures */ }
+      } catch (_) {}
     });
   }
 
-  /* Patch setTheme to also update charts */
   var _origSetTheme = setTheme;
   setTheme = function (mode) {
     _origSetTheme(mode);
     try { updateChartThemes(); } catch (_) { }
   };
 
-  /* ─── Boot ─── */
   try { initTheme(); } catch (e) { console.error('beeui initTheme error:', e); }
 
-  /* Expose setter for onclick in templates */
   window.beeuiSetTheme = function (mode) {
-    setStoredTheme(mode);
-    setTheme(mode);
+    if (mode === "system" || mode === "light" || mode === "dark") {
+      setStoredTheme(mode);
+      setTheme(mode);
+    }
   };
 })();

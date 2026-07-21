@@ -3,7 +3,8 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-from beeui_module.blocks.layout_renderer import render_layout
+from beeui_module.blocks.layout_renderer import render_layout, resolve_layout_links
+from beeui_module.pages.links import validate_internal_href
 from beeui_module.pages.config import load_beeui_config
 
 
@@ -2101,7 +2102,8 @@ def test_layout_chart_unsupported_kind_degrades() -> None:
     block = result[0]
     assert block["type"] == "chart"
     assert block["kind"] == "line"
-    assert block["has_data"] is True
+    assert block["state"] == "degraded"
+    assert block["has_data"] is False
 
 
 def test_layout_chart_empty_data_renders_empty() -> None:
@@ -2139,6 +2141,78 @@ def test_layout_chart_invalid_series_degrades() -> None:
     block = result[0]
     assert block["type"] == "chart"
     assert block["has_data"] is False
+    assert block["state"] == "degraded"
+
+
+def test_layout_chart_colors_accept_tokens_and_strict_hex_only() -> None:
+    block = render_layout(
+        [
+            {
+                "type": "chart",
+                "title": "Colors",
+                "kind": "line",
+                "series": [{"name": "series", "data": [1]}],
+                "colors": [
+                    "primary",
+                    "#6366f1",
+                    "#0ea5e9",
+                    "#10b981",
+                    "#f59e0b",
+                    "#ef4444",
+                    "rgb(1,2,3)",
+                    "#fff",
+                    "#6366f180",
+                    "url(https://invalid.example)",
+                ],
+            }
+        ]
+    )[0]
+    assert block["chart_config"]["colors"] == [
+        "var(--tblr-primary)",
+        "#6366f1",
+        "#0ea5e9",
+        "#10b981",
+        "#f59e0b",
+        "#ef4444",
+    ]
+
+
+def test_layout_chart_series_requires_finite_numeric_data() -> None:
+    invalid_values = [float("nan"), float("inf"), float("-inf"), True, "1", {"x": 1}, [1]]
+    for value in invalid_values:
+        block = render_layout(
+            [
+                {
+                    "type": "chart",
+                    "title": "Invalid",
+                    "kind": "line",
+                    "series": [{"name": "series", "data": [value]}],
+                }
+            ]
+        )[0]
+        assert block["state"] == "degraded"
+        assert block["chart_config"]["series"] == []
+
+
+def test_layout_chart_valid_series_and_empty_state_are_distinct() -> None:
+    payloads = [
+        ("line", [{"name": "line", "data": [1, 2.5]}]),
+        ("bar", [{"name": "bar", "data": [1, 2]}]),
+        ("area", [{"name": "area", "data": [1, 2]}]),
+        ("donut", [1, 2.5]),
+    ]
+    for kind, series in payloads:
+        block = render_layout(
+            [{"type": "chart", "title": kind, "kind": kind, "series": series}]
+        )[0]
+        assert block["state"] == "ready"
+        assert block["has_data"] is True
+
+    empty = render_layout(
+        [{"type": "chart", "title": "Empty", "kind": "line", "series": []}]
+    )[0]
+    assert empty["state"] == "empty"
+    assert empty["chart_config"]["series"] == []
 
 
 def test_layout_chart_unsafe_text_escaped() -> None:
@@ -2915,9 +2989,8 @@ def test_filter_form_renders_with_fields() -> None:
     assert len(sel["options"]) == 2
     assert sel["multi"] is True
 
-    # actions
     assert block["actions"]["apply"]["label"] == "Apply"
-    assert block["actions"]["apply"]["method"] == "GET"
+    assert "method" not in block["actions"]["apply"]
     assert block["actions"]["reset"]["href"] == "/rop?tab=queue"
 
 
@@ -2963,3 +3036,302 @@ def test_filter_form_select_handles_invalid_options() -> None:
     block = result[0]
     sel = block["fields"][0]
     assert sel["options"] == []
+
+
+def test_data_table_sort_href_preserved() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "data_table",
+                "title": "Sortable",
+                "width": 12,
+                "columns": [
+                    {
+                        "key": "id",
+                        "label": "ID",
+                        "sortable": True,
+                        "sort_href": "/runs?sort=id&dir=asc",
+                    },
+                    {
+                        "key": "name",
+                        "label": "Name",
+                        "sortable": True,
+                        "sort_href": None,
+                    },
+                    {"key": "val", "label": "Value", "sortable": False},
+                ],
+                "rows": [{"id": {"label": "001"}, "name": {"label": "A"}, "val": {"label": "1"}}],
+            }
+        ]
+    )
+    columns = result[0]["columns"]
+    assert columns[0]["sort_href"] == "/runs?sort=id&dir=asc"
+    assert columns[1]["sort_href"] is None
+    assert columns[2]["sort_href"] is None
+
+
+def test_data_table_sort_href_unsafe_rejected() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "data_table",
+                "title": "Sortable",
+                "width": 12,
+                "columns": [
+                    {
+                        "key": "id",
+                        "label": "ID",
+                        "sortable": True,
+                        "sort_href": "https://evil.com/sort",
+                    },
+                    {
+                        "key": "name",
+                        "label": "Name",
+                        "sortable": True,
+                        "sort_href": "//evil.com/sort",
+                    },
+                    {
+                        "key": "val",
+                        "label": "Value",
+                        "sortable": True,
+                        "sort_href": "/../secret",
+                    },
+                    {
+                        "key": "safe",
+                        "label": "Safe",
+                        "sortable": True,
+                        "sort_href": "/runs?sort=id&dir=asc",
+                    },
+                ],
+                "rows": [{"id": {"label": "001"}, "name": {"label": "A"}, "val": {"label": "1"}, "safe": {"label": "2"}}],
+            }
+        ]
+    )
+    columns = result[0]["columns"]
+    assert columns[0]["sort_href"] is None
+    assert columns[1]["sort_href"] is None
+    assert columns[2]["sort_href"] is None
+    assert columns[3]["sort_href"] == "/runs?sort=id&dir=asc"
+
+
+def test_filter_form_checkbox_toggle_href_validated() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "filter_form",
+                "title": "Filters",
+                "fields": [
+                    {
+                        "type": "checkboxes",
+                        "name": "status",
+                        "label": "Status",
+                        "choices": [
+                            {"value": "ok", "label": "OK", "checked": True, "toggle_href": "/filter?status=ok"},
+                            {"value": "bad", "label": "External", "checked": False, "toggle_href": "https://evil.com"},
+                            {"value": "bad2", "label": "Proto relative", "checked": False, "toggle_href": "//evil.com"},
+                        ],
+                    }
+                ],
+                "actions": {},
+            }
+        ]
+    )
+    choices = result[0]["fields"][0]["choices"]
+    assert choices[0]["toggle_href"] == "/filter?status=ok"
+    assert choices[1]["toggle_href"] is None
+    assert choices[2]["toggle_href"] is None
+
+
+def test_filter_form_reset_href_validated() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "filter_form",
+                "title": "Filters",
+                "actions": {
+                    "reset": {"label": "Reset", "href": "https://evil.com"},
+                    "apply": {"label": "Apply", "method": "GET"},
+                },
+            }
+        ]
+    )
+    block = result[0]
+    assert "href" not in block["actions"].get("reset", {})
+    assert block["actions"]["apply"]["label"] == "Apply"
+
+
+def test_filter_form_reset_href_safe() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "filter_form",
+                "title": "Filters",
+                "actions": {
+                    "reset": {"label": "Clear", "href": "/filter?clear=1"},
+                },
+            }
+        ]
+    )
+    assert result[0]["actions"]["reset"]["href"] == "/filter?clear=1"
+
+
+def test_filter_form_columns_toggle_href_validated() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "filter_form",
+                "title": "Filters",
+                "columns_toggle_href": "https://evil.com/toggle",
+                "column_toggles": [
+                    {"key": "col1", "label": "Col 1", "visible": True, "toggle_href": "/toggle/col1"},
+                    {"key": "col2", "label": "Col 2", "visible": False, "toggle_href": "https://evil.com/col2"},
+                ],
+                "columns_open": True,
+                "fields": [],
+                "actions": {},
+            }
+        ]
+    )
+    block = result[0]
+    assert block["columns_toggle_href"] is None
+    assert block["column_toggles"][0]["toggle_href"] == "/toggle/col1"
+    assert block["column_toggles"][1]["toggle_href"] is None
+
+
+def test_filter_form_unsafe_href_omitted_from_actions() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "filter_form",
+                "title": "Filters",
+                "actions": {
+                    "apply": {"label": "Apply", "method": "GET", "href": "https://evil.com/apply"},
+                },
+            }
+        ]
+    )
+    block = result[0]
+    assert "href" not in block["actions"].get("apply", {})
+
+
+def test_layout_links_share_internal_boundary_and_apply_mount_prefix_once() -> None:
+    for href in ("/events//item", "/.", "/events%5Citem", "/events/%2e%2e/item"):
+        assert validate_internal_href(href) is None
+
+    blocks = render_layout(
+        [
+            {
+                "type": "group",
+                "children": [
+                    {
+                        "type": "filter_form",
+                        "title": "Filters",
+                        "actions": {
+                            "apply": {"label": "Apply", "href": "/rop?apply=1", "method": "POST"},
+                            "reset": {"label": "Reset", "href": "/rop?reset=1"},
+                        },
+                        "columns_toggle_href": "/rop?columns=1",
+                        "column_toggles": [{"key": "run", "label": "Run", "toggle_href": "/rop?column=run"}],
+                        "fields": [{"type": "checkboxes", "choices": [{"value": "ok", "label": "OK", "toggle_href": "/rop?state=ok"}]}],
+                    },
+                    {
+                        "type": "data_table",
+                        "title": "Rows",
+                        "toolbar": {"actions": [{"label": "Open", "href": "/rop?open=1"}]},
+                        "columns": [{"key": "run", "label": "Run", "sortable": True, "sort_href": "/rop?sort=run"}],
+                        "rows": [{"run": {"label": "42", "href": "/rop/42"}}],
+                        "pagination": {"pages": [{"label": "1", "href": "/rop?page=1"}]},
+                    },
+                ],
+            }
+        ]
+    )
+    resolve_layout_links(blocks, "/ui", "/ui/rop")
+    form, table = blocks[0]["children"]
+    assert form["form_action"] == "/ui/rop?apply=1"
+    assert "method" not in form["actions"]["apply"]
+    assert form["actions"]["reset"]["href"] == "/ui/rop?reset=1"
+    assert form["fields"][0]["choices"][0]["toggle_href"] == "/ui/rop?state=ok"
+    assert form["column_toggles"][0]["toggle_href"] == "/ui/rop?column=run"
+    assert table["columns"][0]["sort_href"] == "/ui/rop?sort=run"
+    assert table["toolbar"]["actions"][0]["href"] == "/ui/rop?open=1"
+    assert table["pagination"]["pages"][0]["href"] == "/ui/rop?page=1"
+    assert "/ui/ui/" not in str(blocks)
+
+
+def test_data_table_sort_metadata_is_atomic() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "data_table",
+                "title": "Rows",
+                "columns": [
+                    {"key": "plain", "label": "Plain", "sortable": False, "sort_href": "/rows?sort=plain", "sort_active": True, "sort_direction": "asc"},
+                    {"key": "missing", "label": "Missing", "sortable": True, "sort_active": True, "sort_direction": "asc"},
+                    {"key": "unknown", "label": "Unknown", "sortable": True, "sort_href": "/rows?sort=unknown", "sort_active": True, "sort_direction": "sideways"},
+                    {"key": "unsafe", "label": "Unsafe", "sortable": True, "sort_href": "https://invalid.example", "sort_active": True, "sort_direction": "asc"},
+                    {"key": "agent", "label": "Run", "sortable": True, "sort_href": "/rows?sort=run", "sort_active": True, "sort_direction": "desc"},
+                ],
+                "rows": [{}],
+            }
+        ]
+    )[0]
+    plain, missing, unknown, unsafe, agent = result["columns"]
+    assert plain["sort_href"] is None and not plain["sort_active"]
+    assert missing["sort_href"] is None and not missing["sort_active"]
+    assert unknown["sort_href"] == "/rows?sort=unknown" and not unknown["sort_active"]
+    assert unsafe["sort_href"] is None and not unsafe["sort_active"]
+    assert agent["sort_active"] and agent["sort_direction"] == "descending"
+
+
+def test_chart_metadata_is_bounded_and_operator_progress_is_safe() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "chart",
+                "title": "Chart",
+                "kind": "bar",
+                "chart_id": "bad id<script>",
+                "colors": ["primary", "success", "<script>"] + ["danger"] * 20,
+                "horizontal": "false",
+                "barHeight": "1000px",
+                "series": [{"name": "Series", "data": [1]}],
+            },
+            {
+                "type": "operator_hero",
+                "title": "Hero",
+                "items": [
+                    {"label": "Low", "value": "x", "progress": -1, "progress_tone": "bg-success"},
+                    {"label": "High", "value": "x", "progress": 101, "progress_tone": "invalid"},
+                    {"label": "Bool", "value": "x", "progress": True},
+                    {"label": "Nan", "value": "x", "progress": float("nan")},
+                    {"label": "Inf", "value": "x", "progress": float("inf")},
+                ],
+            },
+        ]
+    )
+    chart, hero = result
+    assert chart["chart_id"].startswith("beeui-chart-")
+    assert chart["chart_config"]["colors"] == ["var(--tblr-primary)", "var(--tblr-success)"] + ["var(--tblr-danger)"] * 10
+    assert chart["chart_config"]["plotOptions"]["bar"]["columnWidth"] == "55%"
+    assert "barHeight" not in chart["chart_config"]["plotOptions"]["bar"]
+    items = hero["items"]
+    assert items[0]["progress"] == 0 and items[0]["progress_tone"] == "bg-success"
+    assert items[1]["progress"] == 100 and items[1]["progress_tone"] == "bg-primary"
+    assert all("progress" not in item for item in items[2:])
+
+
+def test_data_table_progress_requires_finite_numeric_values() -> None:
+    values = [float("nan"), float("inf"), float("-inf"), True, -5, 101, 12.5]
+    result = render_layout(
+        [
+            {
+                "type": "data_table",
+                "title": "Rows",
+                "columns": [{"key": "progress", "label": "Progress", "cell": "progress"}],
+                "rows": [{"progress": {"value": value, "label": "x"}} for value in values],
+            }
+        ]
+    )[0]
+    normalized = [row["progress"]["value"] for row in result["rows"]]
+    assert normalized == [0, 0, 0, 0, 0, 100, 12.5]

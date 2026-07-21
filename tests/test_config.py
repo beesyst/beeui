@@ -65,9 +65,17 @@ def test_load_beeui_config_rejects_invalid_theme_mode(tmp_path: Path) -> None:
     try:
         load_beeui_config(config_path)
     except ValueError as exc:
-        assert str(exc) == "app.theme.mode must be one of ['auto', 'dark', 'light']"
+        assert str(exc) == "app.theme.mode must be one of ['auto', 'dark', 'light', 'system']"
     else:
         raise AssertionError("load_beeui_config must fail on invalid theme mode")
+
+
+def test_load_beeui_config_normalizes_auto_theme_to_system(tmp_path: Path) -> None:
+    config = load_beeui_config(
+        _write_config(tmp_path, _base_config().replace("mode: dark", "mode: auto", 1))
+    )
+
+    assert config.theme.mode == "system"
 
 
 def test_load_beeui_config_rejects_arbitrary_css_js_html_keys(tmp_path: Path) -> None:
@@ -1079,6 +1087,32 @@ def test_schema_locale_default_not_in_available(tmp_path: Path) -> None:
         raise AssertionError(
             "load_beeui_config must reject locale default not in available"
         )
+
+
+def test_schema_locale_rejects_unsupported_language(tmp_path: Path) -> None:
+    content = _minimal_schema().replace(
+        "  theme:\n",
+        "  locale:\n    default: fr\n    available:\n      - fr\n  theme:\n",
+        1,
+    )
+
+    try:
+        load_beeui_config(_write_config(tmp_path, content))
+    except ValueError as exc:
+        assert "must be one of ['en', 'ru']" in str(exc)
+    else:
+        raise AssertionError("load_beeui_config must reject unsupported locales")
+
+
+def test_schema_locale_accepts_en_ru_combinations(tmp_path: Path) -> None:
+    for default, available in (("en", "- en\n      - ru"), ("ru", "- ru\n      - en")):
+        content = _minimal_schema().replace(
+            "  theme:\n",
+            f"  locale:\n    default: {default}\n    available:\n      {available}\n  theme:\n",
+            1,
+        )
+        config = load_beeui_config(_write_config(tmp_path, content))
+        assert config.locale.default == default
 
 
 def _minimal_schema() -> str:

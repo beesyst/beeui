@@ -2,6 +2,49 @@
 
 **BeeUI** — общий UI-фреймворк на Python для Bee-продуктов: `beecap`, `beeagent` и будущих модулей экосистемы Bee.
 
+## Iteration 13.9 — Operator UX presentation contracts, locale persistence, theme, and chart state handling
+
+Текущий результат — generic operator-facing presentation contracts: filter form,
+sortable data tables, locale persistence, theme selection, chart empty/error states
+и product-neutral detail rendering.
+
+В Iteration 13.9 добавлены:
+
+- **Generic filter form (`filter_form`)**:
+  - adapter-backed `filter_form` block type;
+  - field types: `date_range`, `text`, `select`, `checkboxes`;
+  - column toggles с safe internal toggle_href;
+  - safe href contract для всех активных ссылок;
+- **Sortable data table (`data_table`)**:
+  - сохранение `sort_href` в column model;
+  - валидация через safe internal-link contract;
+  - template показывает link только при валидном sort_href;
+- **Product-neutral detail presentation**:
+  - удалены hardcoded product thresholds (priority, confidence);
+  - allowlisted tones: `default`, `muted`, `success`, `warning`, `danger`;
+  - allowlisted variants: `text`, `badge`, `boolean`, `confidence`, `long_text`;
+  - неизвестный tone/variant безопасно деградирует в plain text;
+- **Locale persistence**:
+  - единый порядок resolution: `?lang=` → cookie `beeui_lang` → configured default;
+  - cookie устанавливается middleware при валидном `?lang=`;
+  - auth routes используют единый resolver;
+  - `samesite="lax"`, path соответствует route prefix;
+- **Theme persistence**:
+  - режимы: `system`, `light`, `dark`; compatibility alias `auto` нормализуется к `system`;
+  - `localStorage` с allowlisted values;
+  - FOUC bootstrap без произвольного JS/data;
+  - system mode реагирует на `prefers-color-scheme`;
+  - chart theme синхронизируется с resolved theme;
+- **Chart states**:
+  - различие ready, empty data, degraded malformed/unsupported config и runtime render error;
+  - EN/RU локализация всех состояний;
+  - runtime error не выводит adapter payload в browser console;
+- **Безопасность**:
+  - все hrefs в filter_form и data_table проходят единый `_validate_link()` contract;
+  - external scheme, protocol-relative, traversal, control chars отклоняются;
+  - invalid href становится inert или удаляется;
+- **Документация**: `docs/THEME.md`.
+
 ## Iteration 13.8 — Generic detail page template and render helper
 
 Текущий результат — generic detail page renderer, позволяющий product routes
@@ -44,7 +87,7 @@ query-preserving navigation для BeeUI shell.
 - `?lang=` работает только через allowlist;
 - invalid `?lang=bad` falls back to default;
 - language switcher рендерится в page header, если доступно больше одной locale;
-- switcher работает без JS, cookies, session и localStorage;
+- switcher работает без JS, session и localStorage; valid selection сохраняется в cookie `beeui_lang`;
 - page tab links сохраняют `lang`, `period`, `run_id`;
 - sidebar / navigation / catalog / product console сохраняют `lang`, где это practically applicable;
 - route prefix и embedded mount поддерживаются;
@@ -995,7 +1038,7 @@ BeeUI не должен получать прямую authority на tools/MCP/r
 - resolved `locale` пробрасывается в HTML templates и в `<html lang="{{ locale|default('en') }}">`;
 - shell labels поддерживают plain string и localized mapping `{en: "...", ru: "..."}`;
 - language switcher рендерится в page header при `len(app.locale.available) > 1`;
-- language switcher не использует JS, cookies, session или localStorage;
+- historical query-only language switcher contract superseded Iteration 13.9: no JS, session or localStorage; valid selection persists in `beeui_lang` cookie;
 - page tab links сохраняют `lang`, `period`, `run_id`;
 - sidebar / navigation / catalog / product console сохраняют `lang`, где это practically applicable;
 - configurable component defaults через `components.tabs.variant` и `components.accordion.variant`;

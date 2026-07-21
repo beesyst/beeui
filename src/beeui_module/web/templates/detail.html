@@ -8,7 +8,7 @@
 
     {% if back_href %}
     <div class="mb-3">
-      <a href="{{ route_prefix }}{{ back_href }}" class="btn btn-ghost-secondary btn-sm">
+      <a href="{{ back_href }}" class="btn btn-ghost-secondary btn-sm">
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-1">
           <path d="M5 12l14 0" />
           <path d="M5 12l6 6" />
@@ -52,34 +52,40 @@
                 <div class="datagrid-item">
                   <div class="datagrid-title">{{ item["label"] }}</div>
                   <div class="datagrid-content beeui-text-break">
-                    {% if item.get("type_hint") == "long_text" and item["value"] | length > 300 %}
+                    {% set variant = item.get("variant", "text") %}
+                    {% set tone = item.get("tone", "default") %}
+                    {% if variant == "long_text" and item.get("collapsible") %}
                     <details class="beeui-details">
                       <summary class="beeui-details-summary">
-                        {% if locale == 'ru' %}Показать текст{% else %}Show text{% endif %}
+                        {{ translate("detail.show_text", locale) }}
                       </summary>
-                      <div class="beeui-details-content">{{ item["value"] }}</div>
+                      <div class="beeui-details-content">{{ item["display"] }}</div>
                     </details>
-                    {% elif item.get("type_hint") == "priority" and item["value"] | lower in ("high", "high priority") %}
-                    <span class="beeui-badge beeui-badge-danger">{{ item["value"] }}</span>
-                    {% elif item.get("type_hint") == "priority" and item["value"] | lower in ("medium", "medium priority") %}
-                    <span class="beeui-badge beeui-badge-warning">{{ item["value"] }}</span>
-                    {% elif item.get("type_hint") == "priority" and item["value"] | lower in ("low", "low priority") %}
-                    <span class="beeui-badge beeui-badge-success">{{ item["value"] }}</span>
-                    {% elif item.get("type_hint") == "boolean" and item["value"] == "True" %}
-                    <span class="beeui-badge beeui-badge-yes">✓</span>
-                    {% elif item.get("type_hint") == "boolean" and item["value"] == "False" %}
-                    <span class="beeui-badge beeui-badge-no">✗</span>
-                    {% elif item.get("type_hint") == "confidence" %}
-                    <span class="{% if item["value"] | float(default=1) < 0.7 and item["value"] != "n/a" %}beeui-confidence-low{% else %}beeui-confidence-ok{% endif %}">{{ item["value"] }}</span>
-                    {% elif item["value"] | length > 300 %}
+                    {% elif variant == "badge" and tone in ("success", "warning", "danger") %}
+                    <span class="badge bg-{{ tone }}-lt">{{ item["display"] }}</span>
+                    {% elif variant == "boolean" %}
+                    <span>{{ item["display"] }}</span>
+                    {% elif variant == "confidence" %}
+                    <span>{{ item["display"] }}</span>
+                    {% elif item["display"] | length > 300 %}
                     <details class="beeui-details">
                       <summary class="beeui-details-summary">
-                        {% if locale == 'ru' %}Показать текст{% else %}Show text{% endif %}
+                        {{ translate("detail.show_text", locale) }}
                       </summary>
-                      <div class="beeui-details-content">{{ item["value"] }}</div>
+                      <div class="beeui-details-content">{{ item["display"] }}</div>
                     </details>
+                    {% elif variant == "badge" %}
+                    <span class="badge bg-secondary-lt">{{ item["display"] }}</span>
+                    {% elif tone == "muted" %}
+                    <span class="text-secondary">{{ item["display"] }}</span>
+                    {% elif tone == "success" %}
+                    <span class="text-success">{{ item["display"] }}</span>
+                    {% elif tone == "warning" %}
+                    <span class="text-warning">{{ item["display"] }}</span>
+                    {% elif tone == "danger" %}
+                    <span class="text-danger">{{ item["display"] }}</span>
                     {% else %}
-                    {{ item["value"] }}
+                    {{ item["display"] }}
                     {% endif %}
                   </div>
                 </div>
@@ -146,7 +152,7 @@
             <div class="list-group list-group-flush">
               {% for item in section["items"] %}
                 {% if item["href"] %}
-                <a href="{{ route_prefix }}{{ item["href"] }}" class="list-group-item list-group-item-action">
+                <a href="{{ item["href"] }}" class="list-group-item list-group-item-action">
                   {{ item["label"] }}
                 </a>
                 {% else %}
