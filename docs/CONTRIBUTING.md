@@ -64,7 +64,7 @@
 
 Примеры команд:
 
-- создать ветку: `git checkout -b docs/roadmap-update`
+- создать ветку: `git switch -c docs/roadmap-update`
 - отправить в origin: `git push -u origin docs/roadmap-update`
 
 ### Команды
@@ -73,17 +73,17 @@
 | --: | -------------------------------------------------------- | ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
 |   0 | Проверить, что рабочая папка чистая и ты на нужной ветке | `git status`                                   | `On branch main` (или другая) + `working tree clean` = всё ок. Если есть “Changes not staged…” — есть незакоммиченные изменения. |
 |   1 | Посмотреть локальные ветки и текущую ветку               | `git branch`                                   | Текущая ветка помечена `*` (например `* main`).                                                                                  |
-|   2 | Создать новую ветку под задачу и переключиться на неё    | `git checkout -b docs/contributing`            | Git переключит тебя на новую ветку. Проверка: `git status` покажет `On branch docs/contributing`.                                |
+|   2 | Создать новую ветку под задачу и переключиться на неё    | `git switch -c docs/contributing`            | Git переключит тебя на новую ветку. Проверка: `git status` покажет `On branch docs/contributing`.                                |
 |   3 | Добавить нужный файл(ы) в индекс (staging)               | `git add docs/CONTRIBUTING.md`                 | После этого в `git status` файл будет в `Changes to be committed`.                                                               |
 |   4 | Создать коммит с правильным сообщением                   | `git commit -m "docs: add contributing guide"` | Git создаст коммит и покажет, сколько файлов изменено.                                                                           |
 |   5 | Запушить ветку на GitHub и “привязать” upstream          | `git push -u origin docs/contributing`         | Ветка появится на GitHub. `-u` позволит дальше пушить просто `git push`.                                                         |
 |   6 | Открыть PR на GitHub и влить в `main`                    | _(в браузере)_ PR → **Squash and merge**       | После мержа изменения окажутся в `main`. Обычно ветку можно удалить кнопкой “Delete branch”.                                     |
-|   7 | Обновить локальный `main` после мержа PR                 | `git checkout main` + `git pull`               | Локальный `main` подтянет изменения, которые ты влил через PR.                                                                   |
+|   7 | Обновить локальный `main` после мержа PR                 | `git switch main` + `git pull`               | Локальный `main` подтянет изменения, которые ты влил через PR.                                                                   |
 |   8 | Посмотреть удалённые ветки (origin)                      | `git branch -r`                                | Список веток на сервере, например `origin/main`, `origin/docs/contributing`.                                                     |
 |   9 | Посмотреть все ветки (локальные + удалённые)             | `git branch -a`                                | Полный список: локальные + `remotes/origin/...`.                                                                                 |
 |  10 | (Опционально) Удалить локальную ветку после мержа        | `git branch -d docs/contributing`              | Удалит ветку локально, если она уже смержена. Если не даёт — значит не смержена.                                                 |
 
-Мини-цепочка на каждую задачу: status → checkout -b → add → commit → push → PR → checkout main → pull
+Мини-цепочка на каждую задачу: status → switch -c → add → commit → push → PR → switch main → pull
 
 ## Процесс работы
 
@@ -92,9 +92,9 @@
 **Старт и создание новой ветки**
 
 ```
-git checkout main
+git switch main
 git pull --ff-only
-git checkout -b feat/8-iteration-0-frame_and_launch
+git switch -c feat/8-iteration-0-frame_and_launch
 ```
 
 или переключиться на другую ветку:
@@ -128,7 +128,7 @@ git push -u origin feat/8-iteration-0-frame_and_launch
 5. После мержа обновить локальный `main`:
 
 ```
-git checkout main
+git switch main
 git pull --ff-only
 ```
 
@@ -163,17 +163,11 @@ uv publish
 
 ```
 git fetch origin
-git worktree add ../beeui-pr141 origin/feat/137-local_env_and_auth_diagnostics
+git worktree add -b review/pr-141 ../beeui-pr141 origin/feat/137-local_env_and_auth_diagnostics
 cd ../beeui-pr141
 code .
 git status
 git branch
-```
-
-**Если HEAD detached, создай локальную рабочую ветку поверх PR-ветки**
-
-```
-git switch -c review/pr-141
 ```
 
 **Посмотреть, какие файлы изменил соразработчик относительно origin/main**
@@ -211,34 +205,17 @@ git fetch origin
 git rebase origin/main
 ```
 
-Если есть `Merge conflict in` после `git rebase origin/main`, то правишь код и:
-
-```
-git add .
-git rebase --continue
-CTRL+o, CTRL+x
-uv run pytest -q
-```
-
-Если есть `Merge conflict in uv.lock`:
-
-```
-git checkout --ours uv.lock
-git add uv.lock
-git rebase --continue
-```
-
-Если нет ошибок:
-
-```
-uv run pytest -q
-```
-
 Если нет изменений после `git status`, то:
 
 ```
 git fetch origin
 git rebase origin/main
+```
+
+**Если нет ошибок**
+
+```
+uv run pytest -q
 ```
 
 **Запушить изменения в ветку соразработчика**
@@ -250,7 +227,7 @@ git push --force-with-lease origin HEAD:feat/137-local_env_and_auth_diagnostics
 **Если всё ок**
 
 - обновить описание PR;
-- проверить вкладку Files ched;
+- ппроверить вкладку Files changed;
 - выполнить Squash and merge;
 - удалить ветку на GitHub;
 - обновить локальный main.
@@ -261,7 +238,7 @@ git push --force-with-lease origin HEAD:feat/137-local_env_and_auth_diagnostics
 cd ../beeui
 git worktree remove ../beeui-pr141
 git branch -D review/pr-141
-git checkout main
+git switch main
 git pull --ff-only
 ```
 
@@ -270,9 +247,9 @@ git pull --ff-only
 **Перед началом задачи**
 
 ```
-git checkout main
+git switch main
 git pull --ff-only
-git checkout -b feat/<short-title>
+git switch -c feat/<short-title>
 ```
 
 **Коммит + пуш + PR**
@@ -301,7 +278,7 @@ git push --force-with-lease
 **После мержа PR**
 
 ```
-git checkout main
+git switch main
 git pull --ff-only
 ```
 
