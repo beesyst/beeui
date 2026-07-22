@@ -231,6 +231,8 @@ The implementation report is supporting evidence, not the source of truth.
 
 Bee Dev MCP cannot execute tests.
 
+Do not request, evaluate or treat `uv lock --check` or any dedicated lockfile validation as merge evidence.
+
 Treat supplied command output as reported evidence and never claim MCP ran the commands.
 
 Evaluate every acceptance criterion as:
@@ -261,7 +263,6 @@ Check as applicable:
 * read-only and bounded-action guarantees;
 * documentation;
 * required tests, smoke and logs;
-* dependency and lockfile scope;
 * version declarations.
 
 `Not verifiable` is a blocker only when the Issue, SDLC or security rules require that evidence for merge readiness.
@@ -365,7 +366,7 @@ Before issuing a code verdict, confirm:
 * every acceptance criterion evaluated;
 * public-contract impact evaluated;
 * verification evidence evaluated;
-* dependency and version scope checked;
+* version scope checked;
 * all blockers consolidated.
 
 If any mandatory inspection remains incomplete, return:
@@ -461,16 +462,32 @@ Do not prepare a final PR body while blockers remain.
 
 ## Consolidated correction prompt
 
+The correction prompt is an executor prompt for Copilot or Codex, not a continuation of the Bee Dev MCP review.
+
+Select and name the executor:
+
+* Copilot for localized, clearly specified corrections;
+* Codex for broad diagnosis, multi-subsystem changes or security-sensitive corrections.
+
+The prompt must authorize the executor to modify files and run repository checks in the exact target worktree using its available local tools.
+
+Do not copy reviewer-only restrictions into the correction prompt, including:
+
+* `Use only Bee Dev MCP`;
+* read-only mode;
+* MCP target identifiers;
+* review mode.
+
 The prompt must be short, self-contained and written in Russian unless another language is requested.
 
 Include:
 
-* exact project, target, worktree, branch, base branch and mode;
-* instruction to follow `AGENTS.md` and the applicable skill;
+* selected executor;
+* exact project, worktree, branch and base branch;
+* instruction to follow `AGENTS.md` and the applicable implementation or correction skill;
 * correction objective;
 * all blocking findings;
 * affected files or contracts where known;
-* related-repository contract requirements when applicable;
 * required regression tests and verification;
 * implementation-report requirements;
 * explicit prohibition of unrelated work, dependency changes, version changes, commit, push, PR and merge.
@@ -478,14 +495,6 @@ Include:
 Do not repeat the full Issue, review report or stable repository rules.
 
 Do not introduce new requirements or optional improvements.
-
-Require confirmation:
-
-```text
-version not changed
-```
-
-If a dependency change is itself an approved required correction, do not prohibit it. Require exact declaration, lockfile consistency, SCA evidence and reproducible installation instead.
 
 ## Re-review
 

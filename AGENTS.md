@@ -30,7 +30,19 @@ The actual target worktree, current files, diff, tests and public contracts take
 
 When instructions materially conflict, stop and report the conflict.
 
+## Agent role separation
+
+Tool, authority and read-only restrictions apply only to the current task and agent.
+
+When producing a prompt for another agent, do not copy the current agent's tool restrictions unless they are explicitly required for that executor.
+
+Review and planning tasks may use Bee Dev MCP in read-only mode.
+
+Implementation and correction prompts are executed by Copilot or Codex. They must instruct the executor to work in the exact worktree using its available local repository tools. They must not require Bee Dev MCP, an MCP target, review mode or read-only behavior.
+
 ## Bee Dev MCP rules
+
+These rules apply only when the current task explicitly selects Bee Dev MCP for read-only planning or review.
 
 Bee Dev MCP is read-only.
 
@@ -258,8 +270,6 @@ Rules:
 * Do not read arbitrary filesystem paths from route parameters.
 * Do not add comments unless required to explain non-obvious safety or public-contract behavior.
 * Do not change `pyproject.toml.version` for ordinary work.
-* Do not modify `uv.lock` unless dependencies change.
-* When dependencies change, update declarations and lockfile consistently.
 * Do not use a local editable path dependency as a merge-ready integration contract.
 
 ## Configuration rules
@@ -315,6 +325,8 @@ When public fields change:
 * provide a declarative block example when a block schema changes.
 
 ## Verification
+
+Do not run, request or require `uv lock --check` or any dedicated lockfile validation.
 
 Determine the change level from `docs/SDLC.md` and `docs/SECURITY.md`:
 
@@ -432,8 +444,7 @@ The implementation report should contain:
 10. logs or generated outputs inspected;
 11. security review;
 12. known limitations;
-13. dependency status;
-14. confirmation:
+13. confirmation:
 
 ```text
 version not changed

@@ -324,6 +324,17 @@ Explain the choice briefly.
 
 Keep it short.
 
+This is an executor prompt for Copilot or Codex.
+
+Do not include reviewer-only restrictions such as:
+
+* `Use only Bee Dev MCP`;
+* read-only mode;
+* MCP target identifiers;
+* review mode.
+
+Require the executor to work in the exact worktree using its available local repository tools.
+
 Include only:
 
 * exact project, worktree and branch;
@@ -364,7 +375,7 @@ Require:
 * configuration and public-contract verification;
 * proportional security checks;
 * unrelated-file check;
-* dependency and version confirmation;
+* version confirmation;
 * known limitations;
 * one complete report.
 

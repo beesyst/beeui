@@ -40,6 +40,7 @@ where = ["src"]
     "static/css/*.css",
     "static/js/*.js",
     "static/vendor/tabler/**/*",
+    "static/vendor/apexcharts/**/*",
 ]
 
 [tool.pytest.ini_options]
