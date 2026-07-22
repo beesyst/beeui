@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.22.1](https://github.com/beesyst/beeui/compare/beeui-v0.22.0...beeui-v0.22.1) (2026-07-22)
+
+
+### Bug Fixes
+
+* **packaging:** include ApexCharts asset in wheel ([#87](https://github.com/beesyst/beeui/issues/87)) ([b1a2125](https://github.com/beesyst/beeui/commit/b1a2125197472aad67b12b7ac1b96f3d0a0761a9))
+
 ## [0.22.0](https://github.com/beesyst/beeui/compare/beeui-v0.21.2...beeui-v0.22.0) (2026-07-21)
 
 
