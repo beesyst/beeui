@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.23.0](https://github.com/beesyst/beeui/compare/beeui-v0.22.1...beeui-v0.23.0) (2026-07-26)
+
+
+### Features
+
+* add Tabler Datepicker contract for date-range filters ([#92](https://github.com/beesyst/beeui/issues/92)) ([7c75769](https://github.com/beesyst/beeui/commit/7c7576996209a471855215539f63945227e0bfa0))
+
 ## [0.22.1](https://github.com/beesyst/beeui/compare/beeui-v0.22.0...beeui-v0.22.1) (2026-07-22)
 
 
