@@ -5759,6 +5759,246 @@ git diff -- pyproject.toml uv.lock
 - external assets/scripts/tracking не добавляются;
 - dependency/version/lockfile остаются без изменений.
 
+### Итерация 13.10 — Tabler Datepicker contract for generic date-range filters
+
+**Status:** PLANNED
+
+#### Goal
+
+Привести generic `filter_form.date_range` к стандартному Tabler Datepicker presentation contract с локально vendored Litepicker, сохранив существующий GET contract, partial range behavior и product-neutral architecture.
+
+#### Why
+
+После Iteration 13.9 BeeUI поддерживает generic `filter_form`, но `date_range` всё ещё рендерится как два browser-native `input[type=date]`.
+
+Это функционально, однако:
+
+* внешний вид зависит от браузера;
+* компонент не соответствует Tabler Datepicker example;
+* отсутствует единый локальный календарный UX;
+* Bee products не должны исправлять этот generic presentation gap собственными templates или JavaScript.
+
+#### Depends on
+
+* Iteration 13.9 — generic filter form, locale and theme contracts;
+* existing local Tabler asset model;
+* existing route-prefix and safe-rendering contracts.
+
+#### Change level
+
+```text
+security-sensitive
+```
+
+Причины:
+
+* добавляется vendored browser JavaScript;
+* меняются package static assets;
+* меняется adapter-backed HTML behavior;
+* требуется dependency/provenance review;
+* требуется HTML, route-prefix и malformed-input verification.
+
+#### Scope
+
+**Включено:**
+
+* сохранить существующий payload contract:
+
+```text
+type: date_range
+from_value
+to_value
+from_label
+to_label
+```
+
+* сохранить canonical form field names:
+
+  * `date_from`;
+  * `date_to`;
+* заменить browser-native date controls на Tabler-compatible Datepicker controls;
+* использовать стандартную Tabler структуру:
+
+  * `.input-icon`;
+  * `.form-control`;
+  * `.input-icon-addon`;
+  * calendar SVG icon;
+* локально vendor Litepicker из совместимого Tabler distribution/source;
+* зафиксировать source, version и license;
+* не использовать CDN;
+* не включать Tabler demo analytics/tracking scripts;
+* инициализировать два независимых Datepicker controls:
+
+  * start bound;
+  * end bound;
+* сохранить возможность заполнить только одну границу;
+* использовать `YYYY-MM-DD` как значение input и GET submission format;
+* отправлять GET form после валидного выбора или очистки значения;
+* сохранить обычный manual ISO input fallback без JavaScript;
+* использовать validated page locale для календарного UI;
+* сохранить theme compatibility;
+* добавить recursive layout detection для conditional Litepicker loading;
+* подключать Litepicker только на страницах с `date_range`;
+* обеспечить корректные route-prefix asset URLs;
+* обновить package data;
+* обновить:
+
+  * `docs/ROADMAP.md`;
+  * `docs/COMPONENTS.md`;
+  * `docs/WEB_UI.md`;
+  * `docs/INTEGRATION.md`;
+  * `docs/SECURITY.md`, если static-asset guidance требует уточнения;
+  * `README.ru.md`, если публичный component example меняется;
+* добавить generic template, normalizer, asset-loading и security tests.
+
+**Не включено:**
+
+* product-specific date semantics;
+* BeeAgent/ROP/Bitrix imports или strings;
+* validation `date_from <= date_to` внутри BeeUI;
+* combined product query parameter;
+* product timezone decisions;
+* product filtering;
+* product-specific presets;
+* date-time picker;
+* arbitrary date formats from adapter input;
+* external CDN;
+* frontend build chain;
+* copying the full Tabler demo page;
+* analytics/tracking scripts;
+* API changes;
+* config mutation;
+* auth/RBAC/CSRF changes;
+* POST actions;
+* product runtime execution;
+* `pyproject.toml.version` change.
+
+#### Deliverable
+
+Generic adapter-backed `filter_form.date_range` renders two Tabler Datepicker controls with local Litepicker behavior while continuing to submit the established `date_from` and `date_to` GET parameters.
+
+Products continue to decide date validation and filtering semantics.
+
+#### Public contract
+
+Backward-compatible input model:
+
+```json
+{
+  "type": "date_range",
+  "name": "date",
+  "label": "Date range",
+  "from_value": "2026-07-01",
+  "to_value": "2026-07-31",
+  "from_label": "From",
+  "to_label": "To"
+}
+```
+
+Rendered behavior changes, but the declarative payload and submitted parameter names remain compatible.
+
+BeeUI must not infer:
+
+* whether both bounds are required;
+* whether bounds are inclusive;
+* timezone rules;
+* allowed business periods;
+* product error behavior.
+
+#### Expected outputs
+
+* local Litepicker static asset and license/provenance record;
+* updated generic Datepicker template markup;
+* conditional asset loader;
+* generic initialization JavaScript;
+* package-data inclusion;
+* updated component documentation;
+* automated and browser verification.
+
+No product runtime artifacts are created.
+
+#### Checks
+
+Automated:
+
+```bash
+uv run pytest -q
+uv run pytest -q -W error::UserWarning
+```
+
+Targeted tests must cover:
+
+* normalizer preserves `from_value`, `to_value`, labels and field names;
+* rendered HTML uses Tabler input-icon structure;
+* rendered HTML contains calendar icons;
+* values remain HTML-escaped;
+* `date_from` only;
+* `date_to` only;
+* both values;
+* empty values;
+* conditional Litepicker asset included exactly once when required;
+* Litepicker asset absent when no `date_range` exists;
+* nested/grouped layout detection;
+* route-prefix asset paths;
+* EN locale initialization;
+* RU locale initialization;
+* invalid/unknown locale cannot become arbitrary JS configuration;
+* no unsafe `|safe`;
+* no product imports or product-specific strings;
+* malformed filter payload does not produce `500`.
+
+Runtime smoke:
+
+```bash
+./start.sh doctor
+./start.sh routes
+./start.sh web --host 127.0.0.1 --port 8780
+```
+
+Manual/browser scenarios:
+
+* open a page containing `date_range`;
+* select only start date;
+* clear start date;
+* select only end date;
+* select both dates;
+* verify one GET submission per completed interaction;
+* verify ISO query values;
+* verify light and dark themes;
+* verify EN and RU;
+* verify a page without date filters does not load Litepicker;
+* verify no external network request is required for Datepicker operation.
+
+Security/static checks:
+
+```text
+- review vendored asset source, version and license;
+- inspect package output to ensure Litepicker files are included;
+- confirm no CDN, tracking or demo scripts;
+- confirm no unsafe adapter value interpolation into JavaScript;
+- confirm GET routes remain read-only;
+- confirm no product imports or product semantics;
+- confirm version is not changed.
+```
+
+SCA/package review is required because static vendor/package-data content changes.
+
+#### DoD
+
+* `filter_form.date_range` uses Tabler-compatible Datepicker markup;
+* Litepicker is local and reproducibly packaged;
+* no external resources or tracking are introduced;
+* existing declarative payload remains compatible;
+* submitted names remain `date_from` and `date_to`;
+* partial range behavior is preserved;
+* no product date validation is moved into BeeUI;
+* assets load only when needed;
+* route prefix, locale and theme behavior work;
+* malformed payloads degrade safely;
+* documentation and tests are synchronized;
+* BeeUI remains product-neutral;
+* `pyproject.toml.version` is unchanged.
+
 ---
 
 ## Этап 7 — BeeAgent integration
