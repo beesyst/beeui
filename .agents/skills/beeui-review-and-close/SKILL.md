@@ -1,20 +1,20 @@
 ---
 name: beeui-review-and-close
-description: Perform a complete read-only BeeUI review against an approved Issue, using the exact worktree and base branch, then return one consolidated verdict and PR close package.
+description: Perform a complete read-only BeeUI review against an approved Issue using the exact worktree and base branch, then return one consolidated verdict and PR close package.
 ---
 
 # BeeUI review and close workflow
 
 ## Purpose
 
-Use this workflow after implementation is complete and the user has supplied:
+Use this workflow after implementation and verification are complete.
 
-* an approved Issue or acceptance criteria;
-* implementation evidence;
-* exact worktree information;
-* expected branch and base branch.
+This workflow:
 
-This workflow is read-only.
+* uses only Bee Dev MCP;
+* is read-only;
+* reviews one exact BeeUI target against one declared base branch;
+* returns one consolidated verdict.
 
 Do not:
 
@@ -23,350 +23,259 @@ Do not:
 * switch branches;
 * create commits;
 * push;
-* create or merge a PR.
+* create or update a PR;
+* merge.
+
+Follow all stable MCP, repository, architecture, review and security rules from `AGENTS.md`.
 
 ## Required inputs
 
 Obtain:
 
 * project;
-* expected worktree path;
-* expected branch;
+* exact instruction worktree;
+* exact target worktree;
+* expected feature branch;
 * expected base branch;
-* mode;
-* full Issue;
-* implementation evidence;
-* related product-repository context when explicitly requested;
-* previous blocking findings for re-review.
+* Mode;
+* roadmap context;
+* full approved Issue;
+* current PR text or `none`;
+* implementation and verification evidence;
+* additional targets and their declared roles;
+* previous blockers when performing re-review.
 
-The worktree path, MCP target and Git branch are separate identifiers.
+The filesystem path, MCP target and Git branch are separate identifiers.
 
-## Phase 1 — Resolve the exact target
+## Phase 1 — Resolve instruction and target worktrees
 
-1. Call `list_worktrees` for the project.
-2. Find the entry whose `path` exactly matches the expected worktree path.
-3. Use the returned MCP `target`.
-4. Call `get_project_context` for that target and mode.
-5. Verify:
+Use `list_worktrees` to resolve both worktrees by exact absolute path.
 
-   * project;
-   * path;
-   * branch;
-   * HEAD;
-   * dirty state.
+For the instruction worktree:
 
-If the exact path or mandatory metadata is unavailable, return `REVIEW INCOMPLETE`.
+1. verify its exact path;
+2. verify its expected branch;
+3. obtain its MCP target;
+4. read:
 
-If the project or branch differs from the expected value, report expected and actual values and do not issue a code verdict.
+   * `AGENTS.md`;
+   * `.agents/skills/beeui-review-and-close/SKILL.md`.
 
-Do not infer an MCP target from a branch name.
+Use the instruction worktree only as an instruction source.
 
-Do not substitute the main worktree for a requested feature worktree.
+For the target worktree:
 
-## Phase 2 — Read the complete manifest and diff
+1. verify its exact path;
+2. verify its project;
+3. verify its expected feature branch;
+4. verify HEAD and dirty state;
+5. obtain its MCP target.
 
-### Review manifest
+Inspect implementation only from the target worktree.
 
-1. Call `get_review_manifest` with an empty cursor.
-2. Append each returned `content` page.
-3. Continue with the exact `next_cursor` while `has_more=true`.
-4. Require the same `snapshot_id` on every page.
-5. Parse the combined content as one JSON manifest.
+Do not substitute another worktree or infer a target from a branch name.
 
-Verify:
+If either required worktree cannot be resolved exactly, return:
 
-* project;
-* target;
-* branch;
-* HEAD;
-* expected base branch;
-* dirty state;
+```text
+REVIEW INCOMPLETE
+```
+
+If the target project or branch differs from expected values, report the mismatch and do not issue a code verdict.
+
+## Phase 2 — Acquire the complete review snapshot
+
+Use:
+
+* `get_review_manifest`;
+* `get_review_bundle_page`.
+
+Follow the complete-reading and snapshot rules from `AGENTS.md`.
+
+The review must consume:
+
+* the complete manifest;
+* the complete non-truncated diff;
+* one consistent `snapshot_id`;
+* all continuation pages.
+
+Inventory:
+
 * committed files;
 * staged files;
 * unstaged files;
 * untracked files;
 * deleted files;
 * renamed files;
-* omitted or redacted paths.
+* omitted files;
+* redacted paths.
 
-### Review diff
+The manifest is authoritative for file inventory.
 
-1. Call `get_review_bundle_page` with an empty cursor.
-2. Append each returned `content` page.
-3. Continue with the exact `next_cursor` while `has_more=true`.
-4. Require the same snapshot as the manifest.
-5. Finish only when:
+The diff is evidence of changed content.
 
-   * `has_more=false`;
-   * `next_cursor=null`;
-   * `truncated=false`.
+Do not use compatibility `get_review_bundle` as a substitute for the paginated review bundle.
 
-Do not use compatibility `get_review_bundle` as a substitute.
+If the manifest or diff is incomplete, truncated, inconsistent or unavailable, return:
 
-If pagination fails, the snapshot changes or the diff is truncated, return `REVIEW INCOMPLETE`.
+```text
+REVIEW INCOMPLETE
+```
 
-The manifest is the authoritative file inventory.
+Do not issue implementation findings from a partial snapshot.
 
-The complete diff is evidence of the changes.
+## Phase 3 — Read the required files
 
-## Phase 3 — Resolve review instructions
+Read completely from the target worktree:
 
-Read `AGENTS.md` and this skill from the primary target.
-
-If they are absent because the feature worktree predates their introduction, use the explicitly supplied canonical `beeui/main` worktree:
-
-1. resolve it through `list_worktrees`;
-
-2. verify its exact path and `main` branch through `get_project_context`;
-
-3. read:
-
-   * `AGENTS.md`;
-   * `.agents/skills/beeui-review-and-close/SKILL.md`;
-
-4. use them only as review instructions;
-
-5. continue reviewing code exclusively from the original target.
-
-Their absence from a legacy feature worktree is not a finding.
-
-Do not silently choose another instruction source.
-
-## Phase 4 — Read required files
-
-Use `read_project_file`.
-
-When it returns `next_line` or `next_column`, continue with those exact values until both are null.
-
-Read completely:
-
-* `AGENTS.md`;
-* this skill;
+* the approved Issue context;
 * `.github/PULL_REQUEST_TEMPLATE/pr.md`;
-* relevant `docs/ROADMAP.md` section;
+* the relevant `docs/ROADMAP.md` section;
 * `docs/SDLC.md`;
 * `docs/SECURITY.md`;
-* `docs/DEV_GUIDE.md`;
-* `README.ru.md`;
-* `docs/WEB_UI.md`;
-* `docs/INTEGRATION.md`;
-* `docs/API_CONTRACT.md`;
-* `docs/COMPONENTS.md`;
-* relevant architecture, configuration and package contracts;
 * every changed and untracked text file;
-* relevant tests;
-* directly related unchanged imports, models, registries, renderers, templates, routes, adapters, configuration and callers.
+* directly related tests;
+* directly related unchanged contracts, callers, imports and configuration.
 
-When relevant, inspect:
+When applicable, also read:
 
-* `pyproject.toml`;
-* dependency lockfile;
-* application factory and entrypoint;
-* page and block models;
-* page and block registries;
-* layout and component renderers;
-* Jinja templates;
-* static JavaScript and CSS;
-* locale and theme mechanisms;
-* session and CSRF boundaries;
-* adapter interfaces;
-* safe-path and artifact-display helpers;
-* API response-envelope implementation.
+* public UI and API contracts;
+* templates;
+* static assets;
+* package-data declarations;
+* configuration schemas;
+* dependency declarations;
+* affected documentation.
 
-For deleted files:
+For deleted files, inspect:
 
-* inspect the complete diff;
-* inspect affected current imports, contracts and callers.
+* the complete diff;
+* remaining references, imports, contracts and callers.
 
-For renamed files:
+For renamed files, inspect:
 
-* inspect old and new paths in the manifest and diff;
-* read the destination file completely;
-* verify updated references.
+* old and new paths;
+* the complete destination file;
+* updated references.
 
-If a required relevant file is omitted, redacted or unreadable through the available safe MCP interface, return `REVIEW INCOMPLETE`.
+Read omitted relevant files directly through `read_project_file`.
 
-Do not issue a verdict from partial file content.
+If a mandatory relevant file is unreadable or redacted through the safe MCP interface, return:
 
-## Phase 5 — Related product-repository context
+```text
+REVIEW INCOMPLETE
+```
 
-When a related product repository is explicitly supplied:
+## Phase 4 — Inspect additional targets
 
-1. resolve its exact path through `list_worktrees`;
-2. verify its expected branch through `get_project_context`;
-3. read only the public product adapter, read-model, route or configuration contracts required to review the BeeUI target;
-4. do not perform an independent review of the related repository;
-5. do not include unrelated related-repository state in the BeeUI verdict.
+Inspect an additional target only when it is explicitly supplied with a review role.
 
-For cross-repository UI work:
+For each additional target:
 
-* BeeUI owns generic rendering and reusable UI primitives.
-* Product repositories own product adapters, product read-models and product semantics.
-* Domain business rules belong in the owning product or domain module.
-* Product-specific behavior must not be added to generic BeeUI components.
-* Generic rendering logic must not be duplicated in a product repository.
+1. resolve the exact worktree;
+2. verify its expected branch;
+3. follow its declared Mode and Skill;
+4. inspect only the contracts needed for the BeeUI verdict.
 
-If the BeeUI Issue explicitly requires compatibility with the supplied product branch:
+Do not perform an independent full review of a related product repository unless its declared role explicitly requires one.
 
-* compare every consumed and produced public field;
-* verify block-type names;
-* verify required and optional fields;
-* verify validation ownership;
-* verify rendering and serialization behavior;
-* verify query-state preservation;
-* verify error, empty and unavailable states;
-* verify compatibility and dependency expectations.
+Do not include unrelated related-repository changes in the BeeUI verdict.
 
-A missing or incompatible required product contract is a blocker when cross-repository integration is part of the Issue.
+Report a cross-repository blocker only when the BeeUI implementation requires a public contract that is absent or incompatible in the declared related target.
 
-Do not block an independently valid generic BeeUI contract solely because a related product has not adopted it, unless product integration is an acceptance criterion.
+## Phase 5 — Evaluate evidence and Acceptance Criteria
 
-If the BeeUI implementation contains product-specific branching to satisfy one related product, report an architecture blocker even when the current product integration appears to work.
+Follow the instruction and evidence precedence from `AGENTS.md`.
 
-## Phase 6 — Evidence and acceptance criteria
+The following are supporting evidence only:
 
-Follow the instruction and evidence precedence defined in `AGENTS.md`.
+* implementation reports;
+* verification reports;
+* current PR text;
+* previous review comments;
+* supplied command output.
 
-The implementation report is supporting evidence, not the source of truth.
+Current manifest, diff, files, contracts and observable implementation are authoritative.
 
-Bee Dev MCP cannot execute tests.
+Bee Dev MCP does not execute tests.
 
-Do not request, evaluate or treat `uv lock --check` or any dedicated lockfile validation as merge evidence.
+For supplied test or smoke output:
 
-Treat supplied command output as reported evidence and never claim MCP ran the commands.
+* name the reported command;
+* identify it as supplied evidence;
+* verify whether it covers the required scenario;
+* do not claim MCP ran it.
 
-Evaluate every acceptance criterion as:
+Evaluate every Acceptance Criterion as:
 
-* satisfied;
-* partially satisfied;
-* not satisfied;
-* not verifiable;
-* not applicable.
+* `satisfied`;
+* `partially satisfied`;
+* `not satisfied`;
+* `not verifiable`;
+* `not applicable`.
 
-Check as applicable:
+Determine the actual change level using `docs/SDLC.md` and `docs/SECURITY.md`.
 
-* observable HTML behavior;
-* JSON API behavior;
-* public page and block contracts;
-* generic rendering behavior;
-* adapter compatibility;
-* configuration source of truth;
-* fail-fast validation;
-* architecture ownership;
-* backward compatibility;
-* query, cookie and session validation;
-* theme and locale persistence;
-* loading, empty, success, warning, error, disabled and unavailable states;
-* escaping and safe rendering;
-* path and artifact-access boundaries;
-* session, role and CSRF boundaries;
-* read-only and bounded-action guarantees;
-* documentation;
-* required tests, smoke and logs;
-* version declarations.
+Review all affected boundaries required by:
 
-`Not verifiable` is a blocker only when the Issue, SDLC or security rules require that evidence for merge readiness.
+* the approved Issue;
+* the actual diff;
+* the actual change level;
+* `AGENTS.md`;
+* applicable public contracts.
 
-## Phase 7 — Contract review
+A missing verification result is a blocker only when that evidence is required by the Issue, SDLC, security rules or actual changed boundary.
 
-For every new or changed public model field, block type, route, query parameter or API field, determine:
+## Phase 6 — Identify real blockers
 
-1. source of truth;
-2. owning repository;
-3. where it is created;
-4. where it is validated;
-5. where it is rendered or serialized;
-6. whether it is required or optional;
-7. fallback or unavailable behavior;
-8. compatibility impact;
-9. documentation coverage;
-10. test coverage through the real public boundary.
+A blocking finding must affect readiness of the current Issue.
 
-Do not accept:
+Examples include:
 
-* a helper-only test as proof that the public renderer works;
-* a monkeypatch as proof of compatibility with the actual generic registry;
-* a local editable checkout as proof of merge-ready dependency compatibility;
-* silent dropping of documented public fields;
-* product-specific field names in generic logic without a justified generic contract;
-* template behavior that bypasses model validation;
-* query or cookie values that become product configuration.
-
-## Phase 8 — Scope review
-
-Compare the complete manifest and diff with the approved Issue.
-
-Determine:
-
-* whether every changed file supports the Issue;
-* whether unrelated visual or infrastructure work entered the PR;
-* whether theme, locale, navigation, charts, filters, detail rendering, auth, dependency or API changes were actually approved;
-* whether public-contract changes were declared;
-* whether dependency changes were declared;
-* whether ROADMAP and Issue remain aligned;
-* whether the work should have been separated into coordinated PRs;
-* whether documentation describes the actual implemented behavior.
-
-A broad change is not automatically a blocker.
-
-It is a blocker when unrelated behavior enters the current PR, required review level is bypassed, or acceptance and compatibility cannot be established.
-
-## Phase 9 — Blocking findings
-
-A blocker must affect readiness of the current Issue.
-
-Examples:
-
-* unmet acceptance criteria;
-* incorrect or unsafe rendering;
-* broken route or JSON API behavior;
-* security, session or CSRF bypass;
-* user-controlled path or HTML risk;
-* product-specific behavior in a generic BeeUI component;
-* generic renderer or template logic duplicated outside BeeUI;
-* conflicting source of truth;
-* missing fail-fast validation;
-* incompatible page, block, API or adapter contract;
-* required public fields silently discarded;
-* incorrect query encoding or state preservation;
-* incorrect sorting, filtering or pagination behavior;
+* an unmet Acceptance Criterion;
+* incorrect or unsafe behavior;
+* BeeUI/product/domain ownership violation;
+* source-of-truth violation;
+* incompatible public contract;
+* broken required rendering, route or package behavior;
+* missing required validation;
 * missing required verification;
-* unrelated changes entering the PR;
+* unrelated files entering the change;
 * unintended dependency, lockfile or version changes;
-* non-reproducible local dependency configuration;
-* documentation contradicting public behavior;
-* missing required cross-repository compatibility.
+* documentation contradicting implemented public behavior;
+* a required cross-repository contract gap.
 
-Do not make blockers from:
+Do not create blockers from:
 
-* optional visual polish;
-* personal naming preferences;
+* optional polish;
+* subjective visual or naming preferences;
 * speculative future architecture;
 * unrelated cleanup;
-* requirements absent from the Issue;
-* MCP limitations themselves;
-* a related product not adopting an independently valid generic contract when integration is outside the Issue.
+* requirements absent from the approved Issue;
+* MCP limitations themselves.
 
-Find and consolidate all real blockers before returning the verdict.
+Perform one complete review pass and consolidate all real blockers.
 
-## Phase 10 — Completeness gate
+## Phase 7 — Completeness gate
 
-Before issuing a code verdict, confirm:
+Before issuing a verdict, confirm:
 
-* exact target and branch verified;
+* exact instruction worktree verified;
+* exact target worktree verified;
+* expected feature branch verified;
 * expected base branch verified;
 * complete manifest consumed;
 * complete non-truncated diff consumed;
-* manifest and diff use the same snapshot;
-* changed and untracked files fully inventoried;
-* required changed files fully read;
+* one consistent snapshot used;
+* changed and untracked files inventoried;
+* changed files read completely;
 * deleted and renamed paths inspected;
-* relevant unchanged contracts read;
-* requested related-product context evaluated;
-* every acceptance criterion evaluated;
-* public-contract impact evaluated;
-* verification evidence evaluated;
-* version scope checked;
+* relevant unchanged contracts and callers read;
+* applicable additional targets evaluated;
+* every Acceptance Criterion evaluated;
+* supplied verification evidence evaluated;
+* dependency, lockfile and version scope checked;
+* package and static impact checked when applicable;
 * all blockers consolidated.
 
 If any mandatory inspection remains incomplete, return:
@@ -378,19 +287,19 @@ REVIEW INCOMPLETE
 Include:
 
 * completed inspection;
-* exact missing tool, metadata, file or continuation;
+* exact missing data, file, tool result or continuation;
 * reason no code verdict was issued.
 
 Do not include:
 
-* implementation findings based on partial inspection;
-* correction prompt;
-* PR body;
-* code verdict.
+* speculative implementation findings;
+* a correction prompt;
+* a PR body;
+* an approval or rejection verdict.
 
-## Phase 11 — Verdict
+## Phase 8 — Verdict
 
-Return exactly one completed-review verdict:
+For a complete review, return exactly one verdict:
 
 ```text
 APPROVED
@@ -414,17 +323,16 @@ State exactly:
 
 Then provide:
 
-1. acceptance-criteria coverage;
+1. Acceptance Criteria coverage;
 2. files reviewed;
 3. supplied verification evidence;
-4. non-blocking limitations;
-5. reviewed branch and HEAD;
-6. recommended branch and squash commit;
-7. completed PR body using the repository template;
-8. merge readiness;
-9. related-repository dependency or merge order when applicable.
+4. unverified non-blocking limitations;
+5. reviewed target and branch;
+6. recommended squash commit;
+7. completed PR body;
+8. merge readiness.
 
-Do not claim MCP ran tests.
+Do not claim that MCP ran tests or smoke commands.
 
 ### CHANGES REQUIRED
 
@@ -440,20 +348,10 @@ Provide every blocker in this format:
 <current incorrect behavior>
 
 Стало:
-<required behavior within the Issue>
+<required behavior inside the approved Issue>
 
 Почему:
-<evidence and impact>
-```
-
-For a cross-repository finding, also state:
-
-```text
-Owner:
-`beeui` or the related product repository
-
-Integration impact:
-<effect on the related public contract>
+<repository evidence and concrete impact>
 ```
 
 Then provide one consolidated correction prompt.
@@ -462,113 +360,133 @@ Do not prepare a final PR body while blockers remain.
 
 ## Consolidated correction prompt
 
-The correction prompt is an executor prompt for Copilot or Codex, not a continuation of the Bee Dev MCP review.
+Select one executor:
 
-Select and name the executor:
+* `DeepSeek V4 Flash in Copilot` for one or two localized, obvious corrections;
+* `DeepSeek V4 Pro in Copilot` for several connected BeeUI-layer corrections;
+* `Codex` for broad, security-sensitive, dependency-sensitive or multi-subsystem corrections.
 
-* Copilot for localized, clearly specified corrections;
-* Codex for broad diagnosis, multi-subsystem changes or security-sensitive corrections.
+The correction prompt is for an implementation executor, not Bee Dev MCP.
 
-The prompt must authorize the executor to modify files and run repository checks in the exact target worktree using its available local tools.
+It must contain:
 
-Do not copy reviewer-only restrictions into the correction prompt, including:
+```text
+Executor: <selected executor>
 
-* `Use only Bee Dev MCP`;
-* read-only mode;
+Project: beeui
+Instruction worktree: <exact instruction worktree>
+Target worktree: <exact target worktree>
+Expected branch: <feature branch>
+Base branch: <base branch>
+
+Read instructions from:
+
+- <instruction worktree>/AGENTS.md
+- <instruction worktree>/.agents/skills/beeui-verify-and-correct/SKILL.md
+
+Use the instruction worktree only for reading instructions.
+Inspect, modify and verify files only in the target worktree.
+Do not modify the instruction worktree.
+
+Approved Issue context:
+<exact Issue identity and Acceptance Criteria relevant to the blockers>
+
+Implementation and verification evidence:
+<relevant current evidence or none>
+
+Fix only the blocking findings below.
+Preserve all already working behavior within the approved Issue.
+
+Blocking findings:
+
+<all blockers in Файл → Было → Стало → Почему format>
+
+Run all checks required by the blockers, the actual change level and
+beeui-verify-and-correct.
+
+Return one consolidated verification and correction report according to
+beeui-verify-and-correct.
+
+Do not commit, push, create or update a PR, or merge.
+```
+
+The correction prompt must:
+
+* include every blocker;
+* include exact worktree and branch information;
+* authorize modification only in the target worktree;
+* reference `AGENTS.md` and `beeui-verify-and-correct`;
+* include only Issue context relevant to the blockers;
+* require proportional regression and full applicable verification;
+* prohibit unrelated cleanup and optional polish.
+
+Do not copy into the correction prompt:
+
+* Bee Dev MCP restrictions;
+* review-only read-only restrictions;
 * MCP target identifiers;
-* review mode.
-
-The prompt must be short, self-contained and written in Russian unless another language is requested.
-
-Include:
-
-* selected executor;
-* exact project, worktree, branch and base branch;
-* instruction to follow `AGENTS.md` and the applicable implementation or correction skill;
-* correction objective;
-* all blocking findings;
-* affected files or contracts where known;
-* required regression tests and verification;
-* implementation-report requirements;
-* explicit prohibition of unrelated work, dependency changes, version changes, commit, push, PR and merge.
-
-Do not repeat the full Issue, review report or stable repository rules.
-
-Do not introduce new requirements or optional improvements.
+* the full review report;
+* stable rules already contained in `AGENTS.md`;
+* requirements unrelated to the blockers.
 
 ## Re-review
 
 For re-review:
 
-1. obtain a new complete manifest and paginated diff;
-2. verify the same path, branch and base;
+1. obtain a new complete manifest and diff;
+2. verify the same paths, branches and base branch;
 3. verify every previous blocker;
-4. evaluate the original acceptance criteria again;
+4. evaluate all original Acceptance Criteria again;
 5. inspect regressions introduced by corrections;
-6. re-check related public contracts when affected;
-7. return `APPROVED` or only the remaining blockers.
+6. return `APPROVED` or only the remaining blockers.
 
-Do not introduce unrelated optional findings.
+Do not introduce optional findings unrelated to the original Issue or corrections.
 
-## PR preparation
+## PR body
 
-When approved, complete `.github/PULL_REQUEST_TEMPLATE/pr.md` from inspected facts and supplied evidence.
-
-The PR body must state:
-
-* concrete behavior changed;
-* included and excluded scope;
-* related Issue and ROADMAP iteration;
-* change level;
-* page, block, API, adapter and configuration impact;
-* dependency status;
-* exact supplied test commands and results;
-* manual or smoke scenarios;
-* security checks required and completed;
-* documentation changes;
-* known limitations;
-* related-repository dependency and merge order when applicable;
-* `version not changed`.
-
-Do not mark an unchecked verification item as completed.
-
-Do not invent issue numbers, commands, outputs or artifacts.
-
-## Branch and commit naming
-
-Use the Issue type and repository conventions.
-
-Examples:
-
-* `feat/<issue>-<short-name>`;
-* `fix/<issue>-<short-name>`;
-* `docs/<issue>-<short-name>`;
-* `chore/<issue>-<short-name>`.
-
-Recommended squash commit prefixes:
-
-* `feat:`;
-* `fix:`;
-* `docs:`;
-* `refactor:`;
-* `test:`;
-* `chore:`;
-* `ci:`;
-* `build:`.
-
-Use a scope when it improves precision:
+When approved, complete:
 
 ```text
-feat(blocks): add generic filter form
-fix(router): validate dashboard query parameters
-feat(theme): add persisted dark theme
+.github/PULL_REQUEST_TEMPLATE/pr.md
 ```
 
-Do not describe a breaking change unless the inspected public contract actually requires one.
+Use only inspected implementation and supplied verification evidence.
+
+The completed PR body must accurately represent:
+
+* implemented scope;
+* excluded scope;
+* Issue and roadmap context;
+* actual change level;
+* changed layers and contracts;
+* configuration impact;
+* template, static and package impact;
+* tests and smoke evidence;
+* security review;
+* dependency and version status;
+* known limitations;
+* checklist state.
+
+Do not mark an item complete without evidence.
+
+Use `not applicable` when appropriate.
+
+Do not invent:
+
+* Issue numbers;
+* test or smoke results;
+* artifact paths;
+* dependency reviews;
+* release versions;
+* completed checklist evidence.
+
+Recommend a squash commit using Conventional Commits.
+
+Do not recommend a version bump unless the approved Issue is release-related.
 
 ## Output format
 
-For a completed review:
+For a completed review return:
 
 1. `Verdict`
 2. `Blocking findings`
@@ -577,11 +495,10 @@ For a completed review:
 5. `Verification evidence`
 6. `Unverified limitations`
 7. `Close decision`
-8. `Branch and commit`
-9. `PR body` when approved
-10. `Consolidated correction prompt` when changes are required
+8. `PR body` when approved
+9. `Consolidated correction prompt` when changes are required
 
-For incomplete inspection:
+For incomplete inspection return:
 
 1. `REVIEW INCOMPLETE`
 2. `Completed inspection`
