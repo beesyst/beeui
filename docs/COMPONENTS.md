@@ -189,7 +189,7 @@ Controlled GET filter bar for adapter-backed `layout[]`. The filter form renders
 
 | Field type | Параметры | Описание |
 |-----------|-----------|----------|
-| `date_range` | `from_value`, `to_value`, `from_label`, `to_label` | Два date input (from/to) |
+| `date_range` | `from_value`, `to_value`, `from_label`, `to_label` | Два Tabler Datepicker input (from/to), backed by local Litepicker |
 | `text` | `name`, `value`, `placeholder` | Текстовый input (search) |
 | `select` | `name`, `value`, `options[]`, `multi` | Выпадающий список |
 | `checkboxes` | `choices[]` (`value`, `label`, `checked`, `toggle_href`) | Группа checkbox с internal toggle links |
@@ -198,7 +198,10 @@ Controlled GET filter bar for adapter-backed `layout[]`. The filter form renders
 
 - Все значения проходят autoescaping.
 - Форма использует `method=GET`.
-- `date_range` содержит два отдельных `input[type=date]` с именами `date_from`/`date_to`.
+- `date_range` содержит два отдельных Tabler Datepicker input с именами `date_from`/`date_to`, использующих `.input-icon` и `.input-icon-addon` с календарным SVG.
+- `date_range` inputs имеют `type="text"` с `inputmode="numeric"` и `pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}"` для ручного ввода ISO-дат без JavaScript.
+- При наличии JavaScript Litepicker загружается условно (только для страниц с `date_range`).
+- Инициализация Litepicker использует контролируемый locale из BeeUI (`en` → `en-US`, `ru` → `ru-RU`).
 - `select` options с value/label.
 - Missing/invalid fields degrades to empty filter form, не 500.
 - `actions.apply` is a GET submit button; `method` is not an adapter-configurable field. A safe `href` becomes the form action; an unsafe href falls back to the safe prefixed current route.
@@ -272,7 +275,9 @@ Controlled GET filter bar for adapter-backed `layout[]`. The filter form renders
 - Все значения экранируются через Jinja autoescape.
 - `options` без `value` или `label` пропускаются.
 - Неизвестный `field.type` игнорируется.
-- No JS вызовов — фильтрация серверная через GET params.
+- Контролируемый package-local JavaScript BeeUI используется только для presentation Litepicker и GET auto-submit; product callback или runtime execution не вызываются.
+- Adapter не передаёт JavaScript или произвольные Litepicker options; filtering, validation, timezone и range semantics остаются у product.
+- Форма остаётся GET-only и пригодна для использования без JavaScript.
 - `actions.apply.href`, `actions.reset.href` and toggle hrefs validate as internal links; unsafe apply keeps a GET submit using the safe prefixed current route.
 
 ## Добавления Iteration 13.4
@@ -496,7 +501,7 @@ Controlled GET filter bar for adapter-backed `layout[]`.
 
 | Field type | Parameters | Description |
 |-----------|-----------|-------------|
-| `date_range` | `from_value`, `to_value`, `from_label`, `to_label` | Two date inputs (from/to) with auto-submit |
+| `date_range` | `from_value`, `to_value`, `from_label`, `to_label` | Two Tabler Datepicker inputs (from/to) backed by local Litepicker, auto-submit on selection, manual ISO fallback |
 | `text` | `name`, `value`, `placeholder` | Text search input |
 | `select` | `name`, `value`, `options[]`, `multi` | Dropdown with auto-submit |
 | `checkboxes` | `choices[]` (value, label, checked, toggle_href), `open`, `selected_count` | Dropdown checkbox group with toggle links |

@@ -12,6 +12,7 @@ LocalizedText = str | dict[str, str]
 _BEEUI_TRANSLATIONS: dict[str, dict[str, str]] = {
     "filter.columns": {"en": "Columns", "ru": "Колонки"},
     "filter.any": {"en": "Any", "ru": "Любой"},
+    "filter.apply": {"en": "Apply", "ru": "Применить"},
     "detail.show_text": {"en": "Show text", "ru": "Показать текст"},
     "detail.unavailable": {"en": "Unavailable", "ru": "Недоступно"},
     "chart.title": {"en": "Chart", "ru": "График"},

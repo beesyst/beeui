@@ -268,6 +268,80 @@ def test_html_uses_real_local_tabler_assets() -> None:
     assert "beeui-theme-base-gray" in response.text
 
 
+def test_get_local_litepicker_vendor_js_asset_returns_file() -> None:
+    app = create_beeui_app()
+    client = TestClient(app)
+
+    response = client.get("/static/vendor/litepicker/litepicker.min.js")
+
+    assert response.status_code == 200
+    assert "Litepicker" in response.text
+    assert response.headers["X-BeeUI-Read-Only"] == "true"
+
+
+def test_get_local_litepicker_vendor_css_asset_returns_file() -> None:
+    app = create_beeui_app()
+    client = TestClient(app)
+
+    response = client.get("/static/vendor/litepicker/litepicker.min.css")
+
+    assert response.status_code == 200
+    assert ".litepicker" in response.text
+    assert response.headers["X-BeeUI-Read-Only"] == "true"
+
+
+def test_litepicker_vendor_js_is_not_placeholder() -> None:
+    js_path = Path("src/beeui_module/web/static/vendor/litepicker/litepicker.min.js")
+
+    assert js_path.stat().st_size > 50_000
+    content = js_path.read_text(encoding="utf-8")
+    assert "Litepicker" in content
+
+
+def test_litepicker_vendor_css_is_not_placeholder() -> None:
+    css_path = Path("src/beeui_module/web/static/vendor/litepicker/litepicker.min.css")
+
+    assert css_path.stat().st_size > 5_000
+    content = css_path.read_text(encoding="utf-8")
+    assert ".litepicker" in content
+    assert "sourceMappingURL" not in content
+
+
+def test_html_does_not_include_litepicker_when_no_date_range() -> None:
+    app = create_beeui_app()
+    client = TestClient(app)
+
+    response = client.get("/")
+    html = response.text
+
+    assert "/static/vendor/litepicker/litepicker.min.css" not in html
+    assert "/static/vendor/litepicker/litepicker.min.js" not in html
+    assert "new Litepicker" not in html
+    assert "disableLitepickerStyles" not in html
+
+
+def test_litepicker_dark_theme_overrides_are_scoped() -> None:
+    css = Path("src/beeui_module/web/static/css/beeui.css").read_text(encoding="utf-8")
+
+    assert '[data-bs-theme="dark"] .litepicker {' in css
+    assert "--litepicker-container-months-color-bg: var(--beeui-surface);" in css
+    assert "--litepicker-day-color: var(--beeui-text);" in css
+    assert "--litepicker-button-reset-color: var(--beeui-text-muted);" in css
+
+
+def test_litepicker_assets_follow_route_prefix() -> None:
+    settings = load_settings(settings_path())
+    settings["web"]["route_prefix"] = "/bee"
+
+    app = create_beeui_app(settings=settings)
+    client = TestClient(app)
+
+    response = client.get("/bee/components/layout")
+
+    assert response.status_code == 200
+    assert "/bee/static/vendor/litepicker/" not in response.text
+
+
 def test_product_title_is_escaped_in_html() -> None:
     settings = load_settings(settings_path())
     settings["product"]["title"] = "<script>alert(1)</script>"

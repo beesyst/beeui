@@ -3335,3 +3335,324 @@ def test_data_table_progress_requires_finite_numeric_values() -> None:
     )[0]
     normalized = [row["progress"]["value"] for row in result["rows"]]
     assert normalized == [0, 0, 0, 0, 0, 100, 12.5]
+
+
+def test_layout_has_date_ranges_detects_filter_form_date_range() -> None:
+    from beeui_module.blocks.layout_renderer import layout_has_date_ranges
+
+    blocks = render_layout(
+        [
+            {
+                "type": "filter_form",
+                "title": "Filters",
+                "fields": [
+                    {
+                        "type": "date_range",
+                        "name": "date",
+                        "from_value": "2026-07-01",
+                        "to_value": "2026-07-31",
+                        "from_label": "From",
+                        "to_label": "To",
+                    }
+                ],
+                "actions": {},
+            }
+        ]
+    )
+    assert layout_has_date_ranges(blocks) is True
+
+
+def test_layout_has_date_ranges_detects_nested_group_date_range() -> None:
+    from beeui_module.blocks.layout_renderer import layout_has_date_ranges
+
+    blocks = render_layout(
+        [
+            {
+                "type": "group",
+                "children": [
+                    {
+                        "type": "filter_form",
+                        "title": "Filters",
+                        "fields": [
+                            {
+                                "type": "date_range",
+                                "name": "date",
+                                "from_value": "2026-07-01",
+                                "to_value": "2026-07-31",
+                            }
+                        ],
+                        "actions": {},
+                    }
+                ],
+            }
+        ]
+    )
+    assert layout_has_date_ranges(blocks) is True
+
+
+def test_layout_has_date_ranges_no_date_range() -> None:
+    from beeui_module.blocks.layout_renderer import layout_has_date_ranges
+
+    blocks = render_layout(
+        [
+            {
+                "type": "filter_form",
+                "title": "Filters",
+                "fields": [
+                    {
+                        "type": "text",
+                        "name": "q",
+                        "value": "search",
+                    }
+                ],
+                "actions": {},
+            }
+        ]
+    )
+    assert layout_has_date_ranges(blocks) is False
+
+
+def test_layout_has_date_ranges_empty_blocks() -> None:
+    from beeui_module.blocks.layout_renderer import layout_has_date_ranges
+
+    assert layout_has_date_ranges([]) is False
+    assert layout_has_date_ranges([{"type": "chart", "title": "C"}]) is False
+    assert layout_has_date_ranges([{"type": "degraded", "reason": "bad"}]) is False
+
+
+def test_layout_has_date_ranges_only_one_date_field() -> None:
+    from beeui_module.blocks.layout_renderer import layout_has_date_ranges
+
+    blocks = render_layout(
+        [
+            {
+                "type": "filter_form",
+                "title": "Filters",
+                "fields": [
+                    {
+                        "type": "date_range",
+                        "name": "date",
+                        "from_value": "2026-07-01",
+                    }
+                ],
+                "actions": {},
+            }
+        ]
+    )
+    assert layout_has_date_ranges(blocks) is True
+
+    blocks2 = render_layout(
+        [
+            {
+                "type": "filter_form",
+                "title": "Filters",
+                "fields": [
+                    {
+                        "type": "date_range",
+                        "name": "date",
+                        "to_value": "2026-07-31",
+                    }
+                ],
+                "actions": {},
+            }
+        ]
+    )
+    assert layout_has_date_ranges(blocks2) is True
+
+
+def test_filter_form_date_range_preserves_values() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "filter_form",
+                "title": "Filters",
+                "fields": [
+                    {
+                        "type": "date_range",
+                        "name": "date",
+                        "from_value": "2026-06-01",
+                        "to_value": "2026-06-30",
+                        "from_label": "From",
+                        "to_label": "To",
+                    }
+                ],
+                "actions": {},
+            }
+        ]
+    )
+    dr = result[0]["fields"][0]
+    assert dr["type"] == "date_range"
+    assert dr["from_value"] == "2026-06-01"
+    assert dr["to_value"] == "2026-06-30"
+    assert dr["from_label"] == "From"
+    assert dr["to_label"] == "To"
+
+
+def test_filter_form_date_range_empty_values() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "filter_form",
+                "title": "Filters",
+                "fields": [
+                    {
+                        "type": "date_range",
+                        "name": "date",
+                        "from_value": "",
+                        "to_value": "",
+                    }
+                ],
+                "actions": {},
+            }
+        ]
+    )
+    dr = result[0]["fields"][0]
+    assert dr["from_value"] == ""
+    assert dr["to_value"] == ""
+
+
+def test_filter_form_date_range_start_only() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "filter_form",
+                "title": "Filters",
+                "fields": [
+                    {
+                        "type": "date_range",
+                        "name": "date",
+                        "from_value": "2026-06-01",
+                    }
+                ],
+                "actions": {},
+            }
+        ]
+    )
+    dr = result[0]["fields"][0]
+    assert dr["from_value"] == "2026-06-01"
+    assert dr["to_value"] == ""
+
+
+def test_filter_form_date_range_end_only() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "filter_form",
+                "title": "Filters",
+                "fields": [
+                    {
+                        "type": "date_range",
+                        "name": "date",
+                        "to_value": "2026-06-30",
+                    }
+                ],
+                "actions": {},
+            }
+        ]
+    )
+    dr = result[0]["fields"][0]
+    assert dr["from_value"] == ""
+    assert dr["to_value"] == "2026-06-30"
+
+
+def test_filter_form_date_range_complete_range() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "filter_form",
+                "title": "Filters",
+                "fields": [
+                    {
+                        "type": "date_range",
+                        "name": "date",
+                        "from_value": "2026-06-01",
+                        "to_value": "2026-06-30",
+                    }
+                ],
+                "actions": {},
+            }
+        ]
+    )
+    dr = result[0]["fields"][0]
+    assert dr["from_value"] == "2026-06-01"
+    assert dr["to_value"] == "2026-06-30"
+
+
+def test_filter_form_date_range_unsafe_values_escaped() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "filter_form",
+                "title": "Filters",
+                "fields": [
+                    {
+                        "type": "date_range",
+                        "name": "date",
+                        "from_value": "<script>bad_from</script>",
+                        "to_value": "<script>bad_to</script>",
+                        "from_label": "<b>from</b>",
+                        "to_label": "<i>to</i>",
+                    }
+                ],
+                "actions": {},
+            }
+        ]
+    )
+    dr = result[0]["fields"][0]
+    assert dr["from_value"] == "<script>bad_from</script>"
+    assert dr["to_value"] == "<script>bad_to</script>"
+    assert dr["from_label"] == "<b>from</b>"
+    assert dr["to_label"] == "<i>to</i>"
+
+
+def test_filter_form_date_range_non_string_values() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "filter_form",
+                "title": "Filters",
+                "fields": [
+                    {
+                        "type": "date_range",
+                        "name": "date",
+                        "from_value": 42,
+                        "to_value": None,
+                        "from_label": True,
+                        "to_label": 3.14,
+                    }
+                ],
+                "actions": {},
+            }
+        ]
+    )
+    dr = result[0]["fields"][0]
+    assert dr["from_value"] == "42"
+    assert dr["to_value"] == ""
+    assert dr["from_label"] == "True"
+    assert dr["to_label"] == "3.14"
+
+
+def test_filter_form_date_range_malformed_safe_degrade() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "filter_form",
+                "title": "Filters",
+                "fields": [
+                    "not a dict",
+                    None,
+                    42,
+                    {
+                        "type": "date_range",
+                        "name": "date",
+                    },
+                ],
+                "actions": {},
+            }
+        ]
+    )
+    block = result[0]
+    assert block["type"] == "filter_form"
+    valid_fields = [f for f in block["fields"] if isinstance(f, dict)]
+    assert len(valid_fields) == 1
+    assert valid_fields[0]["type"] == "date_range"

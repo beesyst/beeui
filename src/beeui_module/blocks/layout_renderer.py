@@ -1048,12 +1048,16 @@ def _render_data_table(raw: dict[str, Any], width_class: str) -> dict[str, Any]:
             else None
         )
         sort_direction_raw = col.get("sort_direction")
-        sort_direction = {
-            "asc": "ascending",
-            "ascending": "ascending",
-            "desc": "descending",
-            "descending": "descending",
-        }.get(sort_direction_raw)
+        sort_direction = (
+            {
+                "asc": "ascending",
+                "ascending": "ascending",
+                "desc": "descending",
+                "descending": "descending",
+            }.get(sort_direction_raw)
+            if isinstance(sort_direction_raw, str)
+            else None
+        )
         sort_active = bool(col.get("sort_active", False)) and bool(sort_href) and sort_direction is not None
         columns.append(
             {
@@ -1351,6 +1355,7 @@ def _render_filter_form(raw: dict[str, Any], width_class: str) -> dict[str, Any]
         "title": title,
         "hidden": hidden,
         "fields": fields,
+        "has_date_range": any(field.get("type") == "date_range" for field in fields),
         "column_toggles": column_toggles,
         "columns_open": columns_open,
         "columns_toggle_href": columns_toggle_href,
@@ -1474,6 +1479,24 @@ def layout_has_charts(blocks: list[dict[str, Any]]) -> bool:
 
         children = block.get("children")
         if isinstance(children, list) and layout_has_charts(
+            [child for child in children if isinstance(child, dict)]
+        ):
+            return True
+
+    return False
+
+
+def layout_has_date_ranges(blocks: list[dict[str, Any]]) -> bool:
+    for block in blocks:
+        if block.get("type") == "filter_form":
+            fields = block.get("fields")
+            if isinstance(fields, list):
+                for field in fields:
+                    if isinstance(field, dict) and field.get("type") == "date_range":
+                        return True
+
+        children = block.get("children")
+        if isinstance(children, list) and layout_has_date_ranges(
             [child for child in children if isinstance(child, dict)]
         ):
             return True

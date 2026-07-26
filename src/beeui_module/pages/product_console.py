@@ -27,6 +27,7 @@ from beeui_module.api.envelopes import (
 from beeui_module.artifacts.redaction import redact_value
 from beeui_module.blocks.layout_renderer import (
     layout_has_charts,
+    layout_has_date_ranges,
     render_layout,
     resolve_layout_links,
 )
@@ -629,6 +630,7 @@ def _dashboard_html_context(
     context["layout_blocks"] = layout_blocks
     context["has_layout"] = isinstance(layout, list) and len(layout) > 0
     context["has_charts"] = layout_has_charts(layout_blocks)
+    context["has_date_ranges"] = layout_has_date_ranges(layout_blocks)
 
     latest_run = (
         payload.get("latest_run")
@@ -693,11 +695,13 @@ def _runs_html_context(
         context["layout_blocks"] = layout_blocks
         context["has_layout"] = isinstance(layout, list) and len(layout) > 0
         context["has_charts"] = layout_has_charts(layout_blocks)
+        context["has_date_ranges"] = layout_has_date_ranges(layout_blocks)
         raw_items = payload.get("runs") or payload.get("items") or []
     elif isinstance(payload, list):
         context["layout_blocks"] = []
         context["has_layout"] = False
         context["has_charts"] = False
+        context["has_date_ranges"] = False
         raw_items = payload
     else:
         response, status_code = malformed_payload_envelope(
@@ -794,6 +798,7 @@ def _run_detail_html_context(
     context["layout_blocks"] = layout_blocks
     context["has_layout"] = isinstance(layout, list) and len(layout) > 0
     context["has_charts"] = layout_has_charts(layout_blocks)
+    context["has_date_ranges"] = layout_has_date_ranges(layout_blocks)
 
     artifacts, local_warnings = _normalize_artifacts(payload.get("artifacts"), run_id)
     context["run"] = payload
@@ -862,6 +867,7 @@ def _venue_html_context(
     context["layout_blocks"] = layout_blocks
     context["has_layout"] = isinstance(layout, list) and len(layout) > 0
     context["has_charts"] = layout_has_charts(layout_blocks)
+    context["has_date_ranges"] = layout_has_date_ranges(layout_blocks)
 
     context["dashboard"] = payload
     context["summary_items"] = _mapping_items(payload)

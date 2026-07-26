@@ -130,10 +130,10 @@ PLANNING INCOMPLETE
 When mandatory review inspection cannot be completed, return:
 
 ```text
-REVIEW INCOMPLETE
+ФИНАЛЬНАЯ ПРОВЕРКА НЕ ЗАВЕРШЕНА
 ```
 
-Do not return `CHANGES REQUIRED` solely because MCP data is incomplete.
+Do not return `ТРЕБУЮТСЯ ИЗМЕНЕНИЯ` solely because MCP data is incomplete.
 
 ## Mandatory reading
 
@@ -392,7 +392,7 @@ BeeUI must not:
 * Treat config, query parameters, cookies, adapter payloads and artifact content as untrusted.
 * Preserve read-only, preview-only and execution authority boundaries.
 * Keep `pyproject.toml.version` unchanged for ordinary feature, fix, docs and chore work.
-* Do not add comments unless the approved Issue explicitly requires documentation in code.
+* Do not add first-party code or test comments, inline explanations, `TODO`, `FIXME`, `NOTE` or decorative separators. Preserve existing unrelated comments and required copyright, license, legal, upstream-vendored and provenance comments; Markdown documentation is not a code comment.
 * Do not add a frontend build chain unless explicitly approved.
 * Do not copy full upstream Tabler demo pages.
 
@@ -433,6 +433,8 @@ When adding or changing vendored assets:
 * classify dependency or browser-executed asset changes according to `docs/SDLC.md` and `docs/SECURITY.md`.
 
 Dependencies and `uv.lock` must not change unless required by the approved Issue.
+
+For an approved feature, fix, docs or chore Issue without Python dependency declaration changes, do not read, open, modify, regenerate, parse, hash, diff or separately validate `uv.lock`; do not run `uv lock` or `uv lock --check`. Use approved `uv run` and repository entrypoints, then confirm only from the final changed-file inventory that `uv.lock` is absent. Its unexpected presence is scope drift. Treat dependency declarations, `uv.lock` and SCA as one approved dependency change only when the Issue explicitly changes Python dependencies.
 
 When dependencies intentionally change:
 
@@ -500,6 +502,8 @@ Determine the actual change level from `docs/SDLC.md` and `docs/SECURITY.md`:
 * `security-sensitive`.
 
 Run checks proportional to the actual change.
+
+First determine the actual change level, read the applicable `docs/SDLC.md` and `docs/SECURITY.md` requirements, and derive checks from the changed boundary. Do not require every security tool for every task, treat optional checks as blockers, or claim an unrun required check passed.
 
 Common checks include:
 
@@ -597,7 +601,7 @@ Prioritize blockers affecting the current Issue:
 * missing package templates or static assets;
 * missing required verification;
 * unrelated changes entering the PR;
-* unintended dependency, lockfile or version changes;
+* unintended dependency declaration, inventory `uv.lock` or version changes;
 * documentation contradicting public behavior.
 
 Do not create blockers from:
@@ -610,6 +614,8 @@ Do not create blockers from:
 * MCP limitations themselves.
 
 Perform one complete review pass and consolidate all real blockers.
+
+Human-facing final-review reports and verdicts are in Russian: `ОДОБРЕНО ДЛЯ PR`, `ТРЕБУЮТСЯ ИЗМЕНЕНИЯ` or `ФИНАЛЬНАЯ ПРОВЕРКА НЕ ЗАВЕРШЕНА`.
 
 Use:
 
@@ -633,7 +639,7 @@ The implementation report should contain:
 11. logs inspected;
 12. artifacts, static assets and package contents inspected;
 13. security review;
-14. dependency and lockfile status;
+14. dependency status;
 15. known limitations;
 16. recommended Conventional Commit;
 17. confirmation:

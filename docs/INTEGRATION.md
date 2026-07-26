@@ -278,6 +278,17 @@ Products should pass only safe internal paths for:
 `filter_form` is a GET-only server-side form. JavaScript auto-submit is optional
 progressive enhancement; it does not change the GET contract.
 
+### Iteration 13.10 — Date-range presentation contract
+
+Products continue to provide the same `filter_form.date_range` payload:
+`from_value`, `to_value`, `from_label`, and `to_label`. BeeUI renders the two
+canonical fields as local Litepicker-backed Tabler Datepicker controls and
+submits only `date_from` and `date_to` in `YYYY-MM-DD` format. Either bound may
+be empty; BeeUI does not validate date semantics, ranges, inclusivity, or
+timezones. Litepicker is a package-local conditional presentation asset, and
+products must not add datepicker templates, JavaScript, CSS, or arbitrary
+datepicker options.
+
 ### Iteration 13.9 — Detail presentation metadata
 
 Detail page `key_value` items support product-neutral presentation fields:

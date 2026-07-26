@@ -43,6 +43,36 @@
   --beeui-sidebar-shadow: inset -1px 0 0 var(--beeui-sidebar-border);
 }
 
+[data-bs-theme="dark"] .litepicker {
+  --litepicker-container-months-color-bg: var(--beeui-surface);
+  --litepicker-container-months-box-shadow-color: var(--beeui-border);
+  --litepicker-footer-color-bg: var(--beeui-surface-hover);
+  --litepicker-footer-box-shadow-color: var(--beeui-border);
+  --litepicker-tooltip-color-bg: var(--beeui-surface);
+  --litepicker-month-header-color: var(--beeui-text);
+  --litepicker-month-weekday-color: var(--beeui-text-muted);
+  --litepicker-month-week-number-color: var(--beeui-text-muted);
+  --litepicker-day-color: var(--beeui-text);
+  --litepicker-day-color-hover: var(--beeui-accent);
+  --litepicker-is-today-color: var(--beeui-accent);
+  --litepicker-is-in-range-color: var(--beeui-accent-soft);
+  --litepicker-is-locked-color: var(--beeui-text-muted);
+  --litepicker-is-start-color: var(--tblr-primary-fg);
+  --litepicker-is-start-color-bg: var(--beeui-accent);
+  --litepicker-is-end-color: var(--tblr-primary-fg);
+  --litepicker-is-end-color-bg: var(--beeui-accent);
+  --litepicker-button-prev-month-color: var(--beeui-text-muted);
+  --litepicker-button-next-month-color: var(--beeui-text-muted);
+  --litepicker-button-prev-month-color-hover: var(--beeui-accent);
+  --litepicker-button-next-month-color-hover: var(--beeui-accent);
+  --litepicker-button-reset-color: var(--beeui-text-muted);
+  --litepicker-button-reset-color-hover: var(--beeui-accent);
+}
+
+[data-bs-theme="dark"] .litepicker .container__months {
+  border: 1px solid var(--beeui-border);
+}
+
 .beeui-theme-mode-light {
   color-scheme: light;
 }

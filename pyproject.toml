@@ -41,6 +41,7 @@ where = ["src"]
     "static/js/*.js",
     "static/vendor/tabler/**/*",
     "static/vendor/apexcharts/**/*",
+    "static/vendor/litepicker/**/*",
 ]
 
 [tool.pytest.ini_options]

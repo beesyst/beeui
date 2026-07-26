@@ -28,6 +28,8 @@
 - существующий `table_card` остаётся backward-compatible;
 - package-local ApexCharts asset (`static/vendor/apexcharts/apexcharts.min.js`), без CDN;
 - условная загрузка ApexCharts script только когда на странице есть chart blocks.
+- package-local Litepicker asset (`static/vendor/litepicker/litepicker.min.js` + `litepicker.min.css`), без CDN;
+- условная загрузка Litepicker CSS/JS только когда на странице есть `filter_form.date_range`.
 
 Предыдущая основа после Iteration 13.5:
 

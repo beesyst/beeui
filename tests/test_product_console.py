@@ -1653,3 +1653,60 @@ def test_mounted_filter_and_beeagent_sort_layout_render_end_to_end() -> None:
     assert "invalid.example" not in response.text
     assert 'aria-sort="descending"' in response.text
     assert "↓" in response.text
+
+
+def test_mounted_date_range_uses_local_litepicker_with_prefix_and_locale() -> None:
+    class DateRangeAdapter(FakeProductConsoleAdapter):
+        def get_dashboard(self) -> Any:
+            return ok_result(
+                {
+                    "layout": [
+                        {
+                            "type": "filter_form",
+                            "title": "<Filters>",
+                            "fields": [
+                                {
+                                    "type": "date_range",
+                                    "name": "date",
+                                    "label": "<Date range>",
+                                    "from_value": "2026-07-01",
+                                    "to_value": "2026-07-31",
+                                    "from_label": "<From>",
+                                    "to_label": "<To>",
+                                }
+                            ],
+                            "actions": {"reset": {"href": "/?reset=1", "label": "Reset"}},
+                        }
+                    ]
+                }
+            )
+
+    parent = FastAPI()
+    mount_beeui(parent, path="/ui", adapter=DateRangeAdapter())
+
+    response = TestClient(parent).get("/ui/?lang=ru")
+
+    assert response.status_code == 200
+    assert 'type="date"' not in response.text
+    assert response.text.count('class="form-control beeui-datepicker"') == 2
+    assert response.text.count('class="input-icon"') == 2
+    assert response.text.count('class="input-icon-addon"') == 2
+    assert 'name="date_from"' in response.text
+    assert 'name="date_to"' in response.text
+    assert 'method="GET"' in response.text
+    assert '<button type="submit" class="btn btn-sm btn-primary">Применить</button>' in response.text
+    assert 'href="/ui/?reset=1"' in response.text
+    assert 'value="2026-07-01"' in response.text
+    assert 'value="2026-07-31"' in response.text
+    assert "&lt;Filters&gt;" in response.text
+    assert "&lt;Date range&gt;" in response.text
+    assert "&lt;From&gt;" in response.text
+    assert "&lt;To&gt;" in response.text
+    assert response.text.count('/ui/static/vendor/litepicker/litepicker.min.css') == 1
+    assert response.text.count('/ui/static/vendor/litepicker/litepicker.min.js') == 1
+    assert response.text.index('/ui/static/vendor/litepicker/litepicker.min.css') < response.text.index('/ui/static/css/beeui.css')
+    assert response.text.index("window.disableLitepickerStyles = true;") < response.text.index('/ui/static/vendor/litepicker/litepicker.min.js')
+    assert "resetButton: true" in response.text
+    assert "clear:selection" in response.text
+    assert "ru-RU" in response.text
+    assert "locale_map" in response.text
