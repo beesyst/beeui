@@ -2,6 +2,30 @@
 
 **BeeUI** — общий UI-фреймворк на Python для Bee-продуктов: `beecap`, `beeagent` и будущих модулей экосистемы Bee.
 
+## Iteration 13.10 — Tabler Datepicker contract for generic date-range filters
+
+Текущий результат — generic `filter_form.date_range` рендерится как два
+Tabler-совместимых Datepicker control с локально vendored Litepicker,
+сохраняя существующий GET contract (`date_from`/`date_to`).
+
+В Iteration 13.10 добавлены:
+
+- **Tabler Datepicker (`date_range`)**:
+  - browser-native `input[type=date]` заменён на Tabler `.input-icon` markup;
+  - календарный SVG icon в `.input-icon-addon`;
+  - локально vendored Litepicker (`static/vendor/litepicker/`) без CDN;
+  - условная загрузка Litepicker CSS/JS только на страницах с `date_range`;
+  - инициализация через контролируемый locale (`en`→`en-US`, `ru`→`ru-RU`);
+  - `YYYY-MM-DD` формат, `singleMode`, auto-submit при выборе;
+  - ручной ввод ISO-дат работает без JavaScript;
+  - `date_from`/`date_to` имена и значения сохранены;
+  - active form/reset/toggle URL проходят safe internal-link contract; значения дат остаются presentation/query values, а validation range, ordering, inclusivity и timezone semantics принадлежат product repository;
+  - light/dark theme совместимость;
+- **Условная загрузка assets**:
+  - `layout_has_date_ranges()` — аналог `layout_has_charts()` для detection;
+  - Litepicker загружается один раз на страницах, где есть `date_range`;
+- **Документация**: `docs/COMPONENTS.md`, `docs/WEB_UI.md`, `docs/INTEGRATION.md`, `docs/SECURITY.md`.
+
 ## Iteration 13.9 — Operator UX presentation contracts, locale persistence, theme, and chart state handling
 
 Текущий результат — generic operator-facing presentation contracts: filter form,

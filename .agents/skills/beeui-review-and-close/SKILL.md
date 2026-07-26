@@ -47,6 +47,12 @@ Obtain:
 
 The filesystem path, MCP target and Git branch are separate identifiers.
 
+## Workflow gates
+
+Read every declared review file completely before issuing findings; add and read an additional file before relying on it. Current files/contracts are authoritative and reports are supporting evidence. Reconcile the Issue with `docs/ROADMAP.md`, preserve “BeeUI renders, product decides”, and treat optional polish, unrelated cleanup, speculative architecture, no-code, auth, config apply, standalone service, separate frontend and product-specific generic-renderer logic as out of scope.
+
+Determine actual change level, read applicable SDLC/security requirements and derive proportional checks from the changed boundary. Do not require every security tool or treat an optional check as a blocker. Any new first-party code/test comment, inline explanation, TODO/FIXME/NOTE or decorative separator is a blocker. Preserve copyright, legal, license, upstream-vendored and provenance comments; do not require unrelated existing comments to be removed. Review unnecessary test complexity, duplicate assertions, new helpers/files without need and formatting churn as blockers only when they demonstrate scope drift, unnecessary complexity or unrelated diff. Without an approved dependency change, do not inspect `uv.lock`; confirm only from changed-file inventory that it is absent.
+
 ## Phase 1 — Resolve instruction and target worktrees
 
 Use `list_worktrees` to resolve both worktrees by exact absolute path.
@@ -61,7 +67,7 @@ For the instruction worktree:
    * `AGENTS.md`;
    * `.agents/skills/beeui-review-and-close/SKILL.md`.
 
-Use the instruction worktree only as an instruction source.
+When instruction and target paths differ, use the instruction worktree only as an instruction source. When they are the same absolute path, read instructions there and inspect that same exact target.
 
 For the target worktree:
 
@@ -78,7 +84,7 @@ Do not substitute another worktree or infer a target from a branch name.
 If either required worktree cannot be resolved exactly, return:
 
 ```text
-REVIEW INCOMPLETE
+ФИНАЛЬНАЯ ПРОВЕРКА НЕ ЗАВЕРШЕНА
 ```
 
 If the target project or branch differs from expected values, report the mismatch and do not issue a code verdict.
@@ -119,7 +125,7 @@ Do not use compatibility `get_review_bundle` as a substitute for the paginated r
 If the manifest or diff is incomplete, truncated, inconsistent or unavailable, return:
 
 ```text
-REVIEW INCOMPLETE
+ФИНАЛЬНАЯ ПРОВЕРКА НЕ ЗАВЕРШЕНА
 ```
 
 Do not issue implementation findings from a partial snapshot.
@@ -163,7 +169,7 @@ Read omitted relevant files directly through `read_project_file`.
 If a mandatory relevant file is unreadable or redacted through the safe MCP interface, return:
 
 ```text
-REVIEW INCOMPLETE
+ФИНАЛЬНАЯ ПРОВЕРКА НЕ ЗАВЕРШЕНА
 ```
 
 ## Phase 4 — Inspect additional targets
@@ -241,7 +247,7 @@ Examples include:
 * missing required validation;
 * missing required verification;
 * unrelated files entering the change;
-* unintended dependency, lockfile or version changes;
+* unintended dependency declaration, inventory `uv.lock` or version changes;
 * documentation contradicting implemented public behavior;
 * a required cross-repository contract gap.
 
@@ -274,14 +280,14 @@ Before issuing a verdict, confirm:
 * applicable additional targets evaluated;
 * every Acceptance Criterion evaluated;
 * supplied verification evidence evaluated;
-* dependency, lockfile and version scope checked;
+* dependency declaration and version scope checked, with `uv.lock` absent from inventory unless dependency change is approved;
 * package and static impact checked when applicable;
 * all blockers consolidated.
 
 If any mandatory inspection remains incomplete, return:
 
 ```text
-REVIEW INCOMPLETE
+ФИНАЛЬНАЯ ПРОВЕРКА НЕ ЗАВЕРШЕНА
 ```
 
 Include:
@@ -302,16 +308,16 @@ Do not include:
 For a complete review, return exactly one verdict:
 
 ```text
-APPROVED
+ОДОБРЕНО ДЛЯ PR
 ```
 
 or:
 
 ```text
-CHANGES REQUIRED
+ТРЕБУЮТСЯ ИЗМЕНЕНИЯ
 ```
 
-### APPROVED
+### ОДОБРЕНО ДЛЯ PR
 
 Use only when no blockers remain.
 
@@ -323,18 +329,18 @@ State exactly:
 
 Then provide:
 
-1. Acceptance Criteria coverage;
-2. files reviewed;
-3. supplied verification evidence;
-4. unverified non-blocking limitations;
-5. reviewed target and branch;
-6. recommended squash commit;
-7. completed PR body;
-8. merge readiness.
+1. Покрытие критериев приёмки;
+2. Проверенные файлы;
+3. Доказательства проверок;
+4. Непроверенные ограничения;
+5. Проверенный target и branch;
+6. Рекомендуемый squash commit;
+7. Текст PR;
+8. Решение о закрытии.
 
 Do not claim that MCP ran tests or smoke commands.
 
-### CHANGES REQUIRED
+### ТРЕБУЮТСЯ ИЗМЕНЕНИЯ
 
 Provide every blocker in this format:
 
@@ -384,9 +390,7 @@ Read instructions from:
 - <instruction worktree>/AGENTS.md
 - <instruction worktree>/.agents/skills/beeui-verify-and-correct/SKILL.md
 
-Use the instruction worktree only for reading instructions.
-Inspect, modify and verify files only in the target worktree.
-Do not modify the instruction worktree.
+If instruction and target worktrees differ, use the instruction worktree only for reading instructions and inspect, modify and verify only the target worktree. If their absolute paths are identical, read instructions and then inspect, modify and verify that same exact target worktree.
 
 Approved Issue context:
 <exact Issue identity and Acceptance Criteria relevant to the blockers>
@@ -438,7 +442,7 @@ For re-review:
 3. verify every previous blocker;
 4. evaluate all original Acceptance Criteria again;
 5. inspect regressions introduced by corrections;
-6. return `APPROVED` or only the remaining blockers.
+6. return `ОДОБРЕНО ДЛЯ PR` or only the remaining blockers.
 
 Do not introduce optional findings unrelated to the original Issue or corrections.
 
@@ -488,19 +492,19 @@ Do not recommend a version bump unless the approved Issue is release-related.
 
 For a completed review return:
 
-1. `Verdict`
-2. `Blocking findings`
-3. `Acceptance Criteria coverage`
-4. `Files reviewed`
-5. `Verification evidence`
-6. `Unverified limitations`
-7. `Close decision`
-8. `PR body` when approved
-9. `Consolidated correction prompt` when changes are required
+1. `Вердикт`
+2. `Блокирующие замечания`
+3. `Покрытие критериев приёмки`
+4. `Проверенные файлы`
+5. `Доказательства проверок`
+6. `Непроверенные ограничения`
+7. `Решение о закрытии`
+8. `Текст PR` only when approval
+9. `Сводный prompt на исправление` only when blockers exist
 
 For incomplete inspection return:
 
-1. `REVIEW INCOMPLETE`
-2. `Completed inspection`
-3. `Missing inspection data`
-4. `Reason no code verdict was issued`
+1. `ФИНАЛЬНАЯ ПРОВЕРКА НЕ ЗАВЕРШЕНА`
+2. `Что проверено`
+3. `Каких данных не хватает`
+4. `Почему кодовый вердикт не вынесен`

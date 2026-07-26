@@ -5761,7 +5761,7 @@ git diff -- pyproject.toml uv.lock
 
 ### Итерация 13.10 — Tabler Datepicker contract for generic date-range filters
 
-**Status:** PLANNED
+**Status:** DONE
 
 #### Goal
 
@@ -5914,6 +5914,7 @@ BeeUI must not infer:
 * package-data inclusion;
 * updated component documentation;
 * automated and browser verification.
+* workflow hardening for this iteration: read-before-edit, ROADMAP scope, actual change level and proportional tests; no first-party code/test comments; Russian final-review verdicts; correction prompts that allow identical instruction/target worktrees; no `uv.lock` inspection outside an approved Python dependency change; `.agents/prompts/02-implementation-tests.md` remains unchanged.
 
 No product runtime artifacts are created.
 

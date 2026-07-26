@@ -45,6 +45,14 @@ Obtain:
 * final-review blockers when supplied;
 * explicitly supplied related-repository contracts.
 
+## Workflow gates
+
+Before proposing or editing, read every task-declared file completely; add and read any additional needed file before modifying a related file. Current files/contracts are authoritative, reports are supporting evidence. Reconcile the Issue with `docs/ROADMAP.md`, preserve “BeeUI renders, product decides”, and do not add optional polish, unrelated cleanup, speculative architecture, no-code, auth, config apply, standalone service, separate frontend or product-specific generic-renderer logic.
+
+Determine actual change level, read applicable SDLC/security requirements and derive proportional checks from the changed boundary. Use only the smallest demonstrated correction and proportional public-behavior tests in existing files/helpers; do not create implementation-detail-only tests, duplicate assertions, new test files/helpers without need, formatting churn or unrelated test rewrites. Do not add first-party code/test comments, inline explanations, TODO/FIXME/NOTE or separators; preserve legal, license, upstream and provenance comments.
+
+Without an explicitly approved Python dependency change, do not read or separately validate `uv.lock`; confirm only from final changed-file inventory that it is absent.
+
 ## Phase 1 — Verify the exact target
 
 Before verification:
@@ -117,7 +125,7 @@ At minimum, determine:
 * whether compatibility requirements are satisfied;
 * whether required validation and degraded behavior are correct;
 * whether required templates and static assets are packaged;
-* whether dependencies, lockfile and version remain in scope;
+* whether dependency declarations and version remain in scope;
 * whether required tests and smoke evidence exist;
 * whether security and authority boundaries are preserved.
 
@@ -135,7 +143,7 @@ A blocking finding must demonstrate one of:
 * a public-contract incompatibility;
 * missing package or runtime behavior required by the Issue;
 * missing verification required by the Issue or actual change level;
-* an unintended dependency, lockfile or version change;
+* an unintended dependency declaration, inventory `uv.lock` or version change;
 * unrelated changes entering the current Issue.
 
 Do not create blockers from:
@@ -218,7 +226,7 @@ Before returning:
 3. verify every supplied review blocker;
 4. verify regressions introduced by corrections;
 5. confirm that no unrelated files entered the change;
-6. confirm dependency, lockfile and version status;
+6. confirm dependency declaration and version status;
 7. identify remaining limitations;
 8. determine whether the implementation is ready for final read-only review.
 
@@ -239,7 +247,7 @@ Return one consolidated report containing:
 11. `Logs`
 12. `Artifacts, templates and static package data`
 13. `Security review`
-14. `Dependencies and lockfile`
+14. `Dependencies`
 15. `Unrelated-file check`
 16. `Known limitations`
 17. `Recommended Conventional Commit`

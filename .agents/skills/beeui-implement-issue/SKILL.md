@@ -40,6 +40,14 @@ Obtain:
 * planning constraints;
 * explicitly supplied related-repository contracts.
 
+## Workflow gates
+
+Before proposing, designing or editing, read every task-declared file completely. Add and read any additional needed file before changing a related file. Current files and contracts are authoritative; reports and prior comments are supporting evidence. Map the Issue to its current `docs/ROADMAP.md` iteration, stay within approved scope, and preserve: BeeUI renders, product decides. Do not introduce optional polish, unrelated cleanup, speculative architecture, no-code, auth, config apply, standalone service, separate frontend or product-specific generic-renderer logic.
+
+Determine change level, read applicable SDLC/security requirements, and derive proportional checks from the changed boundary. Use the smallest complete solution and proportional public-behavior tests in existing files/helpers; do not add implementation-detail-only tests, duplicate assertions, new test files/helpers without need, unrelated test rewrites or formatting churn. Do not add first-party code/test comments, inline explanations, TODO/FIXME/NOTE or separators; preserve legal, license, upstream and provenance comments.
+
+Without an explicitly approved Python dependency change, do not read or separately validate `uv.lock`; confirm only from final changed-file inventory that it is absent.
+
 ## Phase 1 — Verify the exact target
 
 Before changing files:
@@ -129,7 +137,7 @@ During implementation:
 * preserve BeeUI/product/domain ownership;
 * update public contracts and documentation when observable behavior changes;
 * preserve backward compatibility unless the Issue explicitly permits a breaking change;
-* keep dependencies, `uv.lock` and project version unchanged unless the Issue explicitly requires otherwise;
+* keep dependency declarations and project version unchanged unless the Issue explicitly requires otherwise;
 * keep all changes attributable to the current Issue.
 
 Do not add behavior merely because it may be useful in a future iteration.
@@ -193,7 +201,7 @@ Before reporting completion:
 3. confirm that no unrelated files entered the change;
 4. confirm Acceptance Criteria coverage;
 5. confirm documentation and contract consistency;
-6. confirm dependency and lockfile status;
+6. confirm dependency declaration and version status;
 7. confirm project version status;
 8. confirm applicable template, static and package-data integrity;
 9. identify remaining limitations.
@@ -215,7 +223,7 @@ Return one consolidated report containing:
 11. `Logs`
 12. `Artifacts, templates and static package data`
 13. `Security review`
-14. `Dependencies and lockfile`
+14. `Dependencies`
 15. `Unrelated-file check`
 16. `Known limitations`
 17. `Recommended Conventional Commit`

@@ -11,6 +11,9 @@ try{var d=document.documentElement,c=d.getAttribute('data-beeui-theme-config'),s
       rel="stylesheet"
       href="{{ route_prefix }}/static/vendor/tabler/css/tabler.min.css?v=4"
     />
+    {% if has_date_ranges %}
+    <link rel="stylesheet" href="{{ route_prefix }}/static/vendor/litepicker/litepicker.min.css" />
+    {% endif %}
     <link rel="stylesheet" href="{{ route_prefix }}/static/css/beeui.css?v=4" />
   </head>
   <body class="{{ shell_classes }}">
@@ -33,14 +36,18 @@ try{var d=document.documentElement,c=d.getAttribute('data-beeui-theme-config'),s
     <script src="{{ route_prefix }}/static/js/beeui.js?v=4"></script>
     {% if has_charts %}
     <script src="{{ route_prefix }}/static/vendor/apexcharts/apexcharts.min.js"></script>
+    <script type="application/json" id="beeui-chart-messages">
+{{ {
+  "empty": translate("chart.empty", locale),
+  "unavailable": translate("chart.unavailable", locale),
+  "error": translate("chart.error", locale),
+} | tojson }}
+</script>
     <script>
     (function() {
       'use strict';
-      var chartMessages = {{ {
-        "empty": translate("chart.empty", locale),
-        "unavailable": translate("chart.unavailable", locale),
-        "error": translate("chart.error", locale),
-      } | tojson }};
+      var messagesNode = document.getElementById('beeui-chart-messages');
+      var chartMessages = JSON.parse(messagesNode ? messagesNode.textContent || '{}' : '{}');
 
       function renderChartError(el, state) {
         el.textContent = '';
@@ -90,6 +97,50 @@ try{var d=document.documentElement,c=d.getAttribute('data-beeui-theme-config'),s
         } catch (_) {
           renderChartError(el, configNode ? 'error' : 'unavailable');
         }
+      });
+    })();
+    </script>
+    {% endif %}
+    {% if has_date_ranges %}
+    <script>window.disableLitepickerStyles = true;</script>
+    <script src="{{ route_prefix }}/static/vendor/litepicker/litepicker.min.js"></script>
+    <script type="application/json" id="beeui-datepicker-config">
+{{ {
+  "locale": locale,
+  "locale_map": {
+    "en": "en-US",
+    "ru": "ru-RU"
+  }
+} | tojson }}
+</script>
+    <script>
+    (function() {
+      'use strict';
+      var configNode = document.getElementById('beeui-datepicker-config');
+      var datepickerConfig = JSON.parse(configNode ? configNode.textContent || '{}' : '{}');
+      var localeMap = datepickerConfig.locale_map || {};
+      var locale = localeMap[datepickerConfig.locale] || 'en-US';
+
+      var Picker = Litepicker.Litepicker || Litepicker.default;
+      document.querySelectorAll('.beeui-datepicker').forEach(function(input) {
+        new Picker({
+          element: input,
+          format: 'YYYY-MM-DD',
+          singleMode: true,
+          autoApply: true,
+          resetButton: true,
+          lang: locale,
+          setup: function(p) {
+            p.on('selected', function(date) {
+              var form = input.closest('form');
+              if (form) form.submit();
+            });
+            p.on('clear:selection', function() {
+              var form = input.closest('form');
+              if (form) form.submit();
+            });
+          }
+        });
       });
     })();
     </script>

@@ -9,6 +9,7 @@ from fastapi.templating import Jinja2Templates
 from beeui_module.artifacts.redaction import redact_value
 from beeui_module.blocks.layout_renderer import (
     layout_has_charts,
+    layout_has_date_ranges,
     render_layout,
     resolve_layout_links,
 )
@@ -140,7 +141,6 @@ def register_configured_pages(
             has_charts = any(
                 getattr(b, "block_type", None) == "chart" for b in rendered_blocks
             )
-
             resolved_title = resolve_localized_text(
                 _page.title, locale, ui_config.locale.default
             )
@@ -342,7 +342,8 @@ def _resolve_page_tabs_data(
     for item in page.tabs.items:
         resolved_title = resolve_localized_text(item.title, locale, default_locale)
         href = prefix_internal_href(route_prefix, item.href)
-        href = add_preserved_params_to_href(href, preserved)
+        if href is not None:
+            href = add_preserved_params_to_href(href, preserved)
         items_list.append(
             {
                 "id": item.tab_id,
@@ -539,6 +540,7 @@ def register_adapter_custom_pages(
             )
 
             has_charts = layout_has_charts(layout_blocks)
+            has_date_ranges = layout_has_date_ranges(layout_blocks)
 
             context = {
                 "route_prefix": effective_prefix,
@@ -570,6 +572,7 @@ def register_adapter_custom_pages(
                 "has_layout": has_layout,
                 "layout_blocks": layout_blocks,
                 "has_charts": has_charts,
+                "has_date_ranges": has_date_ranges,
                 "has_blocks": False,
                 "rendered_blocks": [],
                 "page_title": resolve_localized_text(

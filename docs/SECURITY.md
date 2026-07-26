@@ -508,6 +508,8 @@ Static assets should be controlled.
 Allowed:
 
 - vendored Tabler CSS/JS;
+- vendored ApexCharts JS (charts);
+- vendored Litepicker JS/CSS (datepicker);
 - local `beeui.css`;
 - local `beeui.js`;
 - product logo if safely configured.

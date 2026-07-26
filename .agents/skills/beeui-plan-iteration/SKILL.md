@@ -52,6 +52,12 @@ The external prompt also declares:
 
 Treat paths, project names and branches as exact input values.
 
+## Workflow gates
+
+Before proposing a task, read every declared task file completely; add and read any additional needed file before relying on it. Current files/contracts are authoritative and reports are supporting evidence. Reconcile work with `docs/ROADMAP.md`, keep it within scope, preserve “BeeUI renders, product decides”, and hand off KISS constraints: no optional polish, unrelated cleanup, speculative architecture, no-code, auth, config apply, standalone service, separate frontend or product-specific generic-renderer logic.
+
+Determine the actual change level, read applicable SDLC/security requirements and derive proportional checks from the changed boundary. Handoffs must require existing test files/helpers where possible, public-behavior coverage, no duplicate or implementation-detail-only tests, no formatting churn, and no first-party code/test comments except legal, license, upstream and provenance material. Without an approved Python dependency change, handoffs must not read or separately validate `uv.lock`; final inventory alone confirms it is absent.
+
 ## ROADMAP_CONTEXT semantics
 
 Handle three variants.
