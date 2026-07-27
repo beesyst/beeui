@@ -180,10 +180,6 @@
       <div class="col-auto">
         <button type="submit" class="btn btn-sm btn-primary">{{ block.actions.apply.label }}</button>
       </div>
-      {% elif block.has_date_range %}
-      <div class="col-auto">
-        <button type="submit" class="btn btn-sm btn-primary">{{ translate("filter.apply", locale) }}</button>
-      </div>
       {% endif %}
     </form>
 

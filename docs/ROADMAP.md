@@ -6000,6 +6000,102 @@ SCA/package review is required because static vendor/package-data content change
 * BeeUI remains product-neutral;
 * `pyproject.toml.version` is unchanged.
 
+### Итерация 13.11 — Canonical Tabler table shell and functional toolbar
+
+**Status:** DONE
+
+#### Goal
+
+Provide one reusable, product-neutral Tabler table presentation for adapter-backed product consoles and add an optional functional GET toolbar that can host date fields, search, dropdown filters, column visibility controls and reset actions.
+
+#### Context
+
+BeeUI currently renders `filter_form` and `data_table` as separate cards. The `data_table.toolbar.search` contract is presentation-only and inert, while product consoles such as BeeAgent ROP Queue need a functional server-side GET toolbar embedded in the table card.
+
+The existing public table block types also use separate presentation paths, which permits visual drift between product-console tables.
+
+#### Scope
+
+Included:
+
+* extend the adapter-backed `data_table` contract with an optional functional GET toolbar;
+* reuse the existing controlled filter-field normalization rather than creating a second filter schema;
+* support date range, text search, dropdown choices, hidden query state, reset and column toggles inside the table toolbar;
+* render search and date controls without mandatory visible labels while preserving accessible names;
+* render an icon-only ellipsis action after search for the column chooser;
+* render filter controls with canonical Tabler button/dropdown markup;
+* render reset as a standard Tabler button;
+* remove implicit Apply-button rendering caused only by the presence of a date range;
+* preserve explicit Apply support for consumers that request it;
+* detect nested date-range controls for conditional Litepicker asset loading;
+* resolve and prefix all nested active links through the existing safe internal-link contract;
+* introduce one shared canonical table presentation used by adapter-backed table templates;
+* keep existing public table block types backward-compatible;
+* update component, web, integration and API contract documentation.
+
+Excluded:
+
+* product-specific filter semantics;
+* BeeAgent, ROP or Bitrix-specific labels and behavior;
+* client-side data filtering;
+* DataTables/List.js integration;
+* arbitrary adapter-provided JavaScript, HTML or CSS;
+* removal of existing public table block types;
+* dependency changes;
+* copying a complete upstream Tabler demo page.
+
+#### Deliverable
+
+A backward-compatible BeeUI release in which:
+
+* adapter-backed tables share one canonical Tabler presentation;
+* a product can opt into a functional GET toolbar inside `data_table`;
+* pages without an explicit toolbar remain plain tables;
+* standalone `filter_form` remains supported;
+* date-range controls no longer force an Apply button;
+* all active links remain controlled and prefix-aware.
+
+#### Acceptance criteria
+
+* A `data_table` can render a functional GET form in the same card as the table and pagination.
+* Date selection and clearing auto-submit the form.
+* Text search submits through the GET form.
+* An ellipsis action immediately after search opens the column chooser.
+* Filter controls use canonical `.btn`, `.dropdown-toggle`, `.dropdown-menu` and `.dropdown-item` structures.
+* Reset uses a standard `.btn`.
+* No inline positioning styles are required for dropdowns.
+* Visible field labels can be omitted without losing `aria-label` or equivalent accessible naming.
+* Apply is rendered only when explicitly requested.
+* Existing standalone `filter_form` payloads remain valid.
+* Existing `data_table` payloads without the new toolbar fields render unchanged.
+* Existing table block types remain supported and use the shared table presentation.
+* Invalid and external href values remain inert.
+* Route prefixes are applied exactly once.
+* No external runtime assets or CDN references are introduced.
+* Light, dark, desktop and mobile presentation remain usable.
+
+#### Checks
+
+* `uv run pytest -q`
+* `./start.sh doctor`
+* BeeUI web smoke using the expected local entrypoint
+* normal, empty and malformed toolbar payload tests
+* safe and unsafe href tests
+* route-prefix tests
+* conditional Litepicker asset tests
+* HTML escaping tests
+* visual review in light, dark and responsive layouts
+
+#### Definition of Done
+
+* generic contract and templates implemented;
+* one canonical table presentation is used internally;
+* backward compatibility tests pass;
+* documentation is updated;
+* screenshots or equivalent visual evidence are attached to the PR;
+* `pyproject.toml.version` is not changed by the feature PR;
+* `uv.lock` is unchanged because no dependency change is required.
+
 ---
 
 ## Этап 7 — BeeAgent integration

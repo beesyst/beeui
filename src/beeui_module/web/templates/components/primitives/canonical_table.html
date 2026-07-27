@@ -1,0 +1,29 @@
+{% macro canonical_table(title, description=none, pagination=none) %}
+<div class="card beeui-canonical-table">
+  <div class="card-header">
+    <div>
+      <h3 class="card-title mb-0">{{ title }}</h3>
+      {% if description %}
+        <div class="text-secondary small">{{ description }}</div>
+      {% endif %}
+    </div>
+  </div>
+  {{ caller() }}
+  {% if pagination and pagination.pages %}
+  <div class="card-footer d-flex justify-content-between align-items-center">
+    <div class="text-secondary small">
+      {{ pagination.label }}
+    </div>
+    <nav>
+      <ul class="pagination pagination-sm mb-0">
+        {% for page in pagination.pages %}
+        <li class="page-item{% if page.active %} active{% endif %}">
+          <a class="page-link" href="{{ page.href }}">{{ page.label }}</a>
+        </li>
+        {% endfor %}
+      </ul>
+    </nav>
+  </div>
+  {% endif %}
+</div>
+{% endmacro %}
