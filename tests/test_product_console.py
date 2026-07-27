@@ -847,6 +847,56 @@ def test_kpi_layout_html_escapes_adapter_title_and_value() -> None:
     assert "<script>bad</script>" not in response.text
 
 
+def test_data_table_toolbar_renders_one_column_chooser_after_first_search() -> None:
+    class ToolbarAdapter(FakeProductConsoleAdapter):
+        def get_dashboard(self) -> Any:
+            return ok_result(
+                {
+                    "layout": [
+                        {
+                            "type": "data_table",
+                            "title": "Queue",
+                            "toolbar": {
+                                "fields": [
+                                    {"type": "date_range", "from_value": "2026-07-01", "to_value": "2026-07-31"},
+                                    {"type": "text", "name": "q", "value": "first"},
+                                    {"type": "text", "name": "owner", "value": "second"},
+                                    {"type": "select", "name": "status", "options": [{"value": "open", "label": "Open"}]},
+                                ],
+                                "hidden": {"tab": "queue"},
+                                "column_toggles": [
+                                    {"key": "id", "label": "ID", "visible": True},
+                                    {"key": "owner", "label": "Owner", "visible": False},
+                                ],
+                                "reset": {"label": "Reset", "href": "/?reset=1"},
+                                "apply": {"label": "Apply"},
+                            },
+                            "columns": [{"key": "id", "label": "ID"}],
+                            "rows": [{"id": {"label": "001"}}],
+                        }
+                    ]
+                }
+            )
+
+    response = TestClient(create_beeui_app(adapter=ToolbarAdapter())).get("/")
+
+    assert response.status_code == 200
+    assert response.text.count("beeui-canonical-table") == 1
+    assert response.text.count("beeui-columns-ellipsis") == 1
+    assert response.text.index('name="q"') < response.text.index("beeui-columns-ellipsis")
+    assert response.text.index("beeui-columns-ellipsis") < response.text.index('name="owner"')
+    chooser_start = response.text.index("beeui-columns-ellipsis")
+    chooser_end = response.text.index('</div>', chooser_start)
+    chooser = response.text[chooser_start:chooser_end + len('</div>')]
+    assert 'class="dropdown-item active"' in chooser
+    assert "ID" in chooser
+    assert "Owner" in chooser
+    assert 'name="tab" value="queue"' in response.text
+    assert 'href="/?reset=1"' in response.text
+    assert '<button type="submit" class="btn btn-sm btn-primary">Apply</button>' in response.text
+    assert 'style="visibility:hidden"' not in response.text
+
+
 def test_runs_layout_wrapper_preserves_list_api_contract() -> None:
     class LayoutRunsAdapter(FakeProductConsoleAdapter):
         def list_runs(self) -> Any:
@@ -1675,7 +1725,7 @@ def test_mounted_date_range_uses_local_litepicker_with_prefix_and_locale() -> No
                                     "to_label": "<To>",
                                 }
                             ],
-                            "actions": {"reset": {"href": "/?reset=1", "label": "Reset"}},
+                            "actions": {"apply": {"label": "Применить", "href": "/ui/?apply=1"}, "reset": {"href": "/?reset=1", "label": "Reset"}},
                         }
                     ]
                 }

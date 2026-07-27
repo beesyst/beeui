@@ -4,8 +4,8 @@ import re
 from pathlib import Path
 
 from beeui_module.blocks.layout_renderer import render_layout, resolve_layout_links
-from beeui_module.pages.links import validate_internal_href
 from beeui_module.pages.config import load_beeui_config
+from beeui_module.pages.links import validate_internal_href
 
 
 def _write_schema(tmp_path: Path, content: str) -> Path:
@@ -2178,7 +2178,15 @@ def test_layout_chart_colors_accept_tokens_and_strict_hex_only() -> None:
 
 
 def test_layout_chart_series_requires_finite_numeric_data() -> None:
-    invalid_values = [float("nan"), float("inf"), float("-inf"), True, "1", {"x": 1}, [1]]
+    invalid_values = [
+        float("nan"),
+        float("inf"),
+        float("-inf"),
+        True,
+        "1",
+        {"x": 1},
+        [1],
+    ]
     for value in invalid_values:
         block = render_layout(
             [
@@ -3060,7 +3068,13 @@ def test_data_table_sort_href_preserved() -> None:
                     },
                     {"key": "val", "label": "Value", "sortable": False},
                 ],
-                "rows": [{"id": {"label": "001"}, "name": {"label": "A"}, "val": {"label": "1"}}],
+                "rows": [
+                    {
+                        "id": {"label": "001"},
+                        "name": {"label": "A"},
+                        "val": {"label": "1"},
+                    }
+                ],
             }
         ]
     )
@@ -3103,7 +3117,14 @@ def test_data_table_sort_href_unsafe_rejected() -> None:
                         "sort_href": "/runs?sort=id&dir=asc",
                     },
                 ],
-                "rows": [{"id": {"label": "001"}, "name": {"label": "A"}, "val": {"label": "1"}, "safe": {"label": "2"}}],
+                "rows": [
+                    {
+                        "id": {"label": "001"},
+                        "name": {"label": "A"},
+                        "val": {"label": "1"},
+                        "safe": {"label": "2"},
+                    }
+                ],
             }
         ]
     )
@@ -3126,9 +3147,24 @@ def test_filter_form_checkbox_toggle_href_validated() -> None:
                         "name": "status",
                         "label": "Status",
                         "choices": [
-                            {"value": "ok", "label": "OK", "checked": True, "toggle_href": "/filter?status=ok"},
-                            {"value": "bad", "label": "External", "checked": False, "toggle_href": "https://evil.com"},
-                            {"value": "bad2", "label": "Proto relative", "checked": False, "toggle_href": "//evil.com"},
+                            {
+                                "value": "ok",
+                                "label": "OK",
+                                "checked": True,
+                                "toggle_href": "/filter?status=ok",
+                            },
+                            {
+                                "value": "bad",
+                                "label": "External",
+                                "checked": False,
+                                "toggle_href": "https://evil.com",
+                            },
+                            {
+                                "value": "bad2",
+                                "label": "Proto relative",
+                                "checked": False,
+                                "toggle_href": "//evil.com",
+                            },
                         ],
                     }
                 ],
@@ -3183,8 +3219,18 @@ def test_filter_form_columns_toggle_href_validated() -> None:
                 "title": "Filters",
                 "columns_toggle_href": "https://evil.com/toggle",
                 "column_toggles": [
-                    {"key": "col1", "label": "Col 1", "visible": True, "toggle_href": "/toggle/col1"},
-                    {"key": "col2", "label": "Col 2", "visible": False, "toggle_href": "https://evil.com/col2"},
+                    {
+                        "key": "col1",
+                        "label": "Col 1",
+                        "visible": True,
+                        "toggle_href": "/toggle/col1",
+                    },
+                    {
+                        "key": "col2",
+                        "label": "Col 2",
+                        "visible": False,
+                        "toggle_href": "https://evil.com/col2",
+                    },
                 ],
                 "columns_open": True,
                 "fields": [],
@@ -3205,7 +3251,11 @@ def test_filter_form_unsafe_href_omitted_from_actions() -> None:
                 "type": "filter_form",
                 "title": "Filters",
                 "actions": {
-                    "apply": {"label": "Apply", "method": "GET", "href": "https://evil.com/apply"},
+                    "apply": {
+                        "label": "Apply",
+                        "method": "GET",
+                        "href": "https://evil.com/apply",
+                    },
                 },
             }
         ]
@@ -3227,20 +3277,52 @@ def test_layout_links_share_internal_boundary_and_apply_mount_prefix_once() -> N
                         "type": "filter_form",
                         "title": "Filters",
                         "actions": {
-                            "apply": {"label": "Apply", "href": "/rop?apply=1", "method": "POST"},
+                            "apply": {
+                                "label": "Apply",
+                                "href": "/rop?apply=1",
+                                "method": "POST",
+                            },
                             "reset": {"label": "Reset", "href": "/rop?reset=1"},
                         },
                         "columns_toggle_href": "/rop?columns=1",
-                        "column_toggles": [{"key": "run", "label": "Run", "toggle_href": "/rop?column=run"}],
-                        "fields": [{"type": "checkboxes", "choices": [{"value": "ok", "label": "OK", "toggle_href": "/rop?state=ok"}]}],
+                        "column_toggles": [
+                            {
+                                "key": "run",
+                                "label": "Run",
+                                "toggle_href": "/rop?column=run",
+                            }
+                        ],
+                        "fields": [
+                            {
+                                "type": "checkboxes",
+                                "choices": [
+                                    {
+                                        "value": "ok",
+                                        "label": "OK",
+                                        "toggle_href": "/rop?state=ok",
+                                    }
+                                ],
+                            }
+                        ],
                     },
                     {
                         "type": "data_table",
                         "title": "Rows",
-                        "toolbar": {"actions": [{"label": "Open", "href": "/rop?open=1"}]},
-                        "columns": [{"key": "run", "label": "Run", "sortable": True, "sort_href": "/rop?sort=run"}],
+                        "toolbar": {
+                            "actions": [{"label": "Open", "href": "/rop?open=1"}]
+                        },
+                        "columns": [
+                            {
+                                "key": "run",
+                                "label": "Run",
+                                "sortable": True,
+                                "sort_href": "/rop?sort=run",
+                            }
+                        ],
                         "rows": [{"run": {"label": "42", "href": "/rop/42"}}],
-                        "pagination": {"pages": [{"label": "1", "href": "/rop?page=1"}]},
+                        "pagination": {
+                            "pages": [{"label": "1", "href": "/rop?page=1"}]
+                        },
                     },
                 ],
             }
@@ -3266,11 +3348,45 @@ def test_data_table_sort_metadata_is_atomic() -> None:
                 "type": "data_table",
                 "title": "Rows",
                 "columns": [
-                    {"key": "plain", "label": "Plain", "sortable": False, "sort_href": "/rows?sort=plain", "sort_active": True, "sort_direction": "asc"},
-                    {"key": "missing", "label": "Missing", "sortable": True, "sort_active": True, "sort_direction": "asc"},
-                    {"key": "unknown", "label": "Unknown", "sortable": True, "sort_href": "/rows?sort=unknown", "sort_active": True, "sort_direction": "sideways"},
-                    {"key": "unsafe", "label": "Unsafe", "sortable": True, "sort_href": "https://invalid.example", "sort_active": True, "sort_direction": "asc"},
-                    {"key": "agent", "label": "Run", "sortable": True, "sort_href": "/rows?sort=run", "sort_active": True, "sort_direction": "desc"},
+                    {
+                        "key": "plain",
+                        "label": "Plain",
+                        "sortable": False,
+                        "sort_href": "/rows?sort=plain",
+                        "sort_active": True,
+                        "sort_direction": "asc",
+                    },
+                    {
+                        "key": "missing",
+                        "label": "Missing",
+                        "sortable": True,
+                        "sort_active": True,
+                        "sort_direction": "asc",
+                    },
+                    {
+                        "key": "unknown",
+                        "label": "Unknown",
+                        "sortable": True,
+                        "sort_href": "/rows?sort=unknown",
+                        "sort_active": True,
+                        "sort_direction": "sideways",
+                    },
+                    {
+                        "key": "unsafe",
+                        "label": "Unsafe",
+                        "sortable": True,
+                        "sort_href": "https://invalid.example",
+                        "sort_active": True,
+                        "sort_direction": "asc",
+                    },
+                    {
+                        "key": "agent",
+                        "label": "Run",
+                        "sortable": True,
+                        "sort_href": "/rows?sort=run",
+                        "sort_active": True,
+                        "sort_direction": "desc",
+                    },
                 ],
                 "rows": [{}],
             }
@@ -3301,8 +3417,18 @@ def test_chart_metadata_is_bounded_and_operator_progress_is_safe() -> None:
                 "type": "operator_hero",
                 "title": "Hero",
                 "items": [
-                    {"label": "Low", "value": "x", "progress": -1, "progress_tone": "bg-success"},
-                    {"label": "High", "value": "x", "progress": 101, "progress_tone": "invalid"},
+                    {
+                        "label": "Low",
+                        "value": "x",
+                        "progress": -1,
+                        "progress_tone": "bg-success",
+                    },
+                    {
+                        "label": "High",
+                        "value": "x",
+                        "progress": 101,
+                        "progress_tone": "invalid",
+                    },
                     {"label": "Bool", "value": "x", "progress": True},
                     {"label": "Nan", "value": "x", "progress": float("nan")},
                     {"label": "Inf", "value": "x", "progress": float("inf")},
@@ -3312,7 +3438,10 @@ def test_chart_metadata_is_bounded_and_operator_progress_is_safe() -> None:
     )
     chart, hero = result
     assert chart["chart_id"].startswith("beeui-chart-")
-    assert chart["chart_config"]["colors"] == ["var(--tblr-primary)", "var(--tblr-success)"] + ["var(--tblr-danger)"] * 10
+    assert (
+        chart["chart_config"]["colors"]
+        == ["var(--tblr-primary)", "var(--tblr-success)"] + ["var(--tblr-danger)"] * 10
+    )
     assert chart["chart_config"]["plotOptions"]["bar"]["columnWidth"] == "55%"
     assert "barHeight" not in chart["chart_config"]["plotOptions"]["bar"]
     items = hero["items"]
@@ -3328,8 +3457,12 @@ def test_data_table_progress_requires_finite_numeric_values() -> None:
             {
                 "type": "data_table",
                 "title": "Rows",
-                "columns": [{"key": "progress", "label": "Progress", "cell": "progress"}],
-                "rows": [{"progress": {"value": value, "label": "x"}} for value in values],
+                "columns": [
+                    {"key": "progress", "label": "Progress", "cell": "progress"}
+                ],
+                "rows": [
+                    {"progress": {"value": value, "label": "x"}} for value in values
+                ],
             }
         ]
     )[0]
@@ -3656,3 +3789,527 @@ def test_filter_form_date_range_malformed_safe_degrade() -> None:
     valid_fields = [f for f in block["fields"] if isinstance(f, dict)]
     assert len(valid_fields) == 1
     assert valid_fields[0]["type"] == "date_range"
+
+
+def test_data_table_toolbar_fields_normalized() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "data_table",
+                "title": "Queue",
+                "width": 12,
+                "toolbar": {
+                    "fields": [
+                        {
+                            "type": "date_range",
+                            "name": "date",
+                            "label": "Period",
+                            "from_value": "2026-07-01",
+                            "to_value": "2026-07-31",
+                            "from_label": "Start",
+                            "to_label": "End",
+                        },
+                        {
+                            "type": "text",
+                            "name": "q",
+                            "label": "Search",
+                            "value": "",
+                            "placeholder": "Search query...",
+                        },
+                        {
+                            "type": "select",
+                            "name": "status",
+                            "label": "Status",
+                            "value": "new",
+                            "options": [
+                                {"value": "new", "label": "New"},
+                                {"value": "done", "label": "Done"},
+                            ],
+                        },
+                        {
+                            "type": "checkboxes",
+                            "name": "tags",
+                            "label": "Tags",
+                            "choices": [
+                                {"value": "urgent", "label": "Urgent", "checked": True},
+                                {
+                                    "value": "review",
+                                    "label": "Review",
+                                    "checked": False,
+                                },
+                            ],
+                        },
+                    ],
+                    "hidden": {"tab": "queue"},
+                    "column_toggles": [
+                        {"key": "id", "label": "ID", "visible": True},
+                        {"key": "name", "label": "Name", "visible": False},
+                    ],
+                    "apply": {"label": "Go"},
+                    "reset": {"label": "Clear", "href": "/queue?clear=1"},
+                },
+                "columns": [{"key": "id", "label": "ID"}],
+                "rows": [{"id": {"label": "001"}}],
+            }
+        ]
+    )
+    toolbar = result[0]["toolbar"]
+    assert toolbar["fields"][0]["from_value"] == "2026-07-01"
+    assert toolbar["fields"][1]["placeholder"] == "Search query..."
+    assert toolbar["fields"][2]["value"] == "new"
+    assert toolbar["fields"][3]["choices"][0]["checked"] is True
+    assert toolbar["hidden"] == {"tab": "queue"}
+    assert len(toolbar["column_toggles"]) == 2
+    assert toolbar["apply"]["label"] == "Go"
+    assert toolbar["reset"]["href"] == "/queue?clear=1"
+    assert toolbar.get("search") is False
+    assert toolbar.get("entries") is False
+    assert toolbar.get("actions") == []
+
+
+def test_data_table_toolbar_fields_empty_by_default() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "data_table",
+                "title": "Plain table",
+                "width": 12,
+                "columns": [{"key": "id", "label": "ID"}],
+                "rows": [{"id": {"label": "001"}}],
+            }
+        ]
+    )
+    toolbar = result[0]["toolbar"]
+    assert toolbar["fields"] == []
+    assert toolbar["hidden"] == {}
+    assert toolbar["column_toggles"] == []
+
+
+def test_data_table_toolbar_no_implicit_apply() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "data_table",
+                "title": "Queue",
+                "width": 12,
+                "toolbar": {"fields": [{"type": "date_range", "name": "date"}]},
+                "columns": [{"key": "id", "label": "ID"}],
+                "rows": [{"id": {"label": "001"}}],
+            }
+        ]
+    )
+    assert "apply" not in result[0]["toolbar"]
+
+
+def test_data_table_toolbar_explicit_apply() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "data_table",
+                "title": "Queue",
+                "width": 12,
+                "toolbar": {"apply": {"label": "Search"}},
+                "columns": [{"key": "id", "label": "ID"}],
+                "rows": [{"id": {"label": "001"}}],
+            }
+        ]
+    )
+    assert result[0]["toolbar"]["apply"]["label"] == "Search"
+
+
+def test_data_table_toolbar_unsafe_hrefs_rejected() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "data_table",
+                "title": "Queue",
+                "width": 12,
+                "toolbar": {
+                    "columns_toggle_href": "https://evil.com/toggle",
+                    "column_toggles": [
+                        {
+                            "key": "id",
+                            "label": "ID",
+                            "toggle_href": "https://evil.com/id",
+                        },
+                        {"key": "name", "label": "Name", "toggle_href": "/safe/name"},
+                    ],
+                    "reset": {"label": "Reset", "href": "https://evil.com/reset"},
+                    "apply": {"label": "Apply", "href": "https://evil.com/apply"},
+                    "fields": [
+                        {
+                            "type": "checkboxes",
+                            "name": "tags",
+                            "choices": [
+                                {
+                                    "value": "ok",
+                                    "label": "OK",
+                                    "toggle_href": "https://evil.com/ok",
+                                },
+                                {
+                                    "value": "safe",
+                                    "label": "Safe",
+                                    "toggle_href": "/safe/toggle",
+                                },
+                            ],
+                        }
+                    ],
+                },
+                "columns": [{"key": "id", "label": "ID"}],
+                "rows": [{"id": {"label": "001"}}],
+            }
+        ]
+    )
+    toolbar = result[0]["toolbar"]
+    assert toolbar["column_toggles"][0]["toggle_href"] is None
+    assert toolbar["column_toggles"][1]["toggle_href"] == "/safe/name"
+    assert "href" not in toolbar.get("reset", {})
+    assert "href" not in toolbar.get("apply", {})
+    assert toolbar["fields"][0]["choices"][0]["toggle_href"] is None
+    assert toolbar["fields"][0]["choices"][1]["toggle_href"] == "/safe/toggle"
+
+
+def test_data_table_toolbar_malformed_fields_degrade_safely() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "data_table",
+                "title": "Queue",
+                "width": 12,
+                "toolbar": {
+                    "fields": "not a list",
+                    "hidden": "not a dict",
+                    "column_toggles": "not a list",
+                    "apply": "not a dict",
+                    "reset": None,
+                },
+                "columns": [{"key": "id", "label": "ID"}],
+                "rows": [{"id": {"label": "001"}}],
+            }
+        ]
+    )
+    block = result[0]
+    assert block["type"] == "data_table"
+    assert block["toolbar"]["fields"] == []
+    assert block["toolbar"]["hidden"] == {}
+    assert block["toolbar"]["column_toggles"] == []
+
+
+def test_data_table_toolbar_legacy_search_entries_preserved() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "data_table",
+                "title": "Legacy",
+                "width": 12,
+                "toolbar": {
+                    "search": True,
+                    "entries": True,
+                    "actions": [{"label": "Export", "href": "/export"}],
+                },
+                "columns": [{"key": "id", "label": "ID"}],
+                "rows": [{"id": {"label": "001"}}],
+            }
+        ]
+    )
+    toolbar = result[0]["toolbar"]
+    assert toolbar["search"] is True
+    assert toolbar["entries"] is True
+    assert len(toolbar["actions"]) == 1
+
+
+def test_data_table_toolbar_fields_date_range_detected() -> None:
+    from beeui_module.blocks.layout_renderer import layout_has_date_ranges
+
+    blocks = render_layout(
+        [
+            {
+                "type": "data_table",
+                "title": "Queue",
+                "width": 12,
+                "toolbar": {"fields": [{"type": "date_range", "name": "date"}]},
+                "columns": [{"key": "id", "label": "ID"}],
+                "rows": [{"id": {"label": "001"}}],
+            }
+        ]
+    )
+    assert layout_has_date_ranges(blocks) is True
+
+
+def test_data_table_toolbar_route_prefix_applied_exactly_once() -> None:
+    blocks = render_layout(
+        [
+            {
+                "type": "data_table",
+                "title": "Queue",
+                "width": 12,
+                "toolbar": {
+                    "column_toggles": [
+                        {"key": "id", "label": "ID", "toggle_href": "/toggle/id"}
+                    ],
+                    "reset": {"label": "Reset", "href": "/queue?reset=1"},
+                    "apply": {"label": "Apply", "href": "/queue?apply=1"},
+                    "fields": [
+                        {
+                            "type": "checkboxes",
+                            "name": "tags",
+                            "choices": [
+                                {
+                                    "value": "ok",
+                                    "label": "OK",
+                                    "toggle_href": "/toggle/ok",
+                                }
+                            ],
+                        }
+                    ],
+                },
+                "columns": [
+                    {
+                        "key": "id",
+                        "label": "ID",
+                        "cell": "link",
+                        "sortable": True,
+                        "sort_href": "/queue?sort=id",
+                    }
+                ],
+                "rows": [{"id": {"label": "001", "href": "/queue/001"}}],
+                "pagination": {"pages": [{"label": "1", "href": "/queue?page=1"}]},
+            }
+        ]
+    )
+    resolve_layout_links(blocks, "/ui", "/ui/queue")
+    block = blocks[0]
+    assert block["form_action"] == "/ui/queue?apply=1"
+    assert block["toolbar"]["column_toggles"][0]["toggle_href"] == "/ui/toggle/id"
+    assert block["toolbar"]["reset"]["href"] == "/ui/queue?reset=1"
+    assert block["toolbar"]["apply"]["href"] == "/ui/queue?apply=1"
+    assert block["toolbar"]["fields"][0]["choices"][0]["toggle_href"] == "/ui/toggle/ok"
+    assert block["columns"][0]["sort_href"] == "/ui/queue?sort=id"
+    assert block["rows"][0]["id"]["href"] == "/ui/queue/001"
+    assert block["pagination"]["pages"][0]["href"] == "/ui/queue?page=1"
+
+
+def test_data_table_toolbar_no_double_prefix() -> None:
+    blocks = render_layout(
+        [
+            {
+                "type": "data_table",
+                "title": "Queue",
+                "width": 12,
+                "toolbar": {
+                    "column_toggles": [
+                        {"key": "id", "label": "ID", "toggle_href": "/toggle/id"}
+                    ],
+                    "reset": {"label": "Reset", "href": "/reset"},
+                    "apply": {"label": "Apply", "href": "/apply"},
+                    "fields": [
+                        {
+                            "type": "checkboxes",
+                            "name": "tags",
+                            "choices": [
+                                {
+                                    "value": "ok",
+                                    "label": "OK",
+                                    "toggle_href": "/toggle/ok",
+                                }
+                            ],
+                        }
+                    ],
+                },
+                "columns": [
+                    {
+                        "key": "id",
+                        "label": "ID",
+                        "cell": "link",
+                        "sortable": True,
+                        "sort_href": "/sort",
+                    }
+                ],
+                "rows": [{"id": {"label": "001", "href": "/row/001"}}],
+                "pagination": {"pages": [{"label": "1", "href": "/page?p=1"}]},
+            }
+        ]
+    )
+    resolve_layout_links(blocks, "/ui", "/ui/queue")
+    resolve_layout_links(blocks, "/ui", "/ui/queue")
+    block = blocks[0]
+    assert "/ui/ui/" not in str(blocks)
+    assert block["form_action"] == "/ui/apply"
+    assert block["toolbar"]["reset"]["href"] == "/ui/reset"
+
+
+def test_data_table_toolbar_resolve_links_form_action_default() -> None:
+    blocks = render_layout(
+        [
+            {
+                "type": "data_table",
+                "title": "Queue",
+                "width": 12,
+                "toolbar": {"fields": [{"type": "text", "name": "q"}]},
+                "columns": [{"key": "id", "label": "ID"}],
+                "rows": [{"id": {"label": "001"}}],
+            }
+        ]
+    )
+    resolve_layout_links(blocks, "/ui", "/ui/queue")
+    assert blocks[0]["form_action"] == "/ui/queue"
+
+
+def test_data_table_toolbar_malformed_toolbar_degrades_safely() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "data_table",
+                "title": "Queue",
+                "width": 12,
+                "toolbar": "not a dict",
+                "columns": [{"key": "id", "label": "ID"}],
+                "rows": [{"id": {"label": "001"}}],
+            }
+        ]
+    )
+    block = result[0]
+    assert block["type"] == "data_table"
+    assert block["toolbar"]["fields"] == []
+    assert block["toolbar"]["hidden"] == {}
+    assert block["toolbar"]["column_toggles"] == []
+
+
+def test_data_table_toolbar_legacy_search_inert() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "data_table",
+                "title": "Legacy",
+                "width": 12,
+                "toolbar": {"search": True},
+                "columns": [{"key": "id", "label": "ID"}],
+                "rows": [{"id": {"label": "001"}}],
+            }
+        ]
+    )
+    assert result[0]["toolbar"]["search"] is True
+    assert result[0]["toolbar"]["fields"] == []
+
+
+def test_data_table_toolbar_legacy_entries_inert() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "data_table",
+                "title": "Legacy",
+                "width": 12,
+                "toolbar": {"entries": True},
+                "columns": [{"key": "id", "label": "ID"}],
+                "rows": [{"id": {"label": "001"}}],
+            }
+        ]
+    )
+    assert result[0]["toolbar"]["entries"] is True
+    assert result[0]["toolbar"]["fields"] == []
+
+
+def test_filter_form_no_implicit_apply() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "filter_form",
+                "title": "Filters",
+                "fields": [{"type": "date_range", "name": "date"}],
+                "actions": {},
+            }
+        ]
+    )
+    assert result[0]["has_date_range"] is True
+    assert "apply" not in result[0]["actions"]
+
+
+def test_filter_form_explicit_apply() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "filter_form",
+                "title": "Filters",
+                "fields": [{"type": "date_range", "name": "date"}],
+                "actions": {"apply": {"label": "Go"}},
+            }
+        ]
+    )
+    assert result[0]["actions"]["apply"]["label"] == "Go"
+
+
+def test_run_table_layout_renders() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "run_table",
+                "title": "Recent Runs",
+                "width": 12,
+                "columns": [
+                    "Run",
+                    "Mode",
+                    "Venue",
+                    "Symbol",
+                    "TF",
+                    "Started UTC",
+                    "Health",
+                    "Event Time UTC",
+                    "Event",
+                    "Severity",
+                    "Events",
+                    "Artifact",
+                ],
+                "rows": [
+                    {
+                        "run_id": "run_001",
+                        "run_href": "/runs/run_001",
+                        "mode": "live",
+                        "venue": "mrkt",
+                        "symbol": "TONNFT",
+                        "timeframe": "1m",
+                        "started_utc": "2026-06-05 04:34:54",
+                        "health": "ok",
+                        "event_time_utc": "2026-06-05 04:35:36",
+                        "event": "venues/mrkt/lifecycle",
+                        "severity": "info",
+                        "events": "9",
+                        "artifact": "lifecycle.jsonl",
+                        "artifact_href": "/runs/run_001/artifacts/lifecycle_jsonl",
+                    }
+                ],
+                "filters": True,
+            }
+        ]
+    )
+    assert result[0]["type"] == "run_table"
+    assert result[0]["title"] == "Recent Runs"
+
+
+def test_status_table_layout_renders() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "status_table",
+                "title": "Health",
+                "width": 6,
+                "columns": ["Source", "Status", "Reason"],
+                "rows": [["runtime/active.json", "missing", "No active runtime"]],
+            }
+        ]
+    )
+    assert result[0]["type"] == "status_table"
+
+
+def test_event_table_layout_renders() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "event_table",
+                "title": "Events",
+                "width": 12,
+                "columns": ["Time", "Event"],
+                "rows": [["2026-06-01", "Started"]],
+            }
+        ]
+    )
+    assert result[0]["type"] == "event_table"

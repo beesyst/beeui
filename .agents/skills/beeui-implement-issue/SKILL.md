@@ -205,6 +205,7 @@ Before reporting completion:
 7. confirm project version status;
 8. confirm applicable template, static and package-data integrity;
 9. identify remaining limitations.
+10. **mandatory comment/docstring gate**: determine the merge-base with the declared base branch, inspect the complete merge-base diff, and include untracked first-party source, template, JavaScript and test files. Review all added and changed lines by file type; use more than one complementary method and inspect every match in context. Do not accept a single brittle grep as proof. Detect first-party comments, Python docstrings, JavaScript or Jinja/HTML comments, inline explanations, `TODO`, `FIXME`, `NOTE` and decorative separators. Preserve only legal, license, copyright, upstream-vendored and provenance comments. Before readiness, explicitly list the checked source, test, JavaScript and template scope. Any prohibited addition makes the result *not ready* until removed.
 
 ## Implementation report
 

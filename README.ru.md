@@ -26,6 +26,41 @@ Tabler-совместимых Datepicker control с локально vendored Li
   - Litepicker загружается один раз на страницах, где есть `date_range`;
 - **Документация**: `docs/COMPONENTS.md`, `docs/WEB_UI.md`, `docs/INTEGRATION.md`, `docs/SECURITY.md`.
 
+## Iteration 13.11 — Canonical Tabler table shell and functional GET toolbar
+
+Текущий результат — общее каноническое представление Tabler-таблицы для adapter-backed product consoles с опциональной функциональной GET-панелью инструментов.
+
+В Iteration 13.11 добавлены:
+
+- **Единое каноническое представление таблицы**:
+  - `components/primitives/canonical_table.html` — общий Jinja2 macro для карточки таблицы с header и pagination footer;
+  - `data_table`, `run_table`, `status_table`, `event_table` делегируют этому макросу;
+  - существующие публичные типы блоков остаются обратно совместимыми;
+- **Функциональная GET-панель (`data_table.toolbar`)**:
+  - опциональные поля: `fields[]` (`date_range`, `text`, `select`, `checkboxes`);
+  - скрытые query-параметры (`hidden`);
+  - переключатели видимости колонок (`column_toggles[]`);
+  - кнопка сброса (`reset`);
+  - явная кнопка Apply (`apply`) — только при явном указании;
+  - кнопка Apply не создаётся неявно при наличии date_range;
+  - устаревшие `search`/`entries` остаются инертными placeholder'ами;
+- **Ellipsis-выбор колонок**:
+  - иконка многоточия после поиска;
+  - выпадающий список содержит пункты колонок напрямую;
+  - без inline positioning styles;
+- **Детекция вложенных date_range**:
+  - `layout_has_date_ranges()` обновлён для поиска date_range внутри `data_table.toolbar.fields[]`;
+- **Безопасность**:
+  - все hrefs проходят `validate_internal_href`/`prefix_internal_href`;
+  - unsafe/external/traversal ссылки отвергаются;
+  - route prefix применяется ровно один раз;
+  - без external CDN, без tracking;
+- **Клиентское поведение**:
+  - package-local Litepicker инициализируется в controlled BeeUI base template;
+  - события `selected` и `clear:selection` находят ближайшую GET form;
+  - auto-submit работает для standalone `filter_form` и nested `data_table.toolbar`;
+  - несколько forms/tables поддерживаются через `closest("form")`.
+
 ## Iteration 13.9 — Operator UX presentation contracts, locale persistence, theme, and chart state handling
 
 Текущий результат — generic operator-facing presentation contracts: filter form,

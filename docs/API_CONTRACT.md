@@ -345,7 +345,7 @@ Existing schema/demo `table_card` остаётся без изменений.
 | `selectable` | bool | no | Selectable rows UI |
 | `nowrap` | bool | no | No-wrap table cells |
 | `compact` | bool | no | Compact table sizing |
-| `toolbar` | object | no | Search/entries/actions toolbar |
+| `toolbar` | object | no | Toolbar with optional functional GET form: `{search, entries, actions, fields[], hidden, column_toggles[], apply, reset}` |
 | `columns` | array | yes | Column definitions |
 | `rows` | array | yes | Row data keyed by column key |
 | `pagination` | object | no | Label and page links |
@@ -368,6 +368,14 @@ Existing schema/demo `table_card` остаётся без изменений.
 - Links являются internal-only.
 - Layout links могут включать query string, например `/runs?page=2`.
 - Links отклоняют scheme, netloc, protocol-relative values, traversal и control characters.
+- `toolbar.fields[]` поддерживает те же типы полей, что и `filter_form`: `date_range`, `text`, `select`, `checkboxes`.
+- `toolbar.hidden` передаёт скрытые query-параметры.
+- `toolbar.column_toggles[]` определяет видимость колонок.
+- `toolbar.apply` отображается только при явном указании; `toolbar.reset` — стандартная кнопка сброса.
+- Apply не создаётся неявно при наличии date_range.
+- Стрелка с многоточием (ellipsis) после поиска открывает список выбора колонок.
+- Каноническое отображение таблицы делегирует шаблону `components/primitives/canonical_table.html`.
+- Фильтры дат внутри `data_table.toolbar.fields[]` включают условную загрузку Litepicker.
 - Links префиксуются BeeUI route prefix / embedded mount path.
 - Visual tokens проходят allowlist перед использованием как CSS classes.
 - Malformed `columns` или `rows` рендерятся как `degraded`.

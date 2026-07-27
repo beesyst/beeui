@@ -107,7 +107,25 @@ Advanced Tabler-compatible data table for adapter-backed `layout[]`. Backward-co
 | `selectable` | bool | Show checkbox column (inert) |
 | `nowrap` | bool | Prevent text wrapping |
 | `compact` | bool | Use `table-sm` |
-| `toolbar` | object | Optional toolbar: `{search, entries, actions}` |
+| `toolbar` | object | Optional toolbar: `{search, entries, actions, fields[], hidden, column_toggles[], apply, reset}` |
+
+Toolbar fields (`toolbar.fields[]`):
+
+| Field type | Parameters | Description |
+|-----------|-----------|------------|
+| `date_range` | `name`, `from_value`, `to_value`, `from_label`, `to_label` | Two Tabler Datepicker inputs (from/to), backed by local Litepicker |
+| `text` | `name`, `value`, `placeholder` | Text/search input |
+| `select` | `name`, `value`, `options[]`, `multi` | Dropdown list |
+| `checkboxes` | `choices[]` (`value`, `label`, `checked`, `toggle_href`) | Checkbox group with internal toggle links |
+
+Additional toolbar fields:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `hidden` | object | Hidden query fields (`{key: value}`) |
+| `column_toggles` | array | Column visibility toggles: `[{key, label, visible, toggle_href}]`. Rendered as direct items in the ellipsis dropdown. |
+| `apply` | object | Explicit Apply button: `{label, href}`. Absent = no Apply. |
+| `reset` | object | Reset button: `{label, href}` |
 | `pagination` | object | Optional footer pagination: `{label, pages[]}` |
 
 Поддерживаемые типы ячеек:
@@ -130,7 +148,15 @@ Advanced Tabler-compatible data table for adapter-backed `layout[]`. Backward-co
 - Unknown cell type degrades to escaped text.
 - Malformed payload renders as empty table, not 500.
 - No DataTables/List.js runtime in this iteration.
-- Search/entries controls are inert placeholders.
+- Toolbar fields support functional GET form with date range, text search, select dropdowns, checkboxes, hidden fields, column toggles, reset and explicit Apply.
+- Apply button is rendered only when explicitly requested; date ranges do not create an implicit Apply.
+- Search and date range controls can omit visible labels while retaining `aria-label`.
+- An icon-only ellipsis button after the functional search input opens the column chooser directly. When no text search exists, the ellipsis appears at the end of the functional fields.
+- Column visibility controls are rendered as direct items in the ellipsis dropdown.
+- Dropdown filters use canonical `.btn-ghost-secondary`, `.dropdown-toggle`, `.dropdown-menu` and `.dropdown-item` classes.
+- Reset uses a standard `.btn-ghost-secondary`.
+- No inline positioning styles are required for dropdown placement.
+- Legacy `search`/`entries`/`actions` toolbar fields remain supported.
 - Unsafe/external links are rejected or rendered inert.
 
 Пример adapter-backed payload:
@@ -138,14 +164,44 @@ Advanced Tabler-compatible data table for adapter-backed `layout[]`. Backward-co
 ```json
 {
   "type": "data_table",
-  "title": "Recent items",
+  "title": "Queue",
   "striped": true,
   "mobile": "md",
   "selectable": true,
   "toolbar": {
     "search": true,
     "entries": true,
-    "actions": [{"label": "Export", "href": "/reports/export"}]
+    "actions": [{"label": "Export", "href": "/reports/export"}],
+    "fields": [
+      {
+        "type": "date_range",
+        "name": "date",
+        "label": "Period",
+        "from_value": "2026-07-01",
+        "to_value": "2026-07-31"
+      },
+      {
+        "type": "text",
+        "name": "q",
+        "placeholder": "Search..."
+      },
+      {
+        "type": "select",
+        "name": "status",
+        "label": "Status",
+        "value": "new",
+        "options": [
+          {"value": "new", "label": "New"},
+          {"value": "done", "label": "Done"}
+        ]
+      }
+    ],
+    "hidden": {"tab": "queue"},
+    "column_toggles": [
+      {"key": "id", "label": "ID", "visible": true},
+      {"key": "name", "label": "Name", "visible": false}
+    ],
+    "reset": {"label": "Clear", "href": "/queue?clear=1"}
   },
   "columns": [
     { "key": "id", "label": "ID", "cell": "link" },
