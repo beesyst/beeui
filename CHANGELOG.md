@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.24.0](https://github.com/beesyst/beeui/compare/beeui-v0.23.0...beeui-v0.24.0) (2026-07-27)
+
+
+### Features
+
+* add canonical Tabler table shell and functional GET toolbar ([#95](https://github.com/beesyst/beeui/issues/95)) ([8602d61](https://github.com/beesyst/beeui/commit/8602d61fb1ca71361eaf21bac47cea6bd5f5e406))
+
 ## [0.23.0](https://github.com/beesyst/beeui/compare/beeui-v0.22.1...beeui-v0.23.0) (2026-07-26)
 
 
