@@ -18,6 +18,12 @@ Iteration 13.9 добавляет generic operator UX presentation contracts:
 chart state handling. JSON API envelope, route behavior и artifact API
 contract не менялись.
 
+Iteration 13.10–13.12 расширяют adapter-backed `data_table` presentation:
+Tabler Datepicker для date_range, функциональная GET toolbar (Iteration 13.11),
+и canonical toolbar-table composition с toolbar внутри card-header
+(Iteration 13.12). JSON API envelope, route behavior и artifact API
+contract не менялись.
+
 Locale resolution is `valid ?lang=` → valid `beeui_lang` cookie → configured
 default. Built-in BeeUI-owned presentation labels use the bounded `en`/`ru`
 catalog; product labels remain product-owned.
@@ -378,7 +384,7 @@ Existing schema/demo `table_card` остаётся без изменений.
 - Фильтры дат внутри `data_table.toolbar.fields[]` включают условную загрузку Litepicker.
 - Links префиксуются BeeUI route prefix / embedded mount path.
 - Visual tokens проходят allowlist перед использованием как CSS classes.
-- Malformed `columns` или `rows` рендерятся как `degraded`.
+- Malformed `columns` или `rows` рендерятся как canonical `data_table` card с `degraded_error` сообщением, сохраняя title и toolbar.
 - Unknown cell type fallback к escaped text.
 - Missing values рендерятся как `n/a`.
 - No DataTables/List.js runtime.

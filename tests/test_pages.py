@@ -1631,6 +1631,7 @@ def test_page_without_tabs_renders_blocks_normally(tmp_path: Path) -> None:
 
 def test_custom_route_rop_registers_with_adapter(tmp_path: Path) -> None:
     from fastapi import FastAPI
+
     from beeui_module.adapters.base import ProductUiAdapterBase
     from beeui_module.adapters.envelopes import AdapterMetadata, ok_result
     from beeui_module.web.app import mount_beeui
@@ -1672,22 +1673,54 @@ def test_custom_route_rop_registers_with_adapter(tmp_path: Path) -> None:
                             "type": "filter_form",
                             "title": "Filters",
                             "actions": {
-                                "apply": {"href": "https://invalid.example/apply", "label": "Apply"},
+                                "apply": {
+                                    "href": "https://invalid.example/apply",
+                                    "label": "Apply",
+                                },
                                 "reset": {"href": "/rop?reset=1", "label": "Reset"},
                             },
                             "columns_toggle_href": "/rop?columns=1",
                             "columns_open": True,
                             "column_toggles": [
-                                {"key": "state", "label": "State", "visible": True, "toggle_href": "/rop?column=state"}
+                                {
+                                    "key": "state",
+                                    "label": "State",
+                                    "visible": True,
+                                    "toggle_href": "/rop?column=state",
+                                }
                             ],
                             "fields": [
-                                {"type": "checkboxes", "name": "state", "choices": [{"value": "ok", "label": "OK", "toggle_href": "/rop?state=ok"}, {"value": "bad", "label": "Bad", "toggle_href": "https://invalid.example"}]}
+                                {
+                                    "type": "checkboxes",
+                                    "name": "state",
+                                    "choices": [
+                                        {
+                                            "value": "ok",
+                                            "label": "OK",
+                                            "toggle_href": "/rop?state=ok",
+                                        },
+                                        {
+                                            "value": "bad",
+                                            "label": "Bad",
+                                            "toggle_href": "https://invalid.example",
+                                        },
+                                    ],
+                                }
                             ],
                         },
                         {
                             "type": "data_table",
                             "title": "ROP",
-                            "columns": [{"key": "run", "label": "Run", "sortable": True, "sort_href": "/rop?sort=run", "sort_active": True, "sort_direction": "asc"}],
+                            "columns": [
+                                {
+                                    "key": "run",
+                                    "label": "Run",
+                                    "sortable": True,
+                                    "sort_href": "/rop?sort=run",
+                                    "sort_active": True,
+                                    "sort_direction": "asc",
+                                }
+                            ],
                             "rows": [{"run": "42"}],
                         },
                     ]
@@ -1736,8 +1769,8 @@ def test_custom_route_rop_registers_with_adapter(tmp_path: Path) -> None:
     assert 'href="/ui/rop?state=ok"' in response.text
     assert 'href="/ui/rop?sort=run"' in response.text
     assert 'aria-sort="ascending"' in response.text
-    assert "↑" in response.text
-    assert 'href="/ui/static/css/beeui.css?v=4"' in response.text
+    assert 'class="table-sort asc"' in response.text
+    assert 'href="/ui/static/css/beeui.css?v=5"' in response.text
     assert 'href="/ui/"' in response.text
     assert 'href="/ui/rop?lang=ru"' in response.text
     assert 'href="/ui/rop?tab=overview"' in response.text
@@ -3505,8 +3538,18 @@ def test_detail_type_hint_legacy_aliases_are_neutral() -> None:
                         {"label": "Body", "value": "text", "type_hint": "long_text"},
                         {"label": "Enabled", "value": True, "type_hint": "boolean"},
                         {"label": "Score", "value": 0.8, "type_hint": "confidence"},
-                        {"label": "Priority", "value": "high", "type_hint": "priority", "tone": "danger"},
-                        {"label": "Other", "value": "x", "type_hint": "unknown", "tone": "warning"},
+                        {
+                            "label": "Priority",
+                            "value": "high",
+                            "type_hint": "priority",
+                            "tone": "danger",
+                        },
+                        {
+                            "label": "Other",
+                            "value": "x",
+                            "type_hint": "unknown",
+                            "tone": "warning",
+                        },
                     ],
                 }
             ],
@@ -3536,7 +3579,13 @@ def test_detail_explicit_variant_takes_priority_over_type_hint() -> None:
                 {
                     "kind": "key_value",
                     "items": [
-                        {"label": "Value", "value": "x", "variant": "badge", "type_hint": "long_text", "tone": "success"}
+                        {
+                            "label": "Value",
+                            "value": "x",
+                            "variant": "badge",
+                            "type_hint": "long_text",
+                            "tone": "success",
+                        }
                     ],
                 }
             ],

@@ -199,7 +199,7 @@ def test_mounted_artifact_and_catalog_links_use_effective_external_prefix() -> N
 
     catalog = client.get("/ui/components?lang=ru")
     assert catalog.status_code == 200
-    assert 'href="/ui/static/css/beeui.css?v=4"' in catalog.text
+    assert 'href="/ui/static/css/beeui.css?v=5"' in catalog.text
     assert 'href="/ui/"' in catalog.text
     assert 'href="/ui/components/interface?lang=ru"' in catalog.text
     assert 'href="/ui/components?lang=en"' in catalog.text
@@ -858,15 +858,31 @@ def test_data_table_toolbar_renders_one_column_chooser_after_first_search() -> N
                             "title": "Queue",
                             "toolbar": {
                                 "fields": [
-                                    {"type": "date_range", "from_value": "2026-07-01", "to_value": "2026-07-31"},
+                                    {
+                                        "type": "date_range",
+                                        "from_value": "2026-07-01",
+                                        "to_value": "2026-07-31",
+                                    },
                                     {"type": "text", "name": "q", "value": "first"},
-                                    {"type": "text", "name": "owner", "value": "second"},
-                                    {"type": "select", "name": "status", "options": [{"value": "open", "label": "Open"}]},
+                                    {
+                                        "type": "text",
+                                        "name": "owner",
+                                        "value": "second",
+                                    },
+                                    {
+                                        "type": "select",
+                                        "name": "status",
+                                        "options": [{"value": "open", "label": "Open"}],
+                                    },
                                 ],
                                 "hidden": {"tab": "queue"},
                                 "column_toggles": [
                                     {"key": "id", "label": "ID", "visible": True},
-                                    {"key": "owner", "label": "Owner", "visible": False},
+                                    {
+                                        "key": "owner",
+                                        "label": "Owner",
+                                        "visible": False,
+                                    },
                                 ],
                                 "reset": {"label": "Reset", "href": "/?reset=1"},
                                 "apply": {"label": "Apply"},
@@ -883,18 +899,660 @@ def test_data_table_toolbar_renders_one_column_chooser_after_first_search() -> N
     assert response.status_code == 200
     assert response.text.count("beeui-canonical-table") == 1
     assert response.text.count("beeui-columns-ellipsis") == 1
-    assert response.text.index('name="q"') < response.text.index("beeui-columns-ellipsis")
-    assert response.text.index("beeui-columns-ellipsis") < response.text.index('name="owner"')
+    assert "btn-outline-secondary" in response.text
+    assert "icon-tabler-dots" in response.text
+    assert "icon-tabler-dots-vertical" not in response.text
+    assert "input-group input-group-flat" in response.text
+    assert "<kbd>ctrl + K</kbd>" in response.text
+    assert response.text.index('name="q"') < response.text.index(
+        "beeui-columns-ellipsis"
+    )
+    assert response.text.index("beeui-columns-ellipsis") < response.text.index(
+        'name="owner"'
+    )
     chooser_start = response.text.index("beeui-columns-ellipsis")
-    chooser_end = response.text.index('</div>', chooser_start)
-    chooser = response.text[chooser_start:chooser_end + len('</div>')]
+    chooser_end = response.text.index("</div>", chooser_start)
+    chooser = response.text[chooser_start : chooser_end + len("</div>")]
     assert 'class="dropdown-item active"' in chooser
     assert "ID" in chooser
     assert "Owner" in chooser
     assert 'name="tab" value="queue"' in response.text
     assert 'href="/?reset=1"' in response.text
-    assert '<button type="submit" class="btn btn-sm btn-primary">Apply</button>' in response.text
+    assert (
+        '<button type="submit" class="btn btn-sm btn-primary">Apply</button>'
+        in response.text
+    )
     assert 'style="visibility:hidden"' not in response.text
+    assert "icon-tabler-dots" in response.text
+    assert "icon-tabler-dots-vertical" not in response.text
+
+
+def test_data_table_legacy_search_renders_in_header() -> None:
+    class LegacySearchAdapter(FakeProductConsoleAdapter):
+        def get_dashboard(self) -> Any:
+            return ok_result(
+                {
+                    "layout": [
+                        {
+                            "type": "data_table",
+                            "title": "LegacySearch",
+                            "toolbar": {"search": True},
+                            "columns": [{"key": "id", "label": "ID"}],
+                            "rows": [{"id": {"label": "001"}}],
+                        }
+                    ]
+                }
+            )
+
+    response = TestClient(create_beeui_app(adapter=LegacySearchAdapter())).get("/")
+
+    assert response.status_code == 200
+    assert "beeui-table-search" in response.text
+
+
+def test_data_table_legacy_entries_renders_in_header() -> None:
+    class LegacyEntriesAdapter(FakeProductConsoleAdapter):
+        def get_dashboard(self) -> Any:
+            return ok_result(
+                {
+                    "layout": [
+                        {
+                            "type": "data_table",
+                            "title": "LegacyEntries",
+                            "toolbar": {"entries": True},
+                            "columns": [{"key": "id", "label": "ID"}],
+                            "rows": [{"id": {"label": "001"}}],
+                        }
+                    ]
+                }
+            )
+
+    response = TestClient(create_beeui_app(adapter=LegacyEntriesAdapter())).get("/")
+
+    assert response.status_code == 200
+    assert "beeui-table-entries" in response.text
+
+
+def test_data_table_toolbar_inside_card_header_not_separate_body() -> None:
+    class ToolbarHeaderAdapter(FakeProductConsoleAdapter):
+        def get_dashboard(self) -> Any:
+            return ok_result(
+                {
+                    "layout": [
+                        {
+                            "type": "data_table",
+                            "title": "Queue",
+                            "toolbar": {
+                                "fields": [
+                                    {
+                                        "type": "date_range",
+                                        "from_value": "2026-07-01",
+                                        "to_value": "2026-07-31",
+                                    },
+                                    {"type": "text", "name": "q", "value": "hello"},
+                                ],
+                                "reset": {"label": "Reset", "href": "/?reset=1"},
+                            },
+                            "columns": [{"key": "id", "label": "ID"}],
+                            "rows": [{"id": {"label": "001"}}],
+                        }
+                    ]
+                }
+            )
+
+    response = TestClient(create_beeui_app(adapter=ToolbarHeaderAdapter())).get("/")
+
+    assert response.status_code == 200
+    assert "card-body border-bottom py-2" not in response.text
+    assert "beeui-table-toolbar" in response.text
+    assert "table card-table" in response.text
+
+
+def test_data_table_date_range_has_single_trigger_and_hidden_inputs() -> None:
+    class DateIconAdapter(FakeProductConsoleAdapter):
+        def get_dashboard(self) -> Any:
+            return ok_result(
+                {
+                    "layout": [
+                        {
+                            "type": "data_table",
+                            "title": "Dates",
+                            "toolbar": {
+                                "fields": [
+                                    {
+                                        "type": "date_range",
+                                        "from_value": "2026-07-01",
+                                        "to_value": "2026-07-31",
+                                    },
+                                ],
+                            },
+                            "columns": [{"key": "id", "label": "ID"}],
+                            "rows": [{"id": {"label": "001"}}],
+                        }
+                    ]
+                }
+            )
+
+    response = TestClient(create_beeui_app(adapter=DateIconAdapter())).get("/")
+
+    assert response.status_code == 200
+    html = response.text
+    assert "beeui-dr-trigger" in html
+    assert "beeui-dr-input" in html
+    assert "beeui-dr-from" in html
+    assert "beeui-dr-to" in html
+    assert 'type="hidden"' in html
+    assert 'name="date_from"' in html
+    assert 'name="date_to"' in html
+    assert 'class="input-icon-addon"' in html
+    assert (
+        "M4 7a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2v-12z"
+        in html
+    )
+    assert "2026-07-01" in html
+    assert "2026-07-31" in html
+    assert "beeui-date-from-wrapper" not in html
+    assert "beeui-date-to-wrapper" not in html
+
+
+def test_data_table_toolbar_search_submits_on_enter() -> None:
+    class SearchEnterAdapter(FakeProductConsoleAdapter):
+        def get_dashboard(self) -> Any:
+            return ok_result(
+                {
+                    "layout": [
+                        {
+                            "type": "data_table",
+                            "title": "Search",
+                            "toolbar": {
+                                "fields": [
+                                    {
+                                        "type": "text",
+                                        "name": "q",
+                                        "value": "find_me",
+                                        "placeholder": "Search items...",
+                                    },
+                                ],
+                            },
+                            "columns": [{"key": "id", "label": "ID"}],
+                            "rows": [{"id": {"label": "001"}}],
+                        }
+                    ]
+                }
+            )
+
+    response = TestClient(create_beeui_app(adapter=SearchEnterAdapter())).get("/")
+
+    assert response.status_code == 200
+    html = response.text
+    assert 'type="search"' in html
+    assert 'name="q"' in html
+    assert 'value="find_me"' in html
+    assert "Search items..." in html
+    assert 'onchange="this.form.submit()"' not in html
+
+
+def test_data_table_toolbar_checkbox_dropdown_renders() -> None:
+    class DropdownAdapter(FakeProductConsoleAdapter):
+        def get_dashboard(self) -> Any:
+            return ok_result(
+                {
+                    "layout": [
+                        {
+                            "type": "data_table",
+                            "title": "Filters",
+                            "toolbar": {
+                                "fields": [
+                                    {
+                                        "type": "checkboxes",
+                                        "label": "Status",
+                                        "choices": [
+                                            {
+                                                "value": "ok",
+                                                "label": "OK",
+                                                "checked": True,
+                                                "toggle_href": "/filter?status=ok",
+                                            },
+                                            {
+                                                "value": "warn",
+                                                "label": "Warning",
+                                                "checked": False,
+                                                "toggle_href": "/filter?status=warn",
+                                            },
+                                        ],
+                                        "selected_count": 1,
+                                    },
+                                ],
+                            },
+                            "columns": [{"key": "id", "label": "ID"}],
+                            "rows": [{"id": {"label": "001"}}],
+                        }
+                    ]
+                }
+            )
+
+    response = TestClient(create_beeui_app(adapter=DropdownAdapter())).get("/")
+
+    assert response.status_code == 200
+    html = response.text
+    assert "btn-outline-secondary dropdown-toggle" in html
+    assert "btn-ghost-secondary dropdown-toggle" not in html
+    assert "Status" in html
+    assert "badge bg-primary ms-1" in html
+    assert 'class="dropdown-item active"' in html
+    assert "Warning" in html
+    assert 'href="/filter?status=ok"' in html
+
+
+def test_data_table_toolbar_search_has_icon_and_hint() -> None:
+    class SearchIconAdapter(FakeProductConsoleAdapter):
+        def get_dashboard(self) -> Any:
+            return ok_result(
+                {
+                    "layout": [
+                        {
+                            "type": "data_table",
+                            "title": "SearchIcon",
+                            "toolbar": {
+                                "fields": [
+                                    {"type": "text", "name": "q", "value": "test"},
+                                ],
+                            },
+                            "columns": [{"key": "id", "label": "ID"}],
+                            "rows": [{"id": {"label": "001"}}],
+                        }
+                    ]
+                }
+            )
+
+    response = TestClient(create_beeui_app(adapter=SearchIconAdapter())).get("/")
+
+    assert response.status_code == 200
+    html = response.text
+    assert "input-group input-group-flat" in html
+    assert "beeui-toolbar-search" in html
+    assert "<kbd>ctrl + K</kbd>" in html
+    assert "M3 10a7" in html
+
+
+def test_data_table_toolbar_no_apply_when_not_supplied() -> None:
+    class NoApplyAdapter(FakeProductConsoleAdapter):
+        def get_dashboard(self) -> Any:
+            return ok_result(
+                {
+                    "layout": [
+                        {
+                            "type": "data_table",
+                            "title": "No Apply",
+                            "toolbar": {
+                                "fields": [
+                                    {"type": "text", "name": "q"},
+                                ],
+                            },
+                            "columns": [{"key": "id", "label": "ID"}],
+                            "rows": [{"id": {"label": "001"}}],
+                        }
+                    ]
+                }
+            )
+
+    response = TestClient(create_beeui_app(adapter=NoApplyAdapter())).get("/")
+
+    assert response.status_code == 200
+    assert '<button type="submit"' not in response.text
+
+
+def test_data_table_toolbar_apply_renders_when_supplied() -> None:
+    class WithApplyAdapter(FakeProductConsoleAdapter):
+        def get_dashboard(self) -> Any:
+            return ok_result(
+                {
+                    "layout": [
+                        {
+                            "type": "data_table",
+                            "title": "With Apply",
+                            "toolbar": {
+                                "fields": [
+                                    {"type": "text", "name": "q"},
+                                ],
+                                "apply": {"label": "Apply Filters"},
+                            },
+                            "columns": [{"key": "id", "label": "ID"}],
+                            "rows": [{"id": {"label": "001"}}],
+                        }
+                    ]
+                }
+            )
+
+    response = TestClient(create_beeui_app(adapter=WithApplyAdapter())).get("/")
+
+    assert response.status_code == 200
+    assert '<button type="submit"' in response.text
+    assert "Apply Filters" in response.text
+
+
+def test_data_table_toolbar_reset_link_safe() -> None:
+    class ResetSafeAdapter(FakeProductConsoleAdapter):
+        def get_dashboard(self) -> Any:
+            return ok_result(
+                {
+                    "layout": [
+                        {
+                            "type": "data_table",
+                            "title": "Reset safe",
+                            "toolbar": {
+                                "reset": {"label": "Clear", "href": "/?clear=1"},
+                            },
+                            "columns": [{"key": "id", "label": "ID"}],
+                            "rows": [{"id": {"label": "001"}}],
+                        }
+                    ]
+                }
+            )
+
+    response = TestClient(create_beeui_app(adapter=ResetSafeAdapter())).get("/")
+
+    assert response.status_code == 200
+    assert 'href="/?clear=1"' in response.text
+    assert "Clear" in response.text
+
+
+def test_data_table_pagination_regression() -> None:
+    class PaginationAdapter(FakeProductConsoleAdapter):
+        def get_dashboard(self) -> Any:
+            return ok_result(
+                {
+                    "layout": [
+                        {
+                            "type": "data_table",
+                            "title": "Paginated",
+                            "columns": [{"key": "id", "label": "ID"}],
+                            "rows": [
+                                {"id": {"label": "001"}},
+                                {"id": {"label": "002"}},
+                            ],
+                            "pagination": {
+                                "label": "Showing 1 to 2 of 2 entries",
+                                "pages": [
+                                    {
+                                        "label": "1",
+                                        "href": "/runs?page=1",
+                                        "active": True,
+                                    },
+                                ],
+                            },
+                        }
+                    ]
+                }
+            )
+
+    response = TestClient(create_beeui_app(adapter=PaginationAdapter())).get("/")
+
+    assert response.status_code == 200
+    html = response.text
+    assert "Showing 1 to 2 of 2 entries" in html
+    assert 'class="pagination pagination-sm mb-0"' in html
+    assert 'href="/runs?page=1"' in html
+    assert 'class="page-item active"' in html
+    assert 'class="card-footer' in html
+
+
+def test_data_table_sortable_headers_regression() -> None:
+    class SortAdapter(FakeProductConsoleAdapter):
+        def get_dashboard(self) -> Any:
+            return ok_result(
+                {
+                    "layout": [
+                        {
+                            "type": "data_table",
+                            "title": "Sortable",
+                            "columns": [
+                                {
+                                    "key": "id",
+                                    "label": "ID",
+                                    "sortable": True,
+                                    "sort_href": "/runs?sort=id&dir=asc",
+                                },
+                                {"key": "name", "label": "Name", "sortable": False},
+                            ],
+                            "rows": [
+                                {"id": {"label": "001"}, "name": {"label": "Alice"}},
+                            ],
+                        }
+                    ]
+                }
+            )
+
+    response = TestClient(create_beeui_app(adapter=SortAdapter())).get("/")
+
+    assert response.status_code == 200
+    html = response.text
+    assert 'class="table-sort' in html
+    assert 'href="/runs?sort=id&amp;dir=asc"' in html
+    assert "Name" in html
+    assert "\u2191" not in html
+    assert "\u2193" not in html
+
+
+def test_data_table_toolbar_multiple_checkbox_dropdowns() -> None:
+    class MultiDropdownAdapter(FakeProductConsoleAdapter):
+        def get_dashboard(self) -> Any:
+            return ok_result(
+                {
+                    "layout": [
+                        {
+                            "type": "data_table",
+                            "title": "Multi dropdown",
+                            "toolbar": {
+                                "fields": [
+                                    {
+                                        "type": "checkboxes",
+                                        "label": "Status",
+                                        "choices": [
+                                            {
+                                                "value": "ok",
+                                                "label": "OK",
+                                                "checked": True,
+                                                "toggle_href": "/filter?ok",
+                                            }
+                                        ],
+                                    },
+                                    {
+                                        "type": "checkboxes",
+                                        "label": "Type",
+                                        "choices": [
+                                            {
+                                                "value": "a",
+                                                "label": "Type A",
+                                                "toggle_href": "/filter?a",
+                                            }
+                                        ],
+                                    },
+                                ],
+                            },
+                            "columns": [{"key": "id", "label": "ID"}],
+                            "rows": [{"id": {"label": "001"}}],
+                        }
+                    ]
+                }
+            )
+
+    response = TestClient(create_beeui_app(adapter=MultiDropdownAdapter())).get("/")
+
+    assert response.status_code == 200
+    assert response.text.count("btn-outline-secondary dropdown-toggle") == 2
+    assert "btn-ghost-secondary" not in response.text
+    assert "Status" in response.text
+    assert "Type" in response.text
+
+
+def test_data_table_toolbar_empty_table() -> None:
+    class EmptyToolbarAdapter(FakeProductConsoleAdapter):
+        def get_dashboard(self) -> Any:
+            return ok_result(
+                {
+                    "layout": [
+                        {
+                            "type": "data_table",
+                            "title": "Empty",
+                            "toolbar": {
+                                "fields": [
+                                    {"type": "text", "name": "q"},
+                                ],
+                            },
+                            "columns": [{"key": "id", "label": "ID"}],
+                            "rows": [],
+                        }
+                    ]
+                }
+            )
+
+    response = TestClient(create_beeui_app(adapter=EmptyToolbarAdapter())).get("/")
+
+    assert response.status_code == 200
+    assert "Empty" in response.text
+    assert "beeui-table-toolbar" in response.text
+    assert "table card-table" in response.text
+
+
+def test_data_table_toolbar_degraded_table() -> None:
+    class DegradedToolbarAdapter(FakeProductConsoleAdapter):
+        def get_dashboard(self) -> Any:
+            return ok_result(
+                {
+                    "layout": [
+                        {
+                            "type": "data_table",
+                            "title": "Degraded",
+                            "toolbar": {
+                                "fields": [],
+                            },
+                            "columns": None,
+                            "rows": None,
+                        }
+                    ]
+                }
+            )
+
+    response = TestClient(create_beeui_app(adapter=DegradedToolbarAdapter())).get("/")
+
+    assert response.status_code == 200
+    assert "beeui-canonical-table" in response.text
+    assert "Degraded" in response.text
+    assert "alert alert-warning" in response.text
+
+
+def test_data_table_toolbar_degraded_preserves_toolbar() -> None:
+    class DegradedToolbarPreserveAdapter(FakeProductConsoleAdapter):
+        def get_dashboard(self) -> Any:
+            return ok_result(
+                {
+                    "layout": [
+                        {
+                            "type": "data_table",
+                            "title": "DegradedToolbar",
+                            "toolbar": {
+                                "fields": [
+                                    {"type": "text", "name": "q", "value": "preserved"},
+                                ],
+                                "reset": {"label": "Reset", "href": "/?reset=1"},
+                            },
+                            "columns": None,
+                            "rows": None,
+                        }
+                    ]
+                }
+            )
+
+    response = TestClient(
+        create_beeui_app(adapter=DegradedToolbarPreserveAdapter())
+    ).get("/")
+
+    assert response.status_code == 200
+    assert "beeui-canonical-table" in response.text
+    assert "DegradedToolbar" in response.text
+    assert "beeui-table-toolbar" in response.text
+    assert 'name="q"' in response.text
+    assert 'value="preserved"' in response.text
+    assert 'href="/?reset=1"' in response.text
+    assert "alert alert-warning" in response.text
+    assert "card-header" in response.text
+
+
+def test_data_table_toolbar_responsive_date_range_wraps() -> None:
+    class ResponsiveDateAdapter(FakeProductConsoleAdapter):
+        def get_dashboard(self) -> Any:
+            return ok_result(
+                {
+                    "layout": [
+                        {
+                            "type": "data_table",
+                            "title": "Responsive",
+                            "toolbar": {
+                                "fields": [
+                                    {
+                                        "type": "date_range",
+                                        "from_value": "2026-07-01",
+                                        "to_value": "2026-07-31",
+                                    },
+                                    {"type": "text", "name": "q"},
+                                ],
+                            },
+                            "columns": [{"key": "id", "label": "ID"}],
+                            "rows": [{"id": {"label": "001"}}],
+                        }
+                    ]
+                }
+            )
+
+    response = TestClient(create_beeui_app(adapter=ResponsiveDateAdapter())).get("/")
+
+    assert response.status_code == 200
+    assert "beeui-table-toolbar-date-group" in response.text
+    assert "beeui-dr-trigger" in response.text
+    assert "beeui-dr-input" in response.text
+
+
+def test_data_table_toolbar_does_not_introduce_product_strings() -> None:
+    class NeutralAdapter(FakeProductConsoleAdapter):
+        def get_dashboard(self) -> Any:
+            return ok_result(
+                {
+                    "layout": [
+                        {
+                            "type": "data_table",
+                            "title": "Neutral",
+                            "toolbar": {
+                                "fields": [
+                                    {
+                                        "type": "date_range",
+                                        "from_value": "2026-07-01",
+                                        "to_value": "2026-07-31",
+                                    },
+                                    {"type": "text", "name": "q"},
+                                    {
+                                        "type": "checkboxes",
+                                        "label": "Filter",
+                                        "choices": [],
+                                    },
+                                ],
+                            },
+                            "columns": [{"key": "id", "label": "ID"}],
+                            "rows": [{"id": {"label": "001"}}],
+                        }
+                    ]
+                }
+            )
+
+    response = TestClient(create_beeui_app(adapter=NeutralAdapter())).get("/")
+
+    assert response.status_code == 200
+    html = response.text
+    import re
+
+    assert not re.search(r"\bROP\b", html, re.IGNORECASE)
+    assert "binance" not in html.lower()
+    assert "mrkt" not in html.lower()
 
 
 def test_runs_layout_wrapper_preserves_list_api_contract() -> None:
@@ -1570,8 +2228,8 @@ def test_adapter_dashboard_navigation_follows_locale() -> None:
     en = client.get("/?lang=en")
     assert en.status_code == 200
     assert "Dashboard" in en.text
-    assert '/runs?lang=' not in en.text
-    assert '/?lang=ru' in en.text
+    assert "/runs?lang=" not in en.text
+    assert "/?lang=ru" in en.text
 
 
 def test_product_console_page_metadata_localizes_dashboard_and_runs() -> None:
@@ -1663,7 +2321,12 @@ def test_mounted_filter_and_beeagent_sort_layout_render_end_to_end() -> None:
                                 "reset": {"href": "/runs?reset=1", "label": "Reset"},
                             },
                             "column_toggles": [
-                                {"key": "status", "label": "Status", "visible": True, "toggle_href": "/runs?column=status"}
+                                {
+                                    "key": "status",
+                                    "label": "Status",
+                                    "visible": True,
+                                    "toggle_href": "/runs?column=status",
+                                }
                             ],
                             "columns_toggle_href": "/runs?columns=1",
                             "columns_open": True,
@@ -1672,8 +2335,16 @@ def test_mounted_filter_and_beeagent_sort_layout_render_end_to_end() -> None:
                                     "type": "checkboxes",
                                     "name": "state",
                                     "choices": [
-                                        {"value": "open", "label": "Open", "toggle_href": "/runs?state=open"},
-                                        {"value": "bad", "label": "Bad", "toggle_href": "https://invalid.example"},
+                                        {
+                                            "value": "open",
+                                            "label": "Open",
+                                            "toggle_href": "/runs?state=open",
+                                        },
+                                        {
+                                            "value": "bad",
+                                            "label": "Bad",
+                                            "toggle_href": "https://invalid.example",
+                                        },
                                     ],
                                 }
                             ],
@@ -1682,7 +2353,14 @@ def test_mounted_filter_and_beeagent_sort_layout_render_end_to_end() -> None:
                             "type": "data_table",
                             "title": "BeeAgent runs",
                             "columns": [
-                                {"key": "run", "label": "Run", "sortable": True, "sort_href": "/runs?sort=run", "sort_active": True, "sort_direction": "desc"}
+                                {
+                                    "key": "run",
+                                    "label": "Run",
+                                    "sortable": True,
+                                    "sort_href": "/runs?sort=run",
+                                    "sort_active": True,
+                                    "sort_direction": "desc",
+                                }
                             ],
                             "rows": [{"run": "run-1"}],
                         },
@@ -1702,7 +2380,7 @@ def test_mounted_filter_and_beeagent_sort_layout_render_end_to_end() -> None:
     assert "/ui/ui/" not in response.text
     assert "invalid.example" not in response.text
     assert 'aria-sort="descending"' in response.text
-    assert "↓" in response.text
+    assert 'class="table-sort desc"' in response.text
 
 
 def test_mounted_date_range_uses_local_litepicker_with_prefix_and_locale() -> None:
@@ -1725,7 +2403,10 @@ def test_mounted_date_range_uses_local_litepicker_with_prefix_and_locale() -> No
                                     "to_label": "<To>",
                                 }
                             ],
-                            "actions": {"apply": {"label": "Применить", "href": "/ui/?apply=1"}, "reset": {"href": "/?reset=1", "label": "Reset"}},
+                            "actions": {
+                                "apply": {"label": "Применить", "href": "/ui/?apply=1"},
+                                "reset": {"href": "/?reset=1", "label": "Reset"},
+                            },
                         }
                     ]
                 }
@@ -1744,7 +2425,10 @@ def test_mounted_date_range_uses_local_litepicker_with_prefix_and_locale() -> No
     assert 'name="date_from"' in response.text
     assert 'name="date_to"' in response.text
     assert 'method="GET"' in response.text
-    assert '<button type="submit" class="btn btn-sm btn-primary">Применить</button>' in response.text
+    assert (
+        '<button type="submit" class="btn btn-sm btn-primary">Применить</button>'
+        in response.text
+    )
     assert 'href="/ui/?reset=1"' in response.text
     assert 'value="2026-07-01"' in response.text
     assert 'value="2026-07-31"' in response.text
@@ -1752,11 +2436,21 @@ def test_mounted_date_range_uses_local_litepicker_with_prefix_and_locale() -> No
     assert "&lt;Date range&gt;" in response.text
     assert "&lt;From&gt;" in response.text
     assert "&lt;To&gt;" in response.text
-    assert response.text.count('/ui/static/vendor/litepicker/litepicker.min.css') == 1
-    assert response.text.count('/ui/static/vendor/litepicker/litepicker.min.js') == 1
-    assert response.text.index('/ui/static/vendor/litepicker/litepicker.min.css') < response.text.index('/ui/static/css/beeui.css')
-    assert response.text.index("window.disableLitepickerStyles = true;") < response.text.index('/ui/static/vendor/litepicker/litepicker.min.js')
-    assert "resetButton: true" in response.text
-    assert "clear:selection" in response.text
+    assert response.text.count("/ui/static/vendor/litepicker/litepicker.min.css") == 1
+    assert response.text.count("/ui/static/vendor/litepicker/litepicker.min.js") == 1
+    assert response.text.index(
+        "/ui/static/vendor/litepicker/litepicker.min.css"
+    ) < response.text.index("/ui/static/css/beeui.css")
+    assert response.text.index(
+        "window.disableLitepickerStyles = true;"
+    ) < response.text.index("/ui/static/vendor/litepicker/litepicker.min.js")
+    assert "singleMode: false" in response.text
+    assert "numberOfMonths: cols" in response.text
+    assert "numberOfColumns: cols" in response.text
+    assert "getColumns" in response.text
+    assert "beeui-dr-trigger" in response.text
+    assert "suppressSubmit" in response.text
+    assert "Litepicker.Litepicker || Litepicker.default || Litepicker" in response.text
     assert "ru-RU" in response.text
     assert "locale_map" in response.text
+    assert "parentEl:" not in response.text

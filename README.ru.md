@@ -61,6 +61,44 @@ Tabler-совместимых Datepicker control с локально vendored Li
   - auto-submit работает для standalone `filter_form` и nested `data_table.toolbar`;
   - несколько forms/tables поддерживаются через `closest("form")`.
 
+## Iteration 13.12 — Canonical Tabler toolbar and table composition
+
+Текущий результат — `data_table` с toolbar рендерится как одна каноническая
+Tabler-карточка, где панель инструментов находится внутри card-header, а не
+в отдельном card-body.
+
+В Iteration 13.12 исправлены:
+
+- **Toolbar внутри card-header**:
+  - панель инструментов (date_range, search, dropdown filters, column chooser,
+    reset, apply) рендерится внутри `.card-header` под заголовком таблицы;
+  - отдельный toolbar card-body больше не используется;
+- **Канонический Datepicker**:
+  - `date_range` использует `input-icon` + `input-icon-addon` markup
+    с календарным SVG (как standalone `filter_form`);
+  - локальный Litepicker, package-local assets, без CDN;
+  - выбор/очистка даты отправляет GET form;
+- **Горизонтальное многоточие**:
+  - column chooser использует `icon-tabler-dots` (горизонтальные точки)
+    вместо вертикальных;
+  - chooser располагается непосредственно после первого text/search field;
+- **Compact search**:
+  - `text` поля рендерятся как `type="search"` input;
+  - GET отправляется по Enter, без onchange auto-submit;
+- **Dropdown filter buttons**:
+  - `checkboxes` поля используют Tabler `.dropdown-toggle` + `.dropdown-menu`;
+  - label, selected_count badge, checked state и `toggle_href` сохраняются;
+- **Responsive wrapping**:
+  - flex-wrap для узких экранов, одна строка на desktop;
+- **Degraded state в canonical shell**:
+  - malformed `columns`/`rows` не заменяют блок на generic `degraded`;
+  - data_table остаётся в canonical card с сохранением toolbar и заголовка;
+  - внутри отображается bounded alert-warning сообщение;
+- **Публичный контракт неизменен**:
+  - payload schema `data_table.toolbar.*` не меняется;
+  - consumer migration не требуется;
+- **Package-local Litepicker, без CDN, без новых зависимостей**.
+
 ## Iteration 13.9 — Operator UX presentation contracts, locale persistence, theme, and chart state handling
 
 Текущий результат — generic operator-facing presentation contracts: filter form,
@@ -173,7 +211,7 @@ query-preserving navigation для BeeUI shell.
 - table links internal-only, external links отклоняются;
 - table links учитывают `route_prefix` и embedded mount path;
 - visual tokens для CSS class suffix allowlisted;
-- malformed `data_table.columns` / `data_table.rows` рендерятся как `degraded`, без 500;
+- malformed `data_table.columns` / `data_table.rows` (начиная с Iteration 13.12) сохраняют canonical card, title, toolbar и показывают bounded degraded alert внутри card;
 - existing `table_card` остаётся backward-compatible;
 - BeeUI по-прежнему не знает product semantics.
 
@@ -526,9 +564,10 @@ BeeUI сейчас поддерживает два разных block contract.
 Правила:
 
 - `width`, `span`, `size` поддерживаются;
-- malformed или unsupported blocks рендерятся как `degraded`;
-- malformed sizing деградирует в `col-12`, не ломая страницу;
-- BeeUI не вычисляет product metrics, а только рендерит product-provided layout.
+- unsupported block types рендерятся как generic `degraded`;
+- malformed `data_table` columns/rows (Iteration 13.12+) сохраняют canonical card и toolbar;
+- прочие malformed blocks рендерятся как `degraded`;
+- malformed sizing деградирует в `col-12`, не ломая страницу.
 
 Текущая web surface после Iteration 13.7:
 
@@ -1113,7 +1152,7 @@ BeeUI не должен получать прямую authority на tools/MCP/r
 - adapter-backed `layout[]` поддерживает `chart` для line/bar/area/donut через локальный ApexCharts asset;
 - adapter-backed `layout[]` поддерживает `data_table` с typed cells, toolbar, pagination и mobile labels;
 - malformed group payload деградирует в explicit degraded block;
-- malformed `data_table.columns` / `data_table.rows` деградируют в explicit degraded block;
+- malformed `data_table.columns` / `data_table.rows` (начиная с Iteration 13.12) сохраняют canonical card, title и toolbar;
 - page-body/container spacing унифицирован для configured/custom/product render paths;
 - adapter-backed custom page payload redaction выполняется до HTML render;
 - malformed custom page payload деgrades to explicit unavailable/error state;

@@ -269,7 +269,7 @@ def test_mounted_auth_uses_effective_external_prefix() -> None:
     login = client.get("/ui/auth/login")
     assert login.status_code == 200
     assert 'action="/ui/auth/login"' in login.text
-    assert 'href="/ui/static/css/beeui.css?v=4"' in login.text
+    assert 'href="/ui/static/css/beeui.css?v=5"' in login.text
 
     signed_in = client.post(
         "/ui/auth/login",

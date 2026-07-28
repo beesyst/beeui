@@ -30,6 +30,7 @@
 - условная загрузка ApexCharts script только когда на странице есть chart blocks.
 - package-local Litepicker asset (`static/vendor/litepicker/litepicker.min.js` + `litepicker.min.css`), без CDN;
 - условная загрузка Litepicker CSS/JS только когда на странице есть `filter_form.date_range` или `data_table.toolbar.fields[].date_range`.
+- каноническая toolbar-table композиция (Iteration 13.12): toolbar рендерится внутри card-header, column chooser использует горизонтальное многоточие, malformed columns/rows сохраняют canonical shell с degraded сообщением.
 
 Предыдущая основа после Iteration 13.5:
 
@@ -719,7 +720,8 @@ Generic layout renderer (`src/beeui_module/blocks/layout_renderer.py`)
 нормализует и валидирует каждый block:
 
 - неизвестный block type → `degraded` block;
-- malformed block → `degraded` block;
+- malformed `data_table` → canonical table card with toolbar и degraded message;
+- прочие malformed block → `degraded` block;
 - unsafe external ссылки → null (не рендерятся);
 - invalid width → `col-12` default.
 
