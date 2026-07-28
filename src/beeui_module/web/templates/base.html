@@ -14,7 +14,7 @@ try{var d=document.documentElement,c=d.getAttribute('data-beeui-theme-config'),s
     {% if has_date_ranges %}
     <link rel="stylesheet" href="{{ route_prefix }}/static/vendor/litepicker/litepicker.min.css" />
     {% endif %}
-    <link rel="stylesheet" href="{{ route_prefix }}/static/css/beeui.css?v=4" />
+    <link rel="stylesheet" href="{{ route_prefix }}/static/css/beeui.css?v=5" />
   </head>
   <body class="{{ shell_classes }}">
     {% include "components/sidebar.html" %}
@@ -110,6 +110,12 @@ try{var d=document.documentElement,c=d.getAttribute('data-beeui-theme-config'),s
   "locale_map": {
     "en": "en-US",
     "ru": "ru-RU"
+  },
+  "preset_labels": {
+    "today": { "en": "Today", "ru": "Сегодня" },
+    "yesterday": { "en": "Yesterday", "ru": "Вчера" },
+    "last_7": { "en": "Last 7 days", "ru": "7 дней" },
+    "last_30": { "en": "Last 30 days", "ru": "30 дней" }
   }
 } | tojson }}
 </script>
@@ -120,8 +126,166 @@ try{var d=document.documentElement,c=d.getAttribute('data-beeui-theme-config'),s
       var datepickerConfig = JSON.parse(configNode ? configNode.textContent || '{}' : '{}');
       var localeMap = datepickerConfig.locale_map || {};
       var locale = localeMap[datepickerConfig.locale] || 'en-US';
+      var presetLabels = datepickerConfig.preset_labels || {};
 
-      var Picker = Litepicker.Litepicker || Litepicker.default;
+      function label(labels) {
+        var lang = datepickerConfig.locale || 'en';
+        return labels[lang] || labels['en'] || '';
+      }
+
+      function formatDate(d) {
+        var y = d.getFullYear();
+        var m = String(d.getMonth() + 1).padStart(2, '0');
+        var day = String(d.getDate()).padStart(2, '0');
+        return y + '-' + m + '-' + day;
+      }
+
+      function formatDisplay(from, to) {
+        return from + ' — ' + to;
+      }
+
+      function submitForm(form) {
+        if (form) form.submit();
+      }
+
+      var Picker = Litepicker.Litepicker || Litepicker.default || Litepicker;
+
+      function getColumns() {
+        return window.innerWidth < 768 ? 1 : 2;
+      }
+
+      function createPicker(trigger, fromInput, toInput, textInput, resize) {
+        var curFrom = fromInput ? fromInput.value : '';
+        var curTo = toInput ? toInput.value : '';
+        var dateFrom = curFrom ? new Date(curFrom + 'T00:00:00') : null;
+        var dateTo = curTo ? new Date(curTo + 'T00:00:00') : null;
+        var cols = getColumns();
+        var suppressSubmit = false;
+
+        var picker = new Picker({
+          element: textInput,
+          format: 'YYYY-MM-DD',
+          singleMode: false,
+          numberOfMonths: cols,
+          numberOfColumns: cols,
+          lang: locale,
+          autoApply: true,
+          startDate: dateFrom || undefined,
+          endDate: dateTo || undefined,
+          buttonText: {
+            previousMonth: '<svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-chevron-left" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M15 6l-6 6 6 6"/></svg>',
+            nextMonth: '<svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-chevron-right" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M9 6l6 6-6 6"/></svg>'
+          },
+          setup: function(p) {
+            p.on('show', function() {
+              var root = null;
+              if (p.ui && p.ui instanceof HTMLElement) {
+                root = p.ui;
+              }
+              if (!root) return;
+
+              var presetsBar = root.querySelector('.beeui-dr-presets');
+              if (presetsBar) return;
+
+              presetsBar = document.createElement('div');
+              presetsBar.className = 'beeui-dr-presets d-flex gap-1 flex-wrap';
+
+              var presets = [
+                {key: 'today', days: 0},
+                {key: 'yesterday', days: 1, offsetStart: 1, offsetEnd: 1},
+                {key: 'last_7', days: 6},
+                {key: 'last_30', days: 29},
+              ];
+
+              presets.forEach(function(pr) {
+                var btn = document.createElement('button');
+                btn.type = 'button';
+                var labelText = presetLabels[pr.key] || {};
+                btn.textContent = label(labelText);
+                btn.className = 'btn btn-sm btn-outline-secondary beeui-dr-preset';
+                btn.setAttribute('data-preset', pr.key);
+                btn.addEventListener('click', function(e) {
+                  e.preventDefault();
+                  var today = new Date();
+                  today.setHours(0, 0, 0, 0);
+                  var from, to;
+                  if (pr.key === 'yesterday') {
+                    from = new Date(today);
+                    from.setDate(from.getDate() - 1);
+                    to = new Date(from);
+                  } else {
+                    to = new Date(today);
+                    from = new Date(today);
+                    from.setDate(from.getDate() - pr.days);
+                  }
+                  var fStr = formatDate(from);
+                  var tStr = formatDate(to);
+                  if (fromInput) fromInput.value = fStr;
+                  if (toInput) toInput.value = tStr;
+                  if (textInput) textInput.value = formatDisplay(fStr, tStr);
+                  suppressSubmit = true;
+                  try { p.setDateRange(from, to); } catch (_) {}
+                  suppressSubmit = false;
+                  var form = trigger.closest('form');
+                  submitForm(form);
+                });
+                presetsBar.appendChild(btn);
+              });
+
+              root.appendChild(presetsBar);
+            });
+
+            p.on('selected', function(date1, date2) {
+              if (suppressSubmit) return;
+              if (!date1) return;
+              var f, t;
+              if (date2) {
+                f = typeof date1 === 'object' && date1.format ? date1.format('YYYY-MM-DD') : formatDate(new Date(date1));
+                t = typeof date2 === 'object' && date2.format ? date2.format('YYYY-MM-DD') : formatDate(new Date(date2));
+              } else {
+                f = typeof date1 === 'object' && date1.format ? date1.format('YYYY-MM-DD') : formatDate(new Date(date1));
+                t = f;
+              }
+              if (fromInput) fromInput.value = f;
+              if (toInput) toInput.value = t;
+              if (textInput) textInput.value = formatDisplay(f, t);
+              var form = trigger.closest('form');
+              if (date2) {
+                submitForm(form);
+              }
+            });
+          }
+        });
+
+        if (resize && curFrom) {
+          if (dateFrom) picker.setDateRange(dateFrom, dateTo || dateFrom);
+        }
+        return picker;
+      }
+
+      document.querySelectorAll('.beeui-dr-trigger').forEach(function(trigger) {
+        var wrapper = trigger.closest('.beeui-table-toolbar-date-group');
+        if (!wrapper) return;
+        var fromInput = wrapper.querySelector('.beeui-dr-from');
+        var toInput = wrapper.querySelector('.beeui-dr-to');
+        var textInput = trigger.querySelector('.beeui-dr-input');
+
+        var currentPicker = createPicker(trigger, fromInput, toInput, textInput, false);
+
+        var resizeTimer = null;
+        window.addEventListener('resize', function() {
+          if (resizeTimer) clearTimeout(resizeTimer);
+          resizeTimer = setTimeout(function() {
+            var newCols = getColumns();
+            var oldCols = currentPicker && currentPicker.options && currentPicker.options.numberOfColumns;
+            if (newCols !== oldCols && currentPicker && typeof currentPicker.destroy === 'function') {
+              currentPicker.destroy();
+              currentPicker = createPicker(trigger, fromInput, toInput, textInput, true);
+            }
+          }, 300);
+        });
+      });
+
       document.querySelectorAll('.beeui-datepicker').forEach(function(input) {
         new Picker({
           element: input,

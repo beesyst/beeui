@@ -2693,23 +2693,32 @@ def test_layout_data_table_missing_values_render_na() -> None:
     assert result[0]["rows"][2]["val"]["value"] == "exists"
 
 
-def test_layout_data_table_malformed_columns_degrades() -> None:
+def test_layout_data_table_malformed_columns_preserves_shell() -> None:
     result = render_layout(
         [
             {
                 "type": "data_table",
                 "title": "Malformed",
                 "width": 12,
+                "toolbar": {
+                    "fields": [
+                        {"type": "text", "name": "q", "value": "keep"},
+                    ],
+                },
                 "columns": "not a list",
                 "rows": "not a list",
             }
         ]
     )
     assert len(result) == 1
-    assert result[0]["type"] == "degraded"
+    assert result[0]["type"] == "data_table"
+    assert result[0]["title"] == "Malformed"
+    assert result[0]["degraded_error"] is not None
+    assert "columns" in result[0]["degraded_error"].lower()
+    assert result[0]["toolbar"]["fields"][0]["value"] == "keep"
 
 
-def test_layout_data_table_malformed_rows_degrades() -> None:
+def test_layout_data_table_malformed_rows_preserves_shell() -> None:
     result = render_layout(
         [
             {
@@ -2722,7 +2731,10 @@ def test_layout_data_table_malformed_rows_degrades() -> None:
         ]
     )
     assert len(result) == 1
-    assert result[0]["type"] == "degraded"
+    assert result[0]["type"] == "data_table"
+    assert result[0]["degraded_error"] is not None
+    assert "rows" in result[0]["degraded_error"].lower()
+    assert result[0]["title"] == "Malformed"
 
 
 def test_layout_data_table_link_cell() -> None:
@@ -2818,6 +2830,350 @@ def test_layout_data_table_no_product_imports() -> None:
     content = Path(lr.__file__).read_text(encoding="utf-8")
     assert "beecap_module" not in content
     assert "beeagent_module" not in content
+
+
+def test_layout_data_table_toolbar_date_range_normalized() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "data_table",
+                "title": "Toolbar dates",
+                "columns": [{"key": "id", "label": "ID"}],
+                "rows": [{"id": {"label": "001"}}],
+                "toolbar": {
+                    "fields": [
+                        {
+                            "type": "date_range",
+                            "name": "dt",
+                            "from_value": "2026-07-01",
+                            "to_value": "2026-07-31",
+                            "from_label": "Start",
+                            "to_label": "End",
+                        }
+                    ]
+                },
+            }
+        ]
+    )
+    block = result[0]
+    fields = block["toolbar"]["fields"]
+    assert len(fields) == 1
+    dr = fields[0]
+    assert dr["type"] == "date_range"
+    assert dr["from_value"] == "2026-07-01"
+    assert dr["to_value"] == "2026-07-31"
+    assert dr["from_label"] == "Start"
+    assert dr["to_label"] == "End"
+    assert block["toolbar"]["has_date_range"] is True
+
+
+def test_layout_data_table_toolbar_text_field_normalized() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "data_table",
+                "title": "Toolbar text",
+                "columns": [{"key": "id", "label": "ID"}],
+                "rows": [{"id": {"label": "001"}}],
+                "toolbar": {
+                    "fields": [
+                        {
+                            "type": "text",
+                            "name": "q",
+                            "value": "search_val",
+                            "placeholder": "Search...",
+                        }
+                    ]
+                },
+            }
+        ]
+    )
+    block = result[0]
+    field = block["toolbar"]["fields"][0]
+    assert field["type"] == "text"
+    assert field["name"] == "q"
+    assert field["value"] == "search_val"
+    assert field["placeholder"] == "Search..."
+
+
+def test_layout_data_table_toolbar_checkboxes_normalized() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "data_table",
+                "title": "Toolbar checkboxes",
+                "columns": [{"key": "id", "label": "ID"}],
+                "rows": [{"id": {"label": "001"}}],
+                "toolbar": {
+                    "fields": [
+                        {
+                            "type": "checkboxes",
+                            "label": "Status",
+                            "choices": [
+                                {
+                                    "value": "ok",
+                                    "label": "OK",
+                                    "checked": True,
+                                    "toggle_href": "/filter?status=ok",
+                                },
+                                {
+                                    "value": "warn",
+                                    "label": "Warning",
+                                    "checked": False,
+                                    "toggle_href": "/filter?status=warn",
+                                },
+                            ],
+                            "selected_count": 1,
+                        }
+                    ]
+                },
+            }
+        ]
+    )
+    field = result[0]["toolbar"]["fields"][0]
+    assert field["type"] == "checkboxes"
+    assert len(field["choices"]) == 2
+    assert field["choices"][0]["checked"] is True
+    assert field["choices"][0]["toggle_href"] == "/filter?status=ok"
+    assert field["choices"][1]["checked"] is False
+    assert field["choices"][1]["toggle_href"] == "/filter?status=warn"
+    assert field["selected_count"] == 1
+
+
+def test_layout_data_table_toolbar_checkboxes_unsafe_toggle_rejected() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "data_table",
+                "title": "Toolbar unsafe",
+                "columns": [{"key": "id", "label": "ID"}],
+                "rows": [{"id": {"label": "001"}}],
+                "toolbar": {
+                    "fields": [
+                        {
+                            "type": "checkboxes",
+                            "choices": [
+                                {
+                                    "value": "safe",
+                                    "label": "Safe",
+                                    "toggle_href": "/filter?safe=1",
+                                },
+                                {
+                                    "value": "bad",
+                                    "label": "External",
+                                    "toggle_href": "https://evil.com",
+                                },
+                            ],
+                        }
+                    ]
+                },
+            }
+        ]
+    )
+    choices = result[0]["toolbar"]["fields"][0]["choices"]
+    assert choices[0]["toggle_href"] == "/filter?safe=1"
+    assert choices[1]["toggle_href"] is None
+
+
+def test_layout_data_table_toolbar_column_toggles_normalized() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "data_table",
+                "title": "Toolbar toggles",
+                "columns": [{"key": "id", "label": "ID"}],
+                "rows": [{"id": {"label": "001"}}],
+                "toolbar": {
+                    "column_toggles": [
+                        {
+                            "key": "id",
+                            "label": "ID",
+                            "visible": True,
+                            "toggle_href": "/toggle?id",
+                        },
+                        {
+                            "key": "name",
+                            "label": "Name",
+                            "visible": False,
+                            "toggle_href": "/toggle?name",
+                        },
+                    ]
+                },
+            }
+        ]
+    )
+    toggles = result[0]["toolbar"]["column_toggles"]
+    assert len(toggles) == 2
+    assert toggles[0]["visible"] is True
+    assert toggles[0]["toggle_href"] == "/toggle?id"
+    assert toggles[1]["visible"] is False
+    assert toggles[1]["toggle_href"] == "/toggle?name"
+
+
+def test_layout_data_table_toolbar_reset_and_apply_normalized() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "data_table",
+                "title": "Toolbar actions",
+                "columns": [{"key": "id", "label": "ID"}],
+                "rows": [{"id": {"label": "001"}}],
+                "toolbar": {
+                    "reset": {"label": "Clear", "href": "/?reset=1"},
+                    "apply": {"label": "Go"},
+                },
+            }
+        ]
+    )
+    block = result[0]
+    assert block["toolbar"]["reset"]["label"] == "Clear"
+    assert block["toolbar"]["reset"]["href"] == "/?reset=1"
+    assert block["toolbar"]["apply"]["label"] == "Go"
+
+
+def test_layout_data_table_toolbar_reset_unsafe_href_omitted() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "data_table",
+                "title": "Toolbar reset unsafe",
+                "columns": [{"key": "id", "label": "ID"}],
+                "rows": [{"id": {"label": "001"}}],
+                "toolbar": {
+                    "reset": {"label": "Reset", "href": "https://evil.com"},
+                },
+            }
+        ]
+    )
+    reset = result[0]["toolbar"].get("reset", {})
+    assert "href" not in reset
+
+
+def test_layout_data_table_toolbar_apply_absent_when_not_supplied() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "data_table",
+                "title": "No apply",
+                "columns": [{"key": "id", "label": "ID"}],
+                "rows": [{"id": {"label": "001"}}],
+                "toolbar": {},
+            }
+        ]
+    )
+    assert "apply" not in result[0]["toolbar"]
+
+
+def test_layout_data_table_toolbar_hidden_fields() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "data_table",
+                "title": "Hidden",
+                "columns": [{"key": "id", "label": "ID"}],
+                "rows": [{"id": {"label": "001"}}],
+                "toolbar": {
+                    "hidden": {"tab": "queue", "view": "list"},
+                },
+            }
+        ]
+    )
+    assert result[0]["toolbar"]["hidden"] == {"tab": "queue", "view": "list"}
+
+
+def test_layout_data_table_toolbar_missing_fields_degrades_gracefully() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "data_table",
+                "title": "No fields",
+                "columns": [{"key": "id", "label": "ID"}],
+                "rows": [{"id": {"label": "001"}}],
+            }
+        ]
+    )
+    assert result[0]["toolbar"]["fields"] == []
+
+
+def test_layout_data_table_toolbar_multiple_field_types_order() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "data_table",
+                "title": "Field order",
+                "columns": [{"key": "id", "label": "ID"}],
+                "rows": [{"id": {"label": "001"}}],
+                "toolbar": {
+                    "fields": [
+                        {"type": "date_range", "name": "d"},
+                        {"type": "text", "name": "q"},
+                        {"type": "checkboxes", "choices": []},
+                    ]
+                },
+            }
+        ]
+    )
+    fields = result[0]["toolbar"]["fields"]
+    assert fields[0]["type"] == "date_range"
+    assert fields[1]["type"] == "text"
+    assert fields[2]["type"] == "checkboxes"
+
+
+def test_layout_data_table_toolbar_does_not_have_standalone_date_range_body() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "data_table",
+                "title": "Card test",
+                "columns": [{"key": "id", "label": "ID"}],
+                "rows": [{"id": {"label": "001"}}],
+                "toolbar": {
+                    "fields": [
+                        {
+                            "type": "date_range",
+                            "from_value": "2026-07-01",
+                            "to_value": "2026-07-31",
+                        },
+                    ]
+                },
+            }
+        ]
+    )
+    block = result[0]
+    assert block["type"] == "data_table"
+    assert block["toolbar"]["fields"][0]["type"] == "date_range"
+    assert block["toolbar"]["has_date_range"] is True
+
+
+def test_layout_data_table_sortable_headers_regression() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "data_table",
+                "title": "Sortable",
+                "columns": [
+                    {
+                        "key": "id",
+                        "label": "ID",
+                        "sortable": True,
+                        "sort_href": "/runs?sort=id&dir=asc",
+                    },
+                    {"key": "name", "label": "Name", "sortable": False},
+                ],
+                "rows": [
+                    {"id": {"label": "001"}, "name": {"label": "Alice"}},
+                    {"id": {"label": "002"}, "name": {"label": "Bob"}},
+                ],
+            }
+        ]
+    )
+    columns = result[0]["columns"]
+    assert columns[0]["sortable"] is True
+    assert columns[0]["sort_href"] == "/runs?sort=id&dir=asc"
+    assert columns[1]["sortable"] is False
+    assert columns[1]["sort_href"] is None
+    assert "\u2191" not in str(columns)
+    assert "\u2193" not in str(columns)
 
 
 def test_layout_data_table_progress_bounds() -> None:

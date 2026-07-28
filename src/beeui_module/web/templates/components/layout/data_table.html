@@ -1,82 +1,14 @@
 {% from "components/primitives/canonical_table.html" import canonical_table %}
 {% set tb = block.toolbar %}
 {% set has_toolbar = tb.search or tb.entries or tb.actions or tb.fields or tb.hidden or tb.column_toggles or tb.reset or tb.apply %}
-{% macro column_chooser(toggles, locale) %}
-<div class="dropdown">
-  <button type="button" class="btn btn-sm btn-ghost-secondary beeui-columns-ellipsis" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" aria-label="{% if locale == 'ru' %}Колонки{% else %}Columns{% endif %}">
-    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-dots-vertical" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/><path d="M12 19m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/><path d="M12 5m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/></svg>
-  </button>
-  <div class="dropdown-menu dropdown-menu-end">
-    {% for toggle in toggles %}
-      {% if toggle.toggle_href %}<a class="dropdown-item{% if toggle.visible %} active{% endif %}" href="{{ toggle.toggle_href }}">{% else %}<span class="dropdown-item{% if toggle.visible %} active{% endif %}">{% endif %}
-        {% if toggle.visible %}<span class="dropdown-item-icon">&#10003;</span>{% endif %}
-        {{ toggle.label }}
-      {% if toggle.toggle_href %}</a>{% else %}</span>{% endif %}
-    {% endfor %}
+{% call canonical_table(title=block.title, description=block.description, pagination=block.pagination, toolbar=tb if has_toolbar else none, form_action=block.form_action, locale=locale) %}
+  {% if block.degraded_error %}
+  <div class="card-body">
+    <div class="alert alert-warning mb-0" role="alert">
+      <p class="mb-0">{{ block.degraded_error }}</p>
+    </div>
   </div>
-</div>
-{% endmacro %}
-{% call canonical_table(title=block.title, description=block.description, pagination=block.pagination) %}
-  {% if has_toolbar %}
-  <div class="card-body border-bottom py-2">
-    <form method="GET" action="{{ block.form_action }}" class="d-flex flex-wrap justify-content-between align-items-center gap-2 beeui-table-toolbar">
-      {% if tb.hidden %}{% for hname, hvalue in tb.hidden.items() %}<input type="hidden" name="{{ hname }}" value="{{ hvalue }}">{% endfor %}{% endif %}
-      <div class="d-flex gap-2 align-items-center flex-wrap">
-        {% if tb.entries %}
-        <div class="text-secondary small beeui-table-entries">
-          {% if locale == 'ru' %}Показать{% else %}Show{% endif %} <select class="form-select form-select-sm d-inline-block w-auto" disabled>
-            <option>10</option><option>25</option><option>50</option>
-          </select> {% if locale == 'ru' %}записей{% else %}entries{% endif %}
-        </div>
-        {% endif %}
-        {% set chooser = namespace(rendered=false) %}
-        {% for field in tb.fields %}
-          {% if field.type == "date_range" %}
-          <div class="d-flex gap-1 align-items-center">
-            {% if field.label %}<label class="form-label mb-0 small me-1">{{ field.label }}</label>{% endif %}
-            <input type="text" class="form-control form-control-sm beeui-datepicker beeui-table-date-from" name="{% if field.name %}{{ field.name }}_from{% else %}date_from{% endif %}" value="{{ field.from_value }}" autocomplete="off" inputmode="numeric" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" aria-label="{% if field.from_label %}{{ field.from_label }}{% else %}{% if locale == 'ru' %}От{% else %}From{% endif %}{% endif %}" placeholder="{% if locale == 'ru' %}От{% else %}From{% endif %}">
-            <span class="text-secondary small">—</span>
-            <input type="text" class="form-control form-control-sm beeui-datepicker beeui-table-date-to" name="{% if field.name %}{{ field.name }}_to{% else %}date_to{% endif %}" value="{{ field.to_value }}" autocomplete="off" inputmode="numeric" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" aria-label="{% if field.to_label %}{{ field.to_label }}{% else %}{% if locale == 'ru' %}До{% else %}To{% endif %}{% endif %}" placeholder="{% if locale == 'ru' %}До{% else %}To{% endif %}">
-          </div>
-          {% elif field.type == "text" %}
-          <input type="search" class="form-control form-control-sm" name="{{ field.name }}" value="{{ field.value }}" placeholder="{% if field.placeholder %}{{ field.placeholder }}{% elif locale == 'ru' %}Поиск...{% else %}Search...{% endif %}" aria-label="{% if field.label %}{{ field.label }}{% elif locale == 'ru' %}Поиск{% else %}Search{% endif %}">
-          {% if tb.column_toggles and not chooser.rendered %}{{ column_chooser(tb.column_toggles, locale) }}{% set chooser.rendered = true %}{% endif %}
-          {% elif field.type == "select" %}
-          <select class="form-select form-select-sm" name="{{ field.name }}" {% if field.multi %}multiple{% endif %} onchange="this.form.submit()" aria-label="{{ field.label }}">
-            <option value="">{{ field.placeholder|default("", true) }}</option>
-            {% for opt in field.options %}<option value="{{ opt.value }}"{% if field.value == opt.value %} selected{% endif %}>{{ opt.label }}</option>{% endfor %}
-          </select>
-          {% elif field.type == "checkboxes" %}
-          <div class="dropdown">
-            <button type="button" class="btn btn-sm btn-ghost-secondary dropdown-toggle" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">{{ field.label }}{% if field.selected_count > 0 %}<span class="badge bg-primary ms-1">{{ field.selected_count }}</span>{% endif %}</button>
-            <div class="dropdown-menu">
-              {% for ch in field.choices %}
-                {% if ch.toggle_href %}<a class="dropdown-item{% if ch.checked %} active{% endif %}" href="{{ ch.toggle_href }}">{% else %}<span class="dropdown-item">{% endif %}
-                  {% if ch.checked %}<span class="dropdown-item-icon">&#10003;</span>{% endif %}
-                  {{ ch.label }}
-                {% if ch.toggle_href %}</a>{% else %}</span>{% endif %}
-              {% endfor %}
-            </div>
-          </div>
-          {% endif %}
-        {% endfor %}
-        {% if tb.column_toggles and not chooser.rendered %}{{ column_chooser(tb.column_toggles, locale) }}{% endif %}
-      </div>
-      <div class="d-flex gap-2 align-items-center">
-        {% for action in tb.actions %}
-          {% if action.href %}<a href="{{ action.href }}" class="btn btn-sm btn-outline-primary">{{ action.label }}</a>{% else %}<span class="btn btn-sm btn-outline-primary disabled">{{ action.label }}</span>{% endif %}
-        {% endfor %}
-        {% if tb.search %}
-        <div class="beeui-table-search">
-          <input type="search" class="form-control form-control-sm" placeholder="{% if locale == 'ru' %}Поиск...{% else %}Search...{% endif %}" disabled>
-        </div>
-        {% endif %}
-        {% if tb.reset and tb.reset.href %}<a href="{{ tb.reset.href }}" class="btn btn-sm btn-ghost-secondary">{{ tb.reset.label }}</a>{% endif %}
-        {% if tb.apply %}<button type="submit" class="btn btn-sm btn-primary">{{ tb.apply.label }}</button>{% endif %}
-      </div>
-    </form>
-  </div>
-  {% endif %}
+  {% else %}
   <div class="table-responsive">
     <table class="table card-table table-vcenter{% if block.striped %} table-striped{% endif %}{% if block.nowrap %} table-nowrap{% endif %}{% if block.compact %} table-sm{% endif %}{% if block.selectable %} beeui-table-selectable{% endif %}{% if block.mobile %} table-mobile-{{ block.mobile }}{% endif %}">
       {% if block.columns %}
@@ -84,8 +16,8 @@
         <tr>
           {% if block.selectable %}<th class="w-1"><input type="checkbox" class="form-check-input beeui-table-select-all" disabled></th>{% endif %}
           {% for col in block.columns %}
-          <th{% if col.sortable and col.sort_href %} class="beeui-sortable"{% endif %}{% if col.sort_active %} aria-sort="{{ col.sort_direction }}"{% endif %}>
-            {% if col.sortable and col.sort_href %}<a href="{{ col.sort_href }}" class="text-reset text-decoration-none">{{ col.label }}{% if col.sort_active %}<span aria-hidden="true">{% if col.sort_direction == 'descending' %}↓{% else %}↑{% endif %}</span>{% endif %}</a>
+          <th{% if col.sort_active %} aria-sort="{{ col.sort_direction }}"{% endif %}>
+            {% if col.sortable and col.sort_href %}<a href="{{ col.sort_href }}" class="table-sort{% if col.sort_active and col.sort_direction == 'ascending' %} asc{% elif col.sort_active and col.sort_direction == 'descending' %} desc{% endif %}">{{ col.label }}</a>
             {% else %}{{ col.label }}{% endif %}
           </th>
           {% endfor %}
@@ -133,4 +65,5 @@
       {% endif %}
     </table>
   </div>
+  {% endif %}
 {% endcall %}

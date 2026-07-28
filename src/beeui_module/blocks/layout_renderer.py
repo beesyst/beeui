@@ -67,7 +67,26 @@ _KPI_GRID_COLUMN_CLASSES: dict[int, str] = {
 }
 _GROUP_MAX_DEPTH: int = 3
 _CHART_COLOR_TOKENS: frozenset[str] = frozenset(
-    {"primary", "secondary", "success", "warning", "danger", "info", "blue", "azure", "indigo", "purple", "pink", "red", "orange", "yellow", "lime", "green", "teal", "cyan"}
+    {
+        "primary",
+        "secondary",
+        "success",
+        "warning",
+        "danger",
+        "info",
+        "blue",
+        "azure",
+        "indigo",
+        "purple",
+        "pink",
+        "red",
+        "orange",
+        "yellow",
+        "lime",
+        "green",
+        "teal",
+        "cyan",
+    }
 )
 _CHART_COLOR_LIMIT = 12
 _CHART_HEX_COLOR_PATTERN = re.compile(r"#[0-9A-Fa-f]{6}")
@@ -208,7 +227,9 @@ def _normalize_chart_series(kind: str | None, value: Any) -> tuple[list[Any], st
             return [], "degraded"
         if not all(_is_finite_chart_number(point) for point in data):
             return [], "degraded"
-        normalized.append({"name": name.strip()[:_CHART_DISPLAY_TEXT_LIMIT], "data": list(data)})
+        normalized.append(
+            {"name": name.strip()[:_CHART_DISPLAY_TEXT_LIMIT], "data": list(data)}
+        )
         has_data = has_data or bool(data)
     return normalized, "ready" if has_data else "empty"
 
@@ -579,7 +600,9 @@ def _render_chart(raw: dict[str, Any], width_class: str) -> dict[str, Any]:
     if colors:
         chart_config["colors"] = colors
 
-    horizontal = raw.get("horizontal") if isinstance(raw.get("horizontal"), bool) else False
+    horizontal = (
+        raw.get("horizontal") if isinstance(raw.get("horizontal"), bool) else False
+    )
     if resolved_kind == "bar" and not horizontal:
         chart_config.setdefault("plotOptions", {})
         chart_config["plotOptions"]["bar"] = {
@@ -599,7 +622,9 @@ def _render_chart(raw: dict[str, Any], width_class: str) -> dict[str, Any]:
     if resolved_kind == "bar" and horizontal:
         chart_config.setdefault("plotOptions", {})
         bar_height = raw.get("barHeight", "50%")
-        if not isinstance(bar_height, str) or not _BAR_HEIGHT_PATTERN.fullmatch(bar_height):
+        if not isinstance(bar_height, str) or not _BAR_HEIGHT_PATTERN.fullmatch(
+            bar_height
+        ):
             bar_height = "50%"
         chart_config["plotOptions"]["bar"] = {
             "horizontal": True,
@@ -1047,22 +1072,24 @@ def _render_data_table(raw: dict[str, Any], width_class: str) -> dict[str, Any]:
                 toolbar[action_key] = a
 
     columns_raw = raw.get("columns")
+    degraded_error: str | None = None
     if not isinstance(columns_raw, list) or not columns_raw:
-        return _degraded_block("Data table columns are missing or invalid", width=raw)
+        degraded_error = "Data table columns are missing or invalid"
+        columns_raw = []
 
     columns: list[dict[str, Any]] = []
-    for col in columns_raw:
+    for col in columns_raw or []:
         if not isinstance(col, dict):
-            return _degraded_block(
-                "Data table columns are missing or invalid",
-                width=raw,
+            degraded_error = (
+                degraded_error or "Data table columns are missing or invalid"
             )
+            continue
         key = _safe_str(col.get("key", ""))
         if not key:
-            return _degraded_block(
-                "Data table column key is missing or invalid",
-                width=raw,
+            degraded_error = (
+                degraded_error or "Data table column key is missing or invalid"
             )
+            continue
         cell_type = col.get("cell", "text")
         if (
             not isinstance(cell_type, str)
@@ -1087,7 +1114,11 @@ def _render_data_table(raw: dict[str, Any], width_class: str) -> dict[str, Any]:
             if isinstance(sort_direction_raw, str)
             else None
         )
-        sort_active = bool(col.get("sort_active", False)) and bool(sort_href) and sort_direction is not None
+        sort_active = (
+            bool(col.get("sort_active", False))
+            and bool(sort_href)
+            and sort_direction is not None
+        )
         columns.append(
             {
                 "key": key,
@@ -1102,7 +1133,8 @@ def _render_data_table(raw: dict[str, Any], width_class: str) -> dict[str, Any]:
 
     rows_raw = raw.get("rows")
     if not isinstance(rows_raw, list):
-        return _degraded_block("Data table rows are missing or invalid", width=raw)
+        degraded_error = degraded_error or "Data table rows are missing or invalid"
+        rows_raw = []
 
     rows: list[dict[str, Any]] = []
     for row in rows_raw:
@@ -1150,6 +1182,7 @@ def _render_data_table(raw: dict[str, Any], width_class: str) -> dict[str, Any]:
         "columns": columns,
         "rows": rows,
         "pagination": pagination,
+        "degraded_error": degraded_error,
     }
 
 
@@ -1226,10 +1259,8 @@ def _render_data_table_cell(cell_raw: Any, cell_type: str) -> dict[str, Any]:
             or not math.isfinite(value)
         ):
             value = 0
-        if value < 0:
-            value = 0
-        if value > 100:
-            value = 100
+        value = max(value, 0)
+        value = min(value, 100)
         return {
             "type": "progress",
             "label": _display_value(cell_raw.get("label")),
@@ -1288,7 +1319,9 @@ def _normalize_filter_fields(fields_raw: Any) -> list[dict[str, Any]]:
             entry["options"] = [
                 {
                     "value": _safe_str(o.get("value")) if isinstance(o, dict) else "",
-                    "label": _safe_str(o.get("label")) if isinstance(o, dict) else _safe_str(o),
+                    "label": _safe_str(o.get("label"))
+                    if isinstance(o, dict)
+                    else _safe_str(o),
                 }
                 for o in options_raw
                 if isinstance(o, dict) and o.get("value")
@@ -1307,13 +1340,19 @@ def _normalize_filter_fields(fields_raw: Any) -> list[dict[str, Any]]:
                     lbl = _safe_str(ch.get("label", val))
                     checked = bool(ch.get("checked", False))
                     toggle_href_raw = ch.get("toggle_href", "")
-                    toggle_href = validate_internal_href(toggle_href_raw) if toggle_href_raw else None
-                    entry["choices"].append({
-                        "value": val,
-                        "label": lbl,
-                        "checked": checked,
-                        "toggle_href": toggle_href,
-                    })
+                    toggle_href = (
+                        validate_internal_href(toggle_href_raw)
+                        if toggle_href_raw
+                        else None
+                    )
+                    entry["choices"].append(
+                        {
+                            "value": val,
+                            "label": lbl,
+                            "checked": checked,
+                            "toggle_href": toggle_href,
+                        }
+                    )
             entry["open"] = bool(field.get("open", False))
             raw_count = field.get("selected_count", 0)
             if isinstance(raw_count, (int, float)) and not isinstance(raw_count, bool):
@@ -1344,13 +1383,17 @@ def _normalize_column_toggles(toggles_raw: Any) -> list[dict[str, Any]]:
                 label = _safe_str(ct.get("label", key))
                 visible = bool(ct.get("visible", False))
                 toggle_href_raw = ct.get("toggle_href", "")
-                toggle_href = validate_internal_href(toggle_href_raw) if toggle_href_raw else None
-                toggles.append({
-                    "key": key,
-                    "label": label,
-                    "visible": visible,
-                    "toggle_href": toggle_href,
-                })
+                toggle_href = (
+                    validate_internal_href(toggle_href_raw) if toggle_href_raw else None
+                )
+                toggles.append(
+                    {
+                        "key": key,
+                        "label": label,
+                        "visible": visible,
+                        "toggle_href": toggle_href,
+                    }
+                )
     return toggles
 
 
@@ -1383,7 +1426,11 @@ def _render_filter_form(raw: dict[str, Any], width_class: str) -> dict[str, Any]
 
     columns_open = bool(raw.get("columns_open", False))
     columns_toggle_href_raw = raw.get("columns_toggle_href", "")
-    columns_toggle_href = validate_internal_href(columns_toggle_href_raw) if columns_toggle_href_raw else None
+    columns_toggle_href = (
+        validate_internal_href(columns_toggle_href_raw)
+        if columns_toggle_href_raw
+        else None
+    )
 
     return {
         "type": "filter_form",
@@ -1464,13 +1511,21 @@ def resolve_layout_links(
                     choices = field.get("choices")
                     if isinstance(choices, list):
                         for choice in choices:
-                            if isinstance(choice, dict) and isinstance(choice.get("toggle_href"), str):
-                                choice["toggle_href"] = prefix_internal_href(route_prefix, choice["toggle_href"])
+                            if isinstance(choice, dict) and isinstance(
+                                choice.get("toggle_href"), str
+                            ):
+                                choice["toggle_href"] = prefix_internal_href(
+                                    route_prefix, choice["toggle_href"]
+                                )
             toggles = block.get("column_toggles")
             if isinstance(toggles, list):
                 for toggle in toggles:
-                    if isinstance(toggle, dict) and isinstance(toggle.get("toggle_href"), str):
-                        toggle["toggle_href"] = prefix_internal_href(route_prefix, toggle["toggle_href"])
+                    if isinstance(toggle, dict) and isinstance(
+                        toggle.get("toggle_href"), str
+                    ):
+                        toggle["toggle_href"] = prefix_internal_href(
+                            route_prefix, toggle["toggle_href"]
+                        )
         if block.get("type") == "data_table":
             apply_href_override = None
             toolbar = block.get("toolbar")
@@ -1478,8 +1533,12 @@ def resolve_layout_links(
                 actions = toolbar.get("actions")
                 if isinstance(actions, list):
                     for action in actions:
-                        if isinstance(action, dict) and isinstance(action.get("href"), str):
-                            action["href"] = prefix_internal_href(route_prefix, action["href"])
+                        if isinstance(action, dict) and isinstance(
+                            action.get("href"), str
+                        ):
+                            action["href"] = prefix_internal_href(
+                                route_prefix, action["href"]
+                            )
                 for action_key in ("apply", "reset"):
                     a = toolbar.get(action_key)
                     if isinstance(a, dict) and isinstance(a.get("href"), str):
@@ -1492,22 +1551,36 @@ def resolve_layout_links(
                         choices = field.get("choices")
                         if isinstance(choices, list):
                             for choice in choices:
-                                if isinstance(choice, dict) and isinstance(choice.get("toggle_href"), str):
-                                    choice["toggle_href"] = prefix_internal_href(route_prefix, choice["toggle_href"])
+                                if isinstance(choice, dict) and isinstance(
+                                    choice.get("toggle_href"), str
+                                ):
+                                    choice["toggle_href"] = prefix_internal_href(
+                                        route_prefix, choice["toggle_href"]
+                                    )
                 toggles = toolbar.get("column_toggles")
                 if isinstance(toggles, list):
                     for toggle in toggles:
-                        if isinstance(toggle, dict) and isinstance(toggle.get("toggle_href"), str):
-                            toggle["toggle_href"] = prefix_internal_href(route_prefix, toggle["toggle_href"])
+                        if isinstance(toggle, dict) and isinstance(
+                            toggle.get("toggle_href"), str
+                        ):
+                            toggle["toggle_href"] = prefix_internal_href(
+                                route_prefix, toggle["toggle_href"]
+                            )
                 apply = toolbar.get("apply")
                 apply_href = apply.get("href") if isinstance(apply, dict) else None
-                apply_href_override = apply_href if isinstance(apply_href, str) else None
+                apply_href_override = (
+                    apply_href if isinstance(apply_href, str) else None
+                )
 
             columns = block.get("columns")
             if isinstance(columns, list):
                 for column in columns:
-                    if isinstance(column, dict) and isinstance(column.get("sort_href"), str):
-                        column["sort_href"] = prefix_internal_href(route_prefix, column["sort_href"])
+                    if isinstance(column, dict) and isinstance(
+                        column.get("sort_href"), str
+                    ):
+                        column["sort_href"] = prefix_internal_href(
+                            route_prefix, column["sort_href"]
+                        )
 
             block["form_action"] = prefix_internal_href(
                 route_prefix,
@@ -1520,7 +1593,9 @@ def resolve_layout_links(
                 if isinstance(pages, list):
                     for page in pages:
                         if isinstance(page, dict) and isinstance(page.get("href"), str):
-                            page["href"] = prefix_internal_href(route_prefix, page["href"])
+                            page["href"] = prefix_internal_href(
+                                route_prefix, page["href"]
+                            )
             rows = block.get("rows")
             if isinstance(rows, list):
                 for row in rows:
@@ -1530,12 +1605,18 @@ def resolve_layout_links(
                         if not isinstance(cell, dict):
                             continue
                         if isinstance(cell.get("href"), str):
-                            cell["href"] = prefix_internal_href(route_prefix, cell["href"])
+                            cell["href"] = prefix_internal_href(
+                                route_prefix, cell["href"]
+                            )
                         cell_actions = cell.get("items")
                         if isinstance(cell_actions, list):
                             for action in cell_actions:
-                                if isinstance(action, dict) and isinstance(action.get("href"), str):
-                                    action["href"] = prefix_internal_href(route_prefix, action["href"])
+                                if isinstance(action, dict) and isinstance(
+                                    action.get("href"), str
+                                ):
+                                    action["href"] = prefix_internal_href(
+                                        route_prefix, action["href"]
+                                    )
 
 
 def layout_has_charts(blocks: list[dict[str, Any]]) -> bool:
@@ -1567,7 +1648,10 @@ def layout_has_date_ranges(blocks: list[dict[str, Any]]) -> bool:
                 fields = toolbar.get("fields")
                 if isinstance(fields, list):
                     for field in fields:
-                        if isinstance(field, dict) and field.get("type") == "date_range":
+                        if (
+                            isinstance(field, dict)
+                            and field.get("type") == "date_range"
+                        ):
                             return True
 
         children = block.get("children")

@@ -97,6 +97,11 @@ Safe local chart renderer for adapter-backed `layout[]`. Supports controlled cha
 
 Advanced Tabler-compatible data table for adapter-backed `layout[]`. Backward-compatible with existing `table_card`.
 
+Начиная с Iteration 13.12 toolbar рендерится внутри card-header как часть
+единой канонической карточки. Column chooser использует горизонтальное
+многоточие (`icon-tabler-dots`). Malformed columns/rows сохраняют canonical
+shell, toolbar и показывают bounded degraded сообщение.
+
 Поддерживаемые варианты:
 
 | Field | Type | Description |
@@ -146,16 +151,19 @@ Additional toolbar fields:
 - Все ссылки internal-only: разрешены `/...`, отклонены `//...`, `http://...`, `https://...`, `javascript:` и traversal.
 - Missing values render as `n/a`.
 - Unknown cell type degrades to escaped text.
-- Malformed payload renders as empty table, not 500.
+- Malformed payload renders as canonical table card with degraded message, not 500.
 - No DataTables/List.js runtime in this iteration.
 - Toolbar fields support functional GET form with date range, text search, select dropdowns, checkboxes, hidden fields, column toggles, reset and explicit Apply.
+- Toolbar is rendered inside the table card header, not in a separate card-body.
+- Malformed `columns` or `rows` preserve the canonical card, title, toolbar and show a bounded degraded alert message.
 - Apply button is rendered only when explicitly requested; date ranges do not create an implicit Apply.
 - Search and date range controls can omit visible labels while retaining `aria-label`.
-- An icon-only ellipsis button after the functional search input opens the column chooser directly. When no text search exists, the ellipsis appears at the end of the functional fields.
+- The column chooser ellipsis icon uses horizontal dots (`icon-tabler-dots`) and appears immediately after the first text/search field. When no text search exists, the ellipsis appears at the end of the functional fields.
 - Column visibility controls are rendered as direct items in the ellipsis dropdown.
 - Dropdown filters use canonical `.btn-ghost-secondary`, `.dropdown-toggle`, `.dropdown-menu` and `.dropdown-item` classes.
 - Reset uses a standard `.btn-ghost-secondary`.
 - No inline positioning styles are required for dropdown placement.
+- Desktop controls remain on one row when sufficient width exists; narrow layouts wrap or stack via `flex-wrap`.
 - Legacy `search`/`entries`/`actions` toolbar fields remain supported.
 - Unsafe/external links are rejected or rendered inert.
 

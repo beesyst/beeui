@@ -5773,16 +5773,16 @@ git diff -- pyproject.toml uv.lock
 
 Это функционально, однако:
 
-* внешний вид зависит от браузера;
-* компонент не соответствует Tabler Datepicker example;
-* отсутствует единый локальный календарный UX;
-* Bee products не должны исправлять этот generic presentation gap собственными templates или JavaScript.
+- внешний вид зависит от браузера;
+- компонент не соответствует Tabler Datepicker example;
+- отсутствует единый локальный календарный UX;
+- Bee products не должны исправлять этот generic presentation gap собственными templates или JavaScript.
 
 #### Depends on
 
-* Iteration 13.9 — generic filter form, locale and theme contracts;
-* existing local Tabler asset model;
-* existing route-prefix and safe-rendering contracts.
+- Iteration 13.9 — generic filter form, locale and theme contracts;
+- existing local Tabler asset model;
+- existing route-prefix and safe-rendering contracts.
 
 #### Change level
 
@@ -5792,17 +5792,17 @@ security-sensitive
 
 Причины:
 
-* добавляется vendored browser JavaScript;
-* меняются package static assets;
-* меняется adapter-backed HTML behavior;
-* требуется dependency/provenance review;
-* требуется HTML, route-prefix и malformed-input verification.
+- добавляется vendored browser JavaScript;
+- меняются package static assets;
+- меняется adapter-backed HTML behavior;
+- требуется dependency/provenance review;
+- требуется HTML, route-prefix и malformed-input verification.
 
 #### Scope
 
 **Включено:**
 
-* сохранить существующий payload contract:
+- сохранить существующий payload contract:
 
 ```text
 type: date_range
@@ -5812,66 +5812,66 @@ from_label
 to_label
 ```
 
-* сохранить canonical form field names:
+- сохранить canonical form field names:
+  - `date_from`;
+  - `date_to`;
 
-  * `date_from`;
-  * `date_to`;
-* заменить browser-native date controls на Tabler-compatible Datepicker controls;
-* использовать стандартную Tabler структуру:
+- заменить browser-native date controls на Tabler-compatible Datepicker controls;
+- использовать стандартную Tabler структуру:
+  - `.input-icon`;
+  - `.form-control`;
+  - `.input-icon-addon`;
+  - calendar SVG icon;
 
-  * `.input-icon`;
-  * `.form-control`;
-  * `.input-icon-addon`;
-  * calendar SVG icon;
-* локально vendor Litepicker из совместимого Tabler distribution/source;
-* зафиксировать source, version и license;
-* не использовать CDN;
-* не включать Tabler demo analytics/tracking scripts;
-* инициализировать два независимых Datepicker controls:
+- локально vendor Litepicker из совместимого Tabler distribution/source;
+- зафиксировать source, version и license;
+- не использовать CDN;
+- не включать Tabler demo analytics/tracking scripts;
+- инициализировать два независимых Datepicker controls:
+  - start bound;
+  - end bound;
 
-  * start bound;
-  * end bound;
-* сохранить возможность заполнить только одну границу;
-* использовать `YYYY-MM-DD` как значение input и GET submission format;
-* отправлять GET form после валидного выбора или очистки значения;
-* сохранить обычный manual ISO input fallback без JavaScript;
-* использовать validated page locale для календарного UI;
-* сохранить theme compatibility;
-* добавить recursive layout detection для conditional Litepicker loading;
-* подключать Litepicker только на страницах с `date_range`;
-* обеспечить корректные route-prefix asset URLs;
-* обновить package data;
-* обновить:
+- сохранить возможность заполнить только одну границу;
+- использовать `YYYY-MM-DD` как значение input и GET submission format;
+- отправлять GET form после валидного выбора или очистки значения;
+- сохранить обычный manual ISO input fallback без JavaScript;
+- использовать validated page locale для календарного UI;
+- сохранить theme compatibility;
+- добавить recursive layout detection для conditional Litepicker loading;
+- подключать Litepicker только на страницах с `date_range`;
+- обеспечить корректные route-prefix asset URLs;
+- обновить package data;
+- обновить:
+  - `docs/ROADMAP.md`;
+  - `docs/COMPONENTS.md`;
+  - `docs/WEB_UI.md`;
+  - `docs/INTEGRATION.md`;
+  - `docs/SECURITY.md`, если static-asset guidance требует уточнения;
+  - `README.ru.md`, если публичный component example меняется;
 
-  * `docs/ROADMAP.md`;
-  * `docs/COMPONENTS.md`;
-  * `docs/WEB_UI.md`;
-  * `docs/INTEGRATION.md`;
-  * `docs/SECURITY.md`, если static-asset guidance требует уточнения;
-  * `README.ru.md`, если публичный component example меняется;
-* добавить generic template, normalizer, asset-loading и security tests.
+- добавить generic template, normalizer, asset-loading и security tests.
 
 **Не включено:**
 
-* product-specific date semantics;
-* BeeAgent/ROP/Bitrix imports или strings;
-* validation `date_from <= date_to` внутри BeeUI;
-* combined product query parameter;
-* product timezone decisions;
-* product filtering;
-* product-specific presets;
-* date-time picker;
-* arbitrary date formats from adapter input;
-* external CDN;
-* frontend build chain;
-* copying the full Tabler demo page;
-* analytics/tracking scripts;
-* API changes;
-* config mutation;
-* auth/RBAC/CSRF changes;
-* POST actions;
-* product runtime execution;
-* `pyproject.toml.version` change.
+- product-specific date semantics;
+- BeeAgent/ROP/Bitrix imports или strings;
+- validation `date_from <= date_to` внутри BeeUI;
+- combined product query parameter;
+- product timezone decisions;
+- product filtering;
+- product-specific presets;
+- date-time picker;
+- arbitrary date formats from adapter input;
+- external CDN;
+- frontend build chain;
+- copying the full Tabler demo page;
+- analytics/tracking scripts;
+- API changes;
+- config mutation;
+- auth/RBAC/CSRF changes;
+- POST actions;
+- product runtime execution;
+- `pyproject.toml.version` change.
 
 #### Deliverable
 
@@ -5899,22 +5899,22 @@ Rendered behavior changes, but the declarative payload and submitted parameter n
 
 BeeUI must not infer:
 
-* whether both bounds are required;
-* whether bounds are inclusive;
-* timezone rules;
-* allowed business periods;
-* product error behavior.
+- whether both bounds are required;
+- whether bounds are inclusive;
+- timezone rules;
+- allowed business periods;
+- product error behavior.
 
 #### Expected outputs
 
-* local Litepicker static asset and license/provenance record;
-* updated generic Datepicker template markup;
-* conditional asset loader;
-* generic initialization JavaScript;
-* package-data inclusion;
-* updated component documentation;
-* automated and browser verification.
-* workflow hardening for this iteration: read-before-edit, ROADMAP scope, actual change level and proportional tests; no first-party code/test comments; Russian final-review verdicts; correction prompts that allow identical instruction/target worktrees; no `uv.lock` inspection outside an approved Python dependency change; `.agents/prompts/02-implementation-tests.md` remains unchanged.
+- local Litepicker static asset and license/provenance record;
+- updated generic Datepicker template markup;
+- conditional asset loader;
+- generic initialization JavaScript;
+- package-data inclusion;
+- updated component documentation;
+- automated and browser verification.
+- workflow hardening for this iteration: read-before-edit, ROADMAP scope, actual change level and proportional tests; no first-party code/test comments; Russian final-review verdicts; correction prompts that allow identical instruction/target worktrees; no `uv.lock` inspection outside an approved Python dependency change; `.agents/prompts/02-implementation-tests.md` remains unchanged.
 
 No product runtime artifacts are created.
 
@@ -5929,24 +5929,24 @@ uv run pytest -q -W error::UserWarning
 
 Targeted tests must cover:
 
-* normalizer preserves `from_value`, `to_value`, labels and field names;
-* rendered HTML uses Tabler input-icon structure;
-* rendered HTML contains calendar icons;
-* values remain HTML-escaped;
-* `date_from` only;
-* `date_to` only;
-* both values;
-* empty values;
-* conditional Litepicker asset included exactly once when required;
-* Litepicker asset absent when no `date_range` exists;
-* nested/grouped layout detection;
-* route-prefix asset paths;
-* EN locale initialization;
-* RU locale initialization;
-* invalid/unknown locale cannot become arbitrary JS configuration;
-* no unsafe `|safe`;
-* no product imports or product-specific strings;
-* malformed filter payload does not produce `500`.
+- normalizer preserves `from_value`, `to_value`, labels and field names;
+- rendered HTML uses Tabler input-icon structure;
+- rendered HTML contains calendar icons;
+- values remain HTML-escaped;
+- `date_from` only;
+- `date_to` only;
+- both values;
+- empty values;
+- conditional Litepicker asset included exactly once when required;
+- Litepicker asset absent when no `date_range` exists;
+- nested/grouped layout detection;
+- route-prefix asset paths;
+- EN locale initialization;
+- RU locale initialization;
+- invalid/unknown locale cannot become arbitrary JS configuration;
+- no unsafe `|safe`;
+- no product imports or product-specific strings;
+- malformed filter payload does not produce `500`.
 
 Runtime smoke:
 
@@ -5958,17 +5958,17 @@ Runtime smoke:
 
 Manual/browser scenarios:
 
-* open a page containing `date_range`;
-* select only start date;
-* clear start date;
-* select only end date;
-* select both dates;
-* verify one GET submission per completed interaction;
-* verify ISO query values;
-* verify light and dark themes;
-* verify EN and RU;
-* verify a page without date filters does not load Litepicker;
-* verify no external network request is required for Datepicker operation.
+- open a page containing `date_range`;
+- select only start date;
+- clear start date;
+- select only end date;
+- select both dates;
+- verify one GET submission per completed interaction;
+- verify ISO query values;
+- verify light and dark themes;
+- verify EN and RU;
+- verify a page without date filters does not load Litepicker;
+- verify no external network request is required for Datepicker operation.
 
 Security/static checks:
 
@@ -5986,19 +5986,19 @@ SCA/package review is required because static vendor/package-data content change
 
 #### DoD
 
-* `filter_form.date_range` uses Tabler-compatible Datepicker markup;
-* Litepicker is local and reproducibly packaged;
-* no external resources or tracking are introduced;
-* existing declarative payload remains compatible;
-* submitted names remain `date_from` and `date_to`;
-* partial range behavior is preserved;
-* no product date validation is moved into BeeUI;
-* assets load only when needed;
-* route prefix, locale and theme behavior work;
-* malformed payloads degrade safely;
-* documentation and tests are synchronized;
-* BeeUI remains product-neutral;
-* `pyproject.toml.version` is unchanged.
+- `filter_form.date_range` uses Tabler-compatible Datepicker markup;
+- Litepicker is local and reproducibly packaged;
+- no external resources or tracking are introduced;
+- existing declarative payload remains compatible;
+- submitted names remain `date_from` and `date_to`;
+- partial range behavior is preserved;
+- no product date validation is moved into BeeUI;
+- assets load only when needed;
+- route prefix, locale and theme behavior work;
+- malformed payloads degrade safely;
+- documentation and tests are synchronized;
+- BeeUI remains product-neutral;
+- `pyproject.toml.version` is unchanged.
 
 ### Итерация 13.11 — Canonical Tabler table shell and functional toolbar
 
@@ -6018,83 +6018,285 @@ The existing public table block types also use separate presentation paths, whic
 
 Included:
 
-* extend the adapter-backed `data_table` contract with an optional functional GET toolbar;
-* reuse the existing controlled filter-field normalization rather than creating a second filter schema;
-* support date range, text search, dropdown choices, hidden query state, reset and column toggles inside the table toolbar;
-* render search and date controls without mandatory visible labels while preserving accessible names;
-* render an icon-only ellipsis action after search for the column chooser;
-* render filter controls with canonical Tabler button/dropdown markup;
-* render reset as a standard Tabler button;
-* remove implicit Apply-button rendering caused only by the presence of a date range;
-* preserve explicit Apply support for consumers that request it;
-* detect nested date-range controls for conditional Litepicker asset loading;
-* resolve and prefix all nested active links through the existing safe internal-link contract;
-* introduce one shared canonical table presentation used by adapter-backed table templates;
-* keep existing public table block types backward-compatible;
-* update component, web, integration and API contract documentation.
+- extend the adapter-backed `data_table` contract with an optional functional GET toolbar;
+- reuse the existing controlled filter-field normalization rather than creating a second filter schema;
+- support date range, text search, dropdown choices, hidden query state, reset and column toggles inside the table toolbar;
+- render search and date controls without mandatory visible labels while preserving accessible names;
+- render an icon-only ellipsis action after search for the column chooser;
+- render filter controls with canonical Tabler button/dropdown markup;
+- render reset as a standard Tabler button;
+- remove implicit Apply-button rendering caused only by the presence of a date range;
+- preserve explicit Apply support for consumers that request it;
+- detect nested date-range controls for conditional Litepicker asset loading;
+- resolve and prefix all nested active links through the existing safe internal-link contract;
+- introduce one shared canonical table presentation used by adapter-backed table templates;
+- keep existing public table block types backward-compatible;
+- update component, web, integration and API contract documentation.
 
 Excluded:
 
-* product-specific filter semantics;
-* BeeAgent, ROP or Bitrix-specific labels and behavior;
-* client-side data filtering;
-* DataTables/List.js integration;
-* arbitrary adapter-provided JavaScript, HTML or CSS;
-* removal of existing public table block types;
-* dependency changes;
-* copying a complete upstream Tabler demo page.
+- product-specific filter semantics;
+- BeeAgent, ROP or Bitrix-specific labels and behavior;
+- client-side data filtering;
+- DataTables/List.js integration;
+- arbitrary adapter-provided JavaScript, HTML or CSS;
+- removal of existing public table block types;
+- dependency changes;
+- copying a complete upstream Tabler demo page.
 
 #### Deliverable
 
 A backward-compatible BeeUI release in which:
 
-* adapter-backed tables share one canonical Tabler presentation;
-* a product can opt into a functional GET toolbar inside `data_table`;
-* pages without an explicit toolbar remain plain tables;
-* standalone `filter_form` remains supported;
-* date-range controls no longer force an Apply button;
-* all active links remain controlled and prefix-aware.
+- adapter-backed tables share one canonical Tabler presentation;
+- a product can opt into a functional GET toolbar inside `data_table`;
+- pages without an explicit toolbar remain plain tables;
+- standalone `filter_form` remains supported;
+- date-range controls no longer force an Apply button;
+- all active links remain controlled and prefix-aware.
 
 #### Acceptance criteria
 
-* A `data_table` can render a functional GET form in the same card as the table and pagination.
-* Date selection and clearing auto-submit the form.
-* Text search submits through the GET form.
-* An ellipsis action immediately after search opens the column chooser.
-* Filter controls use canonical `.btn`, `.dropdown-toggle`, `.dropdown-menu` and `.dropdown-item` structures.
-* Reset uses a standard `.btn`.
-* No inline positioning styles are required for dropdowns.
-* Visible field labels can be omitted without losing `aria-label` or equivalent accessible naming.
-* Apply is rendered only when explicitly requested.
-* Existing standalone `filter_form` payloads remain valid.
-* Existing `data_table` payloads without the new toolbar fields render unchanged.
-* Existing table block types remain supported and use the shared table presentation.
-* Invalid and external href values remain inert.
-* Route prefixes are applied exactly once.
-* No external runtime assets or CDN references are introduced.
-* Light, dark, desktop and mobile presentation remain usable.
+- A `data_table` can render a functional GET form in the same card as the table and pagination.
+- Date selection and clearing auto-submit the form.
+- Text search submits through the GET form.
+- An ellipsis action immediately after search opens the column chooser.
+- Filter controls use canonical `.btn`, `.dropdown-toggle`, `.dropdown-menu` and `.dropdown-item` structures.
+- Reset uses a standard `.btn`.
+- No inline positioning styles are required for dropdowns.
+- Visible field labels can be omitted without losing `aria-label` or equivalent accessible naming.
+- Apply is rendered only when explicitly requested.
+- Existing standalone `filter_form` payloads remain valid.
+- Existing `data_table` payloads without the new toolbar fields render unchanged.
+- Existing table block types remain supported and use the shared table presentation.
+- Invalid and external href values remain inert.
+- Route prefixes are applied exactly once.
+- No external runtime assets or CDN references are introduced.
+- Light, dark, desktop and mobile presentation remain usable.
 
 #### Checks
 
-* `uv run pytest -q`
-* `./start.sh doctor`
-* BeeUI web smoke using the expected local entrypoint
-* normal, empty and malformed toolbar payload tests
-* safe and unsafe href tests
-* route-prefix tests
-* conditional Litepicker asset tests
-* HTML escaping tests
-* visual review in light, dark and responsive layouts
+- `uv run pytest -q`
+- `./start.sh doctor`
+- BeeUI web smoke using the expected local entrypoint
+- normal, empty and malformed toolbar payload tests
+- safe and unsafe href tests
+- route-prefix tests
+- conditional Litepicker asset tests
+- HTML escaping tests
+- visual review in light, dark and responsive layouts
 
 #### Definition of Done
 
-* generic contract and templates implemented;
-* one canonical table presentation is used internally;
-* backward compatibility tests pass;
-* documentation is updated;
-* screenshots or equivalent visual evidence are attached to the PR;
-* `pyproject.toml.version` is not changed by the feature PR;
-* `uv.lock` is unchanged because no dependency change is required.
+- generic contract and templates implemented;
+- one canonical table presentation is used internally;
+- backward compatibility tests pass;
+- documentation is updated;
+- screenshots or equivalent visual evidence are attached to the PR;
+- `pyproject.toml.version` is not changed by the feature PR;
+- `uv.lock` is unchanged because no dependency change is required.
+
+### Итерация 13.12 — Fix the canonical Tabler table toolbar composition
+
+**Status:** PLANNED
+
+#### Goal
+
+Complete the canonical Tabler `data_table` presentation so that the date range, search input, dropdown filter buttons, column chooser, reset action and table are rendered as one coherent functional table card.
+
+#### Context
+
+Iteration 13.11 introduced the public, product-neutral `data_table.toolbar` contract and functional GET controls.
+
+The contract is usable, but the current renderer does not yet produce the intended canonical Tabler table composition:
+
+- the toolbar is rendered as a separate body section rather than as part of the table header;
+- controls can wrap unnecessarily on desktop;
+- the toolbar date range does not fully reuse the canonical BeeUI Datepicker presentation;
+- search, dropdown actions, column chooser and sorting presentation are not yet visually aligned with the shared Tabler table shell;
+- the resulting consumer UI looks like a filter form placed above a table rather than one integrated table component.
+
+This iteration is a corrective completion of Iteration 13.11. It must preserve the existing public component contract and GET behavior.
+
+#### Scope
+
+Included:
+
+- render `data_table` as one canonical Tabler card containing:
+  - table title;
+  - date range control;
+  - search control;
+  - dropdown filter buttons;
+  - column chooser;
+  - reset action;
+  - table;
+  - existing pagination when supplied;
+- place the functional toolbar inside the table card header rather than in a separate `card-body`;
+- keep the toolbar on one line at supported desktop widths when the available space permits;
+- provide controlled responsive wrapping or stacking on narrower screens;
+- render `date_range` through the existing canonical BeeUI Datepicker markup and local assets;
+- preserve automatic GET submission after selecting or clearing a date;
+- render text search as a compact Tabler search control;
+- submit text search through the existing GET form when the user presses Enter;
+- render `checkboxes` toolbar fields as canonical Tabler dropdown buttons;
+- preserve checked state, selected count and supplied `toggle_href` values;
+- render `column_toggles` under a horizontal ellipsis action;
+- position the column chooser immediately after the search control;
+- render Reset as a standard Tabler button;
+- render Apply only when the optional `toolbar.apply` payload is supplied;
+- preserve sortable table headers and existing safe sort links;
+- use the same table shell for populated, empty and degraded table states;
+- add focused renderer, contract, accessibility and responsive regression tests;
+- update BeeUI component and integration documentation.
+
+Excluded:
+
+- changes to the public `data_table.toolbar` payload schema;
+- changes to GET parameter names or submission semantics;
+- new pagination behavior or page-size controls;
+- changes to consumer filtering, sorting or pagination logic;
+- product-specific fields, labels or templates;
+- ROP-specific rendering logic;
+- changes to BeeAgent or other consumers;
+- replacement of the existing Datepicker library;
+- new frontend dependencies;
+- external CDN assets;
+- JavaScript framework adoption;
+- redesign of unrelated BeeUI components.
+
+#### Canonical presentation
+
+The expected desktop composition is:
+
+```text
+┌─────────────────────────────────────────────────────────────────────┐
+│ Table title                                                        │
+│ [Date range] [Search] […] [Filter ▼] [Filter ▼] [Reset]           │
+├─────────────────────────────────────────────────────────────────────┤
+│ Column        Column        Column        Column                    │
+│ Row           Row           Row           Row                       │
+│ Row           Row           Row           Row                       │
+├─────────────────────────────────────────────────────────────────────┤
+│ Existing pagination, when supplied                                 │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+The controls and the table must belong to the same card. The renderer must not emit a standalone filter card or a visually detached toolbar body.
+
+#### Functional contract
+
+The renderer must continue to support the Iteration 13.11 toolbar payload:
+
+- `fields`
+  - `date_range`;
+  - `text`;
+  - `checkboxes`;
+
+- `hidden`;
+- `column_toggles`;
+- `reset`;
+- optional `apply`.
+
+Existing semantics remain unchanged:
+
+- date and search controls submit through GET;
+- hidden inputs preserve consumer-owned query state;
+- dropdown and column choices use supplied safe internal links;
+- Reset uses the supplied safe internal link;
+- Apply is absent unless explicitly supplied;
+- route-prefix resolution and escaping remain owned by BeeUI;
+- GET rendering does not mutate consumer state.
+
+#### Accessibility
+
+- empty visible labels must not remove accessible field names;
+- Datepicker inputs retain accessible start and end labels;
+- search retains an accessible name through its label or placeholder;
+- dropdown buttons expose their purpose and expanded state;
+- the column chooser has a descriptive accessible label;
+- all controls remain keyboard-operable;
+- focus indicators remain visible in light and dark themes;
+- icons are not the sole source of meaning for required actions.
+
+#### Deliverable
+
+BeeUI renders a complete functional Tabler table component in which date selection, text search, dropdown filters, column selection, reset and the table itself form one canonical card.
+
+Existing consumers can adopt the corrected presentation without changing their payload schema or product semantics.
+
+#### Acceptance criteria
+
+- One `data_table` produces one canonical Tabler card.
+- The toolbar is rendered inside the table card header.
+- The table begins directly below the header without a separate toolbar card or detached body section.
+- A `date_range` field renders the canonical BeeUI Datepicker controls.
+- Selecting or clearing either date preserves the existing automatic GET behavior.
+- A text field renders as a compact search control.
+- Pressing Enter in search submits the existing GET form.
+- `checkboxes` fields render as dropdown buttons.
+- Dropdown choices preserve supplied labels, checked state and safe toggle links.
+- `column_toggles` render under a horizontal ellipsis action immediately after search.
+- Reset renders as a standard Tabler button using the supplied safe link.
+- Apply is not rendered when `toolbar.apply` is absent.
+- Apply remains supported when `toolbar.apply` is present.
+- Sorting links and sorting direction remain functional.
+- Existing pagination remains functional and visually attached to the same table card.
+- Populated, empty and degraded tables use the same shell.
+- Desktop controls remain on one line when sufficient width is available.
+- Narrow layouts wrap or stack without horizontal page overflow.
+- Light and dark themes render correctly.
+- No product-specific rendering logic is added.
+- No public component payload contract is broken.
+- No external asset or CDN dependency is introduced.
+- All rendered labels, values and URLs remain escaped and validated through existing BeeUI boundaries.
+
+#### Checks
+
+Automated:
+
+- `uv run pytest -q`
+- targeted `data_table` renderer tests;
+- toolbar field-order tests;
+- Datepicker markup and asset tests;
+- search GET-form tests;
+- dropdown choice and selected-state tests;
+- column chooser placement and link tests;
+- Reset and optional Apply tests;
+- sortable-header regression tests;
+- populated, empty and degraded table tests;
+- route-prefix and safe-link tests;
+- HTML escaping tests;
+- accessibility attribute tests;
+- `git diff --check`;
+- `./start.sh doctor`.
+
+Visual/browser verification:
+
+- date range opens, selects and clears correctly;
+- search is usable and submits on Enter;
+- each dropdown button opens and exposes its choices;
+- checked dropdown choices are visible;
+- the horizontal ellipsis opens the column chooser;
+- column visibility links work;
+- Reset works;
+- the table remains part of the same card;
+- sorting remains usable;
+- light and dark themes;
+- desktop, tablet and mobile widths;
+- no unexpected horizontal page overflow;
+- no external network requests for table or Datepicker assets.
+
+#### Definition of Done
+
+- the Iteration 13.11 public toolbar contract remains compatible;
+- date, search, dropdown actions, column chooser, reset and table render as one canonical Tabler component;
+- Datepicker presentation is reused rather than duplicated;
+- no consumer-specific logic is introduced;
+- no new pagination feature is added;
+- tests, doctor checks and browser verification pass;
+- documentation is synchronized;
+- a BeeAgent ROP Queue payload can render the intended layout without a BeeAgent presentation workaround;
+- the implementation is ready for a BeeUI patch release.
 
 ---
 

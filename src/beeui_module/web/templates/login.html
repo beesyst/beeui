@@ -9,7 +9,7 @@
 try{var d=document.documentElement,c=d.getAttribute('data-beeui-theme-config'),s=window.localStorage.getItem('beeui-theme');if(s!=='system'&&s!=='light'&&s!=='dark'){if(s)window.localStorage.removeItem('beeui-theme');s=null}var m=s||((c==='system'||c==='light'||c==='dark')?c:'system');d.setAttribute('data-bs-theme',m==='system'&&window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':m==='system'?'light':m)}catch(e){}
     </script>
     <link rel="stylesheet" href="{{ route_prefix }}/static/vendor/tabler/css/tabler.min.css?v=4" />
-    <link rel="stylesheet" href="{{ route_prefix }}/static/css/beeui.css?v=4" />
+    <link rel="stylesheet" href="{{ route_prefix }}/static/css/beeui.css?v=5" />
   </head>
   <body class="border-top-wide border-primary d-flex flex-column">
     <div class="page page-center">
