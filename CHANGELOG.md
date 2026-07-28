@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.24.1](https://github.com/beesyst/beeui/compare/beeui-v0.24.0...beeui-v0.24.1) (2026-07-28)
+
+
+### Bug Fixes
+
+* **web:** complete canonical Tabler table toolbar and date range picker ([#98](https://github.com/beesyst/beeui/issues/98)) ([dbe52b6](https://github.com/beesyst/beeui/commit/dbe52b6edb4472ed4ea2bff701ff63b007965cea))
+
 ## [0.24.0](https://github.com/beesyst/beeui/compare/beeui-v0.23.0...beeui-v0.24.0) (2026-07-27)
 
 
