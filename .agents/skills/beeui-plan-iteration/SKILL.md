@@ -1,6 +1,6 @@
 ---
 name: beeui-plan-iteration
-description: Inspect the current BeeUI implementation through Bee Dev MCP, validate the necessity and repository ownership of a bounded task, reconcile docs/ROADMAP.md and public UI contracts, and prepare a copy-ready iteration or standalone task plus complete Issues without modifying repositories.
+description: Inspect the current BeeUI implementation through Bee Dev MCP, critically validate task necessity and repository ownership, reconcile docs/ROADMAP.md and public UI contracts, and prepare a compact roadmap item or standalone task plus complete copy-ready Issues without modifying repositories.
 ---
 
 # BeeUI iteration planning workflow
@@ -9,14 +9,27 @@ description: Inspect the current BeeUI implementation through Bee Dev MCP, valid
 
 Use this workflow when:
 
-- the next BeeUI iteration is not yet approved;
-- an existing roadmap item must be validated or refined;
-- a proposed UI/framework task must be checked against current implementation;
-- an Issue must be prepared from current repository state;
-- BeeUI and product repository contracts require alignment;
-- a product request may require a new reusable BeeUI primitive or renderer.
+* a BeeUI task or product idea has not yet been approved;
+* an existing BeeUI roadmap item must be validated, refined or replaced;
+* proposed framework work may already exist in the current implementation;
+* a product request may require a reusable BeeUI capability;
+* ownership between BeeUI, a product repository and a domain module is unclear;
+* coordinated repository changes may be required;
+* a complete Issue must be prepared from current repository evidence.
 
-Do not use this workflow when a complete Issue has already been approved.
+Do not use this workflow when a complete Issue has already been approved and the task is ready for `.agents/prompts/02-implementation-tests.md`.
+
+Planning must determine:
+
+* what BeeUI already provides;
+* what product-facing gap actually remains;
+* whether BeeUI work is necessary now;
+* whether the requested behavior is generic or product-specific;
+* whether an existing public contract is sufficient;
+* which roadmap owns each increment;
+* which repositories must change;
+* what must remain excluded;
+* what prompt 02 must receive.
 
 This workflow is read-only.
 
@@ -24,207 +37,322 @@ Use only Bee Dev MCP for repository inspection.
 
 Do not:
 
-- modify files;
-- switch branches;
-- run shell or Git commands;
-- run tests;
-- create commits;
-- prepare implementation prompts;
-- prepare verification prompts;
-- prepare a PR body.
+* modify files;
+* switch branches;
+* run shell or Git commands;
+* run tests;
+* create or update Issues;
+* create branches, commits or PRs;
+* prepare implementation, verification, correction or review prompts;
+* prepare PR bodies.
+
+## Repository guidance
+
+Read and follow `AGENTS.md`.
+
+`AGENTS.md` owns stable repository-wide rules, including:
+
+* Bee Dev MCP usage;
+* exact target resolution;
+* complete reading;
+* the `BeeUI renders. Product decides.` boundary;
+* sources of truth;
+* configuration, template and static-asset rules;
+* security and verification requirements;
+* dependency and `uv.lock` restrictions;
+* package and installed-wheel integrity;
+* version restrictions.
+
+Do not repeat all of `AGENTS.md`, `docs/SDLC.md` or `docs/SECURITY.md` in planning output or generated Issues.
+
+This skill owns only:
+
+* the planning decision algorithm;
+* roadmap reconciliation;
+* generic-versus-product ownership decisions;
+* cross-repository sequencing;
+* roadmap and Issue output contracts;
+* the planning handoff.
 
 ## Required inputs
 
-The external prompt `.agents/prompts/01-planning.md` passes:
+The external prompt `.agents/prompts/01-planning.md` provides:
 
-- `MAIN_WORKTREE` — absolute path to the BeeUI worktree;
-- `MODE` — Bee Dev MCP context mode;
-- `ROADMAP_CONTEXT` — known iteration, proposed standalone task or `none`;
-- `TASK_OR_IDEA` — proposed work;
-- `CONTEXT_OR_NONE` — additional context or `none`;
-- `ADDITIONAL_PROJECTS_OR_NONE` — related product repositories or `none`.
+* `MAIN_WORKTREE`;
+* `MODE`;
+* `ROADMAP_CONTEXT`;
+* `TASK_OR_IDEA`;
+* `CONTEXT_OR_NONE`;
+* `ADDITIONAL_PROJECTS_OR_NONE`;
+* declared project;
+* expected branch;
+* base branch.
 
-The external prompt also declares:
+Treat paths, project names, branches, modes and repository roles as exact input values.
 
-- project;
-- expected branch;
-- base branch.
+Pass `MODE` unchanged to applicable Bee Dev MCP calls.
 
-Treat paths, project names and branches as exact input values.
+Do not silently substitute another:
 
-## Workflow gates
+* worktree;
+* repository;
+* branch;
+* roadmap;
+* mode.
 
-Before proposing a task, read every declared task file completely; add and read any additional needed file before relying on it. Current files/contracts are authoritative and reports are supporting evidence. Reconcile work with `docs/ROADMAP.md`, keep it within scope, preserve “BeeUI renders, product decides”, and hand off KISS constraints: no optional polish, unrelated cleanup, speculative architecture, no-code, auth, config apply, standalone service, separate frontend or product-specific generic-renderer logic.
+## Core planning rules
 
-Determine the actual change level, read applicable SDLC/security requirements and derive proportional checks from the changed boundary. Handoffs must require existing test files/helpers where possible, public-behavior coverage, no duplicate or implementation-detail-only tests, no formatting churn, and no first-party code/test comments except legal, license, upstream and provenance material. Without an approved Python dependency change, handoffs must not read or separately validate `uv.lock`; final inventory alone confirms it is absent.
+### Evidence before agreement
 
-## ROADMAP_CONTEXT semantics
+Treat the proposed task, roadmap reference and supplied reports as hypotheses.
 
-Handle three variants.
+Validate material assumptions against current:
 
-### Variant A — Known numbered iteration
+* code;
+* templates;
+* static assets;
+* configuration;
+* public contracts;
+* package declarations;
+* tests;
+* rendered behavior;
+* dirty changes.
+
+Current repository files and public contracts are authoritative.
+
+Reports, screenshots, previous planning outputs and implementation summaries are supporting evidence only.
+
+Do not automatically accept:
+
+* the proposed iteration ID;
+* the proposed stage;
+* the proposed repository;
+* the proposed generic abstraction;
+* the proposed dependency;
+* the proposed solution;
+* the proposed urgency;
+* the assumption that BeeUI must change.
+
+### Critical planning
+
+Answer:
+
+* What reusable capability exists now?
+* What product requirement is not supported?
+* Is the gap generic or product-specific?
+* Is the public BeeUI contract actually insufficient?
+* Is the behavior already implemented?
+* Does an existing roadmap item cover it?
+* Can the product solve it through the current adapter or schema?
+* Would the proposal move product decisions into BeeUI?
+* Is there a smaller complete solution?
+* What should not be built?
+* What should BeeUI prioritize next?
+
+When the user’s framing is wrong:
+
+1. show the mismatch using repository evidence;
+2. preserve the underlying product intent where possible;
+3. correct roadmap, scope, numbering or ownership;
+4. provide a usable corrected planning result.
+
+### KISS
+
+Recommend the smallest reusable change that closes the verified gap.
+
+Avoid:
+
+* optional visual polish;
+* unrelated cleanup;
+* broad refactoring;
+* speculative abstractions;
+* product-specific behavior in generic code;
+* duplicate rendering systems;
+* standalone services;
+* no-code builders;
+* separate frontends;
+* frontend build chains without approved scope;
+* unnecessary browser or Python dependencies;
+* unnecessary cross-repository changes;
+* future work hidden inside current scope.
+
+### Roadmap and Issue separation
+
+The roadmap is a compact iteration-level contract.
+
+The Issue is the detailed execution contract.
+
+Do not turn the roadmap into a full implementation specification.
+
+Do not make the Issue so vague that implementation must repeat planning.
+
+## ROADMAP_CONTEXT
+
+`ROADMAP_CONTEXT` is a hypothesis to validate, not an instruction to approve the referenced item.
+
+### Known numbered iteration
 
 Example:
 
-```text
+```
 Iteration 13.10 in docs/ROADMAP.md
 ```
 
-This is a user-supplied reference that must be validated.
-
-It may describe:
-
-* an existing roadmap item;
-* a proposed next item that has not yet been inserted.
-
 Validate:
 
-* whether `docs/ROADMAP.md` exists;
-* whether the iteration exists;
+* that `docs/ROADMAP.md` exists;
+* that the iteration exists or is a valid proposed insertion;
+* that its ID is unique;
 * its status and current scope;
-* whether the number is unique;
-* whether the insertion point is correct;
-* whether the stage fits the task;
-* whether the task is already implemented;
-* whether an existing item already covers it;
-* whether the roadmap wording is stale relative to implementation.
+* neighbouring completed and unfinished items;
+* whether implementation already delivered it;
+* whether another item covers the work;
+* whether its stage remains correct;
+* whether the wording is stale relative to current contracts.
 
-The absence of a proposed next iteration from the roadmap is not itself an error.
+If the referenced iteration is `DONE`:
 
-If the reference is valid, use it.
+* preserve completed history;
+* never return it to `PLANNED`;
+* never create another item with the same ID;
+* determine whether the request is already implemented;
+* use a new unique ID only for genuine follow-up work.
 
-If it is stale, duplicated, completed, assigned to the wrong stage or inconsistent, explain the correction and select the correct item or insertion point.
+Use decimal numbering only for a direct continuation.
 
-### Variant B — Proposed standalone task
+Use the next appropriate independent ID for independent work.
 
-Example:
+The absence of a proposed item from the roadmap is not itself an error.
 
-```text
-Standalone Fix outside a numbered iteration; validate against current docs/ROADMAP.md
-```
+### Proposed standalone task
 
-Validate that the task is genuinely narrow enough for standalone handling.
+Standalone is appropriate only when the work:
 
-If it creates a substantial reusable component, rendering behavior, public contract, route, schema, API, package asset, dependency or operator workflow, reject the standalone classification and propose a numbered iteration.
+* is narrow and local;
+* creates no substantial reusable capability;
+* introduces no public contract;
+* does not materially change rendering, routes or operator workflow;
+* does not add package assets or dependencies;
+* does not change security or authority boundaries;
+* does not require coordinated product releases.
 
-### Variant C — No known iteration
+Reject standalone classification when the task creates a substantial:
+
+* reusable component;
+* renderer;
+* route or API contract;
+* adapter contract;
+* configuration schema;
+* embedded integration;
+* browser asset;
+* package contract;
+* cross-repository capability.
+
+### No known iteration
 
 Canonical value:
 
-```text
+```
 none
 ```
 
 Determine independently:
 
-* whether a numbered iteration is required;
-* which stage fits;
-* what iteration number should be used;
-* where it belongs;
-* whether an existing item should be reused or refined.
+* whether BeeUI work is required;
+* whether an existing item should be reused;
+* whether unfinished scope should be refined or replaced;
+* whether a new iteration is justified;
+* whether the task is standalone;
+* which stage owns it;
+* which unique ID fits;
+* whether the work should be deferred or rejected.
 
-## Resolve repositories through Bee Dev MCP
+Do not require `unknown`.
 
-Resolve `MAIN_WORKTREE` before planning.
+## Repository resolution and reading
 
-1. Call `list_worktrees` for `beeui`.
-2. Match `MAIN_WORKTREE` by exact absolute path.
-3. Use the returned MCP target.
-4. Call `get_project_context` with the supplied Mode.
-5. Verify:
+Use the exact target-resolution and complete-reading rules from `AGENTS.md`.
 
-   * project;
-   * path;
-   * branch;
-   * HEAD;
-   * dirty state.
+For every declared repository:
 
-For each additional project, repeat exact-path resolution.
+1. resolve the exact absolute worktree path through `list_worktrees`;
+2. use the returned MCP target;
+3. call `get_project_context` with the supplied mode;
+4. verify project, path, branch, HEAD and dirty state.
 
-Do not:
+If the primary worktree cannot be resolved, return:
 
-* infer a target from a branch name;
-* substitute the main worktree for a requested worktree;
-* assume repositories share iteration numbers;
-* execute shell or Git commands.
+```
+PLANNING INCOMPLETE
+```
 
-If the exact worktree cannot be resolved, report the mismatch and stop planning for that target.
+If an additional repository is mandatory for an ownership or contract decision and cannot be resolved, return `PLANNING INCOMPLETE`.
 
-If the actual branch differs from the expected branch, report both and do not prepare an implementation Issue for that target.
+If the actual branch differs from the expected branch:
+
+* report both values;
+* do not prepare an implementation Issue for that target;
+* continue only with read-only analysis that remains valid.
 
 A dirty worktree is not automatically a blocker.
 
-When dirty changes affect relevant:
-
-* ROADMAPs;
-* architecture;
-* contracts;
-* implementation;
-* configuration;
-* dependencies;
-
-inspect the current MCP snapshot and distinguish:
+When dirty work affects planning, distinguish:
 
 * committed state;
 * staged changes;
 * unstaged changes;
-* untracked files.
+* untracked files;
+* deleted or renamed files.
 
-Do not represent uncommitted content as merged project history.
+Do not present uncommitted work as merged history.
 
-## Complete reading rule
+Do not base a decision on truncated, omitted or partial mandatory content.
 
-Repository inspection is incomplete while required content is truncated, omitted or has continuation metadata.
+If mandatory evidence cannot be retrieved, return:
 
-For files:
-
-* continue with the exact `next_line` and `next_column`;
-* finish only when both are null.
-
-For manifests or bundles when required:
-
-* continue with the exact `next_cursor`;
-* finish only when `has_more=false`;
-* require one consistent snapshot.
-
-Read omitted relevant files directly.
-
-If mandatory information cannot be retrieved, return:
-
-```text
+```
 PLANNING INCOMPLETE
 ```
 
-Explain exactly what could not be inspected.
+State what is missing and which decision cannot be made.
 
-Do not invent repository facts.
-
-## Targeted discovery
+## Discovery workflow
 
 Use this sequence:
 
-1. Identify the task type.
-2. Inspect repository and dirty state.
-3. Read the relevant ROADMAP section.
-4. Read process and security rules.
-5. Read relevant public contracts.
-6. Inspect current implementation and tests.
-7. Compare neighbouring completed and planned items.
-8. Inspect additional repositories only to the depth required by their declared role.
-9. Determine repository ownership.
-10. Determine whether companion repository changes are necessary.
+1. parse `TASK_OR_IDEA`;
+2. resolve declared worktrees;
+3. inspect relevant dirty state;
+4. read the referenced roadmap item and neighbours;
+5. read repository guidance and applicable process/security rules;
+6. inspect relevant BeeUI public contracts;
+7. inspect current implementation and tests;
+8. inspect package, template and static-asset behavior when relevant;
+9. inspect the product-side adapter, read-model or integration contract when supplied;
+10. compare roadmap, implementation, contracts and rendered behavior;
+11. identify the actual gap;
+12. determine generic, product and domain ownership;
+13. determine whether companion repository changes are necessary;
+14. assess necessity and timing;
+15. select the planning decision;
+16. prepare roadmap output, Issues and handoff.
+
+Do not read repositories indiscriminately.
+
+## Required inspection
 
 Read at minimum in BeeUI:
 
 * `AGENTS.md`;
 * `docs/ROADMAP.md`;
+* the relevant neighbouring roadmap items;
 * `docs/SDLC.md`;
 * `docs/SECURITY.md`;
 * `.github/ISSUE_TEMPLATE/issue.md`;
 * relevant implementation;
 * relevant tests.
 
-When relevant, also inspect:
+Read as applicable:
 
 * `README.ru.md`;
 * `docs/DEV_GUIDE.md`;
@@ -238,165 +366,233 @@ When relevant, also inspect:
 * `config/schema.yml`;
 * `pyproject.toml`;
 * package-data declarations;
-* templates and static assets.
+* app factory and route surfaces;
+* adapter protocol;
+* component models and renderers;
+* templates;
+* JavaScript and CSS assets;
+* auth, session and CSRF transport;
+* packaging and installed-package tests.
 
-For cross-repository requests, inspect in the product repository only:
+For a product repository supplied as additional context, inspect only what is required to determine:
 
-* repository guidance;
-* relevant roadmap;
-* public UI integration contracts;
-* adapter/read-model contract;
-* relevant dependency declaration;
-* current product implementation demonstrating the gap.
+* the product requirement;
+* current adapter or read-model behavior;
+* current BeeUI dependency;
+* public integration contract;
+* whether the gap can be solved product-side;
+* whether product-side changes are also required.
 
-The presence of a product repository in additional projects does not authorize planning changes there.
+An additional repository is contract-only until a required implementation change is proven.
 
-Treat it as contract context unless a product-side change is proven necessary.
+## Current state and actual gap
 
-## Primary roadmap
+Determine:
 
-The primary BeeUI roadmap is:
+* highest completed relevant BeeUI iteration;
+* neighbouring `DONE`, `PLANNED`, `FUTURE` and deferred work;
+* current stage direction;
+* active public contracts;
+* reusable components already available;
+* route, prefix and embedded behavior;
+* current package and static-asset behavior;
+* known blockers and deferred limitations;
+* implementation-roadmap drift;
+* whether the task is already implemented;
+* whether another item covers it;
+* whether product usage is behind the current BeeUI contract.
 
-```text
+Roadmap status is not implementation evidence.
+
+Classify relevant drift as:
+
+```
+implementation ahead of roadmap
+roadmap ahead of implementation
+product integration behind BeeUI
+stale future scope
+duplicated scope
+duplicated iteration ID
+completed-history documentation debt
+blocking public-contract gap
+intentional sequencing difference
+separate follow-up
+```
+
+Do not create a BeeUI feature solely to compensate for:
+
+* stale documentation;
+* incorrect product integration;
+* unused existing adapter capabilities;
+* product-specific data-shaping problems.
+
+State the verified gap using:
+
+* current behavior;
+* required behavior;
+* evidence of absence or insufficiency;
+* affected public contract;
+* product or operator impact;
+* why it matters now.
+
+Separate real gaps from:
+
+* documentation drift;
+* local defects;
+* product adapter defects;
+* contract mismatches;
+* optional polish;
+* future ideas.
+
+## Necessity verdict
+
+Return exactly one:
+
+```
+necessary now
+necessary after prerequisite
+useful but defer
+already covered
+already implemented
+product-side only
+standalone maintenance
+not justified
+```
+
+Consider:
+
+* reusable value across products;
+* current product demand;
+* roadmap direction;
+* prerequisite readiness;
+* existing public contracts;
+* compatibility burden;
+* package and browser-asset cost;
+* security impact;
+* cross-repository release cost;
+* whether one focused increment can deliver it.
+
+Do not approve BeeUI work only because it could be generalized.
+
+Provide concise evidence-based project-development advice when useful.
+
+## Roadmap ownership
+
+### BeeUI roadmap
+
+Use:
+
+```
 docs/ROADMAP.md
 ```
 
-Use it when the result concerns:
+when the main result is a reusable product-neutral capability, such as:
 
 * generic rendering;
-* layout or reusable blocks;
-* templates or static assets;
-* component primitives;
-* route or API framework behavior;
-* schema/config validation;
+* reusable layout or component behavior;
+* template or static-asset infrastructure;
+* generic HTML or JSON routes;
+* route-prefix or embedded-mount behavior;
 * adapter protocol;
-* embedded app or mount contract;
-* artifact presentation;
-* generic auth/session/CSRF transport;
-* locale or theme framework behavior;
-* package-level browser assets;
-* generic operator UX.
+* generic configuration schema;
+* generic API envelope;
+* artifact presentation framework;
+* generic authentication, session or CSRF transport;
+* locale or theme framework;
+* package or installed-wheel behavior;
+* generic degraded, empty or error states.
 
-Product-specific requirements remain in the product repository roadmap even when a reusable BeeUI change is required.
+### Product roadmap
 
-A product requirement and a reusable BeeUI implementation may therefore require coordinated but separate Issues.
+Keep the product requirement in the product repository roadmap when it concerns:
 
-## Repository ownership decision
-
-### BeeUI ownership
-
-A task belongs in BeeUI when it creates or changes a reusable, product-neutral capability such as:
-
-* generic component or layout primitive;
-* generic renderer;
-* reusable template;
-* generic route or API envelope;
-* adapter protocol;
-* embedded integration mechanism;
-* safe internal-link behavior;
-* locale/theme framework behavior;
-* package-local static asset;
-* generic artifact browser behavior;
-* generic transport security boundary.
-
-### Product repository ownership
-
-A task belongs in the product repository when it concerns:
-
-* production adapter implementation;
-* product read-model;
+* product read-models;
 * product labels and metrics;
-* product navigation composition;
-* domain-specific query/filter semantics;
-* product artifact allowlist;
-* product configuration semantics;
-* product actions or authority;
+* navigation composition;
+* product query or filter semantics;
+* artifact allowlists;
+* product configuration;
+* product actions and authority;
+* product charts or table data;
 * runtime integration;
-* product-specific charts or table data.
+* product-specific widget payloads.
 
-### Domain repository ownership
+A product requirement may need:
 
-A task belongs in a domain module when it concerns:
+* one product roadmap item;
+* one reusable BeeUI roadmap item;
+* separate coordinated Issues.
+
+### Domain roadmap
+
+Use the domain repository roadmap for:
 
 * taxonomy;
 * classification;
 * business rules;
 * domain validation;
-* domain AI eligibility;
 * domain fixtures;
-* domain recommendations.
+* domain AI contracts;
+* domain recommendations and summaries.
 
-### Forbidden ownership shifts
+Do not move domain behavior into BeeUI or the product adapter.
+
+## Repository ownership
+
+Apply the full architecture boundary from `AGENTS.md`.
+
+Verify that:
+
+### BeeUI owns
+
+* generic rendering and layouts;
+* reusable product-neutral components;
+* templates and package-local assets;
+* generic route and API mechanisms;
+* generic configuration and adapter schemas;
+* route-prefix and embedded integration;
+* generic auth, role, session and CSRF transport;
+* safe-link, path and escaping behavior;
+* generic degraded and unavailable states;
+* package and installed-wheel integrity.
+
+### Product repositories own
+
+* product semantics;
+* production adapters;
+* read-model construction;
+* labels, metrics and calculations;
+* product configuration;
+* artifacts and allowlists;
+* actions and authority;
+* callbacks, audit and mutations;
+* runtime and external-system integration.
+
+### Domain modules own
+
+* domain models and taxonomy;
+* classification and business rules;
+* domain fixtures and validation;
+* domain summaries, recommendations and AI contracts.
 
 Do not:
 
-* move product semantics into BeeUI;
-* move generic rendering into product-owned templates;
+* put product semantics in generic BeeUI code;
+* add production product adapters to BeeUI;
+* import private product or domain internals;
+* infer semantics from product route names;
 * make BeeUI read product storage directly;
-* make the product duplicate BeeUI templates/static primitives;
-* combine independent repository implementations in one Issue.
+* duplicate product calculations;
+* put business decisions in templates or JavaScript;
+* duplicate BeeUI rendering in product templates;
+* create a second source of truth;
+* combine independent repository changes in one Issue.
 
-## Establish current state
+## Planning decision
 
-Determine:
+Choose exactly one:
 
-* highest completed relevant iteration;
-* neighbouring `DONE`, `PLANNED`, `FUTURE` and deferred work;
-* current stage direction;
-* implementation ahead of or behind roadmap wording;
-* active public contracts;
-* current package/static behavior;
-* known blockers;
-* whether `ROADMAP_CONTEXT` is accurate;
-* whether the proposed task already exists;
-* whether a planned item already covers it.
-
-Report roadmap inconsistencies explicitly.
-
-Do not silently rewrite completed history.
-
-## Decide whether an iteration is justified
-
-### Numbered iteration
-
-A numbered iteration is normally required when the task substantially changes:
-
-* operator or user workflow;
-* reusable UI component;
-* generic renderer;
-* route or API behavior;
-* schema or configuration contract;
-* adapter protocol;
-* package template or static asset contract;
-* browser-executed dependency;
-* security or authority boundary;
-* cross-repository integration;
-* locale or theme behavior;
-* artifact presentation;
-* package or wheel integrity;
-* a testable reusable BeeUI capability.
-
-Documentation should normally accompany the technical increment.
-
-### Standalone task
-
-Standalone is appropriate for genuinely small work such as:
-
-* typo;
-* formatting;
-* narrow documentation correction;
-* local bugfix without public contract impact;
-* repository housekeeping;
-* small test correction;
-* small packaging correction with no new behavior.
-
-A standalone task has no iteration number.
-
-### Decision values
-
-Choose one:
-
-```text
+```
 reuse
 refine
 replace
@@ -405,103 +601,163 @@ standalone
 reject as unnecessary
 ```
 
-Meanings:
+### Reuse
 
-* `reuse` — an existing item already covers the task;
-* `refine` — an existing item needs clearer bounded wording;
-* `replace` — stale future scope should be replaced;
-* `insert` — a new numbered item is justified;
-* `standalone` — the work is genuinely outside numbered product flow;
-* `reject as unnecessary` — no implementation task is justified.
+Use when an unfinished item already covers the verified task without material changes.
 
-Justify the decision with repository evidence.
+Identify the exact roadmap, stage and iteration.
 
-## Approval criteria
+Do not generate duplicate roadmap wording.
 
-Approve an iteration only when it:
+### Refine
 
-* closes a current gap;
-* is not already implemented;
-* has one coherent deliverable;
-* respects BeeUI/product/domain ownership;
-* has observable Acceptance Criteria;
-* identifies a source of truth;
-* records compatibility requirements;
-* fits one focused BeeUI PR or an explicitly coordinated repository sequence.
+Use when an unfinished item is correct in direction but needs clearer:
 
-Reject or revise proposals that:
+* scope;
+* generic boundary;
+* exclusions;
+* compatibility;
+* acceptance criteria;
+* checks;
+* sequencing.
 
-* duplicate current behavior;
-* mix independent features;
-* add product logic to BeeUI;
-* add generic rendering to product-owned templates;
-* introduce speculative architecture;
-* create a second source of truth;
-* depend on an undefined contract without assigning ownership;
-* combine unrelated repositories in one Issue.
+Do not refine completed history.
 
-## Evaluate solution options
+### Replace
 
-When multiple valid boundaries exist, provide no more than three options.
+Use when unfinished future scope is stale, duplicated or based on an incorrect BeeUI/product boundary.
 
-For each state:
+Show:
 
-* repository ownership;
-* implementation outline;
-* advantages;
-* disadvantages;
+* the item being replaced;
+* why it is stale;
+* replacement wording;
+* downstream impact.
+
+### Insert
+
+Use when no current item covers a verified reusable gap.
+
+A new item must:
+
+* close a current gap;
+* create one coherent reusable deliverable;
+* remain product-neutral;
+* preserve compatibility or explicitly define change;
+* have observable acceptance criteria;
+* fit one focused BeeUI Issue;
+* match the current roadmap direction.
+
+### Standalone
+
+Use only for genuinely small maintenance outside numbered product flow.
+
+### Reject as unnecessary
+
+Use when:
+
+* the capability already exists;
+* another item covers it;
+* the gap is product-side only;
+* the proposal duplicates a contract or renderer;
+* the abstraction is premature;
+* no reusable BeeUI responsibility remains.
+
+Explain the simpler product-side or existing-contract alternative where applicable.
+
+## Iteration versus standalone
+
+A numbered iteration is normally required for substantial changes to:
+
+* reusable UI components;
+* generic renderers;
+* route or API behavior;
+* configuration schema;
+* adapter protocol;
+* embedded or route-prefix behavior;
+* package templates or static assets;
+* browser-executed dependencies;
+* security or authority transport;
+* locale or theme behavior;
+* artifact presentation;
+* package or wheel integrity;
+* cross-repository public contracts;
+* another testable reusable capability.
+
+Standalone is normally appropriate for:
+
+* typo or formatting fixes;
+* narrow documentation alignment;
+* small test corrections;
+* repository housekeeping;
+* narrow local bugs without public-contract impact;
+* small skill maintenance;
+* small packaging corrections without new behavior.
+
+Documentation normally accompanies technical work rather than becoming a separate iteration.
+
+## Solution options
+
+Present no more than three materially valid options.
+
+For each option state:
+
+* BeeUI, product and domain ownership;
+* implementation boundary;
+* contracts reused or changed;
+* advantages and disadvantages;
 * compatibility impact;
-* dependency or release impact.
+* dependency and release impact;
+* principal risk.
 
-Recommend one option using:
+Recommend one using:
 
-* KISS;
-* current public contracts;
-* smallest complete change;
-* no duplicate source of truth;
+* smallest complete reusable change;
+* strongest reuse of current contracts;
+* correct BeeUI/product boundary;
+* no second source of truth;
 * no product-specific generic code;
-* minimum cross-repository coupling.
+* minimum coupling and migration;
+* proportionate verification;
+* no speculative architecture.
 
-Do not create artificial alternatives.
+Do not manufacture alternatives.
 
-## Roadmap reconciliation
+If one valid bounded solution exists, state that directly.
 
-Before creating a new iteration:
+## Roadmap reconciliation and numbering
 
-1. Identify neighbouring completed and future items.
-2. Check whether an existing item already covers the scope.
-3. Detect stale or contradictory future wording.
-4. Determine the correct stage.
-5. Determine the insertion point.
-6. Verify iteration ID uniqueness.
-7. Check references and dependencies.
-8. Decide whether future items require refinement or retirement.
+Before changing `docs/ROADMAP.md`:
 
-Do not automatically append to the end of the file.
-
-Do not renumber completed history.
-
-## Iteration numbering
-
-Use minimally disruptive numbering.
+1. inspect the referenced item;
+2. inspect neighbouring completed and unfinished items;
+3. check overlapping and duplicate scope;
+4. check duplicate IDs;
+5. compare implementation with roadmap claims;
+6. select the correct stage and insertion point;
+7. preserve completed history;
+8. decide whether unfinished items need refinement, retirement or renumbering;
+9. check references and dependencies.
 
 Rules:
 
-1. Never renumber `DONE` items.
-2. Never change completed iteration IDs.
-3. A direct follow-up may use decimal numbering such as `13.10`.
-4. Do not force decimal numbering for an independent increment.
-5. A standalone task has no iteration number.
-6. Renumber only not-completed items when unavoidable.
-7. Prefer retiring stale future scope over mass renumbering when references may exist.
-8. Do not create duplicate IDs.
-9. Show exact renumbering or retirement mapping when required.
+* never change or renumber `DONE` IDs;
+* never reuse a completed ID;
+* never leave duplicate IDs;
+* use decimal numbering only for direct continuation;
+* use the next suitable whole number for independent work;
+* renumber unfinished items only when unavoidable;
+* prefer retiring stale future scope over mass renumbering;
+* do not synchronize IDs with product repositories;
+* show an exact retirement or renumbering map when required.
+
+Do not automatically append to the end of the roadmap.
 
 ## Cross-repository planning
 
-When more than one repository requires implementation:
+Use:
 
-```text
+```
 one implementation repository
 = one Issue
 = one target worktree
@@ -509,318 +765,316 @@ one implementation repository
 = one PR
 ```
 
-A single product requirement may therefore require:
+A product requirement may therefore require:
 
 * one BeeUI Issue for reusable framework behavior;
-* one product Issue for adapter/read-model integration.
+* one product Issue for adapter, read-model or dependency integration.
 
-Specify:
+For every implementation target define:
 
+* repository responsibility;
 * public contract;
-* ownership;
 * dependency direction;
-* implementation order;
-* merge order;
-* release/dependency update sequence;
-* compatibility requirements.
+* prerequisites;
+* implementation and merge order;
+* release or dependency-update order;
+* compatibility requirements;
+* verification and completion condition.
 
-Do not synchronize iteration numbers across repositories.
+Do not assign product work merely because a product repository was supplied.
 
-Synchronize contracts and release order instead.
+Do not assign BeeUI work until the current public contract is proven insufficient.
 
-Run:
+When a product consumes a BeeUI change:
 
-```text
-.agents/prompts/02-implementation-tests.md
-```
+1. implement and verify BeeUI;
+2. merge BeeUI;
+3. make an approved BeeUI revision available;
+4. update the product to an actually available version or revision;
+5. update product dependency files only inside the approved product Issue;
+6. run product integration and route/browser smoke.
 
-separately for every implementation repository.
+Do not invent a future BeeUI version.
+
+Run `.agents/prompts/02-implementation-tests.md` separately for every repository Issue.
 
 ## Implementation plan
 
-For every implementation target, specify:
+For each implementation target provide:
 
-* repository;
-* primary responsibility;
-* existing implementation to reuse;
-* confirmed files or layers likely to change;
-* public contracts to add or change;
+* repository and responsibility;
+* current implementation to reuse;
+* verified layers likely to change;
+* behavior and public contracts to change;
+* source of truth;
 * configuration impact;
+* route, API, component or adapter impact;
+* template, static or package impact;
 * dependency impact;
-* static/package impact;
-* expected artifacts or outputs;
-* backward compatibility;
-* security constraints;
-* tests;
-* route/browser smoke;
+* compatibility requirements;
+* security and authority constraints;
+* automated scenarios;
+* route, browser or package smoke;
 * documentation;
 * implementation order;
 * completion criteria.
 
-Do not invent exact paths without repository evidence.
+Do not invent exact file paths.
 
-When the exact file is uncertain, name the confirmed layer and state that the concrete location must be verified by the implementation executor.
+When a file is unconfirmed, name the verified layer and require the executor to confirm the concrete location.
 
-## Define the iteration or standalone task
+Do not turn the plan into an executor prompt.
 
-Provide the planning result in Russian.
+## Roadmap output contract
 
-### Numbered iteration
+For a numbered item, provide a compact copy-ready fragment with exactly these iteration headings:
 
-Include:
+```
+Goal
+Scope
+Excluded
+Deliverable
+Acceptance criteria
+Checks
+DoD
+```
 
-* iteration number and title;
-* exact roadmap file;
-* stage;
-* status `PLANNED`;
-* goal;
-* why it is needed now;
-* dependencies;
-* included scope;
-* excluded scope;
-* deliverable;
-* source of truth;
-* repository ownership;
-* configuration and contract impact;
-* package/static impact;
-* change level;
-* required checks;
-* Definition of Done.
+Use this form:
 
-Produce a copy-ready roadmap fragment matching local style.
+```
+## Этап <номер> — <English stage title>
 
-The fragment must include:
+### Итерация <ID> — <English iteration title>
 
-* scope;
-* deliverable;
-* contracts;
-* security;
-* tests;
-* documentation;
-* Acceptance Criteria;
-* non-goals.
+**Статус:** PLANNED
 
-### Standalone task
+#### Goal
+
+<Russian content>
+
+#### Scope
+
+<Russian content>
+
+#### Excluded
+
+<Russian content>
+
+#### Deliverable
+
+<Russian content>
+
+#### Acceptance criteria
+
+<Russian content>
+
+#### Checks
+
+<Russian content>
+
+#### DoD
+
+<Russian content>
+```
+
+Rules:
+
+* stage and iteration titles are English;
+* body is Russian;
+* technical identifiers remain unchanged;
+* include only iteration-level information;
+* move implementation detail into the Issue;
+* target 40–60 lines;
+* absolute maximum 80 lines;
+* do not add extra iteration headings;
+* do not repeat an existing stage heading when only an iteration block must be inserted.
+
+For `reuse`, do not generate a duplicate fragment.
+
+For `refine` or `replace`, provide the complete replacement fragment.
+
+For `reject as unnecessary`, provide no fake iteration.
+
+## Standalone output contract
+
+For standalone work provide:
+
+```
+Title:
+Classification: standalone
+Reason:
+Scope:
+Excluded:
+Deliverable:
+Checks:
+DoD:
+Roadmap insertion required: no
+```
+
+Use Russian except for technical identifiers.
 
 Do not invent an iteration number.
 
-Include:
+## Issue preparation
 
-* title;
-* standalone classification;
-* reason;
-* included and excluded scope;
-* deliverable;
-* repository ownership;
-* contract/config impact;
-* change level;
-* checks;
-* Definition of Done.
+Prepare one complete Issue in English per implementation repository.
 
-Do not produce a fake roadmap fragment.
+Read and follow the target repository’s actual:
 
-### Reuse, refine, replace or reject
-
-Identify the exact existing item.
-
-Provide replacement wording only when roadmap wording must change.
-
-Do not create a duplicate iteration.
-
-## Prepare complete Issues
-
-For every implementation target, produce one complete copy-ready Issue in English.
-
-Use the target repository Issue template.
-
-For BeeUI use:
-
-```text
+```
 .github/ISSUE_TEMPLATE/issue.md
 ```
 
-Each Issue must include:
+Rules:
 
-* title;
-* summary;
-* type;
-* exact iteration or standalone classification;
-* exact stage when applicable;
-* context and current limitation;
-* repository scope;
-* included scope;
-* excluded scope;
+* preserve the actual heading order;
+* fill all relevant sections;
+* use the actual roadmap file;
+* use observable and testable requirements;
+* keep Issue scope aligned with the roadmap;
+* do not duplicate stable rules from `AGENTS.md`;
+* include only task-specific constraints.
+
+For standalone work state:
+
+```
+Iteration: none
+```
+
+The Issue must cover as applicable:
+
+* current limitation and why now;
+* repository ownership;
+* included and excluded scope;
 * deliverable;
-* implementation requirements;
 * source of truth;
 * public contracts;
-* config impact;
-* route/API/component impact;
-* template/static/package impact;
-* security constraints;
-* backward compatibility;
-* tests;
-* smoke checks;
+* configuration impact;
+* route, API, component or adapter impact;
+* template, static and package impact;
+* dependency impact;
+* compatibility requirements;
+* security and authority constraints;
+* automated tests;
+* route, browser and package smoke;
 * documentation;
+* dependencies and sequencing;
 * Acceptance Criteria;
-* dependencies;
-* implementation evidence;
-* Definition of Done.
+* Definition of Done;
+* `version not changed`.
 
-Use observable requirements.
+Do not use vague requirements such as:
 
-Do not use vague phrases such as:
-
-```text
+```
 implement as needed
 update relevant tests
 follow best practices
+handle edge cases
+make it robust
 ```
 
-The Issue and roadmap fragment must align.
+### BeeUI-specific Issue decisions
 
-When multiple Issues are required, label them by repository and execution order.
-
-## Issue-specific BeeUI requirements
-
-When relevant, explicitly state:
+When applicable, explicitly state:
 
 * whether product-specific logic is forbidden;
 * whether product imports are forbidden;
 * whether GET routes remain read-only;
 * whether route-prefix compatibility is required;
-* whether embedded mount compatibility is required;
-* whether templates/static files must be package-local;
+* whether embedded-mount compatibility is required;
+* whether API envelopes remain compatible;
+* whether invalid configuration fails fast;
+* whether malformed optional adapter data degrades safely;
+* whether autoescape and safe internal links must be preserved;
+* whether templates and static assets remain package-local;
 * whether installed-package or wheel verification is required;
-* whether a new dependency or vendored asset is allowed;
-* whether `uv.lock` may change;
-* whether API envelopes remain backward-compatible;
-* whether config invalid values fail fast;
-* whether malformed adapter payloads degrade safely;
-* whether HTML autoescape and safe internal links must be preserved.
+* whether external network references are forbidden;
+* whether a dependency or vendored asset change is approved;
+* whether dependency files may change.
 
-## Change level and checks
+Determine the expected change level from current SDLC and security rules:
 
-Determine the actual expected change level:
-
-* `low-risk`;
-* `runtime-risk`;
-* `security-sensitive`.
-
-Use `docs/SDLC.md` and `docs/SECURITY.md`.
-
-Define required checks, as applicable:
-
-* targeted tests;
-* `uv run pytest -q`;
-* `uv run pytest -q -W error::UserWarning`;
-* `./start.sh doctor`;
-* `./start.sh routes`;
-* web smoke;
-* affected HTML/API routes;
-* route-prefix smoke;
-* embedded mount smoke;
-* malformed input;
-* safe-link validation;
-* HTML escaping;
-* no-mutation checks;
-* package template/static integrity;
-* SAST;
-* SCA;
-* DAST;
-* IAST;
-* bounded fuzzing.
-
-Do not require every security tool for every task.
-
-Explain why checks are applicable or not applicable.
-
-## Dependencies and release sequencing
-
-When BeeUI changes are consumed by a product:
-
-1. implement BeeUI in its own branch;
-2. merge BeeUI;
-3. publish or otherwise make the approved BeeUI version available;
-4. update the product dependency;
-5. update the product lockfile only as part of that approved product Issue;
-6. run product integration tests and smoke.
-
-Do not use editable local paths as final dependency evidence unless explicitly approved for development-only verification.
-
-Do not invent a future release number.
-
-During planning, state that the product lower bound must be set to the actual released BeeUI version.
-
-## Executor complexity notes
-
-Record only task-specific factors affecting later executor selection:
-
-* number of BeeUI layers;
-* security sensitivity;
-* browser-executed code;
-* dependency or vendored asset changes;
-* package integrity;
-* cross-repository release sequencing;
-* migration complexity.
-
-Do not select the executor during planning.
-
-Executor selection belongs to:
-
-```text
-.agents/prompts/02-implementation-tests.md
+```
+low-risk
+runtime-risk
+security-sensitive
 ```
 
-## Task-specific implementation constraints
+Require only checks proportional to the approved boundary.
 
-Identify only constraints that must be passed to implementation, for example:
+Never require:
 
-* repository ownership;
-* required public contract;
-* compatibility;
-* source of truth;
-* forbidden product logic;
-* merge and release order;
-* dependency restrictions;
-* package/static requirements;
-* authority restrictions;
-* version restrictions.
-
-Do not prepare an implementation prompt.
-
-## Task-specific verification constraints
-
-Define:
-
-* change level;
-* targeted scenarios;
-* compatibility checks;
-* route/browser smoke;
-* package integrity;
-* artifact/log checks;
-* security checks;
-* cross-repository contract checks;
-* dependency/version checks;
-* forbidden mutation, leakage and external-network checks.
-
-Do not prepare a verification prompt.
-
-## Naming
-
-For each implementation target provide:
-
-* repository;
-* branch name;
-* Conventional Commit title.
-
-Use repository conventions.
+```
+uv lock --check
+```
 
 Do not propose a version bump unless the task is explicitly release-related.
 
-For ordinary work require:
+## Planning handoff constraints
 
-```text
+Provide concise task-specific implementation constraints, including only applicable:
+
+* generic versus product ownership;
+* current implementation to reuse;
+* required public contract;
+* source of truth;
+* compatibility;
+* forbidden product logic or imports;
+* route-prefix and embedded behavior;
+* configuration and adapter behavior;
+* template, static and package requirements;
+* dependency restrictions;
+* external-network restrictions;
+* merge and release order;
+* version restriction;
+* dirty-worktree reconciliation.
+
+Provide concise task-specific verification constraints, including only applicable:
+
+* expected change level;
+* Acceptance Criteria scenarios;
+* targeted and full tests;
+* HTML and JSON route smoke;
+* route-prefix or embedded smoke;
+* browser behavior;
+* malformed config or adapter input;
+* autoescape and safe-link checks;
+* read-only and no-mutation checks;
+* package or wheel integrity;
+* static-asset provenance;
+* external-network checks;
+* dependency status;
+* cross-repository contract checks.
+
+Do not prepare implementation, verification or correction prompts.
+
+Record only material executor complexity factors:
+
+* number of repositories;
+* number of BeeUI layers;
+* browser-executed code;
+* security sensitivity;
+* dependency or vendored-asset changes;
+* package integrity;
+* compatibility or migration;
+* cross-repository release sequencing.
+
+Do not select Copilot or Codex.
+
+## Naming
+
+For each implementation repository provide:
+
+* recommended branch name;
+* recommended Conventional Commit title.
+
+Follow current repository conventions.
+
+Do not propose commit operations, push commands, tags or invented release numbers.
+
+For ordinary work state:
+
+```
 version not changed
 ```
 
@@ -839,101 +1093,104 @@ Do not prepare:
 * final-review prompts;
 * PR bodies.
 
-Implementation prompt preparation belongs to:
+Implementation and verification prompt preparation belongs to:
 
-```text
+```
 .agents/prompts/02-implementation-tests.md
 ```
 
-Final read-only review belongs to:
+Final read-only review and PR preparation belongs to:
 
-```text
+```
 .agents/prompts/03-final-review.md
 ```
 
 ## Output format
 
-Return:
+Return these sections in order:
 
-```text
+```
 ## Executive verdict
-
 ## Repository state
-
 ## Current implementation and contracts
-
 ## Roadmap selection
-
 ## Roadmap reconciliation
-
 ## Necessity verdict
-
 ## Architecture and repository ownership
-
+## Solution options and recommendation
 ## Implementation plan
-
 ## Iteration numbering and insertion
-
 ## Copy-ready roadmap iteration or standalone task
-
 ## Copy-ready Issue
 ```
 
-For multiple Issues use:
-
-```text
-## Copy-ready Issues
-```
+Use `## Copy-ready Issues` when more than one repository requires implementation.
 
 Then return:
 
-```text
+```
 ## Implementation order
-
 ## Verification and security
-
 ## Branch and commit naming
-
+## Project-development recommendations
 ## Planning handoff
 ```
 
-Add only when needed:
+Add `## Assumptions or blockers` only when necessary.
 
-```text
-## Assumptions or blockers
-```
+Write:
+
+* planning analysis in Russian;
+* roadmap body in Russian;
+* roadmap stage and iteration titles in English;
+* Issues in English;
+* technical identifiers unchanged.
+
+Keep analysis concise.
+
+Do not repeat the same evidence across sections.
+
+Do not claim Bee Dev MCP ran tests.
 
 ## Planning handoff
 
 Return:
 
-```text
+```
 Primary product repository:
 Primary roadmap:
 Stage:
 Iteration:
 Decision:
+Necessity verdict:
 Implementation targets:
 Issue count:
 Execution order:
 Required separate prompt-02 runs:
+Source of truth:
+Public contracts:
+Compatibility requirements:
 Task-specific implementation constraints:
 Task-specific verification constraints:
+Executor complexity factors:
+Version status:
 ```
 
 For standalone work:
 
-```text
+```
 Iteration: none
 ```
 
-For rejected work:
+For rejected or product-side-only work with no BeeUI implementation:
 
-```text
+```
 Implementation targets: none
 Issue count: 0
 Required separate prompt-02 runs: 0
 ```
+
+When more than one repository must change, list implementation targets in execution order.
 
 Do not create:
 
@@ -942,6 +1199,7 @@ Do not create:
 * automatic roadmap edits;
 * automatic Issues;
 * branches;
-* commits.
+* commits;
+* PRs.
 
 Do not modify or execute anything.

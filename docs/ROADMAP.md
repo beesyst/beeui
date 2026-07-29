@@ -129,6 +129,29 @@ ROADMAP не дублирует полные правила процесса и 
 - **DONE** — завершено
 - **DONE (partial)** — завершено частично, есть осознанные ограничения
 - **FUTURE** — намеренно отложено до стабилизации базовых контрактов
+- **RETIRED** — запланированный item снят как superseded, уже покрытый фактической интеграцией или потерявший самостоятельную ценность; ID не переиспользуется
+
+## Roadmap item format
+
+Исторические итерации со статусом `DONE` сохраняют существующую структуру и не переписываются только ради унификации.
+
+Новые итерации, а также materially refined `PLANNED`, `IN PROGRESS` и `FUTURE` items используют компактную структуру:
+
+- `Goal`
+- `Depends on`, если есть реальные prerequisites
+- `Change level`
+- `Scope`
+- `Excluded`
+- `Deliverable`
+- `Acceptance criteria`
+- `Checks`
+- `DoD`
+
+ROADMAP фиксирует iteration-level product contract.
+
+Полные payload examples, конкретные implementation files, расширенные test matrices и verification evidence принадлежат Issue и PR.
+
+Целевой размер новой итерации — 40–80 строк. Более подробный блок допускается только при необходимости зафиксировать новый публичный или security-sensitive contract.
 
 ## Уровни изменений для проверки
 
@@ -352,6 +375,14 @@ beeui/
 ├── start.sh
 └── uv.lock
 ```
+
+Product adapter ownership rule:
+
+- production `BeeCapUiAdapter` живёт в `beecap`;
+- production `BeeAgentUiAdapter` живёт в `beeagent`;
+- BeeUI содержит только generic adapter contracts;
+- product-shaped fixture/reference adapters допускаются только для проверки нового generic contract и не являются production integration;
+- fixture adapter не должен дублировать активно развивающийся production read-model без конкретной contract-testing необходимости.
 
 ---
 
@@ -2954,7 +2985,7 @@ GET /venues/mrkt
 
 ---
 
-## Этап 6 — Config/Auth/Actions foundation
+## Этап 6 — Operator console contracts and security foundation
 
 ### Итерация 13 — Auth/session/CSRF boundary for config/action routes MVP
 
@@ -5569,7 +5600,7 @@ Iteration 13.8 adds:
 
 ### Итерация 13.9 — Operator UX presentation contracts, locale persistence, theme, and chart state handling
 
-**Status:** IN PROGRESS
+**Status:** DONE
 
 #### Goal
 
@@ -6098,7 +6129,7 @@ A backward-compatible BeeUI release in which:
 
 ### Итерация 13.12 — Fix the canonical Tabler table toolbar composition
 
-**Status:** PLANNED
+**Status:** DONE
 
 #### Goal
 
@@ -6300,119 +6331,25 @@ Visual/browser verification:
 
 ---
 
-## Этап 7 — BeeAgent integration
+## Этап 7 — Consumer integration record
 
-### Итерация 14 — BeeAgent adapter MVP
+### Итерация 14 — BeeAgent adapter fixture MVP
 
-**Status:** PLANNED
+**Status:** RETIRED
 
-#### Goal
+#### Reason
 
-Подключить BeeAgent к BeeUI через тот же adapter-backed product console, без копирования BeeCap UI.
+Исходная цель итерации достигнута через реальную product-side интеграцию BeeAgent, а не через дополнительный BeeAgent-shaped fixture внутри BeeUI.
 
-#### Why
+Фактическая production integration живёт в `beeagent`:
 
-BeeUI сначала должен быть доказан на BeeCap migration. После этого BeeAgent может использовать тот же product-neutral contract:
-
-```text
-Product adapter -> BeeUI console -> artifacts/config/actions
 ```
-
-BeeAgent не должен получать отдельный UI stack и не должен давать BeeUI прямые authority над MCP/tools/LLM/runtime.
-
-#### Scope
-
-**Включено:**
-
-- BeeAgent-compatible fixture/reference adapter;
-- example BeeAgent embedded config:
-
-```text
-examples/beeagent_embedded/beeui.yml
-```
-
-- adapter-backed pages для:
-  - dashboard;
-  - modules;
-  - runs;
-  - run detail;
-  - artifacts;
-  - capabilities;
-  - approvals placeholder;
-  - bounded action placeholders;
-
-- capability/readiness indicators:
-  - module status;
-  - enabled/disabled capabilities;
-  - degraded/unavailable states;
-  - approval-required placeholders;
-
-- authority boundary tests;
-
-- docs update:
-  - `docs/INTEGRATION.md`;
-  - `docs/API_CONTRACT.md`;
-  - `docs/WEB_UI.md`;
-  - `docs/ROADMAP.md`.
-
-#### BeeAgent side
-
-Реальная BeeAgent integration должна жить в BeeAgent, например:
-
-```text
 src/beeagent_module/interfaces/ui/
+  app.py
   adapter.py
   read_model.py
   artifacts.py
-  capabilities.py
-  actions.py
 ```
-
-BeeUI может содержать только fixture/reference data, доказывающие контракт.
-
-#### Out of scope
-
-- MCP execution;
-- tool calls from BeeUI;
-- local LLM execution from BeeUI;
-- autonomous agent controls;
-- direct runtime authority;
-- direct n8n/MCP/action execution;
-- secrets in prompts/logs/artifacts;
-- no-code builder;
-- BeeAgent production adapter inside BeeUI.
-
-#### Deliverable
-
-BeeAgent может reuse BeeUI после того, как BeeCap докажет архитектуру.
-
-BeeUI остаётся product-neutral и не знает BeeAgent execution internals.
-
-#### Checks
-
-- `uv run pytest -q`;
-- fake BeeAgent dashboard;
-- modules page;
-- runs page;
-- run detail page;
-- artifacts page;
-- capabilities page;
-- approvals placeholder;
-- missing/partial artifacts;
-- degraded capability state;
-- action placeholders denied/unavailable, если product callback их не разрешает;
-- secret leakage отсутствует;
-- direct MCP/tool/LLM execution отсутствует;
-- BeeAgent runtime imports отсутствуют;
-- authority boundary tests.
-
-#### DoD
-
-- BeeAgent UI использует BeeUI contract;
-- BeeUI остаётся product-neutral;
-- BeeAgent сохраняет authority boundary;
-- capabilities/actions остаются product-controlled;
-- BeeUI никогда напрямую не вызывает MCP/tools/LLM/runtime execution.
 
 ---
 
@@ -6568,27 +6505,31 @@ BeeUI может работать как отдельный service поверх
 
 ---
 
-## MVP path
+## MVP baseline
 
-Для быстрого выхода к practical MVP идти так:
+**Status:** ACHIEVED
 
-```text
-Iteration 0 — Project skeleton and startup contract
-Iteration 1 — Tabler web shell v0
-Iteration 2 — Declarative pages and navigation v0
-Iteration 3 — Local Tabler vendor/assets and layout parity v1
-Iteration 4 — Theme, layout and navigation schema v1
-Iteration 5 — Block registry and static dashboard blocks v1
-Iteration 7 — Data sources and resolver v0
-Iteration 8 — Product adapter contract v0
-Iteration 9 — BeeCap adapter fixtures MVP
-Iteration 10 — Embedded mount API v0
-Iteration 11 — Generic artifact browser v1
+Practical embedded MVP достигнут.
 
-BeeCap UI-24 — Embed BeeUI and add BeeCapUiAdapter MVP
-Iteration 12 — Adapter-backed Product Console MVP
-BeeCap UI-25 — BeeUI Console parity MVP
-BeeCap UI-26 — BeeUI default route switch with legacy fallback
+Реализованный generic BeeUI baseline включает:
+
+```
+Foundation and schema
+→ local Tabler shell
+→ reusable components and blocks
+→ data resolver
+→ ProductUiAdapter contract
+→ embedded app/mount API
+→ artifact browser
+→ adapter-backed product console
+→ generic custom pages
+→ auth/session/CSRF boundary
+→ locale-aware shell and persistence
+→ theme persistence
+→ charts and advanced tables
+→ generic detail pages
+→ Tabler Datepicker
+→ canonical functional table toolbar
 ```
 
 Минимальный практический MVP считается достигнутым, когда:
