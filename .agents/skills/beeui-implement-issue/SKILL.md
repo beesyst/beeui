@@ -9,22 +9,22 @@ description: Implement one approved BeeUI Issue in the exact target worktree and
 
 Use this workflow after:
 
-* an Issue has been approved;
-* an exact BeeUI target worktree exists;
-* the expected feature branch has been prepared.
+- an Issue has been approved;
+- an exact BeeUI target worktree exists;
+- the expected feature branch has been prepared.
 
 The executor may:
 
-* inspect repository files;
-* modify the exact target worktree;
-* run local repository checks.
+- inspect repository files;
+- modify the exact target worktree;
+- run local repository checks.
 
 Do not:
 
-* expand the approved Issue;
-* perform unrelated refactoring, cleanup or optional visual polish;
-* commit, push, create or update a PR, or merge;
-* change the project version unless the Issue is explicitly release-related.
+- expand the approved Issue;
+- perform unrelated refactoring, cleanup or optional visual polish;
+- commit, push, create or update a PR, or merge;
+- change the project version unless the Issue is explicitly release-related.
 
 Follow all stable repository, architecture, configuration, rendering, dependency, security and verification rules from `AGENTS.md`.
 
@@ -32,13 +32,14 @@ Follow all stable repository, architecture, configuration, rendering, dependency
 
 Obtain:
 
-* project;
-* exact target worktree;
-* expected branch;
-* base branch;
-* full approved Issue;
-* planning constraints;
-* explicitly supplied related-repository contracts.
+- project;
+- exact target worktree;
+- expected branch;
+- base branch;
+- approved Issue or normalized approved task contract;
+- Issue source when supplied;
+- planning constraints;
+- explicitly supplied related-repository contracts.
 
 ## Workflow gates
 
@@ -61,32 +62,32 @@ Before changing files:
 
 Stop when:
 
-* the path differs from the requested target;
-* the branch differs from the expected branch;
-* unrelated changes prevent safe attribution;
-* mandatory Issue information is missing;
-* the Issue materially conflicts with `AGENTS.md` or an existing public contract.
+- the path differs from the requested target;
+- the branch differs from the expected branch;
+- unrelated changes prevent safe attribution;
+- the approved Issue or normalized approved task contract is missing;
+- the Issue materially conflicts with `AGENTS.md` or an existing public contract.
 
 Do not silently:
 
-* switch branches;
-* substitute another worktree;
-* reset or overwrite existing user changes;
-* modify an instruction or related worktree.
+- switch branches;
+- substitute another worktree;
+- reset or overwrite existing user changes;
+- modify an instruction or related worktree.
 
 ## Phase 2 — Establish scope and current state
 
 Read:
 
-* `AGENTS.md`;
-* the full approved Issue;
-* the relevant `docs/ROADMAP.md` section;
-* `docs/SDLC.md`;
-* `docs/SECURITY.md`;
-* directly relevant public contracts;
-* directly relevant implementation;
-* directly relevant configuration;
-* directly relevant tests.
+- `AGENTS.md`;
+- the approved Issue or normalized approved task contract;
+- the relevant `docs/ROADMAP.md` section;
+- `docs/SDLC.md`;
+- `docs/SECURITY.md`;
+- directly relevant public contracts;
+- directly relevant implementation;
+- directly relevant configuration;
+- directly relevant tests.
 
 Read templates, static assets, package-data declarations and documentation when affected by the Issue.
 
@@ -102,21 +103,21 @@ Current files, contracts, tests and runtime behavior are authoritative.
 
 Determine the actual change level:
 
-* `low-risk`;
-* `runtime-risk`;
-* `security-sensitive`.
+- `low-risk`;
+- `runtime-risk`;
+- `security-sensitive`.
 
 Use `docs/SDLC.md` and `docs/SECURITY.md`.
 
 Before implementation, identify:
 
-* the current source of truth;
-* the source of truth after the change;
-* the BeeUI-owned responsibility;
-* any product-owned or domain-owned responsibility;
-* the public contract affected by the change;
-* compatibility requirements;
-* checks required by the actual change level.
+- the current source of truth;
+- the source of truth after the change;
+- the BeeUI-owned responsibility;
+- any product-owned or domain-owned responsibility;
+- the public contract affected by the change;
+- compatibility requirements;
+- checks required by the actual change level.
 
 If the actual implementation requires a higher change level than the Issue declares:
 
@@ -133,12 +134,12 @@ Use `AGENTS.md` as the source of stable implementation rules.
 
 During implementation:
 
-* reuse existing contracts, helpers, templates, components and tests;
-* preserve BeeUI/product/domain ownership;
-* update public contracts and documentation when observable behavior changes;
-* preserve backward compatibility unless the Issue explicitly permits a breaking change;
-* keep dependency declarations and project version unchanged unless the Issue explicitly requires otherwise;
-* keep all changes attributable to the current Issue.
+- reuse existing contracts, helpers, templates, components and tests;
+- preserve BeeUI/product/domain ownership;
+- update public contracts and documentation when observable behavior changes;
+- preserve backward compatibility unless the Issue explicitly permits a breaking change;
+- keep dependency declarations and project version unchanged unless the Issue explicitly requires otherwise;
+- keep all changes attributable to the current Issue.
 
 Do not add behavior merely because it may be useful in a future iteration.
 
@@ -152,45 +153,45 @@ Prefer existing test files and helpers. Create a new test file or helper only wh
 
 Run all checks required by:
 
-* the approved Issue;
-* the actual change level;
-* `docs/SDLC.md`;
-* `docs/SECURITY.md`;
-* the affected public contract.
+- the approved Issue;
+- the actual change level;
+- `docs/SDLC.md`;
+- `docs/SECURITY.md`;
+- the affected public contract.
 
 As applicable, verify:
 
-* targeted regression behavior;
-* the full test suite;
-* expected repository entrypoints;
-* affected HTML and JSON routes;
-* route-prefix and embedded-mount behavior;
-* malformed and invalid inputs;
-* rendering and browser-facing security;
-* logs and bounded artifacts;
-* templates, static assets and installed-package contents;
-* dependency and version scope;
-* security checks required by the changed boundary;
-* `git diff --check`.
+- targeted regression behavior;
+- the full test suite;
+- expected repository entrypoints;
+- affected HTML and JSON routes;
+- route-prefix and embedded-mount behavior;
+- malformed and invalid inputs;
+- rendering and browser-facing security;
+- logs and bounded artifacts;
+- templates, static assets and installed-package contents;
+- dependency and version scope;
+- security checks required by the changed boundary;
+- `git diff --check`.
 
 Use `uv run` for Python commands and repository entrypoints documented by the project.
 
 Record for every executed command:
 
-* exact command;
-* exit code;
-* passed count;
-* failed count;
-* skipped count;
-* warnings.
+- exact command;
+- exit code;
+- passed count;
+- failed count;
+- skipped count;
+- warnings.
 
 Do not claim that a check passed when it was not executed.
 
 When a required check cannot be run, state:
 
-* the exact missing check;
-* why it was not run;
-* what remains unverified.
+- the exact missing check;
+- why it was not run;
+- what remains unverified.
 
 ## Phase 6 — Final integrity check
 
@@ -205,7 +206,7 @@ Before reporting completion:
 7. confirm project version status;
 8. confirm applicable template, static and package-data integrity;
 9. identify remaining limitations.
-10. **mandatory comment/docstring gate**: determine the merge-base with the declared base branch, inspect the complete merge-base diff, and include untracked first-party source, template, JavaScript and test files. Review all added and changed lines by file type; use more than one complementary method and inspect every match in context. Do not accept a single brittle grep as proof. Detect first-party comments, Python docstrings, JavaScript or Jinja/HTML comments, inline explanations, `TODO`, `FIXME`, `NOTE` and decorative separators. Preserve only legal, license, copyright, upstream-vendored and provenance comments. Before readiness, explicitly list the checked source, test, JavaScript and template scope. Any prohibited addition makes the result *not ready* until removed.
+10. **mandatory comment/docstring gate**: determine the merge-base with the declared base branch, inspect the complete merge-base diff, and include untracked first-party source, template, JavaScript and test files. Review all added and changed lines by file type; use more than one complementary method and inspect every match in context. Do not accept a single brittle grep as proof. Detect first-party comments, Python docstrings, JavaScript or Jinja/HTML comments, inline explanations, `TODO`, `FIXME`, `NOTE` and decorative separators. Preserve only legal, license, copyright, upstream-vendored and provenance comments. Before readiness, explicitly list the checked source, test, JavaScript and template scope. Any prohibited addition makes the result _not ready_ until removed.
 
 ## Implementation report
 

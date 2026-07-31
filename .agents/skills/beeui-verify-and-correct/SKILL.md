@@ -7,47 +7,56 @@ description: Independently verify an implemented BeeUI Issue, apply only necessa
 
 ## Purpose
 
-Use this workflow:
+Use this workflow after initial implementation or after a completed read-only review has returned blocking findings.
 
-* after initial implementation;
-* after implementation tests;
-* after a read-only review returns blocking findings.
+Use this workflow once for independent post-implementation verification. Reuse it only to address explicit blocking findings returned by a completed final review.
 
 The executor may:
 
-* inspect repository files;
-* modify the exact target worktree;
-* run local repository checks.
+- inspect repository files;
+- modify the exact target worktree;
+- run local repository checks.
 
 Do not:
 
-* expand the approved Issue;
-* add optional polish;
-* perform unrelated cleanup or refactoring;
-* create speculative architecture;
-* create preventive corrections without a demonstrated blocker;
-* commit, push, create or update a PR, or merge;
-* change the project version unless the Issue is explicitly release-related.
+- expand the approved task contract or supplied blocker scope;
+- add optional polish;
+- perform unrelated cleanup or refactoring;
+- create speculative architecture;
+- create preventive corrections without a demonstrated blocker;
+- commit, push, create or update a PR, or merge;
+- change the project version unless the Issue is explicitly release-related.
 
 Follow all stable repository, architecture, rendering, dependency, security and verification rules from `AGENTS.md`.
 
 ## Required inputs
 
-Obtain:
+For every run obtain:
 
-* project;
-* exact target worktree;
-* expected branch;
-* base branch;
-* full approved Issue;
-* implementation evidence;
-* previous verification evidence when supplied;
-* final-review blockers when supplied;
-* explicitly supplied related-repository contracts.
+- project;
+- exact target worktree;
+- expected branch;
+- base branch;
+- explicitly supplied related-repository contracts.
+
+For initial independent verification also obtain:
+
+- approved Issue or normalized approved task contract;
+- planning constraints.
+
+For a correction run also obtain:
+
+- explicit blocking findings from the completed final review.
+
+Do not require an implementation report or previous verification report.
 
 ## Workflow gates
 
-Before proposing or editing, read every task-declared file completely; add and read any additional needed file before modifying a related file. Current files/contracts are authoritative, reports are supporting evidence. Reconcile the Issue with `docs/ROADMAP.md`, preserve “BeeUI renders, product decides”, and do not add optional polish, unrelated cleanup, speculative architecture, no-code, auth, config apply, standalone service, separate frontend or product-specific generic-renderer logic.
+Before proposing or editing, read every task-declared file completely; add and read any additional needed file before modifying a related file. Current files/contracts are authoritative, reports are supporting evidence. Preserve “BeeUI renders, product decides”, and do not add optional polish, unrelated cleanup, speculative architecture, no-code, auth, config apply, standalone service, separate frontend or product-specific generic-renderer logic.
+
+For initial verification, map the work to the supplied roadmap context and approved task contract.
+
+For a correction run, treat the supplied final-review blockers as the complete correction scope. Do not require the full Issue, planning context, implementation report or previous verification report, and do not reopen already reviewed scope.
 
 Determine actual change level, read applicable SDLC/security requirements and derive proportional checks from the changed boundary. Use only the smallest demonstrated correction and proportional public-behavior tests in existing files/helpers; do not create implementation-detail-only tests, duplicate assertions, new test files/helpers without need, formatting churn or unrelated test rewrites. Do not add first-party code/test comments, inline explanations, TODO/FIXME/NOTE or separators; preserve legal, license, upstream and provenance comments.
 
@@ -66,68 +75,84 @@ Before verification:
 
 Stop when:
 
-* the path differs from the requested target;
-* the branch differs from the expected branch;
-* mandatory Issue or target information is missing;
-* unrelated changes prevent safe verification.
+- the path differs from the requested target;
+- the branch differs from the expected branch;
+- mandatory target information is missing;
+- the approved task contract is missing for initial verification;
+- explicit final-review blockers are missing for a correction run;
+- unrelated changes prevent safe verification.
 
 Do not silently:
 
-* switch branches;
-* substitute another worktree;
-* reset or overwrite existing changes;
-* modify an instruction or related worktree.
+- switch branches;
+- substitute another worktree;
+- reset or overwrite existing changes;
+- modify an instruction or related worktree.
 
 ## Phase 2 — Read authoritative evidence
 
-Read:
+Read for every run:
 
-* `AGENTS.md`;
-* the full approved Issue;
-* the relevant `docs/ROADMAP.md` section;
-* `docs/SDLC.md`;
-* `docs/SECURITY.md`;
-* every changed and untracked file;
-* directly related contracts, callers and tests;
-* affected templates, static assets and package declarations;
-* supplied implementation and review evidence.
+- `AGENTS.md`;
+- `docs/SDLC.md`;
+- `docs/SECURITY.md`;
+- every changed and untracked file;
+- directly related contracts, callers and tests;
+- affected templates, static assets and package declarations.
+
+For initial independent verification also read:
+
+- the approved Issue or normalized approved task contract;
+- the relevant `docs/ROADMAP.md` section;
+- supplied planning constraints.
+
+For a correction run also read:
+
+- every supplied final-review blocker;
+- the directly related current files, contracts and tests.
+
+Do not request or depend on an implementation report or previous verification report.
+
+The current target worktree, diff, tests, rendered behavior, logs, artifacts and package contents are authoritative.
 
 Read additional unchanged files when required to understand the changed behavior or public contract.
 
-Reports are supporting evidence only.
-
-Current files, diff, tests, rendered behavior, logs, artifacts and package contents are authoritative.
-
 ## Phase 3 — Independently verify the implementation
 
-Evaluate every Acceptance Criterion as:
+For initial verification, evaluate every Acceptance Criterion as:
 
-* `satisfied`;
-* `partially satisfied`;
-* `not satisfied`;
-* `not verifiable`;
-* `not applicable`.
+- `satisfied`;
+- `partially satisfied`;
+- `not satisfied`;
+- `not verifiable`;
+- `not applicable`.
+
+For a correction run, verify:
+
+- every supplied blocking finding;
+- every affected Acceptance Criterion explicitly named in those findings;
+- regressions in the behavior touched by the corrections.
 
 Determine the actual change level using `docs/SDLC.md` and `docs/SECURITY.md`.
 
 Verify the affected boundaries defined by:
 
-* the approved Issue;
-* the actual diff;
-* `AGENTS.md`;
-* relevant public contracts.
+- the approved task contract for initial verification or the supplied final-review blockers for a correction run;
+- the actual diff;
+- `AGENTS.md`;
+- relevant public contracts.
 
 At minimum, determine:
 
-* whether the source of truth is preserved;
-* whether BeeUI/product/domain ownership is correct;
-* whether observable behavior matches the Issue;
-* whether compatibility requirements are satisfied;
-* whether required validation and degraded behavior are correct;
-* whether required templates and static assets are packaged;
-* whether dependency declarations and version remain in scope;
-* whether required tests and smoke evidence exist;
-* whether security and authority boundaries are preserved.
+- whether the source of truth is preserved;
+- whether BeeUI/product/domain ownership is correct;
+- whether observable behavior matches the approved task contract or supplied blocker scope;
+- whether compatibility requirements are satisfied;
+- whether required validation and degraded behavior are correct;
+- whether required templates and static assets are packaged;
+- whether dependency declarations and version remain in scope;
+- whether required tests and smoke evidence exist;
+- whether security and authority boundaries are preserved.
 
 Do not treat a report as proof when current repository evidence contradicts it.
 
@@ -135,25 +160,25 @@ Do not treat a report as proof when current repository evidence contradicts it.
 
 A blocking finding must demonstrate one of:
 
-* an unsatisfied Acceptance Criterion;
-* incorrect current-Issue behavior;
-* unsafe current-Issue behavior;
-* an architecture or ownership violation;
-* a source-of-truth violation;
-* a public-contract incompatibility;
-* missing package or runtime behavior required by the Issue;
-* missing verification required by the Issue or actual change level;
-* an unintended dependency declaration, inventory `uv.lock` or version change;
-* unrelated changes entering the current Issue.
+- an unsatisfied Acceptance Criterion;
+- incorrect current-Issue behavior;
+- unsafe current-Issue behavior;
+- an architecture or ownership violation;
+- a source-of-truth violation;
+- a public-contract incompatibility;
+- missing package or runtime behavior required by the Issue;
+- missing verification required by the Issue or actual change level;
+- an unintended dependency declaration, inventory `uv.lock` or version change;
+- unrelated changes entering the current Issue.
 
 Do not create blockers from:
 
-* optional visual polish;
-* subjective naming or formatting preferences;
-* unrelated existing code;
-* speculative future requirements;
-* optional checks not required by the actual change level;
-* preventive work with no demonstrated failure or risk.
+- optional visual polish;
+- subjective naming or formatting preferences;
+- unrelated existing code;
+- speculative future requirements;
+- optional checks not required by the actual change level;
+- preventive work with no demonstrated failure or risk.
 
 Consolidate all real findings before making corrections.
 
@@ -163,11 +188,11 @@ Apply a correction only when it closes a demonstrated blocker.
 
 Corrections must be:
 
-* limited to the approved Issue;
-* minimal and complete;
-* consistent with `AGENTS.md` and current public contracts;
-* covered by proportional regression verification;
-* free of unrelated cleanup.
+- limited to the approved task contract or supplied blocker scope;
+- minimal and complete;
+- consistent with `AGENTS.md` and current public contracts;
+- covered by proportional regression verification;
+- free of unrelated cleanup.
 
 Preserve already working behavior.
 
@@ -179,39 +204,40 @@ When no correction is required, do not change files.
 
 Run checks required by:
 
-* every corrected blocker;
-* every Acceptance Criterion;
-* the actual change level;
-* `docs/SDLC.md`;
-* `docs/SECURITY.md`;
-* the affected public contract.
+- every corrected blocker;
+- every Acceptance Criterion for initial verification;
+- every affected Acceptance Criterion named in the blockers for a correction run;
+- the actual change level;
+- `docs/SDLC.md`;
+- `docs/SECURITY.md`;
+- the affected public contract.
 
 As applicable, verify:
 
-* targeted regressions;
-* the full test suite;
-* expected repository entrypoints;
-* affected HTML and JSON routes;
-* route-prefix and embedded-mount behavior;
-* invalid and malformed inputs;
-* rendering and browser-facing security;
-* logs and bounded artifacts;
-* templates, static assets and package contents;
-* no-mutation behavior;
-* dependency and version scope;
-* security checks required by the changed boundary;
-* `git diff --check`.
+- targeted regressions;
+- the full test suite;
+- expected repository entrypoints;
+- affected HTML and JSON routes;
+- route-prefix and embedded-mount behavior;
+- invalid and malformed inputs;
+- rendering and browser-facing security;
+- logs and bounded artifacts;
+- templates, static assets and package contents;
+- no-mutation behavior;
+- dependency and version scope;
+- security checks required by the changed boundary;
+- `git diff --check`.
 
 Prefer existing test files and helpers.
 
 Record:
 
-* exact commands;
-* exit codes;
-* passed;
-* failed;
-* skipped;
-* warnings.
+- exact commands;
+- exit codes;
+- passed;
+- failed;
+- skipped;
+- warnings.
 
 Do not claim a check passed when it was not executed.
 
@@ -222,14 +248,14 @@ When a required check cannot be run, identify it explicitly and mark the corresp
 Before returning:
 
 1. inspect the final changed-file inventory;
-2. verify every original Acceptance Criterion again;
-3. verify every supplied review blocker;
-4. verify regressions introduced by corrections;
+2. for initial verification, verify every Acceptance Criterion;
+3. for a correction run, verify every supplied blocker and every affected Acceptance Criterion;
+4. verify regressions in behavior touched by corrections;
 5. confirm that no unrelated files entered the change;
 6. confirm dependency declaration and version status;
 7. identify remaining limitations;
 8. determine whether the implementation is ready for final read-only review.
-9. **mandatory comment/docstring gate**: determine the merge-base with the declared base branch, inspect the complete merge-base diff, and include untracked first-party source, template, JavaScript and test files. Review all added and changed lines by file type; use more than one complementary method and inspect every match in context. Do not accept a single brittle grep as proof. Detect first-party comments, Python docstrings, JavaScript or Jinja/HTML comments, inline explanations, `TODO`, `FIXME`, `NOTE` and decorative separators. Preserve only legal, license, copyright, upstream-vendored and provenance comments. Before readiness, explicitly list the checked source, test, JavaScript and template scope. Any prohibited addition makes the result *not ready* until removed.
+9. **mandatory comment/docstring gate**: determine the merge-base with the declared base branch, inspect the complete merge-base diff, and include untracked first-party source, template, JavaScript and test files. Review all added and changed lines by file type; use more than one complementary method and inspect every match in context. Do not accept a single brittle grep as proof. Detect first-party comments, Python docstrings, JavaScript or Jinja/HTML comments, inline explanations, `TODO`, `FIXME`, `NOTE` and decorative separators. Preserve only legal, license, copyright, upstream-vendored and provenance comments. Before readiness, explicitly list the checked source, test, JavaScript and template scope. Any prohibited addition makes the result _not ready_ until removed.
 
 ## Final report
 

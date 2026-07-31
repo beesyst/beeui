@@ -38,7 +38,7 @@ Tool, authority and read-only restrictions apply only to the current task and ag
 
 When producing a prompt for another agent, do not copy the current agent's tool restrictions unless they are explicitly required for that executor.
 
-Planning and final-review tasks may use Bee Dev MCP in read-only mode.
+Planning, prompt-preparation and review tasks may use Bee Dev MCP in read-only mode.
 
 Implementation and correction prompts are executed by DeepSeek through Copilot or by Codex. They must instruct the executor to work in the exact target worktree using its available local repository tools.
 
@@ -55,7 +55,7 @@ They must not commit, push, create or update a PR, or merge unless the current t
 
 ## Bee Dev MCP rules
 
-These rules apply only when the current task explicitly selects Bee Dev MCP for read-only planning or review.
+These rules apply only when the current task explicitly selects Bee Dev MCP for read-only planning, prompt preparation or review.
 
 Bee Dev MCP is read-only.
 
@@ -68,7 +68,8 @@ Available repository tools include:
 - `get_review_bundle_page`;
 - `get_review_bundle` — compatibility only;
 - `read_project_file`;
-- `search_project`.
+- `search_project`;
+- `get_github_context`.
 
 Do not refer to nonexistent tools such as `get_file`.
 
@@ -76,9 +77,35 @@ Use `get_review_manifest` and `get_review_bundle_page` for complete final review
 
 Do not repeatedly call `get_review_bundle` expecting pagination.
 
+### GitHub context resolution
+
+When any supplied input contains a supported GitHub Issue or Pull Request URL, call `get_github_context` before interpreting that input.
+
+For an Issue, read and consider:
+
+- title;
+- body;
+- all Issue comments.
+
+For a Pull Request, read and consider:
+
+- title;
+- body;
+- all conversation comments;
+- reviews;
+- inline review comments.
+
+A GitHub URL is an instruction to load its complete available context, not merely a reference to include in the output.
+
+When pasted content and a GitHub URL are supplied together, consider both. If they materially conflict, report the conflict instead of silently choosing one.
+
+Comments are context and do not automatically expand the approved scope. Explicit accepted clarifications may refine the Issue or PR contract.
+
+If mandatory GitHub context is unavailable, incomplete or reported as truncated, return the applicable incomplete-workflow result instead of proceeding from partial context.
+
 ### Exact target resolution
 
-Before planning or review:
+Before planning, prompt preparation or review:
 
 1. Call `list_worktrees`.
 2. Match the requested worktree by exact absolute `path`.
@@ -141,43 +168,43 @@ Read documents required by the selected skill.
 
 Common documents include:
 
-* `AGENTS.md`;
-* approved Issue;
-* relevant section of `docs/ROADMAP.md`;
-* `docs/SDLC.md`;
-* `docs/SECURITY.md`;
-* `README.ru.md`.
+- `AGENTS.md`;
+- approved Issue;
+- relevant section of `docs/ROADMAP.md`;
+- `docs/SDLC.md`;
+- `docs/SECURITY.md`;
+- `README.ru.md`.
 
 When relevant, also read:
 
-* `docs/DEV_GUIDE.md`;
-* `docs/SPEC.md`;
-* `docs/ARCHITECTURE.md`;
-* `docs/WEB_UI.md`;
-* `docs/INTEGRATION.md`;
-* `docs/API_CONTRACT.md`;
-* `docs/COMPONENTS.md`;
-* `docs/THEME.md`;
-* `config/settings.yml`;
-* `config/schema.yml`;
-* example product-side `beeui.yml`;
-* `pyproject.toml`;
-* package-data configuration;
-* public product-adapter contracts;
-* related product ROADMAPs and public integration contracts.
+- `docs/DEV_GUIDE.md`;
+- `docs/SPEC.md`;
+- `docs/ARCHITECTURE.md`;
+- `docs/WEB_UI.md`;
+- `docs/INTEGRATION.md`;
+- `docs/API_CONTRACT.md`;
+- `docs/COMPONENTS.md`;
+- `docs/THEME.md`;
+- `config/settings.yml`;
+- `config/schema.yml`;
+- example product-side `beeui.yml`;
+- `pyproject.toml`;
+- package-data configuration;
+- public product-adapter contracts;
+- related product ROADMAPs and public integration contracts.
 
 ROADMAP status does not prove implementation.
 
 Compare ROADMAP wording with current:
 
-* code;
-* templates;
-* static assets;
-* configuration;
-* public contracts;
-* tests;
-* package contents;
-* rendered behavior.
+- code;
+- templates;
+- static assets;
+- configuration;
+- public contracts;
+- tests;
+- package contents;
+- rendered behavior.
 
 ## Architecture boundary
 
@@ -221,70 +248,70 @@ Product decides.
 
 BeeUI owns generic framework behavior:
 
-* FastAPI app factory and embedded mount helpers;
-* route-prefix support;
-* generic HTML and JSON route surfaces;
-* Jinja2 templates and shell;
-* local Tabler-compatible static assets;
-* reusable layout blocks and template primitives;
-* generic page, navigation and component schemas;
-* controlled locale and theme presentation mechanisms;
-* generic API envelopes;
-* generic adapter protocol and normalized adapter errors;
-* safe ID, path and internal-link validation;
-* bounded artifact presentation;
-* generic auth, session, role and CSRF transport boundaries;
-* controlled config/action transport shells;
-* package-local templates and static package data;
-* generic degraded, empty and error presentation;
-* component catalog and demo/reference fixtures;
-* HTML escaping and browser-facing security controls.
+- FastAPI app factory and embedded mount helpers;
+- route-prefix support;
+- generic HTML and JSON route surfaces;
+- Jinja2 templates and shell;
+- local Tabler-compatible static assets;
+- reusable layout blocks and template primitives;
+- generic page, navigation and component schemas;
+- controlled locale and theme presentation mechanisms;
+- generic API envelopes;
+- generic adapter protocol and normalized adapter errors;
+- safe ID, path and internal-link validation;
+- bounded artifact presentation;
+- generic auth, session, role and CSRF transport boundaries;
+- controlled config/action transport shells;
+- package-local templates and static package data;
+- generic degraded, empty and error presentation;
+- component catalog and demo/reference fixtures;
+- HTML escaping and browser-facing security controls.
 
 ### Product repositories own
 
 Bee products such as BeeAgent and BeeCap own:
 
-* product and domain semantics;
-* product read-model construction;
-* production implementations of `ProductUiAdapter`;
-* product configuration and validation;
-* product artifacts and artifact allowlists;
-* product-specific metrics, labels and calculations;
-* product action availability and authority;
-* product callbacks for config and actions;
-* product audit and mutation behavior;
-* runtime, provider, broker, MCP, LLM and external-system calls;
-* product security policies beyond the generic BeeUI transport boundary.
+- product and domain semantics;
+- product read-model construction;
+- production implementations of `ProductUiAdapter`;
+- product configuration and validation;
+- product artifacts and artifact allowlists;
+- product-specific metrics, labels and calculations;
+- product action availability and authority;
+- product callbacks for config and actions;
+- product audit and mutation behavior;
+- runtime, provider, broker, MCP, LLM and external-system calls;
+- product security policies beyond the generic BeeUI transport boundary.
 
 ### Domain modules own
 
 Domain modules own:
 
-* domain models and taxonomy;
-* classification and business rules;
-* domain fixtures;
-* domain validation;
-* domain summaries and recommendations;
-* bounded domain AI contracts.
+- domain models and taxonomy;
+- classification and business rules;
+- domain fixtures;
+- domain validation;
+- domain summaries and recommendations;
+- bounded domain AI contracts.
 
 ### Do not
 
 Do not:
 
-* add product-specific domain logic to generic BeeUI renderers;
-* add production BeeAgent or BeeCap adapters inside BeeUI;
-* import `beeagent_module`, `beecap_module` or private product internals into generic BeeUI code;
-* infer business semantics from route namespaces such as `/rop`, `/venues`, `/modes` or `/runs`;
-* read arbitrary product storage or configuration directly;
-* duplicate product metrics or calculations;
-* call MCP, LLM, provider, broker or product runtime paths directly from BeeUI;
-* create a second source of truth;
-* put business decisions in templates or JavaScript;
-* allow GET routes to mutate product or BeeUI state;
-* bypass product validation, authority or audit;
-* add arbitrary HTML, JavaScript, CSS or Jinja expressions from config or adapter payloads;
-* add product-specific fallback behavior to generic components;
-* introduce standalone deployment, no-code builder or separate frontend before an approved iteration.
+- add product-specific domain logic to generic BeeUI renderers;
+- add production BeeAgent or BeeCap adapters inside BeeUI;
+- import `beeagent_module`, `beecap_module` or private product internals into generic BeeUI code;
+- infer business semantics from route namespaces such as `/rop`, `/venues`, `/modes` or `/runs`;
+- read arbitrary product storage or configuration directly;
+- duplicate product metrics or calculations;
+- call MCP, LLM, provider, broker or product runtime paths directly from BeeUI;
+- create a second source of truth;
+- put business decisions in templates or JavaScript;
+- allow GET routes to mutate product or BeeUI state;
+- bypass product validation, authority or audit;
+- add arbitrary HTML, JavaScript, CSS or Jinja expressions from config or adapter payloads;
+- add product-specific fallback behavior to generic components;
+- introduce standalone deployment, no-code builder or separate frontend before an approved iteration.
 
 Reference/demo fixtures may contain realistic product-shaped payloads only when clearly isolated as non-production examples.
 
@@ -292,32 +319,32 @@ Reference/demo fixtures may contain realistic product-shaped payloads only when 
 
 Use:
 
-* BeeUI runtime/system configuration: `config/settings.yml`;
-* BeeUI demo/declarative schema: `config/schema.yml`;
-* embedded product UI configuration: product-owned `config/beeui.yml`;
-* product semantics: product adapter and product read-model;
-* product state: product configuration, artifacts and APIs;
-* BeeUI public contracts:
+- BeeUI runtime/system configuration: `config/settings.yml`;
+- BeeUI demo/declarative schema: `config/schema.yml`;
+- embedded product UI configuration: product-owned `config/beeui.yml`;
+- product semantics: product adapter and product read-model;
+- product state: product configuration, artifacts and APIs;
+- BeeUI public contracts:
+  - `docs/API_CONTRACT.md`;
+  - `docs/COMPONENTS.md`;
+  - `docs/INTEGRATION.md`;
+  - `docs/WEB_UI.md`;
 
-  * `docs/API_CONTRACT.md`;
-  * `docs/COMPONENTS.md`;
-  * `docs/INTEGRATION.md`;
-  * `docs/WEB_UI.md`;
-* iteration scope: approved Issue aligned with `docs/ROADMAP.md`;
-* runtime evidence: rendered routes, logs and bounded artifacts;
-* package evidence: installed package or wheel templates/static assets.
+- iteration scope: approved Issue aligned with `docs/ROADMAP.md`;
+- runtime evidence: rendered routes, logs and bounded artifacts;
+- package evidence: installed package or wheel templates/static assets.
 
 Rules:
 
-* no hidden defaults for required behavior;
-* no duplicate source of truth;
-* required configuration must fail fast;
-* optional defaults must be documented and safe;
-* adapters and read-models provide data, not rendering authority;
-* product artifacts are evidence, not BeeUI configuration;
-* secrets belong only in environment variables or approved secret stores;
-* cookies, query parameters and localStorage are user-preference or request inputs, not product configuration;
-* preserve compatibility unless the Issue explicitly permits a breaking change.
+- no hidden defaults for required behavior;
+- no duplicate source of truth;
+- required configuration must fail fast;
+- optional defaults must be documented and safe;
+- adapters and read-models provide data, not rendering authority;
+- product artifacts are evidence, not BeeUI configuration;
+- secrets belong only in environment variables or approved secret stores;
+- cookies, query parameters and localStorage are user-preference or request inputs, not product configuration;
+- preserve compatibility unless the Issue explicitly permits a breaking change.
 
 ## Configuration rules
 
@@ -327,12 +354,12 @@ Rules:
 
 A new required runtime setting must:
 
-* have a single canonical location;
-* be documented;
-* be represented in examples when appropriate;
-* be validated fail-fast;
-* have missing and invalid tests;
-* not contain committed secrets.
+- have a single canonical location;
+- be documented;
+- be represented in examples when appropriate;
+- be validated fail-fast;
+- have missing and invalid tests;
+- not contain committed secrets.
 
 ### `config/schema.yml`
 
@@ -340,24 +367,24 @@ A new required runtime setting must:
 
 It may define controlled:
 
-* app metadata;
-* theme;
-* layout;
-* locale;
-* components;
-* navigation;
-* pages;
-* demo/static data sources;
-* generic blocks.
+- app metadata;
+- theme;
+- layout;
+- locale;
+- components;
+- navigation;
+- pages;
+- demo/static data sources;
+- generic blocks.
 
 It must not accept:
 
-* arbitrary HTML;
-* arbitrary CSS;
-* arbitrary JavaScript;
-* Python or Jinja expressions;
-* arbitrary filesystem paths;
-* product execution instructions.
+- arbitrary HTML;
+- arbitrary CSS;
+- arbitrary JavaScript;
+- Python or Jinja expressions;
+- arbitrary filesystem paths;
+- product execution instructions.
 
 ### Product-side `config/beeui.yml`
 
@@ -367,47 +394,47 @@ BeeUI validates and renders its generic contract.
 
 BeeUI must not:
 
-* mutate product-side configuration through GET routes;
-* silently sanitize invalid required structure;
-* infer product domain semantics;
-* introduce hidden fallback files;
-* replace product validation.
+- mutate product-side configuration through GET routes;
+- silently sanitize invalid required structure;
+- infer product domain semantics;
+- introduce hidden fallback files;
+- replace product validation.
 
 ## Implementation rules
 
-* Stay inside the approved Issue.
-* Prefer the smallest complete solution.
-* Follow KISS.
-* Do not perform unrelated refactoring.
-* Do not add speculative architecture.
-* Do not create abstractions without a concrete need.
-* Do not duplicate existing logic.
-* Reuse existing helpers, models, templates and tests.
-* Do not weaken validation without a stated contract reason.
-* Do not hardcode values that belong in configuration or a public contract.
-* Follow PEP 8.
-* Keep logs, runtime messages, API fields and internal identifiers in English.
-* Keep user-facing built-in labels inside the controlled BeeUI locale mechanism when localization is required.
-* Keep logs free of secrets and unnecessary product data.
-* Treat config, query parameters, cookies, adapter payloads and artifact content as untrusted.
-* Preserve read-only, preview-only and execution authority boundaries.
-* Keep `pyproject.toml.version` unchanged for ordinary feature, fix, docs and chore work.
-* Do not add first-party code or test comments, inline explanations, `TODO`, `FIXME`, `NOTE` or decorative separators. Preserve existing unrelated comments and required copyright, license, legal, upstream-vendored and provenance comments; Markdown documentation is not a code comment.
-* Do not add a frontend build chain unless explicitly approved.
-* Do not copy full upstream Tabler demo pages.
+- Stay inside the approved Issue.
+- Prefer the smallest complete solution.
+- Follow KISS.
+- Do not perform unrelated refactoring.
+- Do not add speculative architecture.
+- Do not create abstractions without a concrete need.
+- Do not duplicate existing logic.
+- Reuse existing helpers, models, templates and tests.
+- Do not weaken validation without a stated contract reason.
+- Do not hardcode values that belong in configuration or a public contract.
+- Follow PEP 8.
+- Keep logs, runtime messages, API fields and internal identifiers in English.
+- Keep user-facing built-in labels inside the controlled BeeUI locale mechanism when localization is required.
+- Keep logs free of secrets and unnecessary product data.
+- Treat config, query parameters, cookies, adapter payloads and artifact content as untrusted.
+- Preserve read-only, preview-only and execution authority boundaries.
+- Keep `pyproject.toml.version` unchanged for ordinary feature, fix, docs and chore work.
+- Do not add first-party code or test comments, inline explanations, `TODO`, `FIXME`, `NOTE` or decorative separators. Preserve existing unrelated comments and required copyright, license, legal, upstream-vendored and provenance comments; Markdown documentation is not a code comment.
+- Do not add a frontend build chain unless explicitly approved.
+- Do not copy full upstream Tabler demo pages.
 
 ## Templates and rendering
 
-* Keep Jinja autoescape enabled.
-* Do not use unsafe `|safe` for config, adapter, artifact or user-provided values.
-* Do not assemble product-facing HTML through Python string concatenation when a generic template contract exists.
-* Keep templates product-neutral.
-* Normalize malformed adapter payloads before rendering.
-* Render unsupported or malformed optional payloads as explicit degraded or empty states when the public contract requires graceful degradation.
-* Validate all active links through the shared safe internal-link contract.
-* Preserve route-prefix and embedded-mount compatibility.
-* Do not expose raw exceptions in HTML or JSON responses.
-* Do not expose implicit raw fields merely because they exist in a payload.
+- Keep Jinja autoescape enabled.
+- Do not use unsafe `|safe` for config, adapter, artifact or user-provided values.
+- Do not assemble product-facing HTML through Python string concatenation when a generic template contract exists.
+- Keep templates product-neutral.
+- Normalize malformed adapter payloads before rendering.
+- Render unsupported or malformed optional payloads as explicit degraded or empty states when the public contract requires graceful degradation.
+- Validate all active links through the shared safe internal-link contract.
+- Preserve route-prefix and embedded-mount compatibility.
+- Do not expose raw exceptions in HTML or JSON responses.
+- Do not expose implicit raw fields merely because they exist in a payload.
 
 ## Static assets and dependencies
 
@@ -415,22 +442,22 @@ Static assets must be package-local unless an approved Issue explicitly defines 
 
 Do not add:
 
-* external CDN references;
-* Tabler preview/demo scripts;
-* PostHog or other tracking;
-* sponsor or marketing assets;
-* remote font imports;
-* arbitrary runtime-loaded scripts.
+- external CDN references;
+- Tabler preview/demo scripts;
+- PostHog or other tracking;
+- sponsor or marketing assets;
+- remote font imports;
+- arbitrary runtime-loaded scripts.
 
 When adding or changing vendored assets:
 
-* record source and upstream version;
-* preserve the applicable license;
-* include required files in package data;
-* verify installed-package or wheel integrity;
-* ensure production templates reference only local assets;
-* verify no network calls are introduced;
-* classify dependency or browser-executed asset changes according to `docs/SDLC.md` and `docs/SECURITY.md`.
+- record source and upstream version;
+- preserve the applicable license;
+- include required files in package data;
+- verify installed-package or wheel integrity;
+- ensure production templates reference only local assets;
+- verify no network calls are introduced;
+- classify dependency or browser-executed asset changes according to `docs/SDLC.md` and `docs/SECURITY.md`.
 
 Dependencies and `uv.lock` must not change unless required by the approved Issue.
 
@@ -438,11 +465,11 @@ For an approved feature, fix, docs or chore Issue without Python dependency decl
 
 When dependencies intentionally change:
 
-* review the dependency surface;
-* update `pyproject.toml`;
-* update `uv.lock`;
-* run applicable SCA;
-* report exact dependency changes.
+- review the dependency surface;
+- update `pyproject.toml`;
+- update `uv.lock`;
+- run applicable SCA;
+- report exact dependency changes.
 
 Do not run, request or require:
 
@@ -456,50 +483,50 @@ Do not modify `uv.lock` for unrelated cleanup.
 
 Update relevant documentation when implementation changes:
 
-* public runtime behavior;
-* route surface;
-* API envelope or schema;
-* page, component or block contract;
-* configuration;
-* embedded integration contract;
-* adapter protocol;
-* artifact presentation;
-* auth, session, CSRF or authority boundary;
-* theme or locale behavior;
-* static asset policy;
-* packaging behavior.
+- public runtime behavior;
+- route surface;
+- API envelope or schema;
+- page, component or block contract;
+- configuration;
+- embedded integration contract;
+- adapter protocol;
+- artifact presentation;
+- auth, session, CSRF or authority boundary;
+- theme or locale behavior;
+- static asset policy;
+- packaging behavior.
 
 Check, as applicable:
 
-* `docs/ROADMAP.md`;
-* `docs/DEV_GUIDE.md`;
-* `docs/SDLC.md`;
-* `docs/SECURITY.md`;
-* `docs/WEB_UI.md`;
-* `docs/INTEGRATION.md`;
-* `docs/API_CONTRACT.md`;
-* `docs/COMPONENTS.md`;
-* `docs/THEME.md`;
-* `README.ru.md`.
+- `docs/ROADMAP.md`;
+- `docs/DEV_GUIDE.md`;
+- `docs/SDLC.md`;
+- `docs/SECURITY.md`;
+- `docs/WEB_UI.md`;
+- `docs/INTEGRATION.md`;
+- `docs/API_CONTRACT.md`;
+- `docs/COMPONENTS.md`;
+- `docs/THEME.md`;
+- `README.ru.md`.
 
 Do not update unrelated documentation.
 
 When public data fields or contracts change:
 
-* identify the source of truth;
-* document compatibility impact;
-* preserve existing fields when required;
-* update contract tests;
-* provide safe examples;
-* distinguish schema/config validation from malformed adapter degradation.
+- identify the source of truth;
+- document compatibility impact;
+- preserve existing fields when required;
+- update contract tests;
+- provide safe examples;
+- distinguish schema/config validation from malformed adapter degradation.
 
 ## Verification
 
 Determine the actual change level from `docs/SDLC.md` and `docs/SECURITY.md`:
 
-* `low-risk`;
-* `runtime-risk`;
-* `security-sensitive`.
+- `low-risk`;
+- `runtime-risk`;
+- `security-sensitive`.
 
 Run checks proportional to the actual change.
 
@@ -507,26 +534,26 @@ First determine the actual change level, read the applicable `docs/SDLC.md` and 
 
 Common checks include:
 
-* targeted tests;
-* `uv run pytest -q`;
-* `uv run pytest -q -W error::UserWarning` when relevant;
-* `./start.sh doctor`;
-* `./start.sh routes`;
-* expected web entrypoint;
-* affected HTML and JSON route smoke;
-* route-prefix or embedded-mount smoke;
-* logs inspection;
-* artifact or package-data inspection;
-* installed-package or wheel integrity;
-* HTML escaping;
-* malformed input behavior;
-* safe-link validation;
-* no-mutation checks;
-* SAST;
-* SCA;
-* DAST;
-* IAST;
-* bounded fuzzing.
+- targeted tests;
+- `uv run pytest -q`;
+- `uv run pytest -q -W error::UserWarning` when relevant;
+- `./start.sh doctor`;
+- `./start.sh routes`;
+- expected web entrypoint;
+- affected HTML and JSON route smoke;
+- route-prefix or embedded-mount smoke;
+- logs inspection;
+- artifact or package-data inspection;
+- installed-package or wheel integrity;
+- HTML escaping;
+- malformed input behavior;
+- safe-link validation;
+- no-mutation checks;
+- SAST;
+- SCA;
+- DAST;
+- IAST;
+- bounded fuzzing.
 
 Use `uv run` for Python commands.
 
@@ -536,37 +563,37 @@ Review agents using Bee Dev MCP cannot execute commands.
 
 They may use supplied command output as evidence, but must:
 
-* name the supplied command;
-* distinguish reported evidence from inspected code;
-* verify that required scenarios are covered;
-* never claim MCP ran tests.
+- name the supplied command;
+- distinguish reported evidence from inspected code;
+- verify that required scenarios are covered;
+- never claim MCP ran tests.
 
 Missing verification is a blocker only when required by:
 
-* the approved Issue;
-* `docs/SDLC.md`;
-* `docs/SECURITY.md`;
-* the actual changed boundary.
+- the approved Issue;
+- `docs/SDLC.md`;
+- `docs/SECURITY.md`;
+- the actual changed boundary.
 
 ## Security
 
-* Never expose secrets, tokens, passwords or complete environment dumps.
-* Validate user-controlled identifiers, paths, links and query parameters.
-* Keep artifact access allowlisted and bounded.
-* Keep previews size-limited.
-* Keep output escaping enabled.
-* Treat cookies and localStorage values as untrusted presentation preferences.
-* Do not let locale or theme preferences affect authorization or product behavior.
-* Preserve server-side auth, role and CSRF enforcement.
-* Do not introduce external mutation through read-only routes.
-* Do not let adapter payloads create execution authority.
-* Do not pass arbitrary JavaScript options from adapter/config to browser libraries.
-* Do not log raw adapter payloads or secrets after browser-render failures.
-* Do not expose raw product files through route parameters.
-* Do not permit path traversal, protocol-relative links or external schemes where the contract is internal-only.
-* Preserve explicit degraded and unavailable states.
-* Preserve product-owned validation and authority for write callbacks.
-* Keep package-local static assets free of tracking and external network references.
+- Never expose secrets, tokens, passwords or complete environment dumps.
+- Validate user-controlled identifiers, paths, links and query parameters.
+- Keep artifact access allowlisted and bounded.
+- Keep previews size-limited.
+- Keep output escaping enabled.
+- Treat cookies and localStorage values as untrusted presentation preferences.
+- Do not let locale or theme preferences affect authorization or product behavior.
+- Preserve server-side auth, role and CSRF enforcement.
+- Do not introduce external mutation through read-only routes.
+- Do not let adapter payloads create execution authority.
+- Do not pass arbitrary JavaScript options from adapter/config to browser libraries.
+- Do not log raw adapter payloads or secrets after browser-render failures.
+- Do not expose raw product files through route parameters.
+- Do not permit path traversal, protocol-relative links or external schemes where the contract is internal-only.
+- Preserve explicit degraded and unavailable states.
+- Preserve product-owned validation and authority for write callbacks.
+- Keep package-local static assets free of tracking and external network references.
 
 ## Review rules
 
@@ -574,44 +601,44 @@ Review the exact requested target relative to the declared base branch.
 
 Inspect:
 
-* committed changes;
-* staged changes;
-* unstaged changes;
-* untracked files;
-* deleted files;
-* renamed files;
-* complete changed-file contents;
-* relevant unchanged contracts and callers;
-* templates and static assets;
-* package-data configuration;
-* supplied verification evidence.
+- committed changes;
+- staged changes;
+- unstaged changes;
+- untracked files;
+- deleted files;
+- renamed files;
+- complete changed-file contents;
+- relevant unchanged contracts and callers;
+- templates and static assets;
+- package-data configuration;
+- supplied verification evidence.
 
 Prioritize blockers affecting the current Issue:
 
-* unmet Acceptance Criteria;
-* incorrect or unsafe behavior;
-* security or authority violations;
-* BeeUI/product ownership violations;
-* product-specific logic in generic BeeUI code;
-* conflicting sources of truth;
-* missing fail-fast validation;
-* incompatible public contracts;
-* broken route-prefix or embedded compatibility;
-* unsafe HTML, links, paths or serialization;
-* missing package templates or static assets;
-* missing required verification;
-* unrelated changes entering the PR;
-* unintended dependency declaration, inventory `uv.lock` or version changes;
-* documentation contradicting public behavior.
+- unmet Acceptance Criteria;
+- incorrect or unsafe behavior;
+- security or authority violations;
+- BeeUI/product ownership violations;
+- product-specific logic in generic BeeUI code;
+- conflicting sources of truth;
+- missing fail-fast validation;
+- incompatible public contracts;
+- broken route-prefix or embedded compatibility;
+- unsafe HTML, links, paths or serialization;
+- missing package templates or static assets;
+- missing required verification;
+- unrelated changes entering the PR;
+- unintended dependency declaration, inventory `uv.lock` or version changes;
+- documentation contradicting public behavior.
 
 Do not create blockers from:
 
-* optional visual polish;
-* personal naming preferences;
-* speculative architecture;
-* unrelated cleanup;
-* requirements absent from the Issue;
-* MCP limitations themselves.
+- optional visual polish;
+- personal naming preferences;
+- speculative architecture;
+- unrelated cleanup;
+- requirements absent from the Issue;
+- MCP limitations themselves.
 
 Perform one complete review pass and consolidate all real blockers.
 
@@ -619,8 +646,8 @@ Human-facing final-review reports and verdicts are in Russian: `ОДОБРЕНО
 
 Use:
 
-* `.agents/skills/beeui-plan-iteration/SKILL.md` for planning;
-* `.agents/skills/beeui-review-and-close/SKILL.md` for final review and PR preparation.
+- `.agents/skills/beeui-plan-iteration/SKILL.md` for planning;
+- `.agents/skills/beeui-review-and-close/SKILL.md` for final review and PR preparation.
 
 ## Required implementation evidence
 

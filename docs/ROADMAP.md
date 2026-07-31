@@ -6329,6 +6329,85 @@ Visual/browser verification:
 - a BeeAgent ROP Queue payload can render the intended layout without a BeeAgent presentation workaround;
 - the implementation is ready for a BeeUI patch release.
 
+### BeeUI — companion Iteration 13.13
+
+### Итерация 13.13 — External-principal sessions and controlled embedding
+
+**Status:** PLANNED
+
+#### Goal
+
+Добавить product-neutral contract, через который Bee-продукт может создать BeeUI session для уже проверенного внешнего principal и безопасно использовать BeeUI внутри allowlisted cross-site iframe.
+
+#### Scope
+
+- добавить public server-side session issuance для verified principal и explicit `UserRole`;
+- не выполнять external authentication внутри BeeUI;
+- централизовать установку и удаление session cookie;
+- добавить configurable session lifetime;
+- добавить allowlisted `auth.cookie_samesite`;
+- требовать `cookie_secure=true` при `SameSite=None`;
+- добавить controlled exact `security.frame_ancestors`;
+- сохранить default framing policy `DENY`;
+- при разрешённом embedding формировать совместимый CSP и не отправлять конфликтующий `X-Frame-Options: DENY`;
+- сохранить current token login backward-compatible;
+- добавить product-neutral integration documentation и tests.
+
+#### Excluded
+
+- Bitrix-specific OAuth;
+- BeeAgent, ROP или CRM semantics;
+- external identity-provider clients;
+- OIDC discovery;
+- user directory или role mapping;
+- database-backed sessions;
+- cross-product SSO service;
+- wildcard frame origins;
+- dependency changes.
+
+#### Deliverable
+
+Bee-продукт может передать BeeUI уже проверенный `user_id` и role, получить signed session response с controlled cookie policy и разрешить embedding только exact configured origins.
+
+#### Acceptance criteria
+
+- existing token login работает без изменений;
+- verified-principal session создаётся только через explicit server-side API;
+- arbitrary browser request не может самостоятельно выбрать role;
+- default cookie остаётся `SameSite=Lax`;
+- `SameSite=None` принимается только вместе с `Secure`;
+- session lifetime bounded и validated;
+- default response сохраняет `X-Frame-Options: DENY`;
+- configured frame origin формирует exact `frame-ancestors`;
+- wildcard и malformed origins отклоняются;
+- no product-specific imports, labels или behavior;
+- public integration contract documented.
+
+#### Checks
+
+- AuthService session issuance tests;
+- session signing, expiry и role validation tests;
+- existing login/logout regression tests;
+- cookie attribute tests;
+- invalid SameSite/Secure combinations;
+- frame-origin validation and response-header tests;
+- route-prefix tests;
+- SAST and DAST-style auth/header misuse review;
+- `uv run pytest -q`;
+- `./start.sh doctor`;
+- browser iframe smoke through a generic test consumer.
+
+#### DoD
+
+- public verified-principal session contract реализован;
+- cookie policy централизована;
+- controlled embedding сохраняет default-deny behavior;
+- existing consumers остаются backward-compatible;
+- BeeUI остаётся product-neutral;
+- tests и integration documentation обновлены;
+- dependencies unchanged;
+- `pyproject.toml.version` unchanged.
+
 ---
 
 ## Этап 7 — Consumer integration record

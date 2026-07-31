@@ -43,10 +43,10 @@
 
 Правила:
 
-* Проведи один полный read-only review pass.
-* Для дополнительных targets соблюдай указанные `Role`, `Mode` и `Skill`.
-* Фактические manifest, diff, files, templates, static assets, package contents и public contracts имеют приоритет над Issue, PR и отчётами.
-* Не изменяй файлы и не запускай команды.
-* Не добавляй необязательный polish, новые требования или unrelated cleanup.
-* Не требуй `uv lock --check`.
-* Верни результат строго по review skill.
+- Проведи один полный read-only review pass.
+- Для дополнительных targets соблюдай указанные `Role`, `Mode` и `Skill`.
+- Фактические manifest, diff, files, templates, static assets, package contents и public contracts имеют приоритет над Issue, PR и отчётами.
+- Не изменяй файлы и не запускай команды.
+- Не добавляй необязательный polish, новые требования или unrelated cleanup.
+- Не требуй `uv lock --check`.
+- Верни результат строго по review skill.
