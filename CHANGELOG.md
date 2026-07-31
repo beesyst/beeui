@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.25.0](https://github.com/beesyst/beeui/compare/beeui-v0.24.1...beeui-v0.25.0) (2026-07-31)
+
+
+### Features
+
+* **auth:** add external-principal sessions and controlled embedding ([#101](https://github.com/beesyst/beeui/issues/101)) ([e97ee53](https://github.com/beesyst/beeui/commit/e97ee53f139790ef8793314dca9acf9342e0f085))
+
 ## [0.24.1](https://github.com/beesyst/beeui/compare/beeui-v0.24.0...beeui-v0.24.1) (2026-07-28)
 
 
