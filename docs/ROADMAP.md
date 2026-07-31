@@ -6329,8 +6329,6 @@ Visual/browser verification:
 - a BeeAgent ROP Queue payload can render the intended layout without a BeeAgent presentation workaround;
 - the implementation is ready for a BeeUI patch release.
 
-### BeeUI — companion Iteration 13.13
-
 ### Итерация 13.13 — External-principal sessions and controlled embedding
 
 **Status:** PLANNED
