@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 from typing import Any
 
 import pytest
@@ -46,14 +47,20 @@ def _make_auth_settings(
     operator_token: str = _TEST_OPERATOR_TOKEN,
     admin_token: str = _TEST_ADMIN_TOKEN,
     cookie_secure: bool = False,
+    cookie_samesite: str = "lax",
+    session_age_max: int | None = None,
 ) -> dict[str, Any]:
-    return {
+    settings = {
         "enabled": enabled,
         "session_secret": session_secret,
         "operator_token": operator_token,
         "admin_token": admin_token,
         "cookie_secure": cookie_secure,
+        "cookie_samesite": cookie_samesite,
     }
+    if session_age_max is not None:
+        settings["session_age_max"] = session_age_max
+    return settings
 
 
 def _create_app_with_auth(
@@ -136,6 +143,51 @@ def test_auth_service_authenticate_disabled() -> None:
     assert cookie is None
 
 
+def test_auth_service_create_principal_session_admin() -> None:
+    service = AuthService(_make_auth_settings(enabled=True))
+    session, cookie = service.create_principal_session("ext_admin", UserRole.admin)
+    assert session is not None
+    assert cookie is not None
+    assert session.user_id == "ext_admin"
+    assert session.role == UserRole.admin
+    assert session.csrf_token
+    verified = verify_session_cookie(cookie, _TEST_SECRET)
+    assert verified is not None
+    assert verified.user_id == "ext_admin"
+    assert verified.role == UserRole.admin
+
+
+def test_auth_service_create_principal_session_operator() -> None:
+    service = AuthService(_make_auth_settings(enabled=True))
+    session, cookie = service.create_principal_session("ext_op", UserRole.operator)
+    assert session is not None
+    assert session.user_id == "ext_op"
+    assert session.role == UserRole.operator
+    assert cookie is not None
+
+
+def test_auth_service_create_principal_session_rejects_empty_user_id() -> None:
+    service = AuthService(_make_auth_settings(enabled=True))
+    with pytest.raises(ValueError, match="user_id"):
+        service.create_principal_session("", UserRole.admin)
+    with pytest.raises(ValueError, match="user_id"):
+        service.create_principal_session("   ", UserRole.admin)
+
+
+def test_auth_service_create_principal_session_rejects_string_role() -> None:
+    service = AuthService(_make_auth_settings(enabled=True))
+    invalid_role: Any = "admin"
+    with pytest.raises(ValueError, match="role"):
+        service.create_principal_session("u", invalid_role)
+
+
+def test_auth_service_create_principal_session_disabled() -> None:
+    service = AuthService({"enabled": False})
+    session, cookie = service.create_principal_session("u", UserRole.admin)
+    assert session is None
+    assert cookie is None
+
+
 def test_auth_service_role_check() -> None:
     service = AuthService(_make_auth_settings(enabled=True))
 
@@ -200,6 +252,37 @@ def test_session_cookie_malformed() -> None:
     assert verify_session_cookie("not-a-cookie", _TEST_SECRET) is None
 
 
+def test_session_cookie_respects_configured_max_age() -> None:
+    session = SessionData(
+        user_id="test",
+        role=UserRole.admin,
+        csrf_token="t",
+        created_at=time.time() - 3600,
+    )
+    cookie = create_session_cookie(session, _TEST_SECRET)
+    assert verify_session_cookie(cookie, _TEST_SECRET, max_age_seconds=60) is None
+    assert verify_session_cookie(cookie, _TEST_SECRET, max_age_seconds=7200) is not None
+
+
+def test_auth_service_verify_session_uses_configured_max_age() -> None:
+    service = AuthService(_make_auth_settings(enabled=True, session_age_max=120))
+    expired = SessionData(
+        user_id="test",
+        role=UserRole.viewer,
+        csrf_token="t",
+        created_at=time.time() - 200,
+    )
+    assert service.verify_session(create_session_cookie(expired, _TEST_SECRET)) is None
+    fresh = SessionData(
+        user_id="test",
+        role=UserRole.viewer,
+        csrf_token="t",
+    )
+    assert (
+        service.verify_session(create_session_cookie(fresh, _TEST_SECRET)) is not None
+    )
+
+
 def test_auth_disabled_app_starts() -> None:
     app = _create_app_with_auth({"enabled": False})
     client = TestClient(app)
@@ -257,6 +340,119 @@ def test_logout_clears_session() -> None:
         follow_redirects=False,
     )
     assert response.status_code == 302
+
+
+def test_login_sets_samesite_lax_by_default() -> None:
+    settings = load_settings(settings_path())
+    settings["auth"] = _make_auth_settings(enabled=True)
+
+    app = create_beeui_app(settings=settings)
+    client = TestClient(app)
+    response = client.post(
+        "/auth/login",
+        data={"user_id": "admin", "token": _TEST_ADMIN_TOKEN},
+        follow_redirects=False,
+    )
+    assert response.status_code == 302
+    set_cookie = response.headers.get("set-cookie", "")
+    assert "SameSite=lax" in set_cookie
+    assert "Secure" not in set_cookie
+
+
+def test_login_sets_samesite_strict() -> None:
+    settings = load_settings(settings_path())
+    settings["auth"] = _make_auth_settings(enabled=True, cookie_samesite="strict")
+
+    app = create_beeui_app(settings=settings)
+    client = TestClient(app)
+    response = client.post(
+        "/auth/login",
+        data={"user_id": "admin", "token": _TEST_ADMIN_TOKEN},
+        follow_redirects=False,
+    )
+    assert "SameSite=strict" in response.headers.get("set-cookie", "")
+
+
+def test_login_samesite_none_with_secure() -> None:
+    settings = load_settings(settings_path())
+    settings["auth"] = _make_auth_settings(
+        enabled=True, cookie_secure=True, cookie_samesite="none"
+    )
+
+    app = create_beeui_app(settings=settings)
+    client = TestClient(app)
+    response = client.post(
+        "/auth/login",
+        data={"user_id": "admin", "token": _TEST_ADMIN_TOKEN},
+        follow_redirects=False,
+    )
+    set_cookie = response.headers.get("set-cookie", "")
+    assert "SameSite=none" in set_cookie
+    assert "Secure" in set_cookie
+
+
+def test_logout_delete_uses_same_cookie_policy() -> None:
+    settings = load_settings(settings_path())
+    settings["auth"] = _make_auth_settings(
+        enabled=True, cookie_secure=True, cookie_samesite="none"
+    )
+
+    app = create_beeui_app(settings=settings)
+    client = TestClient(app)
+    _login(client)
+    response = client.post(
+        "/auth/logout",
+        headers={"accept": "text/html"},
+        follow_redirects=False,
+    )
+    assert response.status_code == 302
+    set_cookie = response.headers.get("set-cookie", "")
+    assert session_cookie_name() in set_cookie
+    assert "SameSite=none" in set_cookie
+    assert "Secure" in set_cookie
+
+
+def test_principal_session_usable_through_require_session() -> None:
+    settings = load_settings(settings_path())
+    settings["auth"] = _make_auth_settings(enabled=True)
+
+    app = create_beeui_app(settings=settings)
+    service = app.state.beeui_auth_service
+    session, cookie = service.create_principal_session("ext_admin", UserRole.admin)
+    assert session is not None and cookie is not None
+
+    client = TestClient(app)
+    client.cookies.set(session_cookie_name(), cookie)
+
+    response = client.get("/auth/csrf")
+    assert response.status_code == 200
+    assert response.json()["data"]["csrf_token"] == session.csrf_token
+
+
+def test_viewer_principal_session_cannot_call_config_apply() -> None:
+    settings = load_settings(settings_path())
+    settings["auth"] = _make_auth_settings(enabled=True)
+    settings["features"]["config_apply"] = True
+
+    app = create_beeui_app(settings=settings)
+    service = app.state.beeui_auth_service
+    session, cookie = service.create_principal_session("viewer_ext", UserRole.viewer)
+    assert session is not None and cookie is not None
+
+    client = TestClient(app)
+    client.cookies.set(session_cookie_name(), cookie)
+
+    csrf_resp = client.get("/auth/csrf")
+    csrf_token = csrf_resp.json()["data"]["csrf_token"]
+
+    response = client.post(
+        "/api/config/apply",
+        json={},
+        headers={"X-CSRF-Token": csrf_token},
+    )
+    assert response.status_code == 403
+    payload = response.json()
+    assert payload["error"]["code"] == "forbidden"
 
 
 def test_mounted_auth_uses_effective_external_prefix() -> None:
@@ -1670,6 +1866,151 @@ def test_auth_enabled_requires_cookie_secure() -> None:
         )
 
 
+def test_settings_validation_rejects_wildcard_frame_ancestor() -> None:
+    from beeui_module.core.settings import _validate_security
+
+    with pytest.raises(ValueError, match="frame_ancestors"):
+        _validate_security(
+            {
+                "security": {
+                    "html_autoescape": True,
+                    "assets_ext": False,
+                    "frame_ancestors": ["*"],
+                }
+            }
+        )
+
+
+def test_settings_validation_rejects_malformed_frame_ancestors() -> None:
+    from beeui_module.core.settings import _validate_security
+
+    for origin in (
+        "https://app.example.com/",
+        "https://app.example.com/path",
+        "https://app.example.com?x=1",
+        "https://app.example.com?",
+        "https://app.example.com#f",
+        "https://app.example.com#",
+        "https://@app.example.com",
+        "https://app.example.com:",
+        "https://app.example.com:abc",
+        "https://example.com:99999",
+        "https://app.example.com\\evil",
+        "https://app.example.com;script-src",
+        " https://app.example.com",
+        "https://app.example.com\t",
+        "//app.example.com",
+        "ftp://app.example.com",
+        "https://",
+        "https://*.example.com",
+        "https://-bad.example.com",
+        "https://bad_host.example.com",
+        "https://example..com",
+        "",
+        "not-an-origin",
+    ):
+        with pytest.raises(ValueError, match="frame_ancestors"):
+            _validate_security(
+                {
+                    "security": {
+                        "html_autoescape": True,
+                        "assets_ext": False,
+                        "frame_ancestors": [origin],
+                    }
+                }
+            )
+
+
+def test_create_app_rejects_invalid_supplied_frame_ancestors() -> None:
+    for origin in (
+        "*",
+        "https://app.example.com/path",
+        "https://app.example.com?x=1",
+        "https://app.example.com?",
+        "https://app.example.com#f",
+        "https://app.example.com#",
+        "https://@app.example.com",
+        "https://app.example.com:",
+        "https://app.example.com\\evil",
+        "https://app.example.com;script-src",
+    ):
+        settings = load_settings(settings_path())
+        settings["security"]["frame_ancestors"] = [origin]
+        with pytest.raises(ValueError, match="frame_ancestors"):
+            create_beeui_app(settings=settings)
+
+
+def test_settings_validation_rejects_non_list_frame_ancestors() -> None:
+    from beeui_module.core.settings import _validate_security
+
+    with pytest.raises(ValueError, match="frame_ancestors"):
+        _validate_security(
+            {
+                "security": {
+                    "html_autoescape": True,
+                    "assets_ext": False,
+                    "frame_ancestors": "https://app.example.com",
+                }
+            }
+        )
+
+
+def test_settings_validation_accepts_exact_frame_ancestors() -> None:
+    from beeui_module.core.settings import _validate_security
+
+    _validate_security(
+        {
+            "security": {
+                "html_autoescape": True,
+                "assets_ext": False,
+                "frame_ancestors": [
+                    "https://app.example.com",
+                    "https://app.example.com:8443",
+                ],
+            }
+        }
+    )
+
+
+def test_settings_validation_accepts_local_ip_frame_ancestors() -> None:
+    from beeui_module.core.settings import _validate_security
+
+    _validate_security(
+        {
+            "security": {
+                "html_autoescape": True,
+                "assets_ext": False,
+                "frame_ancestors": [
+                    "https://app.example.com",
+                    "https://app.example.com:8443",
+                    "http://localhost",
+                    "http://127.0.0.1",
+                    "http://192.168.1.10",
+                    "https://[::1]:8080",
+                ],
+            }
+        }
+    )
+
+
+def test_create_app_accepts_local_ip_frame_ancestors() -> None:
+    settings = load_settings(settings_path())
+    settings["security"]["frame_ancestors"] = [
+        "http://localhost",
+        "https://[::1]:8080",
+    ]
+
+    app = create_beeui_app(settings=settings)
+    client = TestClient(app)
+    response = client.get("/")
+    assert response.status_code == 200
+    assert response.headers.get("X-Frame-Options") is None
+    assert (
+        response.headers.get("Content-Security-Policy")
+        == "frame-ancestors http://localhost https://[::1]:8080"
+    )
+
+
 def test_auth_cookie_secure_flag_false_for_local() -> None:
     settings = load_settings(settings_path())
     settings["auth"]["enabled"] = True
@@ -1710,6 +2051,95 @@ def test_auth_cookie_secure_flag_true_sets_secure_cookie() -> None:
     set_cookie = response.headers.get("set-cookie", "")
     assert "Secure" in set_cookie, f"Cookie should be Secure: {set_cookie}"
     assert session_cookie_name() in set_cookie
+
+
+def test_settings_validation_rejects_invalid_cookie_samesite() -> None:
+    from beeui_module.core.settings import _validate_auth
+
+    with pytest.raises(ValueError, match="cookie_samesite"):
+        _validate_auth(
+            {
+                "auth": {
+                    "enabled": True,
+                    "session_secret": "s",
+                    "operator_token": "o",
+                    "admin_token": "a",
+                    "cookie_secure": False,
+                    "cookie_samesite": "bogus",
+                }
+            }
+        )
+
+
+def test_settings_validation_rejects_samesite_none_without_secure() -> None:
+    from beeui_module.core.settings import _validate_auth
+
+    with pytest.raises(ValueError, match="cookie_secure"):
+        _validate_auth(
+            {
+                "auth": {
+                    "enabled": True,
+                    "session_secret": "s",
+                    "operator_token": "o",
+                    "admin_token": "a",
+                    "cookie_secure": False,
+                    "cookie_samesite": "none",
+                }
+            }
+        )
+
+
+def test_settings_validation_accepts_samesite_none_with_secure() -> None:
+    from beeui_module.core.settings import _validate_auth
+
+    _validate_auth(
+        {
+            "auth": {
+                "enabled": True,
+                "session_secret": "s",
+                "operator_token": "o",
+                "admin_token": "a",
+                "cookie_secure": True,
+                "cookie_samesite": "none",
+            }
+        }
+    )
+
+
+def test_settings_validation_rejects_non_int_session_age_max() -> None:
+    from beeui_module.core.settings import _validate_auth
+
+    with pytest.raises(ValueError, match="session_age_max"):
+        _validate_auth(
+            {
+                "auth": {
+                    "enabled": True,
+                    "session_secret": "s",
+                    "operator_token": "o",
+                    "admin_token": "a",
+                    "cookie_secure": False,
+                    "session_age_max": "86400",
+                }
+            }
+        )
+
+
+def test_settings_validation_rejects_out_of_range_session_age_max() -> None:
+    from beeui_module.core.settings import _validate_auth
+
+    with pytest.raises(ValueError, match="session_age_max"):
+        _validate_auth(
+            {
+                "auth": {
+                    "enabled": True,
+                    "session_secret": "s",
+                    "operator_token": "o",
+                    "admin_token": "a",
+                    "cookie_secure": False,
+                    "session_age_max": 99999999,
+                }
+            }
+        )
 
 
 def test_security_headers_on_html_route() -> None:
@@ -1765,6 +2195,63 @@ def test_security_headers_on_api_error() -> None:
     assert response.status_code == 401
     assert response.headers.get("X-Content-Type-Options") == "nosniff"
     assert response.headers.get("X-Frame-Options") == "DENY"
+
+
+def test_default_frame_deny_has_no_csp_frame_ancestors() -> None:
+    app = create_beeui_app()
+    client = TestClient(app)
+    response = client.get("/")
+    assert response.headers.get("X-Frame-Options") == "DENY"
+    csp = response.headers.get("Content-Security-Policy")
+    assert csp is None or "frame-ancestors" not in csp
+
+
+def test_frame_ancestors_configures_csp_and_omits_xfo() -> None:
+    settings = load_settings(settings_path())
+    settings["security"]["frame_ancestors"] = ["https://app.example.com"]
+
+    app = create_beeui_app(settings=settings)
+    client = TestClient(app)
+    response = client.get("/")
+    assert response.headers.get("X-Frame-Options") is None
+    assert (
+        response.headers.get("Content-Security-Policy")
+        == "frame-ancestors https://app.example.com"
+    )
+
+
+def test_frame_ancestors_multiple_origins_space_separated() -> None:
+    settings = load_settings(settings_path())
+    settings["security"]["frame_ancestors"] = [
+        "https://one.example.com",
+        "https://two.example.com",
+    ]
+
+    app = create_beeui_app(settings=settings)
+    client = TestClient(app)
+    response = client.get("/")
+    assert (
+        response.headers.get("Content-Security-Policy")
+        == "frame-ancestors https://one.example.com https://two.example.com"
+    )
+
+
+def test_frame_ancestors_under_mount() -> None:
+    from fastapi import FastAPI
+
+    settings = load_settings(settings_path())
+    settings["security"]["frame_ancestors"] = ["https://app.example.com"]
+    parent = FastAPI()
+    mount_beeui(parent, path="/ui", settings=settings)
+    client = TestClient(parent)
+
+    response = client.get("/ui/")
+    assert response.status_code == 200
+    assert response.headers.get("X-Frame-Options") is None
+    assert (
+        response.headers.get("Content-Security-Policy")
+        == "frame-ancestors https://app.example.com"
+    )
 
 
 def test_auth_routes_follow_route_prefix() -> None:

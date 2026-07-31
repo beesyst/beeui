@@ -11,7 +11,7 @@ from typing import Any
 from beeui_module.auth.models import SessionData
 
 _SESSION_COOKIE_NAME = "beeui_session"
-_SESSION_MAX_AGE = 86400
+DEFAULT_SESSION_MAX_AGE_SECONDS = 86400
 _HMAC_DIGEST = hashlib.sha256
 
 
@@ -45,7 +45,11 @@ def create_session_cookie(session: SessionData, secret: str) -> str:
     return f"{encoded}.{sig}"
 
 
-def verify_session_cookie(cookie: str, secret: str) -> SessionData | None:
+def verify_session_cookie(
+    cookie: str,
+    secret: str,
+    max_age_seconds: int = DEFAULT_SESSION_MAX_AGE_SECONDS,
+) -> SessionData | None:
     if not cookie or "." not in cookie:
         return None
 
@@ -60,7 +64,7 @@ def verify_session_cookie(cookie: str, secret: str) -> SessionData | None:
         return None
 
     created_at = float(data.get("created_at", 0))
-    if time.time() - created_at > _SESSION_MAX_AGE:
+    if time.time() - created_at > max_age_seconds:
         return None
 
     try:

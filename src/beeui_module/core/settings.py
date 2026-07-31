@@ -1,13 +1,23 @@
 from __future__ import annotations
 
+import ipaddress
 import os
 import re
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 import yaml
 
 VALID_LOG_LEVELS = {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}
+VALID_COOKIE_SAMESITE_VALUES = frozenset({"lax", "strict", "none"})
+MIN_SESSION_MAX_AGE_SECONDS = 60
+MAX_SESSION_MAX_AGE_SECONDS = 604800
+_FRAME_ORIGIN_SCHEMES = frozenset({"http", "https"})
+_FRAME_HOSTNAME_RE = re.compile(
+    r"^[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?"
+    r"(\.[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?)*\.?$"
+)
 _ENV_REF_RE = re.compile(r"^\$\{([A-Z0-9_]+)\}$")
 
 
@@ -109,6 +119,62 @@ def _validate_security(settings: dict[str, Any]) -> None:
     if not isinstance(security_cfg["assets_ext"], bool):
         raise ValueError("security.assets_ext must be a boolean")
 
+    if "frame_ancestors" in security_cfg:
+        frame_ancestors = security_cfg["frame_ancestors"]
+        if not isinstance(frame_ancestors, list):
+            raise ValueError("security.frame_ancestors must be a list")
+        for origin in frame_ancestors:
+            if not is_valid_frame_origin(origin):
+                raise ValueError(
+                    "security.frame_ancestors must contain only absolute "
+                    "http(s) origins without path, query, fragment or wildcard"
+                )
+
+
+def is_valid_frame_origin(value: Any) -> bool:
+    if not isinstance(value, str):
+        return False
+    if not value or value != value.strip() or any(char.isspace() for char in value):
+        return False
+    origin = value
+    if "*" in origin or "://" not in origin:
+        return False
+    if origin in {"*", "'self'", "'none'"}:
+        return False
+    for char in ("?", "#", "@", "\\", ";"):
+        if char in origin:
+            return False
+    try:
+        parsed = urlsplit(origin)
+        port = parsed.port
+    except ValueError:
+        return False
+    if parsed.scheme not in _FRAME_ORIGIN_SCHEMES:
+        return False
+    if parsed.username or parsed.password:
+        return False
+    if parsed.path or parsed.query or parsed.fragment:
+        return False
+    if parsed.netloc.endswith(":"):
+        return False
+    host = parsed.hostname
+    if not host or not _is_valid_frame_hostname(host):
+        return False
+    if port is not None and not (1 <= port <= 65535):
+        return False
+    return True
+
+
+def _is_valid_frame_hostname(host: str) -> bool:
+    if host == "localhost":
+        return True
+    try:
+        ipaddress.ip_address(host)
+        return True
+    except ValueError:
+        pass
+    return _FRAME_HOSTNAME_RE.fullmatch(host) is not None
+
 
 def _validate_auth(settings: dict[str, Any]) -> None:
     auth_cfg = settings.get("auth")
@@ -124,6 +190,30 @@ def _validate_auth(settings: dict[str, Any]) -> None:
     if not isinstance(auth_cfg["enabled"], bool):
         raise ValueError("auth.enabled must be a boolean")
 
+    cookie_samesite = auth_cfg.get("cookie_samesite", "lax")
+    if not isinstance(cookie_samesite, str):
+        raise ValueError("auth.cookie_samesite must be a string")
+    normalized_samesite = cookie_samesite.strip().lower()
+    if normalized_samesite not in VALID_COOKIE_SAMESITE_VALUES:
+        raise ValueError(
+            "auth.cookie_samesite must be one of "
+            f"{sorted(VALID_COOKIE_SAMESITE_VALUES)}"
+        )
+
+    session_max_age = auth_cfg.get("session_age_max")
+    if session_max_age is not None:
+        if isinstance(session_max_age, bool) or not isinstance(session_max_age, int):
+            raise ValueError("auth.session_age_max must be an integer")
+        if not (
+            MIN_SESSION_MAX_AGE_SECONDS
+            <= session_max_age
+            <= MAX_SESSION_MAX_AGE_SECONDS
+        ):
+            raise ValueError(
+                "auth.session_age_max must be in range "
+                f"{MIN_SESSION_MAX_AGE_SECONDS}..{MAX_SESSION_MAX_AGE_SECONDS}"
+            )
+
     if auth_cfg["enabled"]:
         if "cookie_secure" not in auth_cfg:
             raise ValueError(
@@ -131,6 +221,11 @@ def _validate_auth(settings: dict[str, Any]) -> None:
             )
         if not isinstance(auth_cfg["cookie_secure"], bool):
             raise ValueError("auth.cookie_secure must be a boolean")
+
+        if normalized_samesite == "none" and auth_cfg["cookie_secure"] is not True:
+            raise ValueError(
+                "auth.cookie_samesite='none' requires auth.cookie_secure=true"
+            )
 
         for key in ("session_secret", "operator_token", "admin_token"):
             if key not in auth_cfg:

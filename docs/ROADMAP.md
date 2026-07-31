@@ -6331,7 +6331,7 @@ Visual/browser verification:
 
 ### Итерация 13.13 — External-principal sessions and controlled embedding
 
-**Status:** PLANNED
+**Status:** DONE
 
 #### Goal
 

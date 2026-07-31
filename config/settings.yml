@@ -22,6 +22,7 @@ storage:
 security:
   html_autoescape: true
   assets_ext: false
+  frame_ancestors: []
 
 auth:
   enabled: false
@@ -29,6 +30,8 @@ auth:
   operator_token: ${BEEUI_OPERATOR_TOKEN}
   admin_token: ${BEEUI_ADMIN_TOKEN}
   cookie_secure: false
+  cookie_samesite: lax
+  session_age_max: 86400
 
 product:
   mode: demo
