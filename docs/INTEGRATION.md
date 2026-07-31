@@ -6,6 +6,51 @@
 
 ## Текущий статус
 
+**Iteration 13.13** — External-principal sessions and controlled embedding.
+
+- Trusted product backend может создать signed BeeUI session для уже проверенного
+  внешнего principal через публичный Python contract
+  `AuthService.create_principal_session(user_id, role)`.
+- `user_id` должен быть non-empty string; `role` должен быть explicit `UserRole`
+  value. BeeUI не проверяет внешнюю identity и не маппит внешние credentials
+  в роли; verification и role mapping остаются за product backend.
+- Browser requests не могут выбирать или повышать role: нет browser-facing
+  endpoint, принимающего `user_id`/`role`.
+- Session cookie устанавливается и удаляется через единую централизованную
+  policy: `AuthService.attach_session_cookie(response, cookie, path=...)` и
+  `AuthService.delete_session_cookie(response, path=...)`. Login/logout routes
+  используют те же helpers.
+- Cookie policy настраивается через `auth.cookie_secure`,
+  `auth.cookie_samesite` (default `lax`) и `auth.session_age_max`
+  (default `86400`, range `60..604800`). `cookie_samesite=none` требует
+  `cookie_secure=true`.
+- Существующий формат signed cookies остаётся читаемым до configured expiry;
+  token login/logout/CSRF/roles остаются backward-compatible.
+- Controlled cross-site iframe embedding включается exact `security.frame_ancestors`
+  origins. Default framing denial (`X-Frame-Options: DENY`) сохраняется.
+  При непустом `security.frame_ancestors` BeeUI отправляет
+  `Content-Security-Policy: frame-ancestors <origins>` и не отправляет
+  конфликтующий `X-Frame-Options: DENY`.
+- Wildcard, malformed, path/query/fragment и иные non-origin values отклоняются
+  fail-fast.
+- Нет BeeAgent/Bitrix/ROP-specific imports, labels или behavior; contract
+  product-neutral.
+
+```python
+from beeui_module.auth.models import UserRole
+from fastapi.responses import JSONResponse
+
+service = request.app.state.beeui_auth_service
+session, cookie = service.create_principal_session(
+    user_id=verified_user_id,
+    role=UserRole.operator,
+)
+
+response = JSONResponse({"ok": True, "data": {"session_started": True}})
+service.attach_session_cookie(response, cookie, path="/ui")
+return response
+```
+
 **Iteration 13.8** — Generic detail page template and render helper.
 
 - BeeUI provides `render_beeui_detail_page()` product-neutral detail page renderer.

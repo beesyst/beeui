@@ -6,6 +6,7 @@ from typing import Any
 
 from beeui_module.auth.models import SessionData, UserRole, role_meets_minimum
 from beeui_module.auth.sessions import (
+    DEFAULT_SESSION_MAX_AGE_SECONDS,
     create_session_cookie,
     generate_csrf_token,
     session_cookie_name,
@@ -13,6 +14,8 @@ from beeui_module.auth.sessions import (
 )
 
 logger = logging.getLogger("beeui.auth")
+
+_DEFAULT_COOKIE_SAMESITE = "lax"
 
 
 class AuthService:
@@ -22,6 +25,17 @@ class AuthService:
         self._operator_token: str | None = settings_auth.get("operator_token")
         self._admin_token: str | None = settings_auth.get("admin_token")
         self._cookie_secure = bool(settings_auth.get("cookie_secure", False))
+        self._cookie_samesite = (
+            str(settings_auth.get("cookie_samesite", _DEFAULT_COOKIE_SAMESITE))
+            .strip()
+            .lower()
+        )
+        raw_max_age = settings_auth.get("session_age_max")
+        self._session_max_age_seconds = (
+            int(raw_max_age)
+            if raw_max_age is not None
+            else DEFAULT_SESSION_MAX_AGE_SECONDS
+        )
 
     @property
     def enabled(self) -> bool:
@@ -78,11 +92,65 @@ class AuthService:
         logger.info("Session created for user_id=%s role=%s", user_id, role.value)
         return session, cookie
 
+    def create_principal_session(
+        self,
+        user_id: str,
+        role: UserRole,
+    ) -> tuple[SessionData | None, str | None]:
+        if not self._enabled:
+            return None, None
+        if not isinstance(user_id, str) or not user_id.strip():
+            raise ValueError("user_id must be a non-empty string")
+        if not isinstance(role, UserRole):
+            raise ValueError("role must be a UserRole value")
+        csrf_token = generate_csrf_token()
+        session = SessionData(
+            user_id=user_id,
+            role=role,
+            csrf_token=csrf_token,
+        )
+        cookie = create_session_cookie(session, self._session_secret or "")
+        logger.info(
+            "Principal session created for user_id=%s role=%s",
+            user_id,
+            role.value,
+        )
+        return session, cookie
+
     def verify_session(self, cookie: str | None) -> SessionData | None:
         if not self._enabled or not cookie:
             return None
         secret = self._session_secret or ""
-        return verify_session_cookie(cookie, secret)
+        return verify_session_cookie(
+            cookie,
+            secret,
+            max_age_seconds=self._session_max_age_seconds,
+        )
+
+    def attach_session_cookie(
+        self,
+        response: Any,
+        cookie: str,
+        path: str = "/",
+    ) -> None:
+        response.set_cookie(
+            key=session_cookie_name(),
+            value=cookie,
+            httponly=True,
+            secure=self._cookie_secure,
+            samesite=self._cookie_samesite,
+            max_age=self._session_max_age_seconds,
+            path=path,
+        )
+
+    def delete_session_cookie(self, response: Any, path: str = "/") -> None:
+        response.delete_cookie(
+            key=session_cookie_name(),
+            path=path,
+            secure=self._cookie_secure,
+            samesite=self._cookie_samesite,
+            httponly=True,
+        )
 
     def check_role(self, session: SessionData, minimum_role: UserRole) -> bool:
         """Check if session has at least the minimum role."""
@@ -100,6 +168,14 @@ class AuthService:
     @property
     def cookie_secure(self) -> bool:
         return self._cookie_secure
+
+    @property
+    def cookie_samesite(self) -> str:
+        return self._cookie_samesite
+
+    @property
+    def session_age_max(self) -> int:
+        return self._session_max_age_seconds
 
     def cookie_name(self) -> str:
         return session_cookie_name()

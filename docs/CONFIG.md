@@ -110,6 +110,7 @@ storage:
 security:
   html_autoescape: true
   assets_ext: false
+  frame_ancestors: []
 
 auth:
   enabled: false
@@ -117,6 +118,8 @@ auth:
   operator_token: ${BEEUI_OPERATOR_TOKEN}
   admin_token: ${BEEUI_ADMIN_TOKEN}
   cookie_secure: false
+  cookie_samesite: lax
+  session_age_max: 86400
 
 product:
   mode: demo
@@ -269,14 +272,16 @@ beeagent/storage/runs/*
 security:
   html_autoescape: true
   assets_ext: false
+  frame_ancestors: []
 ```
 
 ### Поля
 
-| Ключ                       | Тип  | Обязательный | Описание                         |
-| -------------------------- | ---- | ------------ | -------------------------------- |
-| `security.html_autoescape` | bool | да           | Jinja2 autoescape                |
-| `security.assets_ext`      | bool | да           | Разрешить external JS/CSS assets |
+| Ключ                       | Тип  | Обязательный | Описание                                                 |
+| -------------------------- | ---- | ------------ | -------------------------------------------------------- |
+| `security.html_autoescape` | bool | да           | Jinja2 autoescape                                        |
+| `security.assets_ext`      | bool | да           | Разрешить external JS/CSS assets                         |
+| `security.frame_ancestors` | list | нет          | Exact origins для controlled cross-site iframe embedding |
 
 ### Правила
 
@@ -286,10 +291,14 @@ security:
 - Tabler assets должны быть vendored/local.
 - Нельзя копировать demo tracking scripts из external templates.
 - Static roots должны быть path-safe.
+- `security.frame_ancestors` по умолчанию пуст — framing запрещён (`X-Frame-Options: DENY`).
+- Каждый элемент `security.frame_ancestors` должен быть absolute `http(s)` origin без path, query, fragment, wildcard или userinfo.
+- Wildcard (`*`), CSP keywords и malformed/non-origin значения отклоняются fail-fast.
+- При непустом `security.frame_ancestors` BeeUI отправляет `Content-Security-Policy: frame-ancestors <origins>` и не отправляет конфликтующий `X-Frame-Options: DENY`.
 
 ## `auth.*`
 
-Текущий contract после Iteration 13.
+Текущий contract после Iteration 13.13.
 
 ```yaml
 auth:
@@ -298,6 +307,8 @@ auth:
   operator_token: ${BEEUI_OPERATOR_TOKEN}
   admin_token: ${BEEUI_ADMIN_TOKEN}
   cookie_secure: false
+  cookie_samesite: lax
+  session_age_max: 86400
 ```
 
 ### Назначение
@@ -306,13 +317,15 @@ Auth/session/CSRF layer защищает internal operator/admin UI и protected
 
 ### Поля
 
-| Ключ                  | Тип    | Обязательный | Описание                                 |
-| --------------------- | ------ | ------------ | ---------------------------------------- |
-| `auth.enabled`        | bool   | да           | Включить auth/session mode               |
-| `auth.session_secret` | string | да*          | Session secret из env или runtime config |
-| `auth.operator_token` | string | да*          | Operator token из env или runtime config |
-| `auth.admin_token`    | string | да*          | Admin token из env или runtime config    |
-| `auth.cookie_secure`  | bool   | да           | Secure flag для signed session cookie    |
+| Ключ                   | Тип    | Обязательный | Описание                                         |
+| ---------------------- | ------ | ------------ | ------------------------------------------------ |
+| `auth.enabled`         | bool   | да           | Включить auth/session mode                       |
+| `auth.session_secret`  | string | да\*         | Session secret из env или runtime config         |
+| `auth.operator_token`  | string | да\*         | Operator token из env или runtime config         |
+| `auth.admin_token`     | string | да\*         | Admin token из env или runtime config            |
+| `auth.cookie_secure`   | bool   | да           | Secure flag для signed session cookie            |
+| `auth.cookie_samesite` | string | нет          | SameSite policy (`lax`, `strict`, `none`)        |
+| `auth.session_age_max` | int    | нет          | Bounded session lifetime в секундах (60..604800) |
 
 `*` — обязательно при `auth.enabled=true`.
 
@@ -323,7 +336,12 @@ Auth/session/CSRF layer защищает internal operator/admin UI и protected
 - Tokens/secrets должны приходить из env или внешнего runtime config и не должны коммититься как raw secrets.
 - `cookie_secure=false` допустим для local HTTP.
 - `cookie_secure=true` обязателен для remote/HTTPS.
+- `auth.cookie_samesite` по умолчанию `lax`; допустимы только `lax`, `strict`, `none`.
+- `auth.cookie_samesite=none` принимается только при `auth.cookie_secure=true`.
+- `auth.session_age_max` по умолчанию `86400`; должен быть integer в range `60..604800`.
+- Session cookie setting и deletion используют единую cookie policy.
 - Protected POST routes требуют role + CSRF.
+- `AuthService.create_principal_session(user_id, role)` создаёт signed session для уже проверенного внешнего principal; browser-запросы не могут выбирать или повышать role.
 
 ## `product.*`
 
@@ -580,16 +598,16 @@ app:
 
 ### Поля
 
-| Ключ            | Тип    | Обязательный | Описание                   |
-| --------------- | ------ | ------------ | -------------------------- |
-| `app.title`            | string       | да           | Display title                                      |
-| `app.product`          | string       | да           | Product key                                        |
-| `app.logo_text`        | string       | да           | Sidebar/header logo text                           |
-| `app.locale`           | dict         | нет          | Настройки locale seed                              |
-| `app.locale.default`   | string       | да*          | Default locale code                                |
-| `app.locale.available` | list[string] | да*          | Allowlisted locale codes                           |
-| `app.theme`            | dict         | да           | Controlled theme settings                          |
-| `app.layout`           | dict         | да           | Controlled layout settings                         |
+| Ключ                   | Тип          | Обязательный | Описание                   |
+| ---------------------- | ------------ | ------------ | -------------------------- |
+| `app.title`            | string       | да           | Display title              |
+| `app.product`          | string       | да           | Product key                |
+| `app.logo_text`        | string       | да           | Sidebar/header logo text   |
+| `app.locale`           | dict         | нет          | Настройки locale seed      |
+| `app.locale.default`   | string       | да\*         | Default locale code        |
+| `app.locale.available` | list[string] | да\*         | Allowlisted locale codes   |
+| `app.theme`            | dict         | да           | Controlled theme settings  |
+| `app.layout`           | dict         | да           | Controlled layout settings |
 
 `*` — обязательно, если задан `app.locale`.
 
@@ -751,13 +769,13 @@ pages:
 
 ### Поля
 
-| Ключ       | Тип    | Обязательный | Описание                                 |
-| ---------- | ------ | ------------ | ---------------------------------------- |
-| `id`       | string | да           | Page ID                                  |
-| `path`     | string | да           | Route                                    |
-| `title`    | string | да           | Page title                               |
-| `subtitle` | string | нет          | Page subtitle                            |
-| `blocks`   | list   | да           | Block placement list: `{block, width|span|size}` или `{id, enabled?}` |
+| Ключ       | Тип    | Обязательный | Описание                                                                |
+| ---------- | ------ | ------------ | ----------------------------------------------------------------------- |
+| `id`       | string | да           | Page ID                                                                 |
+| `path`     | string | да           | Route                                                                   |
+| `title`    | string | да           | Page title                                                              |
+| `subtitle` | string | нет          | Page subtitle                                                           |
+| `blocks`   | list   | да           | Block placement list: `{block, width\|span\|size}` или `{id, enabled?}` |
 
 ### Правила
 
@@ -1032,6 +1050,7 @@ storage:
 security:
   html_autoescape: true
   assets_ext: false
+  frame_ancestors: []
 
 auth:
   enabled: false
@@ -1039,6 +1058,8 @@ auth:
   operator_token: ${BEEUI_OPERATOR_TOKEN}
   admin_token: ${BEEUI_ADMIN_TOKEN}
   cookie_secure: false
+  cookie_samesite: lax
+  session_age_max: 86400
 
 product:
   mode: embedded
@@ -1253,6 +1274,7 @@ storage:
 security:
   html_autoescape: true
   assets_ext: false
+  frame_ancestors: []
 
 auth:
   enabled: false
@@ -1260,6 +1282,8 @@ auth:
   operator_token: ${BEEUI_OPERATOR_TOKEN}
   admin_token: ${BEEUI_ADMIN_TOKEN}
   cookie_secure: false
+  cookie_samesite: lax
+  session_age_max: 86400
 
 product:
   mode: embedded

@@ -216,8 +216,13 @@ def create_beeui_app(
     app.state.beeui_product = product_meta
     auth_cfg = dict(resolved_settings.get("auth", {}))
 
-    from beeui_module.core.settings import _resolve_env_ref, _validate_auth
+    from beeui_module.core.settings import (
+        _resolve_env_ref,
+        _validate_auth,
+        _validate_security,
+    )
 
+    _validate_security({"security": security_cfg})
     _validate_auth({"auth": auth_cfg})
 
     for key in ("session_secret", "operator_token", "admin_token"):
@@ -234,6 +239,8 @@ def create_beeui_app(
         route_prefix=route_prefix,
     )
 
+    frame_ancestors = security_cfg.get("frame_ancestors", [])
+
     @app.middleware("http")
     async def add_read_only_headers(request: Request, call_next):
         response = await call_next(request)
@@ -249,7 +256,13 @@ def create_beeui_app(
             )
 
         response.headers.setdefault("X-Content-Type-Options", "nosniff")
-        response.headers.setdefault("X-Frame-Options", "DENY")
+        if frame_ancestors:
+            response.headers.setdefault(
+                "Content-Security-Policy",
+                "frame-ancestors " + " ".join(frame_ancestors),
+            )
+        else:
+            response.headers.setdefault("X-Frame-Options", "DENY")
 
         if request.method == "GET":
             response.headers["X-BeeUI-Read-Only"] = "true"

@@ -208,13 +208,9 @@ def register_auth_routes(
             url=_root_href(request),
             status_code=302,
         )
-        response.set_cookie(
-            key=service.cookie_name(),
-            value=cookie,
-            httponly=True,
-            secure=service.cookie_secure,
-            samesite="lax",
-            max_age=86400,
+        service.attach_session_cookie(
+            response,
+            cookie,
             path=_external_prefix(request) or "/",
         )
         return response
@@ -245,8 +241,8 @@ def register_auth_routes(
                 }
             )
 
-        response.delete_cookie(
-            key=service.cookie_name(),
+        service.delete_session_cookie(
+            response,
             path=_external_prefix(request) or "/",
         )
         return response

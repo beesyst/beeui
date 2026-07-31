@@ -498,8 +498,22 @@ Session cookie behaviour:
 - Local/dev: set `cookie_secure: false` (HTTP allowed).
 - Remote/customer-safe: set `cookie_secure: true` (HTTPS required).
 - When `auth.enabled=true`, `auth.cookie_secure` is required.
+- `auth.cookie_samesite` controls `SameSite`: default `lax`; allowlisted values `lax`, `strict`, `none`.
+- `auth.cookie_samesite=none` is accepted only when `auth.cookie_secure=true`.
+- `auth.session_age_max` bounds the session lifetime (default `86400`, allowed range `60..604800`); expired signed cookies are rejected.
+- Session cookie setting and deletion share one centralized policy: `AuthService.attach_session_cookie(...)` and `AuthService.delete_session_cookie(...)`.
+- A signed session is created for an already-verified external principal only through the explicit server-side `AuthService.create_principal_session(user_id, role)` contract. Browser requests cannot choose or escalate `role`; `role` must be an explicit `UserRole` value.
+- BeeUI does not verify external identity and does not map external credentials to roles; the product backend performs verification and role mapping before issuing a session.
 
 Auth is not required in the first MVP, but when added, it must not be partial or decorative.
+
+## Framing/embedding security rules
+
+- Default framing policy is denial: responses carry `X-Frame-Options: DENY`.
+- Controlled cross-site iframe embedding is enabled only via exact configured origins in `security.frame_ancestors`.
+- `security.frame_ancestors` accepts only absolute `http(s)` origins without path, query, fragment, wildcard, CSP keywords or userinfo; malformed/non-origin values fail fast at config load.
+- When `security.frame_ancestors` is non-empty, BeeUI sends `Content-Security-Policy: frame-ancestors <origins>` and omits the conflicting `X-Frame-Options: DENY`.
+- Wildcard frame origins are rejected.
 
 ## Static asset security rules
 

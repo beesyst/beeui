@@ -76,8 +76,12 @@
 
 - bounded config/admin/operator controls (protected POST route stubs);
 - auth/session/CSRF layer (Iteration 13):
-  - signed session cookie with configurable `Secure` flag (`cookie_secure`);
-  - security headers baseline: `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`.
+  - signed session cookie with configurable `Secure` flag (`cookie_secure`) and `SameSite` policy (`cookie_samesite`, default `lax`);
+  - configurable bounded session lifetime (`session_age_max`);
+  - centralized session cookie attach/delete policy;
+  - verified-principal server-side session issuance (`AuthService.create_principal_session`);
+  - security headers baseline: `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`;
+  - controlled cross-site iframe embedding (Iteration 13.13): exact `security.frame_ancestors` origins form `Content-Security-Policy: frame-ancestors` and suppress the conflicting `X-Frame-Options: DENY`.
 - block sizing primitives (Iteration 13.1):
   - `width: 1..12` остаётся backward-compatible;
   - `span: 1..12` — прямой column span;
@@ -194,7 +198,9 @@ Product decides.
 ```html
 <div class="card beeui-page-tabs-card">
   <div class="card-header">
-    <ul class="nav nav-tabs card-header-tabs" role="tablist">...</ul>
+    <ul class="nav nav-tabs card-header-tabs" role="tablist">
+      ...
+    </ul>
   </div>
   <div class="card-body">
     <section aria-label="Page blocks">...</section>
@@ -233,14 +239,14 @@ Product decides.
 
 Вариант берётся из `components.accordion.variant`.
 
-| Variant | Фактические классы / поведение |
-| --- | --- |
-| `default` | `.accordion`, стандартный chevron toggle |
-| `flush` | `.accordion.accordion-flush`, стандартный chevron toggle |
-| `tabs` | `.accordion.accordion-tabs`, стандартный chevron toggle |
-| `inverted` | `.accordion.accordion-inverted`, стандартный chevron toggle |
-| `inverted_plus` | `.accordion.accordion-inverted.accordion-plus`, plus toggle |
-| `icons` | `.accordion`, `accordion-button-icon` + стандартный chevron toggle |
+| Variant         | Фактические классы / поведение                                     |
+| --------------- | ------------------------------------------------------------------ |
+| `default`       | `.accordion`, стандартный chevron toggle                           |
+| `flush`         | `.accordion.accordion-flush`, стандартный chevron toggle           |
+| `tabs`          | `.accordion.accordion-tabs`, стандартный chevron toggle            |
+| `inverted`      | `.accordion.accordion-inverted`, стандартный chevron toggle        |
+| `inverted_plus` | `.accordion.accordion-inverted.accordion-plus`, plus toggle        |
+| `icons`         | `.accordion`, `accordion-button-icon` + стандартный chevron toggle |
 
 Accordion markup использует локальные inline SVG и не требует external assets,
 CDN, preview/demo Tabler scripts или tracking.
@@ -285,12 +291,12 @@ Payload:
 
 `kpi_grid.columns` — optional adapter-backed field.
 
-| `columns` | CSS classes |
-| --- | --- |
-| `1` | `col-12` |
-| `2` | `col-12 col-sm-6` |
-| `3` | `col-12 col-sm-6 col-lg-4` |
-| `4` | `col-12 col-sm-6 col-lg-3` |
+| `columns` | CSS classes                |
+| --------- | -------------------------- |
+| `1`       | `col-12`                   |
+| `2`       | `col-12 col-sm-6`          |
+| `3`       | `col-12 col-sm-6 col-lg-4` |
+| `4`       | `col-12 col-sm-6 col-lg-3` |
 
 Правила:
 
@@ -614,12 +620,12 @@ Returns `TemplateResponse` using `detail.html`.
 
 ### Supported section kinds
 
-| Kind | Template output | Fields |
-|------|----------------|--------|
-| `key_value` | Tabler card with `datagrid` | `title`, `items[]` (label, value) |
-| `text` | Tabler card with `<pre>` | `title`, `body` |
-| `table` | Tabler card with `table-vcenter card-table` | `title`, `columns[]` (key, label), `rows[]` |
-| `links` | Tabler card with `list-group list-group-flush` | `title`, `items[]` (label, href) |
+| Kind        | Template output                                | Fields                                      |
+| ----------- | ---------------------------------------------- | ------------------------------------------- |
+| `key_value` | Tabler card with `datagrid`                    | `title`, `items[]` (label, value)           |
+| `text`      | Tabler card with `<pre>`                       | `title`, `body`                             |
+| `table`     | Tabler card with `table-vcenter card-table`    | `title`, `columns[]` (key, label), `rows[]` |
+| `links`     | Tabler card with `list-group list-group-flush` | `title`, `items[]` (label, href)            |
 
 ### Normalization rules
 
@@ -901,12 +907,12 @@ See `docs/THEME.md` for full documentation.
 
 Chart initialization distinguishes three states:
 
-| State | Description | Render |
-|-------|-------------|--------|
-| Ready | Valid bounded chart data | ApexCharts container and config |
-| Empty | Correct empty dataset | "No data to display" (localized) |
-| Degraded | Malformed or unsupported adapter chart payload | Generic degraded block |
-| Error | ApexCharts render exception, including rejected `render()` promise | "Chart render error" without raw adapter payload in console |
+| State    | Description                                                        | Render                                                      |
+| -------- | ------------------------------------------------------------------ | ----------------------------------------------------------- |
+| Ready    | Valid bounded chart data                                           | ApexCharts container and config                             |
+| Empty    | Correct empty dataset                                              | "No data to display" (localized)                            |
+| Degraded | Malformed or unsupported adapter chart payload                     | Generic degraded block                                      |
+| Error    | ApexCharts render exception, including rejected `render()` promise | "Chart render error" without raw adapter payload in console |
 
 Empty and degraded states are resolved server-side before chart initialization;
 the runtime renderer handles only unavailable config and render errors.
@@ -2093,7 +2099,7 @@ BeeUI must follow these rules:
 
 ## Auth model
 
-Auth/session/CSRF layer реализован в Iteration 13.
+Auth/session/CSRF layer реализован в Iteration 13 и расширен в Iteration 13.13.
 
 Текущие режимы:
 
@@ -2105,6 +2111,10 @@ Auth/session/CSRF layer реализован в Iteration 13.
 - login/logout routes существуют;
 - protected POST routes требуют auth role и CSRF;
 - `cookie_secure` управляет флагом `Secure` у session cookie;
+- `cookie_samesite` управляет `SameSite` (default `lax`); `none` требует `cookie_secure=true`;
+- `session_age_max` ограничивает lifetime session (default `86400`, range `60..604800`);
+- session cookie устанавливается и удаляется через единую централизованную policy (`AuthService.attach_session_cookie` / `AuthService.delete_session_cookie`);
+- `AuthService.create_principal_session(user_id, role)` — public server-side issuance signed session для уже проверенного внешнего principal; browser input не может выбирать или повышать role;
 - session secret и role tokens передаются через runtime settings/env.
 
 Roles:
@@ -2120,6 +2130,12 @@ Roles:
 - protected POST routes require CSRF token;
 - no default tokens committed to repo;
 - session secret from env/config outside repo.
+
+## Framing policy
+
+- Default: `X-Frame-Options: DENY` на всех responses.
+- Controlled embedding: при непустом `security.frame_ancestors` BeeUI отправляет `Content-Security-Policy: frame-ancestors <exact origins>` и не отправляет `X-Frame-Options: DENY`.
+- `security.frame_ancestors` принимает только absolute `http(s)` origins без path/query/fragment/wildcard; malformed/non-origin значения отклоняются fail-fast.
 
 ## What BeeUI is not
 

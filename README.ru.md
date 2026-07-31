@@ -2,6 +2,40 @@
 
 **BeeUI** — общий UI-фреймворк на Python для Bee-продуктов: `beecap`, `beeagent` и будущих модулей экосистемы Bee.
 
+## Iteration 13.13 — External-principal sessions and controlled embedding
+
+Текущий результат — product-neutral контракт, через который trusted product
+backend может создать signed BeeUI session для уже проверенного внешнего
+principal и безопасно использовать BeeUI внутри allowlisted cross-site iframe.
+
+В Iteration 13.13 добавлены:
+
+- **Server-side session issuance**:
+  - `AuthService.create_principal_session(user_id, role)` — публичный Python
+    contract для verified principal и explicit `UserRole`;
+  - BeeUI не проверяет внешнюю identity и не маппит внешние credentials в роли;
+    verification и role mapping остаются за product backend;
+  - browser requests не могут выбирать или повышать role;
+- **Централизованная cookie policy**:
+  - `AuthService.attach_session_cookie(...)` и `AuthService.delete_session_cookie(...)`
+    — единая policy установки и удаления session cookie; login/logout используют те же helpers;
+  - `auth.cookie_samesite` (default `lax`; allowlist `lax`, `strict`, `none`);
+  - `auth.cookie_samesite=none` принимается только при `auth.cookie_secure=true`;
+  - `auth.session_age_max` (default `86400`, range `60..604800`);
+  - существующий формат signed cookies остаётся читаемым до configured expiry;
+  - token login/logout/CSRF/roles остаются backward-compatible;
+- **Controlled embedding**:
+  - `security.frame_ancestors` — exact `http(s)` origins для cross-site iframe;
+  - default framing denial (`X-Frame-Options: DENY`) сохраняется;
+  - при непустом `security.frame_ancestors` формируется
+    `Content-Security-Policy: frame-ancestors <origins>` и конфликтующий
+    `X-Frame-Options: DENY` не отправляется;
+  - wildcard, malformed, path/query/fragment и non-origin значения отклоняются fail-fast;
+- **Безопасность**: нет BeeAgent/Bitrix/ROP-specific imports, labels или behavior;
+  trust boundary задокументирован в `docs/SECURITY.md`.
+- **Документация**: `docs/INTEGRATION.md`, `docs/WEB_UI.md`, `docs/SECURITY.md`,
+  `docs/CONFIG.md`, `docs/ROADMAP.md`.
+
 ## Iteration 13.10 — Tabler Datepicker contract for generic date-range filters
 
 Текущий результат — generic `filter_form.date_range` рендерится как два
@@ -316,6 +350,19 @@ pages:
 - `src/beeui_module/web/templates/login.html` — login form template;
 - `tests/test_security.py` — 60+ тестов;
 - docs update.
+
+Iteration 13.13 расширяет этот boundary:
+
+- `AuthService.create_principal_session(user_id, role)` — public server-side
+  issuance signed session для уже проверенного внешнего principal; browser input
+  не может выбирать или повышать role;
+- единая cookie policy через `AuthService.attach_session_cookie(...)` /
+  `AuthService.delete_session_cookie(...)`;
+- `auth.cookie_samesite` (default `lax`) и `auth.session_age_max`
+  (default `86400`, range `60..604800`);
+- `security.frame_ancestors` — controlled cross-site iframe embedding с exact
+  origins; default `X-Frame-Options: DENY` сохраняется; при непустом списке
+  формируется `Content-Security-Policy: frame-ancestors <origins>`.
 
 ## Iteration 13.1 — Dashboard layout primitives, URL tabs and locale seed
 
