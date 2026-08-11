@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.26.0](https://github.com/beesyst/beeui/compare/beeui-v0.25.1...beeui-v0.26.0) (2026-08-11)
+
+
+### Features
+
+* **ui:** add request-scoped navigation visibility ([#107](https://github.com/beesyst/beeui/issues/107)) ([4e67da2](https://github.com/beesyst/beeui/commit/4e67da279801ab2133bd7871e42ac808d2324be5))
+
 ## [0.25.1](https://github.com/beesyst/beeui/compare/beeui-v0.25.0...beeui-v0.25.1) (2026-08-11)
 
 
