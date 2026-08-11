@@ -114,7 +114,7 @@ jobs:
           ### Source
 
           - Repository: `tabler/tabler`
-          - Source path: `docs/content`
+          - Source path: `docs`
           - Source ref: `dev`
 
           ### Scope
