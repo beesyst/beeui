@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import Any
 
 from fastapi import FastAPI, Request
@@ -121,6 +122,7 @@ def register_configured_pages(
             request: Request, _page: BeeUiPage = page
         ) -> HTMLResponse:
             external_prefix = effective_external_prefix(request, route_prefix)
+            visibility_resolver = _resolve_navigation_visibility(request)
             theme = build_theme_context(ui_config)
             layout = build_layout_context(ui_config)
             rendered_blocks = resolve_page_blocks(
@@ -179,6 +181,8 @@ def register_configured_pages(
                         active_path=_page.path,
                         locale=locale,
                         default_locale=ui_config.locale.default,
+                        request=request,
+                        visibility_resolver=visibility_resolver,
                     ),
                     "shell_classes": build_shell_classes(theme, layout),
                     "rendered_blocks": rendered_blocks,
@@ -201,6 +205,33 @@ def register_configured_pages(
     return registered_routes
 
 
+NavigationVisibilityResolver = Callable[[Request, str], bool]
+
+
+def _resolve_navigation_visibility(
+    request: Request,
+) -> NavigationVisibilityResolver | None:
+    return getattr(request.app.state, "beeui_navigation_visibility", None)
+
+
+def _navigation_item_visible(
+    item: BeeUiNavigationItem,
+    *,
+    request: Request | None,
+    visibility_resolver: NavigationVisibilityResolver | None,
+) -> bool:
+    if visibility_resolver is None:
+        return True
+    if item.path is None:
+        return True
+    if request is None:
+        return False
+    try:
+        return bool(visibility_resolver(request, item.path))
+    except Exception:
+        return False
+
+
 def build_navigation(
     *,
     route_prefix: str,
@@ -208,6 +239,8 @@ def build_navigation(
     active_path: str,
     locale: str = "en",
     default_locale: str = "en",
+    request: Request | None = None,
+    visibility_resolver: NavigationVisibilityResolver | None = None,
 ) -> list[dict[str, Any]]:
     items: list[dict[str, Any]] = []
     for item in navigation:
@@ -217,7 +250,18 @@ def build_navigation(
             active_path=active_path,
             locale=locale,
             default_locale=default_locale,
+            request=request,
+            visibility_resolver=visibility_resolver,
         )
+        if item.children:
+            if not children:
+                continue
+        elif not _navigation_item_visible(
+            item,
+            request=request,
+            visibility_resolver=visibility_resolver,
+        ):
+            continue
         active = item.path == active_path if item.path is not None else False
         descendant_active = any(
             child["active"] or child["descendant_active"] for child in children
@@ -428,6 +472,7 @@ def register_adapter_custom_pages(
             request: Request, _page: BeeUiPage = page
         ) -> HTMLResponse:
             adapter = getattr(request.app.state, "beeui_adapter", None)
+            visibility_resolver = _resolve_navigation_visibility(request)
             if adapter is None:
                 return _render_page_unavailable(
                     request,
@@ -567,6 +612,8 @@ def register_adapter_custom_pages(
                     active_path=_page.path,
                     locale=locale,
                     default_locale=ui_config.locale.default,
+                    request=request,
+                    visibility_resolver=visibility_resolver,
                 ),
                 "shell_classes": shell_classes,
                 "has_layout": has_layout,
@@ -623,6 +670,7 @@ def _render_page_unavailable(
     status_code: int = 503,
 ) -> HTMLResponse:
     external_prefix = effective_external_prefix(request, route_prefix)
+    visibility_resolver = _resolve_navigation_visibility(request)
     theme = build_theme_context(ui_config)
     layout = build_layout_context(ui_config)
     locale = resolve_locale(request, ui_config.locale)
@@ -657,6 +705,8 @@ def _render_page_unavailable(
             active_path=page.path,
             locale=locale,
             default_locale=ui_config.locale.default,
+            request=request,
+            visibility_resolver=visibility_resolver,
         ),
         "shell_classes": build_shell_classes(theme, layout),
         "has_layout": False,

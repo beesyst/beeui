@@ -36,6 +36,7 @@ from beeui_module.pages.locale import resolve_localized_text
 from beeui_module.pages.models import BeeUiConfig, BeeUiPage, LocaleConfig
 from beeui_module.pages.router import (
     _build_language_switcher,
+    _resolve_navigation_visibility,
     build_components_context,
     build_layout_context,
     build_navigation,
@@ -442,6 +443,8 @@ def _with_request_context(
                 active_path=active_path,
                 locale=locale,
                 default_locale=locale_cfg.default,
+                request=request,
+                visibility_resolver=_resolve_navigation_visibility(request),
             )
 
     return context
@@ -486,6 +489,7 @@ def _resolve_locale_from_request(
     locale_cfg = base_context.get("locale_cfg")
     if isinstance(locale_cfg, LocaleConfig):
         from beeui_module.pages.router import resolve_locale as _router_resolve_locale
+
         return _router_resolve_locale(request, locale_cfg)
     return "en"
 
@@ -514,7 +518,9 @@ def _render_unavailable(
             ),
             "page_title": title,
             "page_subtitle": subtitle,
-            "error": "Адаптер недоступен" if locale == "ru" else "Adapter is not available",
+            "error": "Адаптер недоступен"
+            if locale == "ru"
+            else "Adapter is not available",
             "warnings": [],
             "meta": {},
             "status": "unavailable",
@@ -556,9 +562,15 @@ def _render_invalid_id(
                 navigation=base_context["ui_navigation"],
                 active_path=active_path,
             ),
-            "page_title": "Неверный идентификатор" if locale == "ru" else "Invalid identifier",
+            "page_title": "Неверный идентификатор"
+            if locale == "ru"
+            else "Invalid identifier",
             "page_subtitle": None,
-            "error": (f"Неверный {ru_field_names.get(field_name, field_name)}: {value}" if locale == "ru" else f"Invalid {field_name}: {value}"),
+            "error": (
+                f"Неверный {ru_field_names.get(field_name, field_name)}: {value}"
+                if locale == "ru"
+                else f"Invalid {field_name}: {value}"
+            ),
             "warnings": [],
             "meta": {},
             "status": "error",

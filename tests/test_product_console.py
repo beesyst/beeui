@@ -2454,3 +2454,19 @@ def test_mounted_date_range_uses_local_litepicker_with_prefix_and_locale() -> No
     assert "ru-RU" in response.text
     assert "locale_map" in response.text
     assert "parentEl:" not in response.text
+
+
+def test_product_console_navigation_uses_visibility_resolver() -> None:
+    def resolver(request, path):
+        return path != "/runs"
+
+    app = create_beeui_app(
+        adapter=FakeProductConsoleAdapter(),
+        navigation_visibility_resolver=resolver,
+    )
+    client = TestClient(app)
+
+    response = client.get("/")
+    assert response.status_code == 200
+    assert 'href="/runs"' not in response.text
+    assert 'href="/"' in response.text
