@@ -6,7 +6,7 @@ the official Tabler documentation.
 ## Source
 
 - Repository: `tabler/tabler`
-- Source path: `docs/content`
+- Source path: `docs`
 - Source ref: see `UPSTREAM_REF`
 - Resolved commit: see `UPSTREAM_COMMIT`
 
