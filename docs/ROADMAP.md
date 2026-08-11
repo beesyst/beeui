@@ -6406,6 +6406,98 @@ Bee-продукт может передать BeeUI уже проверенны
 - dependencies unchanged;
 - `pyproject.toml.version` unchanged.
 
+### Итерация 13.14 — Request-scoped navigation visibility
+
+**Status:** PLANNED
+
+#### Goal
+
+Добавить product-neutral request-scoped navigation visibility contract, чтобы embedded Bee-продукт мог скрывать недоступные пользователю navigation paths без product-specific Jinja forks и без переноса authorization semantics в BeeUI.
+
+#### Scope
+
+**Включено:**
+
+- добавить optional public navigation visibility resolver для `create_beeui_app(...)`;
+- пробросить contract через `mount_beeui(...)`;
+- resolver получает текущий request и canonical navigation path либо эквивалентный bounded context;
+- `False` исключает navigation leaf из rendered sidebar;
+- group без visible children не рендерится;
+- отсутствие resolver полностью сохраняет текущее поведение;
+- применить resolver ко всем generic shell rendering paths;
+- сохранить route prefix;
+- сохранить locale/query-preserving navigation;
+- сохранить active/descendant-active behavior;
+- сохранить configured, adapter, metadata/product-console и detail-page rendering;
+- документировать, что visibility contract не является route authorization;
+- добавить product-neutral tests и integration documentation.
+
+#### Excluded
+
+- BeeAgent-specific scopes;
+- ROP/BeeScan semantics;
+- user directory;
+- role-to-product mapping;
+- route authorization;
+- artifact authorization;
+- new session claims;
+- changes to `UserRole`;
+- external identity provider;
+- dependency changes.
+
+#### Deliverable
+
+Bee-продукт может передать BeeUI generic per-request decision:
+
+```text
+canonical navigation path → visible / hidden
+```
+
+и BeeUI применяет его ко всему sidebar rendering, не принимая решения о product permissions самостоятельно.
+
+#### Acceptance criteria
+
+- no resolver сохраняет current navigation byte/behavior compatibility where practical;
+- resolver может скрыть один leaf;
+- nested group без visible children скрывается;
+- visible siblings остаются;
+- route prefix сохраняется;
+- RU/EN locale links сохраняются;
+- active state остаётся корректным;
+- configured pages используют resolver;
+- adapter/product-console pages используют resolver;
+- generic detail page использует тот же visibility behavior;
+- resolver не предоставляет route security;
+- public docs прямо фиксируют presentation-only boundary;
+- отсутствуют consumer-specific imports/labels/logic.
+
+#### Checks
+
+- full `uv run pytest -q`;
+- navigation visibility unit/integration tests;
+- nested navigation filtering;
+- empty group filtering;
+- no-resolver backward compatibility;
+- locale regression;
+- route-prefix regression;
+- configured/adapter/product-console/detail rendering regression;
+- malformed/failing resolver safe behavior;
+- HTML escaping regression;
+- SAST;
+- browser smoke with a generic consumer.
+
+#### DoD
+
+- public generic visibility hook реализован;
+- all BeeUI shell render paths use the same contract;
+- existing consumers remain compatible without configuration changes;
+- BeeUI does not perform product authorization;
+- product-specific semantics отсутствуют;
+- docs and tests are updated;
+- dependencies unchanged;
+- `pyproject.toml.version` unchanged;
+- implementation is ready for a BeeUI release.
+
 ---
 
 ## Этап 7 — Consumer integration record
