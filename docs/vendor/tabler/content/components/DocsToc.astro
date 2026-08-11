@@ -1,0 +1,45 @@
+---
+// TOC comes in as a prop from the consuming page (h2/h3 headings from the
+// markdown content, excluding <!--EXAMPLE-->...<!--/EXAMPLE--> blocks).
+
+export interface TocItem {
+  /** 2 or 3 (h2/h3); h3 gets the ms-3 indent */
+  level: number
+  text: string
+  /** anchor without '#', e.g. "default-markup" */
+  id: string
+}
+
+interface Props {
+  toc?: TocItem[]
+}
+
+const { toc = [] } = Astro.props
+
+// shared/data/illustrations.json has 125 entries.
+const illustrationsCount = 125
+---
+
+<!-- BEGIN DOCS TOC -->{
+  toc.length > 0 && (
+    <Fragment>
+      <h3 id="toc-heading">Table of Contents</h3>
+      <nav class="nav nav-vertical" id="toc" aria-labelledby="toc-heading">
+        {toc.map((item) => (
+          <a href={`#${item.id}`} class={`nav-link${item.level === 3 ? ' ms-3' : ''}`}>
+            {item.text}
+          </a>
+        ))}
+      </nav>
+    </Fragment>
+  )
+}
+
+<a href="https://r.tabler.io/illustrations" class="card card-sm mt-6 shadow-none" target="_blank">
+  <div class="card-body">
+    <img src="/img/banner-carbon.png" class="mb-3" alt="" />
+
+    <h4>{illustrationsCount} sleek illustrations for your startup's visual identity.</h4>
+  </div>
+</a>
+<!-- END DOCS TOC -->
