@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.25.1](https://github.com/beesyst/beeui/compare/beeui-v0.25.0...beeui-v0.25.1) (2026-08-11)
+
+
+### Bug Fixes
+
+* **tabler:** harden documentation sync ([#104](https://github.com/beesyst/beeui/issues/104)) ([1277531](https://github.com/beesyst/beeui/commit/12775317e134cde2fcd8c593fb094406127c8384))
+
 ## [0.25.0](https://github.com/beesyst/beeui/compare/beeui-v0.24.1...beeui-v0.25.0) (2026-07-31)
 
 
