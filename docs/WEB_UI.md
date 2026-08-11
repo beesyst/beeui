@@ -116,6 +116,14 @@
   - sidebar/navigation hrefs сохраняют `lang`, когда locale не default;
   - allowlist-based helper `preserve_allowed_params()` и `add_preserved_params_to_href()`;
   - preserved allowlisted params добавляются к href; при конфликте active preserved value заменяет existing value, чтобы не дублировать и не сохранять устаревший `lang`.
+- request-scoped navigation visibility (Iteration 13.14):
+  - optional public resolver `(request, canonical_path) -> bool` через `create_beeui_app(...)` / `mount_beeui(...)`;
+  - `False` скрывает navigation leaf из sidebar; group без visible children скрывается; без resolver поведение не меняется;
+  - один contract применяется ко всем generic shell rendering paths: configured pages, adapter/custom pages, product console, generic detail page;
+  - request-scoped: разные запросы могут дать разную navigation без изменения schema;
+  - failure resolver скрывает item (fail-closed), не раскрывая дополнительные items;
+  - presentation-only: не является route authorization; продукт обязан отдельно enforce server-side authorization;
+  - сохраняет route prefix, RU/EN locale, `lang`, active/descendant-active state и grouped navigation.
 - language switcher (Iteration 13.7):
   - рендерится в page header (`beeui-language-switcher`);
   - видим только при `len(app.locale.available) > 1`;
@@ -477,6 +485,7 @@ app = create_beeui_app(
 - `product_id` — override для `settings.product.id` (не мутирует исходный `settings`).
 - `product_title` — override для `settings.product.title` (не мутирует исходный `settings`).
 - `adapter` — экземпляр product adapter, валидируется по `ProductUiAdapter` minimum protocol.
+- `navigation_visibility_resolver` — optional callable `(request, canonical_path) -> bool` для request-scoped фильтрации sidebar (Iteration 13.14). Presentation-only, не является route authorization; без resolver navigation не меняется. По умолчанию `None`.
 
 Adapter сохраняется в `app.state.beeui_adapter`. Product metadata сохраняется в `app.state.beeui_product`.
 
@@ -516,6 +525,7 @@ mount_beeui(
 
 - `app` — родительское FastAPI приложение.
 - `path` — mount path (по умолчанию `/ui`). Валидируется: не пустой, не `/`, с leading `/`, без `..`, `//`, query/hash chars, без trailing slash.
+- `navigation_visibility_resolver` — как в `create_beeui_app()`; передаётся в дочернее приложение.
 - Остальные параметры передаются в `create_beeui_app()`.
 
 Mount helper выполняет:

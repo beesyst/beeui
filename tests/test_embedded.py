@@ -531,3 +531,48 @@ class TestNoApiRoutes:
         data = resp.json()
         assert data["status"] == "ok"
         assert data["data"] == []
+
+
+class TestNavigationVisibilityResolver:
+    def test_mount_forwards_navigation_visibility_resolver(
+        self, tmp_path: Path
+    ) -> None:
+        config = _minimal_beeui_config()
+        config["navigation"] = [
+            {"title": "Dashboard", "path": "/", "icon": "dashboard"},
+            {"title": "Runs", "path": "/runs", "icon": "runs"},
+        ]
+        config["pages"] = [
+            {
+                "id": "dashboard",
+                "path": "/",
+                "title": "Dashboard",
+                "subtitle": "Overview",
+                "blocks": [],
+            },
+            {
+                "id": "runs",
+                "path": "/runs",
+                "title": "Runs",
+                "subtitle": "Run list",
+                "blocks": [],
+            },
+        ]
+        config_path = _write_beeui_yml(tmp_path, config)
+
+        def resolver(request, path):
+            return path != "/runs"
+
+        parent = FastAPI()
+        mount_beeui(
+            parent,
+            path="/ui",
+            config_path=config_path,
+            navigation_visibility_resolver=resolver,
+        )
+
+        client = TestClient(parent)
+        resp = client.get("/ui/")
+        assert resp.status_code == 200
+        assert 'href="/ui"' in resp.text
+        assert 'href="/ui/runs"' not in resp.text

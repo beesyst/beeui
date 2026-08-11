@@ -10,13 +10,14 @@ from beeui_module.pages.links import (
     add_preserved_params_to_href,
     effective_external_prefix,
     prefix_internal_href,
-    validate_internal_href,
     preserve_allowed_params,
+    validate_internal_href,
 )
 from beeui_module.pages.locale import resolve_localized_text, translate
 from beeui_module.pages.models import BeeUiConfig
 from beeui_module.pages.router import (
     _build_language_switcher,
+    _resolve_navigation_visibility,
     build_components_context,
     build_layout_context,
     build_navigation,
@@ -61,9 +62,13 @@ def _apply_preserved_params_to_sections(
         for item in section.get("items", []):
             if not isinstance(item, dict):
                 continue
-            href = item.get("href", "")
+
+            raw_href = item.get("href")
+            href = raw_href if isinstance(raw_href, str) else ""
+
             if href:
-                href = add_preserved_params_to_href(href, current_params)
+                href = add_preserved_params_to_href(href, current_params) or ""
+
             items.append(
                 {
                     "label": _display_value(item.get("label")),
@@ -119,11 +124,11 @@ def _normalize_key_value_section(section: dict[str, Any]) -> dict[str, Any] | No
     raw_items = section.get("items")
     if not isinstance(raw_items, list):
         return None
-    items: list[dict[str, str]] = []
+    items: list[dict[str, Any]] = []
     for item in raw_items:
         if not isinstance(item, dict):
             continue
-        normalized: dict[str, str] = {
+        normalized: dict[str, Any] = {
             "label": _display_value(item.get("label")),
             "value": _display_value(item.get("value")),
         }
@@ -138,11 +143,17 @@ def _normalize_key_value_section(section: dict[str, Any]) -> dict[str, Any] | No
                 else "text"
             )
         normalized["variant"] = variant
-        tone = _safe_tone(item.get("tone")) if explicit_variant or variant != "text" else "default"
+        tone = (
+            _safe_tone(item.get("tone"))
+            if explicit_variant or variant != "text"
+            else "default"
+        )
         normalized["tone"] = tone
         display = item.get("display")
         normalized["display"] = _display_value(display, default=normalized["value"])
-        normalized["collapsible"] = bool(item.get("collapsible", False)) and variant == "long_text"
+        normalized["collapsible"] = (
+            bool(item.get("collapsible", False)) and variant == "long_text"
+        )
         items.append(normalized)
     if not items:
         return None
@@ -323,6 +334,7 @@ def render_beeui_detail_page(
     shell_classes = build_shell_classes(theme, layout)
     current_params = _detail_preserved_params(request, locale, ui_config.locale.default)
     external_prefix = effective_external_prefix(request, route_prefix)
+    visibility_resolver = _resolve_navigation_visibility(request)
 
     back_href = normalized["back_href"]
     if back_href:
@@ -366,6 +378,8 @@ def render_beeui_detail_page(
             active_path="",
             locale=locale,
             default_locale=ui_config.locale.default,
+            request=request,
+            visibility_resolver=visibility_resolver,
         ),
         "shell_classes": shell_classes,
         "language_switcher": _build_language_switcher(

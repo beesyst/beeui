@@ -20,11 +20,12 @@ from beeui_module.core.settings import load_settings
 from beeui_module.core.version import get_version
 from beeui_module.pages.component_catalog import register_component_catalog_routes
 from beeui_module.pages.config import load_beeui_config
-from beeui_module.pages.models import BeeUiConfig, BeeUiPage
-from beeui_module.pages.product_console import register_product_console_routes
 from beeui_module.pages.links import effective_external_prefix, prefix_internal_href
 from beeui_module.pages.locale import translate
+from beeui_module.pages.models import BeeUiConfig, BeeUiPage
+from beeui_module.pages.product_console import register_product_console_routes
 from beeui_module.pages.router import (
+    NavigationVisibilityResolver,
     register_adapter_custom_pages,
     register_configured_pages,
 )
@@ -147,9 +148,14 @@ def create_beeui_app(
     product_id: str | None = None,
     product_title: str | None = None,
     adapter: ProductUiAdapter | None = None,
+    navigation_visibility_resolver: NavigationVisibilityResolver | None = None,
 ) -> FastAPI:
     if adapter is not None:
         _validate_adapter(adapter)
+    if navigation_visibility_resolver is not None and not callable(
+        navigation_visibility_resolver
+    ):
+        raise ValueError("navigation_visibility_resolver must be callable")
 
     resolved_settings = (
         settings if settings is not None else load_settings(settings_path())
@@ -214,6 +220,7 @@ def create_beeui_app(
     app.state.beeui_adapter = adapter
     app.state.beeui_ui_config = resolved_ui_config
     app.state.beeui_product = product_meta
+    app.state.beeui_navigation_visibility = navigation_visibility_resolver
     auth_cfg = dict(resolved_settings.get("auth", {}))
 
     from beeui_module.core.settings import (
@@ -381,6 +388,7 @@ def mount_beeui(
     product_id: str | None = None,
     product_title: str | None = None,
     adapter: ProductUiAdapter | None = None,
+    navigation_visibility_resolver: NavigationVisibilityResolver | None = None,
 ) -> FastAPI:
     safe_path = _validate_mount_path(path)
     _check_route_collision(app, safe_path)
@@ -392,6 +400,7 @@ def mount_beeui(
         product_id=product_id,
         product_title=product_title,
         adapter=adapter,
+        navigation_visibility_resolver=navigation_visibility_resolver,
     )
 
     app.mount(

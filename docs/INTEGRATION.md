@@ -6,6 +6,69 @@
 
 ## Текущий статус
 
+**Iteration 13.14** — Request-scoped navigation visibility.
+
+- BeeUI предоставляет optional public request-scoped navigation visibility
+  resolver для `create_beeui_app(...)` и `mount_beeui(...)`.
+- Resolver — это product-neutral hook:
+
+  ```python
+  navigation_visibility_resolver(request, canonical_path) -> bool
+  ```
+
+  где `request` — текущий FastAPI `Request`, а `canonical_path` — canonical
+  (непрефиксованный) path navigation item из product-side `beeui.yml`
+  (например, `/runs`, `/venues/mrkt`). Route prefix обрабатывается внутри BeeUI.
+
+- Если resolver вернул `False` — navigation leaf не рендерится в sidebar.
+  Group без visible children не рендерится. Visible siblings сохраняются.
+- Если resolver не передан — navigation полностью сохраняет текущее поведение
+  (backward-compatible; существующие consumers не обязаны меняться).
+- Один и тот же contract применяется ко всем generic shell rendering paths:
+  configured pages, adapter-backed/custom pages, product console и
+  `render_beeui_detail_page(...)`.
+- Resolver является request-scoped: продукт может дать разную navigation для
+  разных запросов без изменения schema.
+- При exception в resolver item трактуется как скрытый (fail-closed):
+  failure не раскрывает дополнительные navigation items.
+- Сохраняются route prefix, RU/EN locale, `lang` preservation,
+  active/descendant-active state и grouped navigation.
+
+```python
+from beeui_module.web.app import create_beeui_app
+
+def navigation_visibility_resolver(request, canonical_path):
+    return product_can_see_path(request, canonical_path)
+
+app = create_beeui_app(
+    product_id="beeagent",
+    product_title="BeeAgent",
+    adapter=bee_agent_adapter,
+    config_path="config/beeui.yml",
+    navigation_visibility_resolver=navigation_visibility_resolver,
+)
+```
+
+Через `mount_beeui(...)` contract пробрасывается так же:
+
+```python
+mount_beeui(
+    parent,
+    path="/ui",
+    product_id="beeagent",
+    product_title="BeeAgent",
+    adapter=bee_agent_adapter,
+    config_path="config/beeui.yml",
+    navigation_visibility_resolver=navigation_visibility_resolver,
+)
+```
+
+**Пограничная граница.** Этот hook — presentation-only фильтр sidebar.
+Он не предоставляет и не отменяет HTTP authorization destination route:
+страница остаётся доступной по прямому URL, если продукт не запретил её
+server-side. Продукт обязан отдельно enforce server-side authorization
+(route/resource) и не рассматривать видимость navigation item как доступ.
+
 **Iteration 13.13** — External-principal sessions and controlled embedding.
 
 - Trusted product backend может создать signed BeeUI session для уже проверенного

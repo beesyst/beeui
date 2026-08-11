@@ -6408,7 +6408,7 @@ Bee-продукт может передать BeeUI уже проверенны
 
 ### Итерация 13.14 — Request-scoped navigation visibility
 
-**Status:** PLANNED
+**Status:** DONE
 
 #### Goal
 
