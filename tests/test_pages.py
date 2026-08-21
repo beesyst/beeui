@@ -752,16 +752,19 @@ def _custom_page_schema(
     route_mode: str | None = None,
     page_blocks: str = "    blocks: []\n",
     extra_blocks: str = "blocks: {}\n",
+    locale_block: str = "",
 ) -> Path:
     route_config = (
         f"    route:\n      mode: {route_mode}\n" if route_mode is not None else ""
     )
+    locale_section = locale_block
     schema_path = tmp_path / "schema.yml"
     schema_path.write_text(
         "app:\n"
         "  title: Test\n"
         "  product: test\n"
         "  logo_text: Test\n"
+        f"{locale_section}"
         "  theme:\n"
         "    mode: dark\n"
         "    primary: blue\n"
@@ -875,6 +878,134 @@ def test_custom_adapter_page_renders_through_adapter(tmp_path: Path) -> None:
     assert "Custom Page" in response.text
     assert "Custom Metric" in response.text
     assert "42" in response.text
+
+
+def test_custom_adapter_page_receives_lang_from_cookie(tmp_path: Path) -> None:
+    from beeui_module.adapters.base import ProductUiAdapterBase
+    from beeui_module.adapters.envelopes import AdapterMetadata, ok_result
+    from beeui_module.web.app import create_beeui_app
+
+    seen: list[dict[str, str]] = []
+
+    class CookieLangAdapter(ProductUiAdapterBase):
+        def __init__(self):
+            super().__init__(
+                AdapterMetadata(
+                    product_id="test",
+                    title="Test",
+                    version="1.0.0",
+                    capabilities=("dashboard", "runs", "custom_pages"),
+                )
+            )
+
+        def get_dashboard(self):
+            return ok_result({})
+
+        def list_runs(self):
+            return ok_result([])
+
+        def get_run(self, run_id):
+            return ok_result({"id": run_id})
+
+        def list_artifacts(self, run_id):
+            return ok_result([])
+
+        def read_artifact(self, run_id, artifact_id):
+            return ok_result({})
+
+        def get_config_read_model(self):
+            return ok_result({})
+
+        def get_page(self, page_id, query):
+            seen.append(dict(query))
+            return ok_result({"layout": []})
+
+    ui_cfg_path = _custom_page_schema(
+        tmp_path,
+        "/rop",
+        page_id="rop",
+        locale_block=(
+            "  locale:\n"
+            "    default: en\n"
+            "    available:\n"
+            "      - en\n"
+            "      - ru\n"
+        ),
+    )
+    app = create_beeui_app(
+        config_path=str(ui_cfg_path),
+        adapter=CookieLangAdapter(),
+    )
+    client = TestClient(app)
+    client.cookies.set("beeui_lang", "ru")
+    response = client.get("/rop")
+
+    assert response.status_code == 200
+    assert seen and seen[0].get("lang") == "ru"
+
+
+def test_custom_adapter_page_lang_query_overrides_cookie(tmp_path: Path) -> None:
+    from beeui_module.adapters.base import ProductUiAdapterBase
+    from beeui_module.adapters.envelopes import AdapterMetadata, ok_result
+    from beeui_module.web.app import create_beeui_app
+
+    seen: list[dict[str, str]] = []
+
+    class QueryLangAdapter(ProductUiAdapterBase):
+        def __init__(self):
+            super().__init__(
+                AdapterMetadata(
+                    product_id="test",
+                    title="Test",
+                    version="1.0.0",
+                    capabilities=("dashboard", "runs", "custom_pages"),
+                )
+            )
+
+        def get_dashboard(self):
+            return ok_result({})
+
+        def list_runs(self):
+            return ok_result([])
+
+        def get_run(self, run_id):
+            return ok_result({"id": run_id})
+
+        def list_artifacts(self, run_id):
+            return ok_result([])
+
+        def read_artifact(self, run_id, artifact_id):
+            return ok_result({})
+
+        def get_config_read_model(self):
+            return ok_result({})
+
+        def get_page(self, page_id, query):
+            seen.append(dict(query))
+            return ok_result({"layout": []})
+
+    ui_cfg_path = _custom_page_schema(
+        tmp_path,
+        "/rop",
+        page_id="rop",
+        locale_block=(
+            "  locale:\n"
+            "    default: en\n"
+            "    available:\n"
+            "      - en\n"
+            "      - ru\n"
+        ),
+    )
+    app = create_beeui_app(
+        config_path=str(ui_cfg_path),
+        adapter=QueryLangAdapter(),
+    )
+    client = TestClient(app)
+    client.cookies.set("beeui_lang", "ru")
+    response = client.get("/rop?lang=en")
+
+    assert response.status_code == 200
+    assert seen and seen[0].get("lang") == "en"
 
 
 def test_custom_adapter_page_unavailable_degraded(tmp_path: Path) -> None:
