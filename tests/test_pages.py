@@ -925,11 +925,7 @@ def test_custom_adapter_page_receives_lang_from_cookie(tmp_path: Path) -> None:
         "/rop",
         page_id="rop",
         locale_block=(
-            "  locale:\n"
-            "    default: en\n"
-            "    available:\n"
-            "      - en\n"
-            "      - ru\n"
+            "  locale:\n    default: en\n    available:\n      - en\n      - ru\n"
         ),
     )
     app = create_beeui_app(
@@ -989,11 +985,7 @@ def test_custom_adapter_page_lang_query_overrides_cookie(tmp_path: Path) -> None
         "/rop",
         page_id="rop",
         locale_block=(
-            "  locale:\n"
-            "    default: en\n"
-            "    available:\n"
-            "      - en\n"
-            "      - ru\n"
+            "  locale:\n    default: en\n    available:\n      - en\n      - ru\n"
         ),
     )
     app = create_beeui_app(
