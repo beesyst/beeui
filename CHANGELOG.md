@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.26.1](https://github.com/beesyst/beeui/compare/beeui-v0.26.0...beeui-v0.26.1) (2026-08-23)
+
+
+### Bug Fixes
+
+* **rop:** cross-run continuation + locale ([#111](https://github.com/beesyst/beeui/issues/111)) ([fcca034](https://github.com/beesyst/beeui/commit/fcca034f32449c971ce0452f64d6f385add579c9))
+
 ## [0.26.0](https://github.com/beesyst/beeui/compare/beeui-v0.25.1...beeui-v0.26.0) (2026-08-11)
 
 
