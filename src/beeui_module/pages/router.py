@@ -502,6 +502,8 @@ def register_adapter_custom_pages(
 
             try:
                 query = dict(request.query_params)
+                if "lang" not in query and len(ui_config.locale.available) > 1:
+                    query["lang"] = resolve_locale(request, ui_config.locale)
                 result = method(_page.page_id, query)
             except Exception:
                 return _render_page_unavailable(
