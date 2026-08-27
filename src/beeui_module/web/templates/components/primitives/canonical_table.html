@@ -97,7 +97,7 @@
     <div class="d-flex flex-wrap align-items-center gap-2 text-secondary small">
       {% if pagination.page_size %}
       <label class="d-flex align-items-center gap-1 mb-0">
-        {% if pagination.page_size.label %}{{ pagination.page_size.label }}{% elif locale == 'ru' %}Показать{% else %}Show{% endif %}
+        {% if pagination.page_size.label %}{{ pagination.page_size.label }}{% endif %}
         <select class="form-select form-select-sm w-auto" data-beeui-page-size-select aria-label="{% if pagination.page_size.label %}{{ pagination.page_size.label }}{% elif locale == 'ru' %}Показать записей{% else %}Show entries{% endif %}">
           {% for option in pagination.page_size.options %}<option value="{{ option.href }}"{% if option.active or option.value == pagination.page_size.current %} selected{% endif %}>{{ option.label }}</option>{% endfor %}
         </select>

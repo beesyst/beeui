@@ -1227,7 +1227,7 @@ def _normalize_data_table_pagination(raw: Any) -> dict[str, Any]:
 def _compact_data_table_pages(
     pages: list[dict[str, Any]], active_index: int | None
 ) -> list[dict[str, Any]]:
-    if len(pages) <= 7:
+    if len(pages) <= 6:
         return pages
 
     current_index = active_index if active_index is not None else 0
