@@ -91,6 +91,7 @@ _CHART_COLOR_TOKENS: frozenset[str] = frozenset(
 _CHART_COLOR_LIMIT = 12
 _CHART_HEX_COLOR_PATTERN = re.compile(r"#[0-9A-Fa-f]{6}")
 _CHART_ID_PATTERN = re.compile(r"[A-Za-z][A-Za-z0-9_-]{0,63}")
+_DATA_TABLE_ID_PATTERN = re.compile(r"[A-Za-z][A-Za-z0-9_-]{0,63}")
 _BAR_HEIGHT_PATTERN = re.compile(r"(?:[1-9]|[1-9][0-9]|100)%")
 _CHART_DISPLAY_VALUE_LIMIT = 100
 _CHART_DISPLAY_TEXT_LIMIT = 256
@@ -1148,24 +1149,11 @@ def _render_data_table(raw: dict[str, Any], width_class: str) -> dict[str, Any]:
             parsed_row[key] = _render_data_table_cell(cell_raw, cell_type)
         rows.append(parsed_row)
 
-    pagination_raw = raw.get("pagination")
-    pagination: dict[str, Any] = {}
-    if isinstance(pagination_raw, dict):
-        pages: list[dict[str, Any]] = []
-        for page in _safe_dict_list(pagination_raw.get("pages")):
-            href = validate_internal_href(page.get("href"))
-            if href is not None:
-                pages.append(
-                    {
-                        "label": _safe_str(page.get("label", "")),
-                        "href": href,
-                        "active": bool(page.get("active", False)),
-                    }
-                )
-        pagination = {
-            "label": _safe_str(pagination_raw.get("label", "")),
-            "pages": pages,
-        }
+    table_id = raw.get("id")
+    if not isinstance(table_id, str) or not _DATA_TABLE_ID_PATTERN.fullmatch(table_id):
+        table_id = None
+
+    pagination = _normalize_data_table_pagination(raw.get("pagination"))
 
     return {
         "type": "data_table",
@@ -1178,11 +1166,132 @@ def _render_data_table(raw: dict[str, Any], width_class: str) -> dict[str, Any]:
         "selectable": selectable,
         "nowrap": nowrap,
         "compact": compact,
+        "table_id": table_id,
         "toolbar": toolbar,
         "columns": columns,
         "rows": rows,
         "pagination": pagination,
         "degraded_error": degraded_error,
+    }
+
+
+def _normalize_data_table_pagination(raw: Any) -> dict[str, Any]:
+    if not isinstance(raw, dict):
+        return {}
+
+    pages_by_number: dict[int, dict[str, Any]] = {}
+    for index, page in enumerate(_safe_dict_list(raw.get("pages")), start=1):
+        href = validate_internal_href(page.get("href"))
+        number = page.get("number", page.get("label"))
+        if isinstance(number, str) and number.isdecimal():
+            number = int(number)
+        if not isinstance(number, int) or isinstance(number, bool) or number < 1:
+            number = index
+        if number < 1:
+            continue
+        if href is None or number in pages_by_number:
+            continue
+        pages_by_number[number] = {
+            "label": _safe_str(page.get("label", number)) or str(number),
+            "href": href,
+            "active": bool(page.get("active", False)),
+            "number": number,
+        }
+
+    pages = [pages_by_number[number] for number in sorted(pages_by_number)]
+    active_index = next(
+        (index for index, page in enumerate(pages) if page["active"]),
+        None,
+    )
+    visible_pages = _compact_data_table_pages(pages, active_index)
+    page_param = raw.get("page_param", "page")
+    if not isinstance(page_param, str) or not _DATA_TABLE_ID_PATTERN.fullmatch(
+        page_param
+    ):
+        page_param = "page"
+
+    return {
+        "label": _safe_str(raw.get("label", "")),
+        "pages": visible_pages,
+        "previous": _normalize_data_table_pagination_control(
+            raw.get("previous"), pages, active_index, -1
+        ),
+        "next": _normalize_data_table_pagination_control(
+            raw.get("next"), pages, active_index, 1
+        ),
+        "page_param": page_param,
+        "page_size": _normalize_data_table_page_size(raw.get("page_size")),
+    }
+
+
+def _compact_data_table_pages(
+    pages: list[dict[str, Any]], active_index: int | None
+) -> list[dict[str, Any]]:
+    if len(pages) <= 7:
+        return pages
+
+    current_index = active_index if active_index is not None else 0
+    selected = {0, len(pages) - 1}
+    selected.update(
+        index
+        for index in range(current_index - 1, current_index + 2)
+        if 0 <= index < len(pages)
+    )
+    compact: list[dict[str, Any]] = []
+    previous_index: int | None = None
+    for index in sorted(selected):
+        if previous_index is not None and index > previous_index + 1:
+            compact.append({"ellipsis": True})
+        compact.append(pages[index])
+        previous_index = index
+    return compact
+
+
+def _normalize_data_table_pagination_control(
+    raw: Any,
+    pages: list[dict[str, Any]],
+    active_index: int | None,
+    offset: int,
+) -> dict[str, str] | None:
+    if isinstance(raw, dict):
+        href = validate_internal_href(raw.get("href"))
+        if href is not None:
+            return {"label": _safe_str(raw.get("label", "")), "href": href}
+    if active_index is None:
+        return None
+    index = active_index + offset
+    if 0 <= index < len(pages):
+        return {"label": "", "href": pages[index]["href"]}
+    return None
+
+
+def _normalize_data_table_page_size(raw: Any) -> dict[str, Any] | None:
+    if not isinstance(raw, dict):
+        return None
+    options: list[dict[str, Any]] = []
+    for option in _safe_dict_list(raw.get("options"))[:20]:
+        href = validate_internal_href(option.get("href"))
+        if href is None:
+            continue
+        value = _safe_str(option.get("value", option.get("label", "")))
+        label = _safe_str(option.get("label", value))
+        if not value or not label:
+            continue
+        options.append(
+            {
+                "value": value,
+                "label": label,
+                "href": href,
+                "active": bool(option.get("active", False)),
+            }
+        )
+    if not options:
+        return None
+    current = _safe_str(raw.get("current", ""))
+    return {
+        "label": _safe_str(raw.get("label", "")),
+        "current": current,
+        "options": options,
     }
 
 
@@ -1596,6 +1705,25 @@ def resolve_layout_links(
                             page["href"] = prefix_internal_href(
                                 route_prefix, page["href"]
                             )
+                for key in ("previous", "next"):
+                    control = pagination.get(key)
+                    if isinstance(control, dict) and isinstance(
+                        control.get("href"), str
+                    ):
+                        control["href"] = prefix_internal_href(
+                            route_prefix, control["href"]
+                        )
+                page_size = pagination.get("page_size")
+                if isinstance(page_size, dict):
+                    options = page_size.get("options")
+                    if isinstance(options, list):
+                        for option in options:
+                            if isinstance(option, dict) and isinstance(
+                                option.get("href"), str
+                            ):
+                                option["href"] = prefix_internal_href(
+                                    route_prefix, option["href"]
+                                )
             rows = block.get("rows")
             if isinstance(rows, list):
                 for row in rows:

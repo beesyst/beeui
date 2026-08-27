@@ -268,6 +268,45 @@ def test_html_uses_real_local_tabler_assets() -> None:
     assert "beeui-theme-base-gray" in response.text
 
 
+def test_beeui_js_has_generic_live_table_enhancement() -> None:
+    javascript = Path("src/beeui_module/web/static/js/beeui.js").read_text(
+        encoding="utf-8"
+    )
+
+    assert "data-beeui-table-id" in javascript
+    assert "AbortController" in javascript
+    assert "DOMParser" in javascript
+    assert "history.replaceState" in javascript
+    assert "beeuiInitDatepickers" in javascript
+    assert "beeuiDestroyDatepickers" in javascript
+    assert "priority" not in javascript
+    assert "case_type" not in javascript
+
+
+def test_beeui_js_preserves_non_live_table_get_controls() -> None:
+    javascript = Path("src/beeui_module/web/static/js/beeui.js").read_text(
+        encoding="utf-8"
+    )
+    change_handler = javascript.split('document.addEventListener("change"', 1)[1]
+    change_handler = change_handler.split('document.addEventListener("click"', 1)[0]
+
+    assert "if (table) replaceLiveTable(table, pageSizeUrl);" in change_handler
+    assert "else window.location.assign(pageSizeUrl.href);" in change_handler
+    assert "data-beeui-table-auto-submit" in change_handler
+    assert "select.form.requestSubmit()" in change_handler
+    assert "if (!table) return;" not in change_handler
+
+
+def test_datepicker_cleanup_is_available_for_live_table_replacement() -> None:
+    template = Path("src/beeui_module/web/templates/base.html").read_text(
+        encoding="utf-8"
+    )
+
+    assert "window.removeEventListener('resize', resizeHandler)" in template
+    assert "window.beeuiDestroyDatepickers = destroyDatepickers" in template
+    assert "currentPicker.destroy()" in template
+
+
 def test_get_local_litepicker_vendor_js_asset_returns_file() -> None:
     app = create_beeui_app()
     client = TestClient(app)

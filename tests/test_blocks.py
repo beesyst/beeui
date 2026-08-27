@@ -2544,6 +2544,118 @@ def test_layout_data_table_pagination_unsafe_link_rejected() -> None:
     assert result[0]["pagination"]["pages"][0]["label"] == "Good"
 
 
+def test_data_table_live_identity_page_size_and_compact_pagination_normalize() -> None:
+    pages = [
+        {"label": str(number), "href": f"/queue?page={number}", "active": number == 67}
+        for number in range(1, 135)
+    ]
+    result = render_layout(
+        [
+            {
+                "type": "data_table",
+                "id": "queue-table",
+                "title": "Queue",
+                "columns": [{"key": "id", "label": "ID"}],
+                "rows": [{"id": {"label": "001"}}],
+                "pagination": {
+                    "label": "Showing 1 to 25",
+                    "pages": pages,
+                    "page_size": {
+                        "current": "25",
+                        "options": [
+                            {"value": "10", "label": "10", "href": "/queue?size=10"},
+                            {
+                                "value": "25",
+                                "label": "25",
+                                "href": "/queue?size=25",
+                                "active": True,
+                            },
+                        ],
+                    },
+                },
+            }
+        ]
+    )
+
+    block = result[0]
+    assert block["table_id"] == "queue-table"
+    assert [page.get("label") for page in block["pagination"]["pages"]] == [
+        "1",
+        None,
+        "66",
+        "67",
+        "68",
+        None,
+        "134",
+    ]
+    assert block["pagination"]["previous"]["href"] == "/queue?page=66"
+    assert block["pagination"]["next"]["href"] == "/queue?page=68"
+    assert block["pagination"]["page_size"]["current"] == "25"
+    assert block["pagination"]["page_size"]["options"][0]["href"] == "/queue?size=10"
+
+
+def test_data_table_live_metadata_and_page_size_degrade_safely() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "data_table",
+                "id": "unsafe selector[]",
+                "title": "Queue",
+                "columns": [{"key": "id", "label": "ID"}],
+                "rows": [{"id": {"label": "001"}}],
+                "pagination": {
+                    "page_param": "page[]",
+                    "page_size": {
+                        "options": [
+                            {"label": "Unsafe", "href": "https://evil.example/size"},
+                            {"label": "Safe", "href": "/queue?size=25"},
+                        ]
+                    },
+                },
+            }
+        ]
+    )
+
+    assert result[0]["table_id"] is None
+    assert result[0]["pagination"]["page_param"] == "page"
+    assert result[0]["pagination"]["page_size"]["options"] == [
+        {"value": "Safe", "label": "Safe", "href": "/queue?size=25", "active": False}
+    ]
+
+
+def test_data_table_compact_pagination_handles_empty_small_and_edges() -> None:
+    def page(number: int, active: bool = False) -> dict[str, object]:
+        return {"label": str(number), "href": f"/queue?page={number}", "active": active}
+
+    def pagination_for(pages: list[dict[str, object]]) -> dict[str, object]:
+        return render_layout(
+            [
+                {
+                    "type": "data_table",
+                    "title": "Queue",
+                    "columns": [{"key": "id", "label": "ID"}],
+                    "rows": [{"id": {"label": "001"}}],
+                    "pagination": {"pages": pages},
+                }
+            ]
+        )[0]["pagination"]
+
+    assert pagination_for([])["pages"] == []
+    assert [item["label"] for item in pagination_for([page(1, True)])["pages"]] == ["1"]
+    assert [
+        item["label"]
+        for item in pagination_for([page(1), page(2, True), page(3)])["pages"]
+    ] == ["1", "2", "3"]
+
+    first = pagination_for([page(number, number == 1) for number in range(1, 135)])
+    last = pagination_for([page(number, number == 134) for number in range(1, 135)])
+
+    assert [item.get("label") for item in first["pages"]] == ["1", "2", None, "134"]
+    assert first["next"]["href"] == "/queue?page=2"
+    assert [item.get("label") for item in last["pages"]] == ["1", None, "133", "134"]
+    assert last["previous"]["href"] == "/queue?page=133"
+
+
 def test_layout_data_table_badge_cell() -> None:
     result = render_layout(
         [
@@ -4429,7 +4541,12 @@ def test_data_table_toolbar_route_prefix_applied_exactly_once() -> None:
                     }
                 ],
                 "rows": [{"id": {"label": "001", "href": "/queue/001"}}],
-                "pagination": {"pages": [{"label": "1", "href": "/queue?page=1"}]},
+                "pagination": {
+                    "pages": [{"label": "1", "href": "/queue?page=1"}],
+                    "page_size": {
+                        "options": [{"label": "25", "href": "/queue?size=25"}]
+                    },
+                },
             }
         ]
     )
@@ -4443,6 +4560,7 @@ def test_data_table_toolbar_route_prefix_applied_exactly_once() -> None:
     assert block["columns"][0]["sort_href"] == "/ui/queue?sort=id"
     assert block["rows"][0]["id"]["href"] == "/ui/queue/001"
     assert block["pagination"]["pages"][0]["href"] == "/ui/queue?page=1"
+    assert block["pagination"]["page_size"]["options"][0]["href"] == "/ui/queue?size=25"
 
 
 def test_data_table_toolbar_no_double_prefix() -> None:

@@ -68,8 +68,7 @@ config/beeui.yml
 ./start.sh web --host 127.0.0.1 --port 8780
 ```
 
-Текущий CLI поддерживает `--host` и `--port` для `web`.
-Он не поддерживает:
+Текущий CLI поддерживает `--host` и `--port` для `web`. Он не поддерживает:
 
 ```bash
 ./start.sh web --config config/beeui.yml --settings config/settings.yml
@@ -392,8 +391,7 @@ product:
 
 ## `http_adapter.*`
 
-Planned/future schema after product-adapter iterations.
-Not implemented in current Iteration 4 runtime.
+Planned/future schema after product-adapter iterations. Not implemented in current Iteration 4 runtime.
 
 ```yaml
 http_adapter:

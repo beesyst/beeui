@@ -78,6 +78,14 @@ Tabler-совместимых Datepicker control с локально vendored Li
   - явная кнопка Apply (`apply`) — только при явном указании;
   - кнопка Apply не создаётся неявно при наличии date_range;
   - устаревшие `search`/`entries` остаются инертными placeholder'ами;
+  - optional безопасный `data_table.id` включает только generic progressive
+    enhancement той же server-authoritative GET таблицы: поиск от трёх символов
+    с debounce 275 ms, отменой stale requests и refresh очищенного поиска;
+  - ссылки фильтра, сортировки, pagination и page-size могут заменить только
+    одноимённую таблицу; row/detail/artifact/action links не перехватываются;
+  - URL обновляется после успешной same-origin замены и воспроизводится refresh;
+  - pagination bounded: first/current neighborhood/last, ellipses, previous/next;
+    `pagination.page_size.options[]` остаётся product-owned набором safe href.
 - **Ellipsis-выбор колонок**:
   - иконка многоточия после поиска;
   - выпадающий список содержит пункты колонок напрямую;

@@ -26,9 +26,7 @@ Product decides.
 
 Все маршруты обслуживаются под настроенным `web.route_prefix`.
 
-После Iteration 13.7 component catalog использует тот же shell locale context,
-что и остальные BeeUI страницы. Catalog links сохраняют `lang`, где это
-practically applicable. Catalog остаётся read-only и product-neutral.
+После Iteration 13.7 component catalog использует тот же shell locale context, что и остальные BeeUI страницы. Catalog links сохраняют `lang`, где это practically applicable. Catalog остаётся read-only и product-neutral.
 
 ## Добавления Iteration 13.6
 
@@ -97,10 +95,7 @@ Safe local chart renderer for adapter-backed `layout[]`. Supports controlled cha
 
 Advanced Tabler-compatible data table for adapter-backed `layout[]`. Backward-compatible with existing `table_card`.
 
-Начиная с Iteration 13.12 toolbar рендерится внутри card-header как часть
-единой канонической карточки. Column chooser использует горизонтальное
-многоточие (`icon-tabler-dots`). Malformed columns/rows сохраняют canonical
-shell, toolbar и показывают bounded degraded сообщение.
+Начиная с Iteration 13.12 toolbar рендерится внутри card-header как часть единой канонической карточки. Column chooser использует горизонтальное многоточие (`icon-tabler-dots`). Malformed columns/rows сохраняют canonical shell, toolbar и показывают bounded degraded сообщение.
 
 Поддерживаемые варианты:
 
@@ -112,6 +107,7 @@ shell, toolbar и показывают bounded degraded сообщение.
 | `selectable` | bool | Show checkbox column (inert) |
 | `nowrap` | bool | Prevent text wrapping |
 | `compact` | bool | Use `table-sm` |
+| `id` | string | Optional safe stable identity for progressive GET replacement |
 | `toolbar` | object | Optional toolbar: `{search, entries, actions, fields[], hidden, column_toggles[], apply, reset}` |
 
 Toolbar fields (`toolbar.fields[]`):
@@ -152,7 +148,7 @@ Additional toolbar fields:
 - Missing values render as `n/a`.
 - Unknown cell type degrades to escaped text.
 - Malformed payload renders as canonical table card with degraded message, not 500.
-- No DataTables/List.js runtime in this iteration.
+- No DataTables/List.js runtime; functional tables with an optional safe `id` use built-in browser APIs for progressive GET replacement only.
 - Toolbar fields support functional GET form with date range, text search, select dropdowns, checkboxes, hidden fields, column toggles, reset and explicit Apply.
 - Toolbar is rendered inside the table card header, not in a separate card-body.
 - Malformed `columns` or `rows` preserve the canonical card, title, toolbar and show a bounded degraded alert message.
@@ -162,6 +158,9 @@ Additional toolbar fields:
 - Column visibility controls are rendered as direct items in the ellipsis dropdown.
 - Dropdown filters use canonical `.btn-ghost-secondary`, `.dropdown-toggle`, `.dropdown-menu` and `.dropdown-item` classes.
 - Reset uses a standard `.btn-ghost-secondary`.
+- A live table replaces only its matching `data-beeui-table-id` from a successful same-origin response. Product filter links, sort links, pagination and page-size controls may participate; row/detail/artifact/action navigation does not.
+- Text inputs retain Enter/GET fallback. Automatic search starts at three trimmed characters after 275 ms; one or two characters do not auto-request, and a cleared active search requests the cleared state. URL state is replaced after a successful GET, so it remains refreshable without creating a history entry per keypress.
+- `pagination.pages[]` is rendered compactly: first, active neighborhood, last, ellipses and available previous/next controls. `pagination.page_size` optionally supplies product-owned `{current, options[]}` with safe internal hrefs; its selector and the records label wrap with pagination on narrow screens.
 - No inline positioning styles are required for dropdown placement.
 - Desktop controls remain on one row when sufficient width exists; narrow layouts wrap or stack via `flex-wrap`.
 - Legacy `search`/`entries`/`actions` toolbar fields remain supported.
@@ -395,15 +394,11 @@ HTML-форма:
 | 3       | `col-12 col-sm-6 col-lg-4` |
 | 4 (default) | `col-12 col-sm-6 col-lg-3` |
 
-Invalid adapter values degrade to default 4 (no 500).
-Это поле относится только к adapter-backed `layout[]` block `kpi_grid`.
-Schema/demo `kpi_grid` этим contract не расширяется.
+Invalid adapter values degrade to default 4 (no 500). Это поле относится только к adapter-backed `layout[]` block `kpi_grid`. Schema/demo `kpi_grid` этим contract не расширяется.
 
 ### Отступы страниц
 
-Все HTML render paths (`page.html`, `product_dashboard.html`, `product_runs.html`,
-`product_run_detail.html`, `product_venue_dashboard.html`) используют единый
-`.page-body` wrapper:
+Все HTML render paths (`page.html`, `product_dashboard.html`, `product_runs.html`, `product_run_detail.html`, `product_venue_dashboard.html`) используют единый `.page-body` wrapper:
 
 ```html
 <div class="page-body">
@@ -505,15 +500,11 @@ Iteration 12.4 adds 6 new adapter-backed `layout[]` block types for product-neut
 | `quick_links` | `components/layout/quick_links.html` | List group of internal operator links |
 | `run_table` | `components/layout/run_table.html` | Operator run/event/artifact table with internal links for run_id and artifact |
 
-`operator_hero.items[].progress` accepts only finite numeric values and is clamped
-to `0..100`. `progress_tone` accepts only generic `bg-primary`, `bg-secondary`,
-`bg-success`, `bg-warning`, `bg-danger`, or `bg-info`; invalid values use
-`bg-primary`.
+`operator_hero.items[].progress` accepts only finite numeric values and is clamped to `0..100`. `progress_tone` accepts only generic `bg-primary`, `bg-secondary`, `bg-success`, `bg-warning`, `bg-danger`, or `bg-info`; invalid values use `bg-primary`.
 
 All block templates use Tabler-compatible markup (`card`, `card-header`, `card-body`, `datagrid`, `table table-vcenter card-table`, `list-group`, `badge`, `status-dot`, `alert`) and pass through Jinja autoescaping.
 
-Existing `mode_cards` now supports optional fields: `href`, `latest`, `latest_href`.
-Existing `attention_list` handles all severity values (`warning`, `error`, `info`, `ok`, `unknown`) and missing label/message renders as `n/a`.
+Existing `mode_cards` now supports optional fields: `href`, `latest`, `latest_href`. Existing `attention_list` handles all severity values (`warning`, `error`, `info`, `ok`, `unknown`) and missing label/message renders as `n/a`.
 
 A new `_display_value` helper in `blocks/layout_renderer.py` ensures user-visible values never render as `None` — missing/empty values render as `n/a` by default.
 
@@ -611,11 +602,9 @@ Detail page `key_value` items support product-neutral presentation fields:
 | `tone` | string | `default`, `muted`, `success`, `warning`, `danger` | Color tone for the value |
 | `display` | string | any | Display string for boolean variants |
 
-Product decides tone and display semantics. BeeUI validates allowlisted values.
-Unknown variant/tone safely degrades to plain text.
+Product decides tone and display semantics. BeeUI validates allowlisted values. Unknown variant/tone safely degrades to plain text.
 
-Built-in labels introduced by this contract use the BeeUI `en`/`ru` catalog;
-adapter-provided labels remain escaped product text.
+Built-in labels introduced by this contract use the BeeUI `en`/`ru` catalog; adapter-provided labels remain escaped product text.
 
 ### Backward compatibility
 
