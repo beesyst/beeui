@@ -677,9 +677,7 @@ Bee-продукты должны реализовывать:
 
 `ProductUiAdapter` — единственная точка знания о конкретном продукте.
 
-Iteration 8 фиксирует generic contract в `src/beeui_module/adapters/`.
-В текущем статусе этот contract не добавляет concrete BeeCap/BeeAgent adapters и не добавляет route-level adapter injection.
-Optional write/action methods объявлены как unavailable by default.
+Iteration 8 фиксирует generic contract в `src/beeui_module/adapters/`. В текущем статусе этот contract не добавляет concrete BeeCap/BeeAgent adapters и не добавляет route-level adapter injection. Optional write/action methods объявлены как unavailable by default.
 
 Generic BeeUI code не должен знать:
 

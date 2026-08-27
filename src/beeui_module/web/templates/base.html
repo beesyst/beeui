@@ -145,7 +145,9 @@ try{var d=document.documentElement,c=d.getAttribute('data-beeui-theme-config'),s
       }
 
       function submitForm(form) {
-        if (form) form.submit();
+        if (!form) return;
+        if (typeof form.requestSubmit === 'function') form.requestSubmit();
+        else form.submit();
       }
 
       var Picker = Litepicker.Litepicker || Litepicker.default || Litepicker;
@@ -263,17 +265,20 @@ try{var d=document.documentElement,c=d.getAttribute('data-beeui-theme-config'),s
         return picker;
       }
 
-      document.querySelectorAll('.beeui-dr-trigger').forEach(function(trigger) {
-        var wrapper = trigger.closest('.beeui-table-toolbar-date-group');
-        if (!wrapper) return;
-        var fromInput = wrapper.querySelector('.beeui-dr-from');
-        var toInput = wrapper.querySelector('.beeui-dr-to');
-        var textInput = trigger.querySelector('.beeui-dr-input');
+      function initDatepickers(scope) {
+        var root = scope || document;
+        root.querySelectorAll('.beeui-dr-trigger').forEach(function(trigger) {
+          if (trigger.dataset.beeuiDatepickerInitialized) return;
+          trigger.dataset.beeuiDatepickerInitialized = 'true';
+          var wrapper = trigger.closest('.beeui-table-toolbar-date-group');
+          if (!wrapper) return;
+          var fromInput = wrapper.querySelector('.beeui-dr-from');
+          var toInput = wrapper.querySelector('.beeui-dr-to');
+          var textInput = trigger.querySelector('.beeui-dr-input');
 
-        var currentPicker = createPicker(trigger, fromInput, toInput, textInput, false);
-
-        var resizeTimer = null;
-        window.addEventListener('resize', function() {
+          var currentPicker = createPicker(trigger, fromInput, toInput, textInput, false);
+          var resizeTimer = null;
+          var resizeHandler = function() {
           if (resizeTimer) clearTimeout(resizeTimer);
           resizeTimer = setTimeout(function() {
             var newCols = getColumns();
@@ -283,29 +288,56 @@ try{var d=document.documentElement,c=d.getAttribute('data-beeui-theme-config'),s
               currentPicker = createPicker(trigger, fromInput, toInput, textInput, true);
             }
           }, 300);
+          };
+          window.addEventListener('resize', resizeHandler);
+          trigger.beeuiDatepickerCleanup = function() {
+            if (resizeTimer) clearTimeout(resizeTimer);
+            window.removeEventListener('resize', resizeHandler);
+            if (currentPicker && typeof currentPicker.destroy === 'function') {
+              currentPicker.destroy();
+            }
+          };
         });
-      });
 
-      document.querySelectorAll('.beeui-datepicker').forEach(function(input) {
-        new Picker({
-          element: input,
-          format: 'YYYY-MM-DD',
-          singleMode: true,
-          autoApply: true,
-          resetButton: true,
-          lang: locale,
-          setup: function(p) {
-            p.on('selected', function(date) {
-              var form = input.closest('form');
-              if (form) form.submit();
-            });
-            p.on('clear:selection', function() {
-              var form = input.closest('form');
-              if (form) form.submit();
-            });
+        root.querySelectorAll('.beeui-datepicker').forEach(function(input) {
+          if (input.dataset.beeuiDatepickerInitialized) return;
+          input.dataset.beeuiDatepickerInitialized = 'true';
+          var picker = new Picker({
+            element: input,
+            format: 'YYYY-MM-DD',
+            singleMode: true,
+            autoApply: true,
+            resetButton: true,
+            lang: locale,
+            setup: function(p) {
+              p.on('selected', function(date) {
+                var form = input.closest('form');
+                submitForm(form);
+              });
+              p.on('clear:selection', function() {
+                var form = input.closest('form');
+                submitForm(form);
+              });
+            }
+          });
+          input.beeuiDatepickerCleanup = function() {
+            if (picker && typeof picker.destroy === 'function') picker.destroy();
+          };
+        });
+      }
+
+      function destroyDatepickers(scope) {
+        var root = scope || document;
+        root.querySelectorAll('[data-beeui-datepicker-initialized]').forEach(function(input) {
+          if (typeof input.beeuiDatepickerCleanup === 'function') {
+            input.beeuiDatepickerCleanup();
           }
         });
-      });
+      }
+
+      window.beeuiInitDatepickers = initDatepickers;
+      window.beeuiDestroyDatepickers = destroyDatepickers;
+      initDatepickers(document);
     })();
     </script>
     {% endif %}

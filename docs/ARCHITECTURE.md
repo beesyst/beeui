@@ -575,8 +575,7 @@ Block — reusable rendering primitive.
 - JSON viewer;
 - chart card.
 
-Block не знает domain semantics.
-Domain semantics приходят как данные.
+Block не знает domain semantics. Domain semantics приходят как данные.
 
 Пример:
 

@@ -211,8 +211,7 @@ Starting from Iteration 13.9:
 - Invalid stored theme falls back to system default.
 - Browser state (`localStorage`, cookie) is not a product/config source of truth.
 - Locale resolution is valid query → valid cookie → configured default.
-- Rejected chart render promises render a bounded localized error state without
-  logging raw adapter payloads.
+- Rejected chart render promises render a bounded localized error state without logging raw adapter payloads.
 
 ### 6. Logs must be useful but safe
 
@@ -628,8 +627,7 @@ Run or consider SCA when:
 
 ### Lightweight rule
 
-If dependencies changed, SCA is required.
-If dependencies did not change, SCA is usually not needed.
+If dependencies changed, SCA is required. If dependencies did not change, SCA is usually not needed.
 
 ## DAST
 
@@ -692,8 +690,7 @@ Consider IAST only for higher-risk changes such as:
 
 ### Lightweight rule
 
-IAST is **not default** for everyday work.
-Use it only when a change is clearly security-sensitive and runtime-observable.
+IAST is **not default** for everyday work. Use it only when a change is clearly security-sensitive and runtime-observable.
 
 ## Fuzzing
 
@@ -727,8 +724,7 @@ Consider fuzzing for code that parses or restores:
 
 ### Lightweight rule
 
-Do not fuzz everything.
-Use fuzzing only for code that can realistically break on malformed input.
+Do not fuzz everything. Use fuzzing only for code that can realistically break on malformed input.
 
 ## Security levels for PRs
 
@@ -945,8 +941,7 @@ When adding a product integration:
 - add tests for partial/missing/corrupted product artifacts;
 - document integration boundaries in `docs/INTEGRATION.md`.
 
-Do not import deep product internals randomly throughout `beeui`.
-Product knowledge must be concentrated in the adapter/integration layer.
+Do not import deep product internals randomly throughout `beeui`. Product knowledge must be concentrated in the adapter/integration layer.
 
 ## Standalone mode safety rules
 

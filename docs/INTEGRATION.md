@@ -8,31 +8,21 @@
 
 **Iteration 13.14** — Request-scoped navigation visibility.
 
-- BeeUI предоставляет optional public request-scoped navigation visibility
-  resolver для `create_beeui_app(...)` и `mount_beeui(...)`.
+- BeeUI предоставляет optional public request-scoped navigation visibility resolver для `create_beeui_app(...)` и `mount_beeui(...)`.
 - Resolver — это product-neutral hook:
 
   ```python
   navigation_visibility_resolver(request, canonical_path) -> bool
   ```
 
-  где `request` — текущий FastAPI `Request`, а `canonical_path` — canonical
-  (непрефиксованный) path navigation item из product-side `beeui.yml`
-  (например, `/runs`, `/venues/mrkt`). Route prefix обрабатывается внутри BeeUI.
+где `request` — текущий FastAPI `Request`, а `canonical_path` — canonical (непрефиксованный) path navigation item из product-side `beeui.yml` (например, `/runs`, `/venues/mrkt`). Route prefix обрабатывается внутри BeeUI.
 
-- Если resolver вернул `False` — navigation leaf не рендерится в sidebar.
-  Group без visible children не рендерится. Visible siblings сохраняются.
-- Если resolver не передан — navigation полностью сохраняет текущее поведение
-  (backward-compatible; существующие consumers не обязаны меняться).
-- Один и тот же contract применяется ко всем generic shell rendering paths:
-  configured pages, adapter-backed/custom pages, product console и
-  `render_beeui_detail_page(...)`.
-- Resolver является request-scoped: продукт может дать разную navigation для
-  разных запросов без изменения schema.
-- При exception в resolver item трактуется как скрытый (fail-closed):
-  failure не раскрывает дополнительные navigation items.
-- Сохраняются route prefix, RU/EN locale, `lang` preservation,
-  active/descendant-active state и grouped navigation.
+- Если resolver вернул `False` — navigation leaf не рендерится в sidebar. Group без visible children не рендерится. Visible siblings сохраняются.
+- Если resolver не передан — navigation полностью сохраняет текущее поведение (backward-compatible; существующие consumers не обязаны меняться).
+- Один и тот же contract применяется ко всем generic shell rendering paths: configured pages, adapter-backed/custom pages, product console и `render_beeui_detail_page(...)`.
+- Resolver является request-scoped: продукт может дать разную navigation для разных запросов без изменения schema.
+- При exception в resolver item трактуется как скрытый (fail-closed): failure не раскрывает дополнительные navigation items.
+- Сохраняются route prefix, RU/EN locale, `lang` preservation, active/descendant-active state и grouped navigation.
 
 ```python
 from beeui_module.web.app import create_beeui_app
@@ -63,41 +53,19 @@ mount_beeui(
 )
 ```
 
-**Пограничная граница.** Этот hook — presentation-only фильтр sidebar.
-Он не предоставляет и не отменяет HTTP authorization destination route:
-страница остаётся доступной по прямому URL, если продукт не запретил её
-server-side. Продукт обязан отдельно enforce server-side authorization
-(route/resource) и не рассматривать видимость navigation item как доступ.
+**Пограничная граница.** Этот hook — presentation-only фильтр sidebar. Он не предоставляет и не отменяет HTTP authorization destination route: страница остаётся доступной по прямому URL, если продукт не запретил её server-side. Продукт обязан отдельно enforce server-side authorization (route/resource) и не рассматривать видимость navigation item как доступ.
 
 **Iteration 13.13** — External-principal sessions and controlled embedding.
 
-- Trusted product backend может создать signed BeeUI session для уже проверенного
-  внешнего principal через публичный Python contract
-  `AuthService.create_principal_session(user_id, role)`.
-- `user_id` должен быть non-empty string; `role` должен быть explicit `UserRole`
-  value. BeeUI не проверяет внешнюю identity и не маппит внешние credentials
-  в роли; verification и role mapping остаются за product backend.
-- Browser requests не могут выбирать или повышать role: нет browser-facing
-  endpoint, принимающего `user_id`/`role`.
-- Session cookie устанавливается и удаляется через единую централизованную
-  policy: `AuthService.attach_session_cookie(response, cookie, path=...)` и
-  `AuthService.delete_session_cookie(response, path=...)`. Login/logout routes
-  используют те же helpers.
-- Cookie policy настраивается через `auth.cookie_secure`,
-  `auth.cookie_samesite` (default `lax`) и `auth.session_age_max`
-  (default `86400`, range `60..604800`). `cookie_samesite=none` требует
-  `cookie_secure=true`.
-- Существующий формат signed cookies остаётся читаемым до configured expiry;
-  token login/logout/CSRF/roles остаются backward-compatible.
-- Controlled cross-site iframe embedding включается exact `security.frame_ancestors`
-  origins. Default framing denial (`X-Frame-Options: DENY`) сохраняется.
-  При непустом `security.frame_ancestors` BeeUI отправляет
-  `Content-Security-Policy: frame-ancestors <origins>` и не отправляет
-  конфликтующий `X-Frame-Options: DENY`.
-- Wildcard, malformed, path/query/fragment и иные non-origin values отклоняются
-  fail-fast.
-- Нет BeeAgent/Bitrix/ROP-specific imports, labels или behavior; contract
-  product-neutral.
+- Trusted product backend может создать signed BeeUI session для уже проверенного внешнего principal через публичный Python contract `AuthService.create_principal_session(user_id, role)`.
+- `user_id` должен быть non-empty string; `role` должен быть explicit `UserRole` value. BeeUI не проверяет внешнюю identity и не маппит внешние credentials в роли; verification и role mapping остаются за product backend.
+- Browser requests не могут выбирать или повышать role: нет browser-facing endpoint, принимающего `user_id`/`role`.
+- Session cookie устанавливается и удаляется через единую централизованную policy: `AuthService.attach_session_cookie(response, cookie, path=...)` и `AuthService.delete_session_cookie(response, path=...)`. Login/logout routes используют те же helpers.
+- Cookie policy настраивается через `auth.cookie_secure`, `auth.cookie_samesite` (default `lax`) и `auth.session_age_max` (default `86400`, range `60..604800`). `cookie_samesite=none` требует `cookie_secure=true`.
+- Существующий формат signed cookies остаётся читаемым до configured expiry; token login/logout/CSRF/roles остаются backward-compatible.
+- Controlled cross-site iframe embedding включается exact `security.frame_ancestors` origins. Default framing denial (`X-Frame-Options: DENY`) сохраняется. При непустом `security.frame_ancestors` BeeUI отправляет `Content-Security-Policy: frame-ancestors <origins>` и не отправляет конфликтующий `X-Frame-Options: DENY`.
+- Wildcard, malformed, path/query/fragment и иные non-origin values отклоняются fail-fast.
+- Нет BeeAgent/Bitrix/ROP-specific imports, labels или behavior; contract product-neutral.
 
 ```python
 from beeui_module.auth.models import UserRole
@@ -134,33 +102,16 @@ return response
 - Старый query-only locale contract Iteration 13.7 superseded Iteration 13.9: BeeUI использует cookie `beeui_lang`, но не session или localStorage.
 
 - Generic contract `ProductUiAdapter` существует в `src/beeui_module/adapters/`.
-- `BeeCapFixtureAdapter` в `src/beeui_module/adapters/beecap.py` — только
-  fixture/reference реализация.
+- `BeeCapFixtureAdapter` в `src/beeui_module/adapters/beecap.py` — только fixture/reference реализация.
 - Реальный BeeCap adapter должен жить на стороне BeeCap (см. ниже).
 - Embedded mount API (`create_beeui_app(adapter=...)`) реализован.
 - Mount helper `mount_beeui(...)` реализован.
 - Adapter принимается, валидируется и сохраняется в `app.state`.
-- Adapter-backed product console реализован: `get_dashboard()`, `list_runs()`,
-  `get_run(run_id)` и optional `get_venue_dashboard(venue_id)` вызываются из
-  read-only HTML/JSON routes.
-- Page route ownership (Iteration 13.5): `pages[].path`, navigation и tab href
-  проверяются как safe internal paths. Пути продукта вроде `/venues/mrkt`,
-  `/venues/binance`, `/modes/live`, `/hidra/binance`, `/likes/top` разрешены.
-  Кто обслуживает страницу, определяет `pages[].route.mode`.
-  `metadata` pages не регистрируются как concrete routes; для `/venues/mrkt`
-  типичный режим — `metadata`, потому что запрос может обслуживаться существующим
-  `/venues/{venue_id}`. Для новых product-owned pages можно использовать
-  `route.mode: adapter`; для schema-only pages можно использовать
-  `route.mode: configured`. Custom/configured/adapter route registration защищает
-  BeeUI system-owned routes (`/health`, `/static`, `/api`, `/auth`, `/components`,
-  `/login`, `/logout` и соответствующие system prefixes). BeeUI не хардкодит
-  product namespaces и не знает семантику `venues`, `modes`, `hidra`, `likes`.
-- После Iteration 13.7 product adapter может возвращать `chart` и `data_table`
-  внутри adapter-backed `layout[]`.
-- Product adapter владеет бизнес-метриками, временными периодами и
-  ROP/Bitrix/BeeCap/BeeAgent semantics; BeeUI только рендерит нормализованный layout.
-- `chart` и `data_table` работают в product console и custom adapter pages,
-  если adapter возвращает их в `layout[]`.
+- Adapter-backed product console реализован: `get_dashboard()`, `list_runs()`, `get_run(run_id)` и optional `get_venue_dashboard(venue_id)` вызываются из read-only HTML/JSON routes.
+- Page route ownership (Iteration 13.5): `pages[].path`, navigation и tab href проверяются как safe internal paths. Пути продукта вроде `/venues/mrkt`, `/venues/binance`, `/modes/live`, `/hidra/binance`, `/likes/top` разрешены. Кто обслуживает страницу, определяет `pages[].route.mode`. `metadata` pages не регистрируются как concrete routes; для `/venues/mrkt` типичный режим — `metadata`, потому что запрос может обслуживаться существующим `/venues/{venue_id}`. Для новых product-owned pages можно использовать `route.mode: adapter`; для schema-only pages можно использовать `route.mode: configured`. Custom/configured/adapter route registration защищает BeeUI system-owned routes (`/health`, `/static`, `/api`, `/auth`, `/components`, `/login`, `/logout` и соответствующие system prefixes). BeeUI не хардкодит product namespaces и не знает семантику `venues`, `modes`, `hidra`, `likes`.
+- После Iteration 13.7 product adapter может возвращать `chart` и `data_table` внутри adapter-backed `layout[]`.
+- Product adapter владеет бизнес-метриками, временными периодами и ROP/Bitrix/BeeCap/BeeAgent semantics; BeeUI только рендерит нормализованный layout.
+- `chart` и `data_table` работают в product console и custom adapter pages, если adapter возвращает их в `layout[]`.
 - Chart asset локальный, без CDN.
 - Links в `data_table` валидируются и префиксуются под route prefix / embedded mount.
 - Adapter-backed artifact browser реализован: `adapter.list_artifacts(run_id)` и `adapter.read_artifact(run_id, artifact_id)` вызываются из read-only HTML/JSON routes.
@@ -331,10 +282,8 @@ mount_beeui(
 
 - Adapter принимается, валидируется и сохраняется в `app.state.beeui_adapter`.
 - Adapter-backed product console реализован в Iteration 12 (read-only HTML/JSON routes через adapter).
-- `get_venue_dashboard(venue_id)` является optional method и при отсутствии
-  возвращает explicit unavailable state.
-- Adapter-backed artifact browser из Iteration 11 продолжает работать без
-  изменения contract.
+- `get_venue_dashboard(venue_id)` является optional method и при отсутствии возвращает explicit unavailable state.
+- Adapter-backed artifact browser из Iteration 11 продолжает работать без изменения contract.
 - Product metadata сохраняется в `app.state.beeui_product`.
 - Demo mode (`create_beeui_app()` без аргументов) остаётся backward-compatible.
 - BeeAgent adapter implementation остаётся future scope.
@@ -344,9 +293,7 @@ mount_beeui(
 
 ### Iteration 13.9 — Locale persistence
 
-Starting from Iteration 13.9, the locale cookie `beeui_lang` is set by BeeUI
-middleware when `?lang=` is present and valid. The cookie path matches the
-configured `route_prefix`.
+Starting from Iteration 13.9, the locale cookie `beeui_lang` is set by BeeUI middleware when `?lang=` is present and valid. The cookie path matches the configured `route_prefix`.
 
 Products do not need to set or manage the locale cookie. BeeUI handles:
 
@@ -357,16 +304,13 @@ Products do not need to set or manage the locale cookie. BeeUI handles:
 
 ### Iteration 13.9 — Theme persistence
 
-Theme is persisted via `localStorage` under `beeui-theme`. Valid values:
-`system`, `light`, `dark`. `auto` is accepted only as a configuration compatibility alias for `system`; invalid stored values are removed.
+Theme is persisted via `localStorage` under `beeui-theme`. Valid values: `system`, `light`, `dark`. `auto` is accepted only as a configuration compatibility alias for `system`; invalid stored values are removed.
 
-Theme is a presentation preference only and does not affect product behavior,
-authorization, or business logic.
+Theme is a presentation preference only and does not affect product behavior, authorization, or business logic.
 
 ### Iteration 13.9 — Safe href contract
 
-All active hrefs in adapter-provided `filter_form` and `data_table` blocks
-must pass the shared internal-link contract:
+All active hrefs in adapter-provided `filter_form` and `data_table` blocks must pass the shared internal-link contract:
 
 - External scheme/netloc → rejected.
 - Protocol-relative `//...` → rejected.
@@ -383,19 +327,13 @@ Products should pass only safe internal paths for:
 - `reset href`;
 - `sort_href` in data table columns.
 
-`filter_form` is a GET-only server-side form. JavaScript auto-submit is optional
-progressive enhancement; it does not change the GET contract.
+`filter_form` is a GET-only server-side form. JavaScript auto-submit is optional progressive enhancement; it does not change the GET contract.
+
+For adapter-backed `data_table`, product may provide optional safe stable `id` metadata and `pagination.page_size` links. With `id`, BeeUI enhances only the table's own explicit controls through a same-origin GET and requires the response to contain the same identity before replacement. Product continues to interpret the query and returns the authoritative filtered/sorted/paginated layout. The normal href/form GET path remains the fallback; do not rely on BeeUI for product filter semantics or emit adapter-provided selectors or JavaScript.
 
 ### Iteration 13.10 — Date-range presentation contract
 
-Products continue to provide the same `filter_form.date_range` or
-`data_table.toolbar.fields[].date_range` payload: `from_value`, `to_value`,
-`from_label`, and `to_label`. BeeUI renders the two canonical fields as local
-Litepicker-backed Tabler Datepicker controls and submits only `date_from` and
-`date_to` in `YYYY-MM-DD` format. Either bound may be empty; BeeUI does not
-validate date semantics, ranges, inclusivity, or timezones. Litepicker is a
-package-local conditional presentation asset, and products must not add
-datepicker templates, JavaScript, CSS, or arbitrary datepicker options.
+Products continue to provide the same `filter_form.date_range` or `data_table.toolbar.fields[].date_range` payload: `from_value`, `to_value`, `from_label`, and `to_label`. BeeUI renders the two canonical fields as local Litepicker-backed Tabler Datepicker controls and submits only `date_from` and `date_to` in `YYYY-MM-DD` format. Either bound may be empty; BeeUI does not validate date semantics, ranges, inclusivity, or timezones. Litepicker is a package-local conditional presentation asset, and products must not add datepicker templates, JavaScript, CSS, or arbitrary datepicker options.
 
 ### Iteration 13.9 — Detail presentation metadata
 
@@ -487,8 +425,7 @@ Rules:
 
 ## Generic detail page integration (Iteration 13.8)
 
-Product routes or adapter-backed custom pages can use the generic detail page
-renderer instead of assembling HTML manually.
+Product routes or adapter-backed custom pages can use the generic detail page renderer instead of assembling HTML manually.
 
 ### Entrypoint
 
@@ -551,25 +488,21 @@ The renderer normalizes the model before rendering:
 - missing values render as `n/a`;
 - `back_href` and link hrefs are validated as safe internal paths;
 - external/unsafe links are rendered as inert text;
-- raw fields (`raw_eml`, `attachment_content`, `payload_bytes`, `content_bytes`)
-  are not implicitly rendered;
+- raw fields (`raw_eml`, `attachment_content`, `payload_bytes`, `content_bytes`) are not implicitly rendered;
 - text remains HTML-escaped (autoescape, no `|safe`).
 
 ### Template
 
 Template: `src/beeui_module/web/templates/detail.html`.
 
-Extends `base.html` with the same shell context (theme, layout, locale,
-navigation, route prefix). No JS required. No external assets.
+Extends `base.html` with the same shell context (theme, layout, locale, navigation, route prefix). No JS required. No external assets.
 
 ## Security notes / Замечания по безопасности
 
 - Все adapter inputs (`run_id`, `venue_id`, `artifact_id`) валидируются через `beeui_module.adapters.ids`.
 - `query`, передаваемый в `get_page()`, является untrusted input и должен обрабатываться product adapter как untrusted input.
-- Adapter envelopes используют стабильный status `ok|partial|error`; исходные
-  исключения не попадают в response.
-- Product console JSON API использует стабильный read-only envelope
-  `ok/api/read_only/data|error/warnings/meta`.
+- Adapter envelopes используют стабильный status `ok|partial|error`; исходные исключения не попадают в response.
+- Product console JSON API использует стабильный read-only envelope `ok/api/read_only/data|error/warnings/meta`.
 - Artifact API routes сохраняют существующий contract Iteration 11.
 - Secrets не должны пересекать adapter boundary и попадать в BeeUI.
 - Adapter custom page payload redacted before render.
@@ -585,8 +518,7 @@ navigation, route prefix). No JS required. No external assets.
   - `BEEUI_OPERATOR_TOKEN` — для operator role;
   - `BEEUI_ADMIN_TOKEN` — для admin role.
 - Login создаёт signed session cookie (HMAC-SHA256, 24h expiry).
-- CSRF token хранится в session cookie; передаётся через `X-CSRF-Token` header
-  (API) или `csrf_token` form field (HTML).
+- CSRF token хранится в session cookie; передаётся через `X-CSRF-Token` header (API) или `csrf_token` form field (HTML).
 - POST routes на config/action endpoints защищены auth + CSRF + role check.
 - Product callbacks не вызываются до прохождения auth/CSRF.
 - Secrets из `config/settings.yml` не попадают в HTML/API/logs.

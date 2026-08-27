@@ -903,7 +903,7 @@ def test_data_table_toolbar_renders_one_column_chooser_after_first_search() -> N
     assert "icon-tabler-dots" in response.text
     assert "icon-tabler-dots-vertical" not in response.text
     assert "input-group input-group-flat" in response.text
-    assert "<kbd>ctrl + K</kbd>" in response.text
+    assert "ctrl + K" not in response.text
     assert response.text.index('name="q"') < response.text.index(
         "beeui-columns-ellipsis"
     )
@@ -1171,7 +1171,7 @@ def test_data_table_toolbar_search_has_icon_and_hint() -> None:
     html = response.text
     assert "input-group input-group-flat" in html
     assert "beeui-toolbar-search" in html
-    assert "<kbd>ctrl + K</kbd>" in html
+    assert "ctrl + K" not in html
     assert "M3 10a7" in html
 
 
@@ -1295,6 +1295,96 @@ def test_data_table_pagination_regression() -> None:
     assert 'href="/runs?page=1"' in html
     assert 'class="page-item active"' in html
     assert 'class="card-footer' in html
+
+
+def test_data_table_live_controls_render_without_shortcut_hint() -> None:
+    class LiveTableAdapter(FakeProductConsoleAdapter):
+        def get_dashboard(self) -> Any:
+            return ok_result(
+                {
+                    "layout": [
+                        {
+                            "type": "data_table",
+                            "id": "queue-table",
+                            "title": "Queue",
+                            "toolbar": {"fields": [{"type": "text", "name": "q"}]},
+                            "columns": [{"key": "id", "label": "ID"}],
+                            "rows": [{"id": {"label": "001"}}],
+                            "pagination": {
+                                "pages": [
+                                    {"label": "1", "href": "/?page=1", "active": True},
+                                    {"label": "2", "href": "/?page=2"},
+                                ],
+                                "page_size": {
+                                    "current": "25",
+                                    "options": [
+                                        {
+                                            "label": "25",
+                                            "href": "/?size=25",
+                                            "active": True,
+                                        },
+                                        {"label": "50", "href": "/?size=50"},
+                                    ],
+                                },
+                            },
+                        }
+                    ]
+                }
+            )
+
+    html = TestClient(create_beeui_app(adapter=LiveTableAdapter())).get("/").text
+
+    assert 'data-beeui-table-id="queue-table"' in html
+    assert "data-beeui-table-search" in html
+    assert "data-beeui-table-control" in html
+    assert "data-beeui-page-size-select" in html
+    assert 'href="/?size=25"' in html
+    assert "ctrl + K" not in html
+
+
+def test_data_table_non_live_get_controls_render_with_browser_fallback() -> None:
+    class NonLiveTableAdapter(FakeProductConsoleAdapter):
+        def get_dashboard(self) -> Any:
+            return ok_result(
+                {
+                    "layout": [
+                        {
+                            "type": "data_table",
+                            "title": "Queue",
+                            "toolbar": {
+                                "fields": [
+                                    {
+                                        "type": "select",
+                                        "name": "state",
+                                        "label": "State",
+                                        "options": [
+                                            {"label": "Open", "value": "open"},
+                                        ],
+                                    }
+                                ]
+                            },
+                            "columns": [{"key": "id", "label": "ID"}],
+                            "rows": [{"id": {"label": "001"}}],
+                            "pagination": {
+                                "page_size": {
+                                    "options": [
+                                        {"label": "25", "href": "/queue?size=25"},
+                                    ]
+                                }
+                            },
+                        }
+                    ]
+                }
+            )
+
+    html = TestClient(create_beeui_app(adapter=NonLiveTableAdapter())).get("/").text
+
+    assert "data-beeui-table-id" not in html
+    assert '<form method="GET" action="/"' in html
+    assert 'name="state"' in html
+    assert "data-beeui-table-auto-submit" in html
+    assert "data-beeui-page-size-select" in html
+    assert 'href="/queue?size=25"' in html
 
 
 def test_data_table_sortable_headers_regression() -> None:

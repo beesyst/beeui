@@ -69,8 +69,7 @@
 - тёмную вертикальную оболочку с локальным контекстом темы боковой панели;
 - специфичный для BeeUI слой CSS-переопределений без повторной реализации примитивов сетки, карточек и таблиц Tabler.
 
-`features.browser_artifact` включает/отключает Iteration 11 artifact browser HTML/API routes.
-`features.api` остаётся зарезервированным для будущего stable BeeUI API contract и не отключает artifact browser API routes.
+`features.browser_artifact` включает/отключает Iteration 11 artifact browser HTML/API routes. `features.api` остаётся зарезервированным для будущего stable BeeUI API contract и не отключает artifact browser API routes.
 
 Реализованные обязанности:
 
@@ -190,8 +189,7 @@ Product decides.
 
 ### Контракт attached page tabs card
 
-Если page содержит `pages[].tabs`, BeeUI рендерит tabs и page blocks внутри
-одной card. Tabs не выводятся отдельной standalone card перед blocks.
+Если page содержит `pages[].tabs`, BeeUI рендерит tabs и page blocks внутри одной card. Tabs не выводятся отдельной standalone card перед blocks.
 
 Структура:
 
@@ -227,11 +225,9 @@ Product decides.
 
 ### Контракт accordion primitive
 
-`accordion` является generic BeeUI primitive и не привязан к конкретному title
-или product-specific fallback.
+`accordion` является generic BeeUI primitive и не привязан к конкретному title или product-specific fallback.
 
-`Technical details` в dashboard fallback — это только label/content одного item.
-Реализация accordion не содержит special-case для этого названия.
+`Technical details` в dashboard fallback — это только label/content одного item. Реализация accordion не содержит special-case для этого названия.
 
 Базовая Tabler-compatible структура:
 
@@ -256,8 +252,7 @@ Product decides.
 | `inverted_plus` | `.accordion.accordion-inverted.accordion-plus`, plus toggle        |
 | `icons`         | `.accordion`, `accordion-button-icon` + стандартный chevron toggle |
 
-Accordion markup использует локальные inline SVG и не требует external assets,
-CDN, preview/demo Tabler scripts или tracking.
+Accordion markup использует локальные inline SVG и не требует external assets, CDN, preview/demo Tabler scripts или tracking.
 
 ### Generic layout group v1
 
@@ -411,9 +406,7 @@ MVP: embedded.
 
 ## Package layout
 
-Canonical web implementation after Iteration 3 lives in `src/beeui_module/web/`.
-Root-level `app.py` не является текущей точкой входа.
-Templates/static находятся внутри `web/`.
+Canonical web implementation after Iteration 3 lives in `src/beeui_module/web/`. Root-level `app.py` не является текущей точкой входа. Templates/static находятся внутри `web/`.
 
 ```text
 src/beeui_module/
@@ -594,8 +587,7 @@ Doctor:
 
 ## Generic detail page renderer (Iteration 13.8)
 
-BeeUI provides a product-neutral detail page renderer that product routes or
-adapter-backed pages can use to render safe read-models through BeeUI/Jinja/Tabler.
+BeeUI provides a product-neutral detail page renderer that product routes or adapter-backed pages can use to render safe read-models through BeeUI/Jinja/Tabler.
 
 ### Entrypoint
 
@@ -650,8 +642,7 @@ Returns `TemplateResponse` using `detail.html`.
 
 Template location: `src/beeui_module/web/templates/detail.html`.
 
-Extends `base.html`, uses the same shell context (theme, layout, locale,
-navigation, route_prefix) as other BeeUI pages.
+Extends `base.html`, uses the same shell context (theme, layout, locale, navigation, route_prefix) as other BeeUI pages.
 
 ---
 
@@ -678,8 +669,7 @@ Generic `ProductUiAdapter` contract существует в `src/beeui_module/ad
 
 ### Контракт размещения schema/demo blocks (Iteration 12.5)
 
-`config/schema.yml` (и product-side `beeui.yml`) содержит секцию `pages`, где
-каждая страница может иметь `blocks[]`.
+`config/schema.yml` (и product-side `beeui.yml`) содержит секцию `pages`, где каждая страница может иметь `blocks[]`.
 
 Поддерживаются два формата для элементов `pages[].blocks[]`:
 
@@ -694,8 +684,7 @@ pages:
         width: 3
 ```
 
-- `block` (required, string): ссылка на ID объявленного top-level `blocks[]`.
-  Проверяется against registry: `Unknown block reference` при отсутствии.
+- `block` (required, string): ссылка на ID объявленного top-level `blocks[]`. Проверяется against registry: `Unknown block reference` при отсутствии.
 - `width` (required, int, 1–12): ширина блока в колонках Tabler grid.
 
 #### 2. Page block reference (Iteration 12.5)
@@ -709,9 +698,7 @@ pages:
         enabled: true
 ```
 
-- `id` (required, string): safe identifier. Является product-side page/layout reference,
-  **не обязан** существовать в top-level `blocks[]`. Product adapter/read_model
-  владеет семантикой этих id.
+- `id` (required, string): safe identifier. Является product-side page/layout reference, **не обязан** существовать в top-level `blocks[]`. Product adapter/read_model владеет семантикой этих id.
 - `enabled` (optional, bool, default `true`): если `false`, блок не рендерится.
 - Ширина блока по умолчанию — `12` (полная ширина колонки).
 - Неизвестные ключи отклоняются fail-fast.
@@ -727,13 +714,9 @@ pages:
 - `layout[]` blocks приходят из product adapter и используются только в product console mode;
 - BeeUI не вычисляет product metrics, а только рендерит переданную product adapter структуру.
 
-Adapter-backed payloads могут содержать optional поле `layout`:
-массив объектов, описывающих структуру dashboard-блоков.
-При наличии `layout[]` HTML-страницы рендерят его как
-Tabler dashboard grid с поддержкой `row row-deck row-cards`.
+Adapter-backed payloads могут содержать optional поле `layout`: массив объектов, описывающих структуру dashboard-блоков. При наличии `layout[]` HTML-страницы рендерят его как Tabler dashboard grid с поддержкой `row row-deck row-cards`.
 
-Generic layout renderer (`src/beeui_module/blocks/layout_renderer.py`)
-нормализует и валидирует каждый block:
+Generic layout renderer (`src/beeui_module/blocks/layout_renderer.py`) нормализует и валидирует каждый block:
 
 - неизвестный block type → `degraded` block;
 - malformed `data_table` → canonical table card with toolbar и degraded message;
@@ -741,19 +724,13 @@ Generic layout renderer (`src/beeui_module/blocks/layout_renderer.py`)
 - unsafe external ссылки → null (не рендерятся);
 - invalid width → `col-12` default.
 
-При отсутствии `layout` или пустом массиве используется существующий
-generic fallback renderer (как в Iteration 12).
+При отсутствии `layout` или пустом массиве используется существующий generic fallback renderer (как в Iteration 12).
 
 Iteration 12.2 — усиление визуального соответствия Tabler:
 
-- BeeUI поставляет реальные локальные скомпилированные ресурсы
-  `@tabler/core@1.4.0` (`tabler.min.css` и `tabler.min.js`) вместо
-  самодельного подмножества совместимости;
-- `beeui.css` загружается после Tabler и содержит только токены, оформление
-  боковой панели и продуктовые улучшения BeeUI, не дублируя базовые классы
-  сетки, карточек и таблиц;
-- `kpi_strip` переведён со строчного выравнивания на статистические карточки
-  (`.card.h-100` со значением `.h1` и подписью `.subheader`);
+- BeeUI поставляет реальные локальные скомпилированные ресурсы `@tabler/core@1.4.0` (`tabler.min.css` и `tabler.min.js`) вместо самодельного подмножества совместимости;
+- `beeui.css` загружается после Tabler и содержит только токены, оформление боковой панели и продуктовые улучшения BeeUI, не дублируя базовые классы сетки, карточек и таблиц;
+- `kpi_strip` переведён со строчного выравнивания на статистические карточки (`.card.h-100` со значением `.h1` и подписью `.subheader`);
 - все шаблоны layout-блоков используют совместимые с Tabler CSS-классы;
 - для каждого типа блока добавлены тесты визуального контракта.
 
@@ -849,16 +826,7 @@ class ProductUiAdapter:
     def execute_action(self, action_id: str, payload: dict) -> AdapterResult | AdapterErrorResult: ...
 ```
 
-Iteration 8 добавила generic contract и fake adapter tests.
-Iteration 9 добавляет BeeCap fixture/reference adapter и BeeCap-shaped fixture tests.
-Iteration 10 добавляет adapter injection в app factory и `mount_beeui(...)`.
-Iteration 11 добавляет adapter-backed artifact browser routes.
-Iteration 12 добавляет adapter-backed dashboard, runs, run detail, optional venue
-dashboard и product console API envelope `beeui.v0`.
-Iteration 13.2 добавляет optional `get_page(page_id, query)` для generic
-adapter-backed custom pages.
-Config apply/write, action execution и production BeeCap/BeeAgent adapters
-остаются future scope.
+Iteration 8 добавила generic contract и fake adapter tests. Iteration 9 добавляет BeeCap fixture/reference adapter и BeeCap-shaped fixture tests. Iteration 10 добавляет adapter injection в app factory и `mount_beeui(...)`. Iteration 11 добавляет adapter-backed artifact browser routes. Iteration 12 добавляет adapter-backed dashboard, runs, run detail, optional venue dashboard и product console API envelope `beeui.v0`. Iteration 13.2 добавляет optional `get_page(page_id, query)` для generic adapter-backed custom pages. Config apply/write, action execution и production BeeCap/BeeAgent adapters остаются future scope.
 
 Required read-only methods:
 
@@ -869,19 +837,11 @@ Required read-only methods:
 - `read_artifact`;
 - `get_config_read_model`.
 
-Optional write/config/action methods are unavailable by default unless a product explicitly implements them later.
-`get_venue_dashboard` также optional и при отсутствии возвращает explicit
-unavailable state.
-`get_page()` используется только для generic adapter-backed custom pages.
-`ProductUiAdapterBase.get_page()` по умолчанию возвращает unavailable.
-BeeUI трактует возвращённый payload как read-model, рендерит только `layout[]`,
-редактирует payload перед HTML render и переводит malformed payload в degraded
-state.
+Optional write/config/action methods are unavailable by default unless a product explicitly implements them later. `get_venue_dashboard` также optional и при отсутствии возвращает explicit unavailable state. `get_page()` используется только для generic adapter-backed custom pages. `ProductUiAdapterBase.get_page()` по умолчанию возвращает unavailable. BeeUI трактует возвращённый payload как read-model, рендерит только `layout[]`, редактирует payload перед HTML render и переводит malformed payload в degraded state.
 
 ### Iteration 13.9 — Locale persistence
 
-Starting from Iteration 13.9, locale is persisted through a `beeui_lang` cookie
-in addition to the existing `?lang=` query parameter.
+Starting from Iteration 13.9, locale is persisted through a `beeui_lang` cookie in addition to the existing `?lang=` query parameter.
 
 #### Locale resolution order
 
@@ -901,13 +861,11 @@ in addition to the existing `?lang=` query parameter.
 
 #### Auth route locale
 
-Auth routes (login, logout) use the same unified `resolve_locale()` as other
-routes, with the same resolution order (query → cookie → default).
+Auth routes (login, logout) use the same unified `resolve_locale()` as other routes, with the same resolution order (query → cookie → default).
 
 ### Iteration 13.9 — Theme persistence
 
-Theme selection (`system`, `light`, `dark`) is persisted in `localStorage`
-under the key `beeui-theme`.
+Theme selection (`system`, `light`, `dark`) is persisted in `localStorage` under the key `beeui-theme`.
 
 `auto` remains a configuration compatibility alias for `system`; browser storage and HTML use only canonical tokens.
 
@@ -924,13 +882,11 @@ Chart initialization distinguishes three states:
 | Degraded | Malformed or unsupported adapter chart payload                     | Generic degraded block                                      |
 | Error    | ApexCharts render exception, including rejected `render()` promise | "Chart render error" without raw adapter payload in console |
 
-Empty and degraded states are resolved server-side before chart initialization;
-the runtime renderer handles only unavailable config and render errors.
+Empty and degraded states are resolved server-side before chart initialization; the runtime renderer handles only unavailable config and render errors.
 
 ### Iteration 13.9 — Safe href contract for filter form and data tables
 
-All active hrefs in adapter-backed `filter_form` and `data_table` blocks must
-pass the unified internal-link contract:
+All active hrefs in adapter-backed `filter_form` and `data_table` blocks must pass the unified internal-link contract:
 
 - No external scheme or netloc.
 - No protocol-relative `//...`.
@@ -948,8 +904,11 @@ This applies to:
 - `sort_href` in data table columns;
 - column toggle hrefs.
 
-`filter_form` is GET-only. Optional JavaScript auto-submit is progressive
-enhancement; submission remains a server-side GET form.
+`filter_form` is GET-only. Optional JavaScript auto-submit is progressive enhancement; submission remains a server-side GET form.
+
+Canonical `data_table` may additionally expose a safe optional `id` for progressive enhancement. BeeUI uses it only as an exact normalized identity, never as an adapter-supplied selector. It fetches the same internal GET URL, replaces only the matching table card, aborts/suppresses stale search responses and calls the idempotent Litepicker initializer for a replacement containing a date range. Browser URL state is updated with `replaceState` only after a valid same-origin response. All controls retain href/form GET fallback; row, detail, artifact and ordinary navigation links remain normal navigation.
+
+Canonical table pagination is presentation-bounded even when product sends many pages: first/current neighborhood/last with ellipses and previous/next. Product may provide optional safe `pagination.page_size` links; BeeUI neither invents page-size values nor decides pagination semantics.
 
 ---
 
@@ -1099,11 +1058,7 @@ pages:
           href: /rop?tab=queue
 ```
 
-В Iteration 7 block values могут быть static/literal, а representative blocks
-умеют получать read-only values из controlled `demo` и `static` sources через
-stable resolver envelope. После Iteration 12 product console и artifact browser
-routes используют adapter. Adapter-backed block data sources остаются future
-scope и не относятся к уже реализованным product console routes.
+В Iteration 7 block values могут быть static/literal, а representative blocks умеют получать read-only values из controlled `demo` и `static` sources через stable resolver envelope. После Iteration 12 product console и artifact browser routes используют adapter. Adapter-backed block data sources остаются future scope и не относятся к уже реализованным product console routes.
 
 Правила:
 
@@ -1136,9 +1091,7 @@ scope и не относятся к уже реализованным product co
 
 ## Политика Tabler shell
 
-`beeui` использует Tabler как визуальную основу.
-Shell использует реальные локальные скомпилированные ресурсы Tabler core без
-демонстрационной телеметрии и ресурсов отслеживания.
+`beeui` использует Tabler как визуальную основу. Shell использует реальные локальные скомпилированные ресурсы Tabler core без демонстрационной телеметрии и ресурсов отслеживания.
 
 Правила:
 
@@ -1150,10 +1103,7 @@ Shell использует реальные локальные скомпили�
 - статические ресурсы должны входить в пакет или быть явно вендоризированы;
 - CSS настраивается через контролируемые переменные темы, а не через произвольный пользовательский CSS.
 
-BeeUI поставляет реальные локальные скомпилированные ресурсы
-`@tabler/core@1.4.0` в `src/beeui_module/web/static/vendor/tabler/`.
-Ресурсы предпросмотра, демонстрационные, маркетинговые и спонсорские ресурсы,
-карты исходников и средства отслеживания не поставляются.
+BeeUI поставляет реальные локальные скомпилированные ресурсы `@tabler/core@1.4.0` в `src/beeui_module/web/static/vendor/tabler/`. Ресурсы предпросмотра, демонстрационные, маркетинговые и спонсорские ресурсы, карты исходников и средства отслеживания не поставляются.
 
 В production-шаблонах запрещены:
 
@@ -1303,14 +1253,9 @@ JSON routes:
 - `/<page-path>` для страниц с `route.mode: adapter`
 - `/<page-path>` для страниц с `route.mode: configured`
 
-При наличии adapter product console routes владеют `/` и `/runs`. Без adapter сохраняется schema/demo mode.
-Страницы с `route.mode: metadata` не добавляют отдельный route.
+При наличии adapter product console routes владеют `/` и `/runs`. Без adapter сохраняется schema/demo mode. Страницы с `route.mode: metadata` не добавляют отдельный route.
 
-Маршрут `/components/plugins` содержит только инертные заглушки каталога
-компонентов. Полноценная интеграция плагинов и дополнений остаётся будущей
-задачей. Интерфейс настройки темы и верхняя горизонтальная навигация остаются
-будущими задачами. Auth/session/CSRF boundary и login/logout уже реализованы в
-Iteration 13.
+Маршрут `/components/plugins` содержит только инертные заглушки каталога компонентов. Полноценная интеграция плагинов и дополнений остаётся будущей задачей. Интерфейс настройки темы и верхняя горизонтальная навигация остаются будущими задачами. Auth/session/CSRF boundary и login/logout уже реализованы в Iteration 13.
 
 ## Read-only model
 
@@ -1365,9 +1310,7 @@ BeeUI уже поддерживает bounded mutating POST transport stubs дл
 
 ## Текущий product console API и будущий frontend API
 
-Product console routes Iteration 12 используют envelope `beeui.v0`.
-Artifact API routes сохраняют существующий contract Iteration 11.
-Отдельный frontend API `v1` остаётся будущим scope.
+Product console routes Iteration 12 используют envelope `beeui.v0`. Artifact API routes сохраняют существующий contract Iteration 11. Отдельный frontend API `v1` остаётся будущим scope.
 
 ### Envelope
 
@@ -1615,8 +1558,7 @@ Implemented block types after Iteration 7:
 - no Jinja expressions from config are evaluated;
 - no arbitrary HTML/JS/CSS-like fields are accepted.
 
-`url_tabs` — это template primitive для Tabler-compatible URL navigation, а не schema block type.
-Schema block type `tabs` сейчас не реализован.
+`url_tabs` — это template primitive для Tabler-compatible URL navigation, а не schema block type. Schema block type `tabs` сейчас не реализован.
 
 Запланированные block families:
 
@@ -1632,8 +1574,7 @@ Schema block type `tabs` сейчас не реализован.
 
 ## Data resolver
 
-Data resolver is implemented after Iteration 7 for controlled read-only `demo` and `static` YAML/JSON sources.
-Adapter-backed block sources и production HTTP sources остаются будущим scope.
+Data resolver is implemented after Iteration 7 for controlled read-only `demo` and `static` YAML/JSON sources. Adapter-backed block sources и production HTTP sources остаются будущим scope.
 
 Selector example:
 
@@ -1652,8 +1593,7 @@ value_selector: dashboard.latest_run.id
 
 ## Runs
 
-После Iteration 12 `/runs` рендерит список запусков через
-`adapter.list_runs()` при наличии adapter.
+После Iteration 12 `/runs` рендерит список запусков через `adapter.list_runs()` при наличии adapter.
 
 ### `GET /runs`
 
@@ -2054,8 +1994,7 @@ Allowed statuses:
 
 ## Theme
 
-Theme schema is implemented in Iteration 4 as a controlled schema contract.
-The template renders the validated `mode` value into `data-bs-theme` and into a `beeui-theme-mode-*` shell class.
+Theme schema is implemented in Iteration 4 as a controlled schema contract. The template renders the validated `mode` value into `data-bs-theme` and into a `beeui-theme-mode-*` shell class.
 
 Theme config:
 
@@ -2339,9 +2278,7 @@ visual editor
 - `POST /api/actions/preview` (protected transport stub — requires feature flag and product callback)
 - `POST /api/actions/execute` (protected transport stub — requires feature flag and product callback)
 
-Product console routes требуют adapter в `app.state.beeui_adapter` для adapter-backed mode. Без adapter BeeUI остаётся в schema/demo mode. Artifact routes по-прежнему требуют adapter и без него возвращают 503 с explicit unavailable state.
-Страницы с `route.mode: metadata` не добавляют отдельный route. Они используются для navigation, заголовков, subtitle и tabs metadata, а фактический запрос обслуживает уже существующий маршрут.
-BeeUI реализует auth/session/CSRF boundary и transport stubs. Product adapter остаётся владельцем config/action domain semantics.
+Product console routes требуют adapter в `app.state.beeui_adapter` для adapter-backed mode. Без adapter BeeUI остаётся в schema/demo mode. Artifact routes по-прежнему требуют adapter и без него возвращают 503 с explicit unavailable state. Страницы с `route.mode: metadata` не добавляют отдельный route. Они используются для navigation, заголовков, subtitle и tabs metadata, а фактический запрос обслуживает уже существующий маршрут. BeeUI реализует auth/session/CSRF boundary и transport stubs. Product adapter остаётся владельцем config/action domain semantics.
 
 Stable read-only API envelope for product console routes:
 

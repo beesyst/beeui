@@ -5,7 +5,7 @@
   </button>
   <div class="dropdown-menu dropdown-menu-end">
     {% for toggle in toggles %}
-      {% if toggle.toggle_href %}<a class="dropdown-item{% if toggle.visible %} active{% endif %}" href="{{ toggle.toggle_href }}">{% else %}<span class="dropdown-item{% if toggle.visible %} active{% endif %}">{% endif %}
+      {% if toggle.toggle_href %}<a class="dropdown-item{% if toggle.visible %} active{% endif %}" href="{{ toggle.toggle_href }}" data-beeui-table-control>{% else %}<span class="dropdown-item{% if toggle.visible %} active{% endif %}">{% endif %}
         {% if toggle.visible %}<span class="dropdown-item-icon">&#10003;</span>{% endif %}
         {{ toggle.label }}
       {% if toggle.toggle_href %}</a>{% else %}</span>{% endif %}
@@ -14,8 +14,8 @@
 </div>
 {% endmacro %}
 
-{% macro canonical_table(title, description=none, pagination=none, toolbar=none, form_action=none, locale='en') %}
-<div class="card beeui-canonical-table">
+{% macro canonical_table(title, description=none, pagination=none, toolbar=none, form_action=none, table_id=none, locale='en') %}
+<div class="card beeui-canonical-table{% if table_id %} beeui-live-table{% endif %}"{% if table_id %} data-beeui-table-id="{{ table_id }}" data-beeui-page-param="{{ pagination.page_param if pagination else 'page' }}"{% endif %}>
   <div class="card-header">
     <div class="w-100">
       <h3 class="card-title mb-0">{{ title }}</h3>
@@ -46,14 +46,11 @@
               <span class="input-group-text">
                 <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M3 10a7 7 0 1 0 14 0a7 7 0 1 0 -14 0"/><path d="M21 21l-6 -6"/></svg>
               </span>
-              <input type="search" class="form-control" name="{{ field.name }}" value="{{ field.value }}" placeholder="{% if field.placeholder %}{{ field.placeholder }}{% elif locale == 'ru' %}Поиск...{% else %}Search...{% endif %}" aria-label="{% if field.label %}{{ field.label }}{% elif locale == 'ru' %}Поиск{% else %}Search{% endif %}">
-              <span class="input-group-text">
-                <kbd>ctrl + K</kbd>
-              </span>
+              <input type="search" class="form-control" name="{{ field.name }}" value="{{ field.value }}" placeholder="{% if field.placeholder %}{{ field.placeholder }}{% elif locale == 'ru' %}Поиск...{% else %}Search...{% endif %}" aria-label="{% if field.label %}{{ field.label }}{% elif locale == 'ru' %}Поиск{% else %}Search{% endif %}" data-beeui-table-search>
             </div>
             {% if toolbar.column_toggles and not ns.chooser_rendered %}{{ column_chooser(toolbar.column_toggles, locale) }}{% set ns.chooser_rendered = true %}{% endif %}
             {% elif field.type == "select" %}
-            <select class="form-select form-select-sm" name="{{ field.name }}" {% if field.multi %}multiple{% endif %} onchange="this.form.submit()" aria-label="{{ field.label }}">
+            <select class="form-select form-select-sm" name="{{ field.name }}" {% if field.multi %}multiple{% endif %} data-beeui-table-auto-submit aria-label="{{ field.label }}">
               <option value="">{{ field.placeholder|default("", true) }}</option>
               {% for opt in field.options %}<option value="{{ opt.value }}"{% if field.value == opt.value %} selected{% endif %}>{{ opt.label }}</option>{% endfor %}
             </select>
@@ -62,7 +59,7 @@
               <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">{{ field.label }}{% if field.selected_count > 0 %}<span class="badge bg-primary ms-1">{{ field.selected_count }}</span>{% endif %}</button>
               <div class="dropdown-menu">
                 {% for ch in field.choices %}
-                  {% if ch.toggle_href %}<a class="dropdown-item{% if ch.checked %} active{% endif %}" href="{{ ch.toggle_href }}">{% else %}<span class="dropdown-item">{% endif %}
+                  {% if ch.toggle_href %}<a class="dropdown-item{% if ch.checked %} active{% endif %}" href="{{ ch.toggle_href }}" data-beeui-table-control>{% else %}<span class="dropdown-item">{% endif %}
                     {% if ch.checked %}<span class="dropdown-item-icon">&#10003;</span>{% endif %}
                     {{ ch.label }}
                   {% if ch.toggle_href %}</a>{% else %}</span>{% endif %}
@@ -87,7 +84,7 @@
           {% for action in toolbar.actions %}
             {% if action.href %}<a href="{{ action.href }}" class="btn btn-sm btn-outline-primary">{{ action.label }}</a>{% else %}<span class="btn btn-sm btn-outline-primary disabled">{{ action.label }}</span>{% endif %}
           {% endfor %}
-          {% if toolbar.reset and toolbar.reset.href %}<a href="{{ toolbar.reset.href }}" class="btn btn-sm btn-outline-secondary">{{ toolbar.reset.label }}</a>{% endif %}
+          {% if toolbar.reset and toolbar.reset.href %}<a href="{{ toolbar.reset.href }}" class="btn btn-sm btn-outline-secondary" data-beeui-table-control>{{ toolbar.reset.label }}</a>{% endif %}
           {% if toolbar.apply %}<button type="submit" class="btn btn-sm btn-primary">{{ toolbar.apply.label }}</button>{% endif %}
         </form>
       </div>
@@ -95,20 +92,36 @@
     </div>
   </div>
   {{ caller() }}
-  {% if pagination and pagination.pages %}
-  <div class="card-footer d-flex justify-content-between align-items-center">
-    <div class="text-secondary small">
-      {{ pagination.label }}
+  {% if pagination and (pagination.pages or pagination.page_size) %}
+  <div class="card-footer d-flex flex-wrap gap-2 justify-content-between align-items-center">
+    <div class="d-flex flex-wrap align-items-center gap-2 text-secondary small">
+      {% if pagination.page_size %}
+      <label class="d-flex align-items-center gap-1 mb-0">
+        {% if pagination.page_size.label %}{{ pagination.page_size.label }}{% elif locale == 'ru' %}Показать{% else %}Show{% endif %}
+        <select class="form-select form-select-sm w-auto" data-beeui-page-size-select aria-label="{% if pagination.page_size.label %}{{ pagination.page_size.label }}{% elif locale == 'ru' %}Показать записей{% else %}Show entries{% endif %}">
+          {% for option in pagination.page_size.options %}<option value="{{ option.href }}"{% if option.active or option.value == pagination.page_size.current %} selected{% endif %}>{{ option.label }}</option>{% endfor %}
+        </select>
+      </label>
+      <noscript>{% for option in pagination.page_size.options %}<a href="{{ option.href }}">{{ option.label }}</a>{% endfor %}</noscript>
+      {% endif %}
+      {% if pagination.label %}
+      <span>{{ pagination.label }}</span>
+      {% endif %}
     </div>
-    <nav>
+    {% if pagination.pages %}<nav aria-label="{% if locale == 'ru' %}Страницы{% else %}Pages{% endif %}">
       <ul class="pagination pagination-sm mb-0">
+        {% if pagination.previous %}<li class="page-item"><a class="page-link" href="{{ pagination.previous.href }}" aria-label="{% if locale == 'ru' %}Предыдущая страница{% else %}Previous page{% endif %}" data-beeui-table-control>&lsaquo;</a></li>{% endif %}
         {% for page in pagination.pages %}
+        {% if page.ellipsis %}<li class="page-item disabled" aria-hidden="true"><span class="page-link">&hellip;</span></li>
+        {% else %}
         <li class="page-item{% if page.active %} active{% endif %}">
-          <a class="page-link" href="{{ page.href }}">{{ page.label }}</a>
+          <a class="page-link" href="{{ page.href }}"{% if page.active %} aria-current="page"{% endif %} data-beeui-table-control>{{ page.label }}</a>
         </li>
+        {% endif %}
         {% endfor %}
+        {% if pagination.next %}<li class="page-item"><a class="page-link" href="{{ pagination.next.href }}" aria-label="{% if locale == 'ru' %}Следующая страница{% else %}Next page{% endif %}" data-beeui-table-control>&rsaquo;</a></li>{% endif %}
       </ul>
-    </nav>
+    </nav>{% endif %}
   </div>
   {% endif %}
 </div>
