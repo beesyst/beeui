@@ -1335,7 +1335,8 @@ def test_data_table_live_controls_render_without_shortcut_hint() -> None:
     html = TestClient(create_beeui_app(adapter=LiveTableAdapter())).get("/").text
 
     assert 'data-beeui-table-id="queue-table"' in html
-    assert "data-beeui-table-search" in html
+    assert '<form method="GET" action="/" autocomplete="off"' in html
+    assert 'aria-label="q" data-beeui-table-search autocomplete="off"' in html
     assert "data-beeui-table-control" in html
     assert "data-beeui-page-size-select" in html
     assert 'href="/?size=25"' in html

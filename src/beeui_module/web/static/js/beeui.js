@@ -135,7 +135,7 @@
         timer: null,
         version: 0,
         renderedSearch: value,
-        hadSearch: value !== "",
+        hadSearch: value.length >= 3,
       };
       tableStates.set(table, state);
     }
@@ -159,7 +159,7 @@
     return url && url.origin === window.location.origin && url.protocol === window.location.protocol;
   }
 
-  function buildTableFormUrl(form, table, resetPage) {
+  function buildTableFormUrl(form, table, resetPage, excludedName) {
     var url = new URL(form.action || window.location.href, window.location.href);
     if (!isSafeTableUrl(url)) return null;
     var data = new FormData(form);
@@ -173,6 +173,9 @@
     data.forEach(function (value, name) {
       if (typeof value === "string") url.searchParams.append(name, value);
     });
+    if (excludedName) {
+      url.searchParams.delete(excludedName);
+    }
     if (resetPage) {
       url.searchParams.set(table.getAttribute("data-beeui-page-param") || "page", "1");
     }
@@ -211,6 +214,8 @@
       var documentNode = new DOMParser().parseFromString(result.html, "text/html");
       var replacement = findReplacementTable(documentNode, table.getAttribute("data-beeui-table-id"));
       if (!replacement) throw new Error("table_identity");
+      replacement = document.importNode(replacement, true);
+      getTableState(replacement).hadSearch = state.hadSearch;
       if (typeof window.beeuiDestroyDatepickers === "function") {
         window.beeuiDestroyDatepickers(table);
       }
@@ -251,14 +256,21 @@
     var state = getTableState(table);
     var query = input.value.trim();
     cancelTableRequest(table);
-    if (!query && state.hadSearch) {
-      state.hadSearch = false;
-    } else if (query.length < 3) {
-      return;
-    } else {
+    var resetSearch = false;
+    if (query.length >= 3) {
       state.hadSearch = true;
+    } else if (state.hadSearch) {
+      state.hadSearch = false;
+      resetSearch = true;
+    } else {
+      return;
     }
-    var url = buildTableFormUrl(form, table, true);
+    var url = buildTableFormUrl(
+      form,
+      table,
+      true,
+      resetSearch ? input.name : null
+    );
     if (!url) return;
     state.timer = window.setTimeout(function () {
       state.timer = null;

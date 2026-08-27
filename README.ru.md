@@ -79,8 +79,12 @@ Tabler-совместимых Datepicker control с локально vendored Li
   - кнопка Apply не создаётся неявно при наличии date_range;
   - устаревшие `search`/`entries` остаются инертными placeholder'ами;
   - optional безопасный `data_table.id` включает только generic progressive
-    enhancement той же server-authoritative GET таблицы: поиск от трёх символов
-    с debounce 275 ms, отменой stale requests и refresh очищенного поиска;
+    enhancement той же server-authoritative GET таблицы: initial 0–2 trimmed
+    search chars не запускают automatic request, 3+ используют debounce 275 ms,
+    а сокращение уже активного automatic search до 0–2 очищает server search,
+    не отправляя короткий `q`, и возвращает page 1; stale requests отменяются;
+  - canonical GET form и text search input используют `autocomplete="off"`,
+    подавляя browser autocomplete/search-history без изменения GET contract;
   - ссылки фильтра, сортировки, pagination и page-size могут заменить только
     одноимённую таблицу; row/detail/artifact/action links не перехватываются;
   - URL обновляется после успешной same-origin замены и воспроизводится refresh;
