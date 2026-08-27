@@ -24,7 +24,7 @@
       {% endif %}
       {% if toolbar %}
       <div class="mt-2">
-        <form method="GET" action="{{ form_action }}" class="d-flex flex-wrap align-items-center gap-1 beeui-table-toolbar">
+        <form method="GET" action="{{ form_action }}" autocomplete="off" class="d-flex flex-wrap align-items-center gap-1 beeui-table-toolbar">
           {% if toolbar.hidden %}{% for hname, hvalue in toolbar.hidden.items() %}<input type="hidden" name="{{ hname }}" value="{{ hvalue }}">{% endfor %}{% endif %}
           {% set ns = namespace(chooser_rendered=false) %}
           {% for field in toolbar.fields %}
@@ -46,7 +46,7 @@
               <span class="input-group-text">
                 <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M3 10a7 7 0 1 0 14 0a7 7 0 1 0 -14 0"/><path d="M21 21l-6 -6"/></svg>
               </span>
-              <input type="search" class="form-control" name="{{ field.name }}" value="{{ field.value }}" placeholder="{% if field.placeholder %}{{ field.placeholder }}{% elif locale == 'ru' %}Поиск...{% else %}Search...{% endif %}" aria-label="{% if field.label %}{{ field.label }}{% elif locale == 'ru' %}Поиск{% else %}Search{% endif %}" data-beeui-table-search>
+              <input type="search" class="form-control" name="{{ field.name }}" value="{{ field.value }}" placeholder="{% if field.placeholder %}{{ field.placeholder }}{% elif locale == 'ru' %}Поиск...{% else %}Search...{% endif %}" aria-label="{% if field.label %}{{ field.label }}{% elif locale == 'ru' %}Поиск{% else %}Search{% endif %}" data-beeui-table-search autocomplete="off">
             </div>
             {% if toolbar.column_toggles and not ns.chooser_rendered %}{{ column_chooser(toolbar.column_toggles, locale) }}{% set ns.chooser_rendered = true %}{% endif %}
             {% elif field.type == "select" %}

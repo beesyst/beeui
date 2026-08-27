@@ -276,11 +276,34 @@ def test_beeui_js_has_generic_live_table_enhancement() -> None:
     assert "data-beeui-table-id" in javascript
     assert "AbortController" in javascript
     assert "DOMParser" in javascript
+    assert "document.importNode(replacement, true);" in javascript
+    assert "getTableState(replacement).hadSearch = state.hadSearch;" in javascript
     assert "history.replaceState" in javascript
     assert "beeuiInitDatepickers" in javascript
     assert "beeuiDestroyDatepickers" in javascript
     assert "priority" not in javascript
     assert "case_type" not in javascript
+
+
+def test_beeui_js_resets_active_short_live_searches_without_sending_short_query() -> (
+    None
+):
+    javascript = Path("src/beeui_module/web/static/js/beeui.js").read_text(
+        encoding="utf-8"
+    )
+    input_handler = javascript.split('document.addEventListener("input"', 1)[1]
+    input_handler = input_handler.split('document.addEventListener("change"', 1)[0]
+
+    assert "hadSearch: value.length >= 3" in javascript
+    assert "if (query.length >= 3)" in input_handler
+    assert "else if (state.hadSearch)" in input_handler
+    assert "var resetSearch = false;" in input_handler
+    assert "resetSearch = true;" in input_handler
+    assert "resetSearch ? input.name : null" in input_handler
+    assert "url.searchParams.delete(excludedName);" in javascript
+    assert "}, 275);" in input_handler
+    assert "cancelTableRequest(table);" in input_handler
+    assert "if (state.version !== version) return;" in javascript
 
 
 def test_beeui_js_preserves_non_live_table_get_controls() -> None:
