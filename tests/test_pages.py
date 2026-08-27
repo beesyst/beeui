@@ -880,6 +880,99 @@ def test_custom_adapter_page_renders_through_adapter(tmp_path: Path) -> None:
     assert "42" in response.text
 
 
+def test_data_table_page_size_footer_uses_accessible_fallback_label(
+    tmp_path: Path,
+) -> None:
+    from beeui_module.adapters.base import ProductUiAdapterBase
+    from beeui_module.adapters.envelopes import AdapterMetadata, ok_result
+    from beeui_module.web.app import create_beeui_app
+
+    class DataTableFooterAdapter(ProductUiAdapterBase):
+        def __init__(self):
+            super().__init__(
+                AdapterMetadata(
+                    product_id="test",
+                    title="Test",
+                    version="1.0.0",
+                    capabilities=("dashboard", "custom_pages"),
+                )
+            )
+
+        def get_dashboard(self):
+            return ok_result({})
+
+        def list_runs(self):
+            return ok_result([])
+
+        def get_run(self, run_id):
+            return ok_result({"id": run_id})
+
+        def list_artifacts(self, run_id):
+            return ok_result([])
+
+        def read_artifact(self, run_id, artifact_id):
+            return ok_result({})
+
+        def get_config_read_model(self):
+            return ok_result({})
+
+        def get_page(self, page_id, query):
+            page_size = {
+                "current": "25",
+                "options": [
+                    {"label": "25", "href": "/table?size=25", "active": True},
+                    {"label": "50", "href": "/table?size=50"},
+                    {"label": "100", "href": "/table?size=100"},
+                ],
+            }
+            if query.get("labeled") == "1":
+                page_size["label"] = "Rows per page"
+            return ok_result(
+                {
+                    "layout": [
+                        {
+                            "type": "data_table",
+                            "title": "Records",
+                            "columns": [{"key": "id", "label": "ID"}],
+                            "rows": [{"id": {"label": "001"}}],
+                            "pagination": {"page_size": page_size},
+                        }
+                    ]
+                }
+            )
+
+    ui_cfg_path = _custom_page_schema(
+        tmp_path,
+        "/table",
+        page_id="table",
+        locale_block="  locale:\n    default: en\n    available:\n      - en\n      - ru\n",
+    )
+    client = TestClient(
+        create_beeui_app(
+            config_path=str(ui_cfg_path),
+            adapter=DataTableFooterAdapter(),
+        )
+    )
+
+    english = client.get("/table")
+    russian = client.get("/table?lang=ru")
+    labeled = client.get("/table?labeled=1")
+
+    assert english.status_code == 200
+    assert russian.status_code == 200
+    assert labeled.status_code == 200
+    assert ">Show<" not in english.text
+    assert ">Показать<" not in russian.text
+    assert 'aria-label="Show entries"' in english.text
+    assert 'aria-label="Показать записей"' in russian.text
+    assert 'data-beeui-page-size-select' in english.text
+    assert '<option value="/table?size=25" selected>25</option>' in english.text
+    assert '<option value="/table?size=50">50</option>' in english.text
+    assert '<option value="/table?size=100">100</option>' in english.text
+    assert "Rows per page" in labeled.text
+    assert 'aria-label="Rows per page"' in labeled.text
+
+
 def test_custom_adapter_page_receives_lang_from_cookie(tmp_path: Path) -> None:
     from beeui_module.adapters.base import ProductUiAdapterBase
     from beeui_module.adapters.envelopes import AdapterMetadata, ok_result

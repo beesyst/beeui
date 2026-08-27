@@ -2648,6 +2648,25 @@ def test_data_table_compact_pagination_handles_empty_small_and_edges() -> None:
         for item in pagination_for([page(1), page(2, True), page(3)])["pages"]
     ] == ["1", "2", "3"]
 
+    first_seven = pagination_for([page(number, number == 1) for number in range(1, 8)])
+    middle_seven = pagination_for([page(number, number == 4) for number in range(1, 8)])
+    last_seven = pagination_for([page(number, number == 7) for number in range(1, 8)])
+
+    assert [item.get("label") for item in first_seven["pages"]] == ["1", "2", None, "7"]
+    assert first_seven["pages"][0]["active"] is True
+    assert [item.get("label") for item in middle_seven["pages"]] == [
+        "1",
+        None,
+        "3",
+        "4",
+        "5",
+        None,
+        "7",
+    ]
+    assert middle_seven["pages"][3]["active"] is True
+    assert [item.get("label") for item in last_seven["pages"]] == ["1", None, "6", "7"]
+    assert last_seven["pages"][3]["active"] is True
+
     first = pagination_for([page(number, number == 1) for number in range(1, 135)])
     last = pagination_for([page(number, number == 134) for number in range(1, 135)])
 
