@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
+from typing import Any
 
 from beeui_module.blocks.layout_renderer import render_layout, resolve_layout_links
 from beeui_module.pages.config import load_beeui_config
@@ -2627,7 +2628,7 @@ def test_data_table_compact_pagination_handles_empty_small_and_edges() -> None:
     def page(number: int, active: bool = False) -> dict[str, object]:
         return {"label": str(number), "href": f"/queue?page={number}", "active": active}
 
-    def pagination_for(pages: list[dict[str, object]]) -> dict[str, object]:
+    def pagination_for(pages: list[dict[str, object]]) -> dict[str, Any]:
         return render_layout(
             [
                 {
