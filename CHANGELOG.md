@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.26.3](https://github.com/beesyst/beeui/compare/beeui-v0.26.2...beeui-v0.26.3) (2026-08-27)
+
+
+### Bug Fixes
+
+* **table:** refine canonical pagination footer ([#116](https://github.com/beesyst/beeui/issues/116)) ([8e64f10](https://github.com/beesyst/beeui/commit/8e64f10fd21d51f9ca9cd3609abb4071edf25c70))
+
 ## [0.26.2](https://github.com/beesyst/beeui/compare/beeui-v0.26.1...beeui-v0.26.2) (2026-08-27)
 
 
