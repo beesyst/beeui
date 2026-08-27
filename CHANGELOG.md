@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.26.4](https://github.com/beesyst/beeui/compare/beeui-v0.26.3...beeui-v0.26.4) (2026-08-27)
+
+
+### Bug Fixes
+
+* **tables:** reset short live searches and disable autocomplete ([#118](https://github.com/beesyst/beeui/issues/118)) ([1322d8c](https://github.com/beesyst/beeui/commit/1322d8c3e7247cb92222537a29612500dd94f95e))
+
 ## [0.26.3](https://github.com/beesyst/beeui/compare/beeui-v0.26.2...beeui-v0.26.3) (2026-08-27)
 
 
