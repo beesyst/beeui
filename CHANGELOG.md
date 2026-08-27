@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.26.2](https://github.com/beesyst/beeui/compare/beeui-v0.26.1...beeui-v0.26.2) (2026-08-27)
+
+
+### Bug Fixes
+
+* **table:** enhance canonical live pagination ([#114](https://github.com/beesyst/beeui/issues/114)) ([3b70525](https://github.com/beesyst/beeui/commit/3b70525fe67192881b20e434fcdb4bb97324ea0d))
+
 ## [0.26.1](https://github.com/beesyst/beeui/compare/beeui-v0.26.0...beeui-v0.26.1) (2026-08-23)
 
 
