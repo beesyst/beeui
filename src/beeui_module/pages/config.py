@@ -474,7 +474,9 @@ def _parse_page_tabs(
     if not isinstance(payload, dict):
         raise ValueError(f"pages.{page_id}.tabs must be a mapping")
     _validate_exact_keys(
-        payload, {"variant", "active_param", "items"}, f"pages.{page_id}.tabs"
+        payload,
+        {"variant", "active_param", "progressive", "items"},
+        f"pages.{page_id}.tabs",
     )
 
     variant_raw = payload.get("variant", "default")
@@ -496,6 +498,10 @@ def _parse_page_tabs(
         )
     active_param = active_param.strip()
 
+    progressive = payload.get("progressive", False)
+    if not isinstance(progressive, bool):
+        raise ValueError(f"pages.{page_id}.tabs.progressive must be a boolean")
+
     items_raw = payload.get("items")
     if not isinstance(items_raw, list):
         raise ValueError(f"pages.{page_id}.tabs.items must be a list")
@@ -507,7 +513,7 @@ def _parse_page_tabs(
             raise ValueError(f"pages.{page_id}.tabs.items[{idx}] must be a mapping")
         _validate_exact_keys(
             item_raw,
-            {"id", "title", "href", "disabled"},
+            {"id", "title", "href", "icon", "disabled"},
             f"pages.{page_id}.tabs.items[{idx}]",
         )
 
@@ -534,6 +540,13 @@ def _parse_page_tabs(
 
         href = _validate_tab_href(item_raw.get("href"), page_id, idx)
 
+        icon = item_raw.get("icon")
+        if icon is not None:
+            if not isinstance(icon, str) or not _SAFE_IDENTIFIER_RE.fullmatch(icon):
+                raise ValueError(
+                    f"pages.{page_id}.tabs.items[{idx}].icon must be a safe identifier"
+                )
+
         disabled = item_raw.get("disabled", False)
         if not isinstance(disabled, bool):
             raise ValueError(
@@ -541,11 +554,20 @@ def _parse_page_tabs(
             )
 
         items.append(
-            PageTabsItem(tab_id=tab_id, title=title, href=href, disabled=disabled)
+            PageTabsItem(
+                tab_id=tab_id,
+                title=title,
+                href=href,
+                disabled=disabled,
+                icon=icon,
+            )
         )
 
     return PageTabsConfig(
-        variant=variant, active_param=active_param, items=tuple(items)
+        variant=variant,
+        active_param=active_param,
+        items=tuple(items),
+        progressive=progressive,
     )
 
 

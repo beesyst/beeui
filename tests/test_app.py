@@ -10,7 +10,7 @@ from beeui_module.core.paths import settings_path
 from beeui_module.core.settings import load_settings
 from beeui_module.core.version import get_version
 from beeui_module.pages.config import load_beeui_config
-from beeui_module.web.app import create_beeui_app
+from beeui_module.web.app import create_beeui_app, mount_beeui
 
 
 def test_create_beeui_app_returns_fastapi_app() -> None:
@@ -321,13 +321,13 @@ def test_beeui_js_preserves_non_live_table_get_controls() -> None:
 
 
 def test_datepicker_cleanup_is_available_for_live_table_replacement() -> None:
-    template = Path("src/beeui_module/web/templates/base.html").read_text(
+    javascript = Path("src/beeui_module/web/static/js/beeui.js").read_text(
         encoding="utf-8"
     )
 
-    assert "window.removeEventListener('resize', resizeHandler)" in template
-    assert "window.beeuiDestroyDatepickers = destroyDatepickers" in template
-    assert "currentPicker.destroy()" in template
+    assert "window.beeuiDestroyDatepickers = destroyDatepickers" in javascript
+    assert "beeuiDatepickerCleanup" in javascript
+    assert "picker.destroy()" in javascript
 
 
 def test_get_local_litepicker_vendor_js_asset_returns_file() -> None:
@@ -744,6 +744,130 @@ def test_page_with_tabs_renders_tabs_card() -> None:
     assert response.status_code == 200
     assert 'class="card beeui-page-tabs-card"' in response.text
     assert "Tab 1" in response.text
+
+
+def test_progressive_page_tabs_render_canonical_links_and_controlled_icons() -> None:
+    from dataclasses import replace
+
+    from beeui_module.pages.models import PageTabsConfig, PageTabsItem
+
+    settings = load_settings(settings_path())
+    ui_config = load_beeui_config(settings_path().parent / "schema.yml")
+    ui_config = replace(
+        ui_config,
+        pages=[
+            replace(
+                ui_config.pages[0],
+                tabs=PageTabsConfig(
+                    variant="fill_icons",
+                    progressive=True,
+                    items=(
+                        PageTabsItem(
+                            tab_id="overview",
+                            title="Overview",
+                            href="/?tab=overview",
+                            icon="dashboard",
+                        ),
+                        PageTabsItem(
+                            tab_id="unknown",
+                            title="Unknown",
+                            href="/?tab=unknown",
+                            icon="unknown",
+                        ),
+                        PageTabsItem(
+                            tab_id="disabled",
+                            title="Disabled",
+                            href="/?tab=disabled",
+                            icon="runs",
+                            disabled=True,
+                        ),
+                    ),
+                ),
+            ),
+            ui_config.pages[1],
+        ],
+    )
+    response = TestClient(create_beeui_app(settings=settings, ui_config=ui_config)).get(
+        "/?tab=overview"
+    )
+
+    assert response.status_code == 200
+    assert 'data-beeui-page-tabs-surface="dashboard"' in response.text
+    assert 'data-beeui-page-tabs-progressive="true"' in response.text
+    assert 'href="/?tab=overview"' in response.text
+    assert 'data-beeui-page-tab="true"' in response.text
+    assert 'data-beeui-tab-icon="dashboard"' in response.text
+    assert 'data-beeui-tab-icon="unknown"' not in response.text
+    assert 'aria-disabled="true"' in response.text
+
+    current_tabs = ui_config.pages[0].tabs
+    assert current_tabs is not None
+
+    icons_page = replace(
+        ui_config.pages[0],
+        tabs=replace(current_tabs, variant="icons"),
+    )
+    icons_config = replace(ui_config, pages=[icons_page, ui_config.pages[1]])
+    icons_response = TestClient(
+        create_beeui_app(settings=settings, ui_config=icons_config)
+    ).get("/?tab=overview")
+
+    assert icons_response.status_code == 200
+    assert 'data-beeui-tab-icon="dashboard"' in icons_response.text
+    assert "nav-fill" not in icons_response.text
+
+
+def test_progressive_page_tabs_keep_route_prefix_when_mounted() -> None:
+    from beeui_module.pages.models import PageTabsConfig, PageTabsItem
+
+    settings = load_settings(settings_path())
+    ui_config = load_beeui_config(settings_path().parent / "schema.yml")
+    ui_config = replace(
+        ui_config,
+        pages=[
+            replace(
+                ui_config.pages[0],
+                tabs=PageTabsConfig(
+                    progressive=True,
+                    items=(
+                        PageTabsItem(
+                            tab_id="overview",
+                            title="Overview",
+                            href="/?tab=overview",
+                        ),
+                    ),
+                ),
+            ),
+            ui_config.pages[1],
+        ],
+    )
+    parent = FastAPI()
+    mount_beeui(parent, path="/ui", settings=settings, ui_config=ui_config)
+    response = TestClient(parent).get("/ui/?tab=overview&lang=ru")
+
+    assert response.status_code == 200
+    assert 'href="/ui/?lang=ru&amp;tab=overview"' in response.text
+    assert 'data-beeui-static-prefix="/ui/static"' in response.text
+
+
+def test_beeui_js_has_progressive_page_tabs_and_reusable_components() -> None:
+    javascript = Path("src/beeui_module/web/static/js/beeui.js").read_text(
+        encoding="utf-8"
+    )
+
+    for token in (
+        "AbortController",
+        "findPageTabsSurface",
+        "data-beeui-page-tabs-surface",
+        "history.pushState",
+        'window.addEventListener("popstate"',
+        "beeuiDestroyComponents",
+        "beeuiInitComponents",
+        "apexcharts.min.js",
+        "litepicker.min.js",
+        'script:not(script[type="application/json"].beeui-chart-config)',
+    ):
+        assert token in javascript
 
 
 def test_page_without_tabs_renders_normal_blocks() -> None:

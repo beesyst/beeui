@@ -412,6 +412,14 @@ Invalid adapter values degrade to default 4 (no 500). Это поле относ
 
 Страницы с tabs рендерят blocks внутри `.card.beeui-page-tabs-card` в пределах того же page-body.
 
+### Progressive page tabs (Iteration 13.15)
+
+`pages[].tabs` сохраняет URL-driven `<a href>` contract. Optional `progressive: true` добавляет progressive enhancement только для enabled tabs: BeeUI fetches same-origin canonical GET response, replaces only the matching `.beeui-page-tabs-card` surface and updates History after a successful replacement. Without JavaScript, for `progressive: false`, on an unsafe/cross-origin URL, malformed response or fetch failure, browser uses the canonical navigation.
+
+`items[].icon` is optional and accepts only a safe identifier. For `icons` and `fill_icons`, BeeUI renders only its own Tabler-style SVG mapping (`dashboard`, `runs`, `list`, `reports`, `chart`, `calendar`). Unknown identifiers render no icon; raw SVG and HTML are rejected by config validation and are never rendered.
+
+The browser runtime cancels stale transitions, handles Back/Forward, never executes fetched scripts and reinitializes BeeUI-owned live tables, Litepicker Datepicker and ApexCharts after replacement. Runtime assets are loaded only from fixed package-local BeeUI paths.
+
 ## Примитивы v0
 
 Переиспользуемые template primitives реализованы в:

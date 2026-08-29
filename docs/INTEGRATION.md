@@ -331,6 +331,10 @@ Products should pass only safe internal paths for:
 
 For adapter-backed `data_table`, product may provide optional safe stable `id` metadata and `pagination.page_size` links. With `id`, BeeUI enhances only the table's own explicit controls through a same-origin GET and requires the response to contain the same identity before replacement. Product continues to interpret the query and returns the authoritative filtered/sorted/paginated layout. The normal href/form GET path remains the fallback; do not rely on BeeUI for product filter semantics or emit adapter-provided selectors or JavaScript.
 
+Configured product pages may opt into `pages[].tabs.progressive: true`. Product still provides canonical safe internal tab `href` values and server-rendered GET responses; it does not provide browser code, tab caches or SPA state. BeeUI replaces only its matching page-tabs surface, initializes its own controlled live-table, Datepicker and chart components, and falls back to normal navigation for failure or unsafe destinations. Optional `items[].icon` is a BeeUI-controlled identifier, not product SVG/HTML.
+
+All synchronous `ProductUiAdapter` methods invoked by BeeUI async routes run through one generic async-safe BeeUI boundary. Product method signatures and result/error envelopes do not change; adapters remain responsible for read-model construction, validation, authority and product semantics.
+
 ### Iteration 13.10 — Date-range presentation contract
 
 Products continue to provide the same `filter_form.date_range` or `data_table.toolbar.fields[].date_range` payload: `from_value`, `to_value`, `from_label`, and `to_label`. BeeUI renders the two canonical fields as local Litepicker-backed Tabler Datepicker controls and submits only `date_from` and `date_to` in `YYYY-MM-DD` format. Either bound may be empty; BeeUI does not validate date semantics, ranges, inclusivity, or timezones. Litepicker is a package-local conditional presentation asset, and products must not add datepicker templates, JavaScript, CSS, or arbitrary datepicker options.

@@ -423,7 +423,6 @@ def _register_protected_post_routes(
     from beeui_module.adapters.envelopes import (
         AdapterErrorResult,
         AdapterResult,
-        error_result_from_exception,
     )
     from beeui_module.api.envelopes import api_error_envelope
     from beeui_module.auth.dependencies import require_session
@@ -509,25 +508,16 @@ def _register_protected_post_routes(
             )
         return action_id, payload, None
 
-    def _call_adapter_safe(method, *args, read_only: bool) -> JSONResponse:
-        try:
-            result = method(*args)
-        except Exception as exc:
-            from beeui_module.adapters.errors import UnavailableError
+    async def _call_adapter_safe(method, *args, read_only: bool) -> JSONResponse:
+        from beeui_module.api.envelopes import async_safe_adapter_call
 
-            if isinstance(exc, UnavailableError):
-                return JSONResponse(
-                    api_error_envelope(
-                        "feature_unavailable",
-                        str(exc),
-                    ),
-                    status_code=501,
-                )
-            result = error_result_from_exception(exc)
+        result = await async_safe_adapter_call(method, *args)
 
         if isinstance(result, AdapterErrorResult):
             code = str(result.error.get("code", "adapter_error"))
             status = 501 if code == "unavailable" else 502
+            if code == "unavailable":
+                code = "feature_unavailable"
             return JSONResponse(
                 api_error_envelope(
                     code,
@@ -571,7 +561,7 @@ def _register_protected_post_routes(
             candidate, _expected_hash, error_response = _extract_candidate(body)
             if error_response is not None:
                 return error_response
-            return _call_adapter_safe(
+            return await _call_adapter_safe(
                 adapter.validate_config_candidate,
                 candidate,
                 read_only=True,
@@ -597,7 +587,7 @@ def _register_protected_post_routes(
                 return error_response
             session = require_session(request)
             actor_msg = {"user_id": session.user_id, "role": session.role.value}
-            return _call_adapter_safe(
+            return await _call_adapter_safe(
                 adapter.apply_config_candidate,
                 candidate,
                 expected_hash_val,
@@ -627,7 +617,7 @@ def _register_protected_post_routes(
             action_id, action_payload, error_response = _extract_action_payload(body)
             if error_response is not None:
                 return error_response
-            return _call_adapter_safe(
+            return await _call_adapter_safe(
                 adapter.preview_action,
                 action_id,
                 action_payload,
@@ -658,7 +648,7 @@ def _register_protected_post_routes(
                 return error_response
             session = require_session(request)
             actor_msg = {"user_id": session.user_id, "role": session.role.value}
-            return _call_adapter_safe(
+            return await _call_adapter_safe(
                 adapter.execute_action,
                 action_id,
                 action_payload,

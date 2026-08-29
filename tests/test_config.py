@@ -6,6 +6,7 @@ from beeui_module.pages.config import (
     is_custom_route_reserved_path,
     load_beeui_config,
 )
+from beeui_module.pages.models import PageTabsConfig, PageTabsItem
 
 
 def _base_config() -> str:
@@ -45,7 +46,9 @@ def test_load_beeui_config_valid_payload() -> None:
 def test_load_beeui_config_fails_on_missing_app_title(tmp_path: Path) -> None:
     config_path = _write_config(
         tmp_path,
-        _base_config().replace("  title:\n    en: BeeUI Demo\n    ru: BeeUI Демо\n", "  title:\n", 1),
+        _base_config().replace(
+            "  title:\n    en: BeeUI Demo\n    ru: BeeUI Демо\n", "  title:\n", 1
+        ),
     )
 
     try:
@@ -65,7 +68,10 @@ def test_load_beeui_config_rejects_invalid_theme_mode(tmp_path: Path) -> None:
     try:
         load_beeui_config(config_path)
     except ValueError as exc:
-        assert str(exc) == "app.theme.mode must be one of ['auto', 'dark', 'light', 'system']"
+        assert (
+            str(exc)
+            == "app.theme.mode must be one of ['auto', 'dark', 'light', 'system']"
+        )
     else:
         raise AssertionError("load_beeui_config must fail on invalid theme mode")
 
@@ -1327,9 +1333,101 @@ def test_page_tabs_valid_config(tmp_path: Path) -> None:
     assert rop_page.tabs is not None
     assert rop_page.tabs.variant == "fill"
     assert rop_page.tabs.active_param == "tab"
+    assert rop_page.tabs.progressive is False
     assert len(rop_page.tabs.items) == 2
     assert rop_page.tabs.items[0].tab_id == "overview"
     assert rop_page.tabs.items[1].href == "/rop?tab=queue"
+
+
+def test_page_tabs_progressive_and_icon_config(tmp_path: Path) -> None:
+    content = _schema_with_page_tabs(
+        "  - id: rop\n"
+        "    path: /rop\n"
+        "    title: ROP\n"
+        "    subtitle: ROP dashboard\n"
+        "    blocks: []\n"
+        "    tabs:\n"
+        "      variant: icons\n"
+        "      progressive: true\n"
+        "      items:\n"
+        "        - id: overview\n"
+        "          title: Overview\n"
+        "          href: /rop?tab=overview\n"
+        "          icon: dashboard\n"
+        "        - id: unknown\n"
+        "          title: Unknown\n"
+        "          href: /rop?tab=unknown\n"
+        "          icon: unknown\n"
+    )
+    cfg = load_beeui_config(_write_config(tmp_path, content))
+    tabs = cfg.pages[1].tabs
+    assert tabs is not None
+    assert tabs.progressive is True
+    assert tabs.items[0].icon == "dashboard"
+    assert tabs.items[1].icon == "unknown"
+
+
+def test_page_tabs_progressive_false_config(tmp_path: Path) -> None:
+    content = _schema_with_page_tabs(
+        "  - id: rop\n"
+        "    path: /rop\n"
+        "    title: ROP\n"
+        "    subtitle: ROP dashboard\n"
+        "    blocks: []\n"
+        "    tabs:\n"
+        "      progressive: false\n"
+        "      items:\n"
+        "        - id: overview\n"
+        "          title: Overview\n"
+        "          href: /rop?tab=overview\n"
+    )
+
+    tabs = load_beeui_config(_write_config(tmp_path, content)).pages[1].tabs
+
+    assert tabs is not None
+    assert tabs.progressive is False
+
+
+def test_page_tabs_model_positional_construction_stays_compatible() -> None:
+    item = PageTabsItem("overview", "Overview", "/?tab=overview", True)
+    tabs = PageTabsConfig("fill", "tab", (item,))
+
+    assert item.disabled is True
+    assert item.icon is None
+    assert tabs.items == (item,)
+    assert tabs.progressive is False
+
+
+def test_page_tabs_progressive_and_icon_invalid_values_fail_fast(
+    tmp_path: Path,
+) -> None:
+    invalid_tabs = (
+        ("progressive", "      progressive: enabled\n"),
+        ("icon", "          icon: <svg>\n"),
+    )
+    for field, invalid_line in invalid_tabs:
+        tab_setting = invalid_line if field == "progressive" else ""
+        item_icon = invalid_line if field == "icon" else "          icon: dashboard\n"
+        content = _schema_with_page_tabs(
+            "  - id: rop\n"
+            "    path: /rop\n"
+            "    title: ROP\n"
+            "    subtitle: ROP dashboard\n"
+            "    blocks: []\n"
+            "    tabs:\n"
+            f"{tab_setting}"
+            "      items:\n"
+            "        - id: overview\n"
+            "          title: Overview\n"
+            "          href: /rop?tab=overview\n"
+            f"{item_icon}"
+        )
+        try:
+            load_beeui_config(_write_config(tmp_path, content))
+        except ValueError as exc:
+            assert field in str(exc)
+        else:
+            raise AssertionError(f"load_beeui_config must reject invalid {field}")
 
 
 def test_page_tabs_numeric_variant_alias_normalizes(tmp_path: Path) -> None:

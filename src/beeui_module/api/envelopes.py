@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from typing import Any
 
 from beeui_module.adapters.envelopes import (
@@ -119,6 +120,12 @@ def safe_adapter_call(method: Any, *args: Any) -> AdapterResult | AdapterErrorRe
         "malformed_adapter_payload",
         "Adapter returned malformed result envelope",
     )
+
+
+async def async_safe_adapter_call(
+    method: Any, *args: Any
+) -> AdapterResult | AdapterErrorResult:
+    return await asyncio.to_thread(safe_adapter_call, method, *args)
 
 
 def error_status_code(code: str) -> int:
