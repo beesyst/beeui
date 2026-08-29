@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.27.0](https://github.com/beesyst/beeui/compare/beeui-v0.26.4...beeui-v0.27.0) (2026-08-29)
+
+
+### Features
+
+* **web:** add progressive tabs and async-safe adapters ([#121](https://github.com/beesyst/beeui/issues/121)) ([0f177ac](https://github.com/beesyst/beeui/commit/0f177accf2b1353f51ae7986b5fdef7e4c635e19))
+
 ## [0.26.4](https://github.com/beesyst/beeui/compare/beeui-v0.26.3...beeui-v0.26.4) (2026-08-27)
 
 
