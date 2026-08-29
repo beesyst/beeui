@@ -6498,6 +6498,133 @@ canonical navigation path → visible / hidden
 - `pyproject.toml.version` unchanged;
 - implementation is ready for a BeeUI release.
 
+### Итерация 13.15 — Responsive Web navigation and adapter runtime v1
+
+**Статус:** PLANNED
+
+#### Goal
+
+Добавить product-neutral responsive Web runtime для adapter-backed BeeUI pages: configured page tabs должны опционально переключать server-rendered content без полной перезагрузки общего shell, а synchronous product adapters не должны блокировать async Web event loop.
+
+#### Scope
+
+- добавить optional `pages[].tabs.progressive`;
+- сохранить canonical internal `href` как authoritative navigation contract;
+- при `progressive: true` выполнять same-origin tab navigation через `fetch`;
+- заменять только matching page-tabs content surface;
+- отменять stale requests через `AbortController`;
+- обновлять browser URL через History API только после успешного transition;
+- поддержать Back/Forward через `popstate`;
+- сохранить direct URL и browser refresh behavior;
+- при progressive failure выполнять normal canonical navigation;
+- сделать BeeUI browser component initialization повторно вызываемым после DOM replacement;
+- сохранить existing live `data_table` behavior после перехода;
+- повторно инициализировать Datepicker после перехода;
+- повторно инициализировать charts после перехода;
+- разрешать только controlled BeeUI-owned package-local runtime assets;
+- запретить выполнение arbitrary scripts из fetched HTML;
+- добавить optional controlled `icon` для page-tab items;
+- реализовать существующие `icons` и `fill_icons` variants через BeeUI-owned Tabler-style SVG mapping;
+- добавить единый async-safe execution boundary для synchronous adapter methods, вызываемых из async BeeUI routes;
+- применить его к relevant adapter-backed HTML/API routes;
+- сохранить existing adapter result/error contracts;
+- сохранить locale, theme, route-prefix, embedded mount, auth/session, navigation visibility и safe-link behavior;
+- обновить public Web/component/integration documentation.
+
+#### Excluded
+
+- React;
+- Vue;
+- Svelte;
+- SPA architecture;
+- HTMX;
+- Turbo;
+- client-side product data store;
+- product-specific caching;
+- product-specific tab semantics;
+- infinite scroll;
+- arbitrary adapter-provided JavaScript;
+- arbitrary external runtime assets;
+- CDN;
+- tracking;
+- changes to BeeAgent or domain repositories;
+- new Python dependencies;
+- new browser dependencies;
+- version bump в feature PR.
+
+#### Deliverable
+
+BeeUI предоставляет opt-in progressive page tabs поверх canonical server-rendered GET routes и выполняет synchronous product adapters вне async event loop.
+
+Existing consumers без `progressive` продолжают работать без изменений.
+
+#### Acceptance criteria
+
+- existing page tabs без `progressive` сохраняют текущее navigation behavior;
+- `progressive: false` сохраняет normal document navigation;
+- `progressive: true` не выполняет full document reload при successful transition;
+- canonical `<a href>` сохраняется для каждого tab;
+- заменяется только matching page-tabs surface;
+- stale response не может overwrite более новый transition;
+- URL меняется только после successful response;
+- direct URL и refresh работают;
+- Back/Forward работают;
+- malformed, failed или unsafe transition безопасно fallback-ится на normal navigation;
+- arbitrary fetched scripts не выполняются;
+- runtime assets ограничены BeeUI-owned package-local assets;
+- live table работает после tab replacement;
+- Datepicker работает после tab replacement;
+- chart работает после tab replacement;
+- optional tab icon не принимает raw SVG/HTML;
+- unknown icon безопасно деградирует;
+- synchronous adapter work не выполняется непосредственно в async event loop;
+- slow adapter request не блокирует unrelated lightweight BeeUI route на event-loop уровне;
+- route-prefix и embedded mount работают;
+- RU/EN работают;
+- light/dark работают;
+- GET routes остаются read-only;
+- product-specific logic отсутствует;
+- external runtime resources отсутствуют.
+
+#### Checks
+
+- `uv run pytest -q`;
+- page-tabs schema/config tests;
+- progressive/non-progressive rendering tests;
+- safe/unsafe href tests;
+- rapid transition / stale request tests;
+- failure fallback tests;
+- History API Back/Forward tests;
+- route-prefix tests;
+- embedded-mount tests;
+- live-table reinitialization tests;
+- Datepicker reinitialization tests;
+- chart reinitialization tests;
+- synchronous adapter concurrency regression;
+- HTML escaping tests;
+- controlled icon tests;
+- no arbitrary script execution check;
+- no external runtime asset check;
+- browser smoke in RU/EN and light/dark;
+- SAST;
+- DAST-style navigation/resource misuse review.
+
+#### DoD
+
+- progressive page-tabs contract реализован и документирован;
+- async-safe adapter execution реализован через единый generic boundary;
+- existing non-progressive consumers остаются compatible;
+- existing live-table contract остаётся compatible;
+- route-prefix и embedded integration сохраняются;
+- dynamic BeeUI components корректно работают после transition;
+- no product-specific semantics добавлены;
+- no frontend framework добавлен;
+- no dependency/vendor asset добавлен;
+- package-local behavior сохранён;
+- tests и browser verification проходят;
+- `pyproject.toml.version` unchanged;
+- `uv.lock` unchanged.
+
 ---
 
 ## Этап 7 — Consumer integration record
