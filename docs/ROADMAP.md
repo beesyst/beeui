@@ -6500,7 +6500,7 @@ canonical navigation path → visible / hidden
 
 ### Итерация 13.15 — Responsive Web navigation and adapter runtime v1
 
-**Статус:** IMPLEMENTED (PR pending)
+**Статус:** DONE
 
 #### Goal
 
