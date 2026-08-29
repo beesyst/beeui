@@ -19,10 +19,10 @@ from beeui_module.adapters.ids import (
 from beeui_module.api.envelopes import (
     adapter_unavailable_envelope,
     api_envelope_from_adapter,
+    async_safe_adapter_call,
     error_status_code,
     invalid_id_envelope,
     malformed_payload_envelope,
-    safe_adapter_call,
 )
 from beeui_module.artifacts.redaction import redact_value
 from beeui_module.blocks.layout_renderer import (
@@ -120,7 +120,7 @@ def register_product_console_routes(
                 active_path="/",
             )
 
-        result = safe_adapter_call(adapter.get_dashboard)
+        result = await async_safe_adapter_call(adapter.get_dashboard)
         context, status_code = _dashboard_html_context(
             base_context=base_context,
             active_path="/",
@@ -172,7 +172,7 @@ def register_product_console_routes(
                 active_path="/runs",
             )
 
-        result = safe_adapter_call(adapter.list_runs)
+        result = await async_safe_adapter_call(adapter.list_runs)
         context, status_code = _runs_html_context(
             base_context=base_context,
             active_path="/runs",
@@ -226,7 +226,7 @@ def register_product_console_routes(
                 run_id=run_id,
             )
 
-        result = safe_adapter_call(adapter.get_run, run_id)
+        result = await async_safe_adapter_call(adapter.get_run, run_id)
         context, status_code = _run_detail_html_context(
             base_context=base_context,
             active_path="/runs",
@@ -269,7 +269,7 @@ def register_product_console_routes(
                 venue_id=venue_id,
             )
 
-        result = _call_optional_adapter_method(
+        result = await _call_optional_adapter_method(
             adapter,
             "get_venue_dashboard",
             venue_id,
@@ -296,7 +296,7 @@ def register_product_console_routes(
             return JSONResponse(payload, status_code=status_code)
 
         payload, status_code = api_envelope_from_adapter(
-            safe_adapter_call(adapter.get_dashboard),
+            await async_safe_adapter_call(adapter.get_dashboard),
             expected_data_type=dict,
             malformed_message="Adapter returned non-object dashboard payload",
         )
@@ -310,7 +310,9 @@ def register_product_console_routes(
             return JSONResponse(payload, status_code=status_code)
 
         payload, status_code = api_envelope_from_adapter(
-            _normalize_runs_result_for_api(safe_adapter_call(adapter.list_runs)),
+            _normalize_runs_result_for_api(
+                await async_safe_adapter_call(adapter.list_runs)
+            ),
             expected_data_type=list,
             malformed_message="Adapter returned non-list runs payload",
         )
@@ -330,7 +332,7 @@ def register_product_console_routes(
             return JSONResponse(payload, status_code=status_code)
 
         payload, status_code = api_envelope_from_adapter(
-            safe_adapter_call(adapter.get_run, run_id),
+            await async_safe_adapter_call(adapter.get_run, run_id),
             expected_data_type=dict,
             malformed_message="Adapter returned non-object run payload",
         )
@@ -350,7 +352,7 @@ def register_product_console_routes(
             return JSONResponse(payload, status_code=status_code)
 
         payload, status_code = api_envelope_from_adapter(
-            _call_optional_adapter_method(
+            await _call_optional_adapter_method(
                 adapter,
                 "get_venue_dashboard",
                 venue_id,
@@ -367,7 +369,7 @@ def _resolve_adapter(request: Request) -> Any | None:
     return getattr(request.app.state, "beeui_adapter", None)
 
 
-def _call_optional_adapter_method(
+async def _call_optional_adapter_method(
     adapter: Any,
     method_name: str,
     *args: Any,
@@ -378,7 +380,7 @@ def _call_optional_adapter_method(
             "unavailable",
             f"Adapter method {method_name} is unavailable",
         )
-    return safe_adapter_call(method, *args)
+    return await async_safe_adapter_call(method, *args)
 
 
 def _normalize_runs_result_for_api(

@@ -11,17 +11,17 @@ from beeui_module.adapters.envelopes import (
     AdapterResult,
 )
 from beeui_module.adapters.ids import validate_artifact_id, validate_run_id
+from beeui_module.api.envelopes import async_safe_adapter_call
 from beeui_module.artifacts.models import ArtifactPreview
 from beeui_module.artifacts.preview import build_preview
-from beeui_module.pages.models import BeeUiConfig
-from beeui_module.pages.locale import (
-    build_lang_switch_href,
-    resolve_localized_text,
-)
+from beeui_module.pages.links import effective_external_prefix, prefix_internal_href
 from beeui_module.pages.locale import (
     resolve_locale as _resolve_locale,
 )
-from beeui_module.pages.links import effective_external_prefix, prefix_internal_href
+from beeui_module.pages.locale import (
+    resolve_localized_text,
+)
+from beeui_module.pages.models import BeeUiConfig
 from beeui_module.pages.router import (
     _build_language_switcher,
     build_layout_context,
@@ -176,7 +176,9 @@ def _inject_locale_context(
         ctx.setdefault("language_switcher", None)
         return
 
-    locale = _resolve_locale(request, ui_config.locale.default, ui_config.locale.available)
+    locale = _resolve_locale(
+        request, ui_config.locale.default, ui_config.locale.available
+    )
     ctx["locale"] = locale
     ctx["language_switcher"] = _build_language_switcher(
         request, ui_config.locale, route_prefix
@@ -189,12 +191,16 @@ def _inject_locale_context(
         default_locale=ui_config.locale.default,
     )
     ctx["app_title"] = resolve_localized_text(
-        ctx.get("app_title", ui_config.app_title) if isinstance(ctx.get("app_title"), str) else ui_config.app_title,
+        ctx.get("app_title", ui_config.app_title)
+        if isinstance(ctx.get("app_title"), str)
+        else ui_config.app_title,
         locale,
         ui_config.locale.default,
     )
     ctx["logo_text"] = resolve_localized_text(
-        ctx.get("logo_text", ui_config.logo_text) if isinstance(ctx.get("logo_text"), str) else ui_config.logo_text,
+        ctx.get("logo_text", ui_config.logo_text)
+        if isinstance(ctx.get("logo_text"), str)
+        else ui_config.logo_text,
         locale,
         ui_config.locale.default,
     )
@@ -251,15 +257,15 @@ def register_artifact_routes(
         try:
             validate_run_id(run_id)
         except Exception:
-            ctx, _ = _prepare_html_context(
-                _base_ctx, request, ui_config, route_prefix
+            ctx, _ = _prepare_html_context(_base_ctx, request, ui_config, route_prefix)
+            ctx.update(
+                {
+                    "run_id": run_id,
+                    "artifacts": [],
+                    "adapter_available": False,
+                    "error": f"Invalid run_id: {run_id}",
+                }
             )
-            ctx.update({
-                "run_id": run_id,
-                "artifacts": [],
-                "adapter_available": False,
-                "error": f"Invalid run_id: {run_id}",
-            })
             return templates.TemplateResponse(
                 request=request,
                 name="artifacts/list.html",
@@ -269,15 +275,15 @@ def register_artifact_routes(
 
         adapter = _resolve_adapter(request)
         if adapter is None:
-            ctx, _ = _prepare_html_context(
-                _base_ctx, request, ui_config, route_prefix
+            ctx, _ = _prepare_html_context(_base_ctx, request, ui_config, route_prefix)
+            ctx.update(
+                {
+                    "run_id": run_id,
+                    "artifacts": [],
+                    "adapter_available": False,
+                    "error": "Adapter is not available",
+                }
             )
-            ctx.update({
-                "run_id": run_id,
-                "artifacts": [],
-                "adapter_available": False,
-                "error": "Adapter is not available",
-            })
             return templates.TemplateResponse(
                 request=request,
                 name="artifacts/list.html",
@@ -285,7 +291,7 @@ def register_artifact_routes(
                 context=ctx,
             )
 
-        result = adapter.list_artifacts(run_id)
+        result = await async_safe_adapter_call(adapter.list_artifacts, run_id)
         error: str | None = None
         artifacts: list[dict[str, Any]] = []
 
@@ -304,13 +310,15 @@ def register_artifact_routes(
                 external_prefix,
                 f"/runs/{run_id}/artifacts/{artifact['artifact_id']}",
             )
-        ctx.update({
-            "run_id": run_id,
-            "artifacts": artifacts,
-            "adapter_available": True,
-            "error": error,
-            "runs_href": prefix_internal_href(external_prefix, "/runs"),
-        })
+        ctx.update(
+            {
+                "run_id": run_id,
+                "artifacts": artifacts,
+                "adapter_available": True,
+                "error": error,
+                "runs_href": prefix_internal_href(external_prefix, "/runs"),
+            }
+        )
         return templates.TemplateResponse(
             request=request,
             name="artifacts/list.html",
@@ -330,16 +338,18 @@ def register_artifact_routes(
             ctx, external_prefix = _prepare_html_context(
                 _base_ctx, request, ui_config, route_prefix
             )
-            ctx.update({
-                "run_id": run_id,
-                "artifact_id": artifact_id,
-                "adapter_available": False,
-                "error": "Invalid run_id or artifact_id",
-                "preview": None,
-                "artifacts_href": prefix_internal_href(
-                    external_prefix, f"/runs/{run_id}/artifacts"
-                ),
-            })
+            ctx.update(
+                {
+                    "run_id": run_id,
+                    "artifact_id": artifact_id,
+                    "adapter_available": False,
+                    "error": "Invalid run_id or artifact_id",
+                    "preview": None,
+                    "artifacts_href": prefix_internal_href(
+                        external_prefix, f"/runs/{run_id}/artifacts"
+                    ),
+                }
+            )
             return templates.TemplateResponse(
                 request=request,
                 name="artifacts/detail.html",
@@ -352,16 +362,18 @@ def register_artifact_routes(
             ctx, external_prefix = _prepare_html_context(
                 _base_ctx, request, ui_config, route_prefix
             )
-            ctx.update({
-                "run_id": run_id,
-                "artifact_id": artifact_id,
-                "adapter_available": False,
-                "error": "Adapter is not available",
-                "preview": None,
-                "artifacts_href": prefix_internal_href(
-                    external_prefix, f"/runs/{run_id}/artifacts"
-                ),
-            })
+            ctx.update(
+                {
+                    "run_id": run_id,
+                    "artifact_id": artifact_id,
+                    "adapter_available": False,
+                    "error": "Adapter is not available",
+                    "preview": None,
+                    "artifacts_href": prefix_internal_href(
+                        external_prefix, f"/runs/{run_id}/artifacts"
+                    ),
+                }
+            )
             return templates.TemplateResponse(
                 request=request,
                 name="artifacts/detail.html",
@@ -369,7 +381,11 @@ def register_artifact_routes(
                 context=ctx,
             )
 
-        result = adapter.read_artifact(run_id, artifact_id)
+        result = await async_safe_adapter_call(
+            adapter.read_artifact,
+            run_id,
+            artifact_id,
+        )
         error: str | None = None
         preview: ArtifactPreview | None = None
 
@@ -387,16 +403,18 @@ def register_artifact_routes(
         ctx, external_prefix = _prepare_html_context(
             _base_ctx, request, ui_config, route_prefix
         )
-        ctx.update({
-            "run_id": run_id,
-            "artifact_id": artifact_id,
-            "adapter_available": True,
-            "error": error,
-            "preview": preview,
-            "artifacts_href": prefix_internal_href(
-                external_prefix, f"/runs/{run_id}/artifacts"
-            ),
-        })
+        ctx.update(
+            {
+                "run_id": run_id,
+                "artifact_id": artifact_id,
+                "adapter_available": True,
+                "error": error,
+                "preview": preview,
+                "artifacts_href": prefix_internal_href(
+                    external_prefix, f"/runs/{run_id}/artifacts"
+                ),
+            }
+        )
         return templates.TemplateResponse(
             request=request,
             name="artifacts/detail.html",
@@ -428,7 +446,7 @@ def register_artifact_routes(
                 status_code=503,
             )
 
-        result = adapter.list_artifacts(run_id)
+        result = await async_safe_adapter_call(adapter.list_artifacts, run_id)
         return JSONResponse(_artifact_list_to_json(result))
 
     api_detail_path = f"{route_prefix}/api/runs/{{run_id}}/artifacts/{{artifact_id}}"
@@ -459,7 +477,11 @@ def register_artifact_routes(
                 status_code=503,
             )
 
-        result = adapter.read_artifact(run_id, artifact_id)
+        result = await async_safe_adapter_call(
+            adapter.read_artifact,
+            run_id,
+            artifact_id,
+        )
         if isinstance(result, AdapterErrorResult):
             return JSONResponse(result.to_dict())
 

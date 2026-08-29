@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import asyncio
 import re
+import time
 from pathlib import Path
 from typing import Any, cast
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.routing import APIRoute
 from fastapi.testclient import TestClient
 
 from beeui_module.adapters.base import ProductUiAdapterBase
@@ -168,6 +171,44 @@ class MountedArtifactAdapter(FakeProductConsoleAdapter):
         return ok_result(
             [{"artifact_id": "report_json", "content_type": "application/json"}]
         )
+
+
+def test_synchronous_adapter_calls_do_not_block_event_loop() -> None:
+    class SlowAdapter(FakeProductConsoleAdapter):
+        def get_dashboard(self) -> Any:
+            time.sleep(0.2)
+            return super().get_dashboard()
+
+    async def exercise() -> tuple[int, int, float]:
+        app = create_beeui_app(adapter=SlowAdapter())
+        dashboard_route = next(
+            route
+            for route in app.routes
+            if isinstance(route, APIRoute) and route.path == "/api/dashboard"
+        )
+        health_route = next(
+            route
+            for route in app.routes
+            if isinstance(route, APIRoute) and route.path == "/health"
+        )
+
+        dashboard_endpoint = dashboard_route.endpoint
+        health_endpoint = health_route.endpoint
+        request = Request({"type": "http", "app": app})
+        started = time.monotonic()
+        slow = asyncio.create_task(dashboard_endpoint(request))
+        await asyncio.sleep(0)
+        await asyncio.sleep(0.02)
+        health = await asyncio.wait_for(health_endpoint(), timeout=0.1)
+        health_elapsed = time.monotonic() - started
+        dashboard = await slow
+        return dashboard.status_code, health.status_code, health_elapsed
+
+    dashboard_status, health_status, elapsed = asyncio.run(exercise())
+
+    assert dashboard_status == 200
+    assert health_status == 200
+    assert elapsed < 0.15
 
 
 def test_adapter_dashboard_html_and_api_work() -> None:
@@ -537,7 +578,12 @@ def test_adapter_chart_layout_block_renders() -> None:
             return ok_result(
                 {
                     "layout": [
-                        {"type": "chart", "title": "BTC/USD Chart", "width": 6},
+                        {
+                            "type": "chart",
+                            "title": "BTC/USD Chart",
+                            "width": 6,
+                            "series": [{"name": "BTC/USD", "data": [1, 2, 3]}],
+                        },
                         {
                             "type": "metric_card",
                             "title": "Metric",
@@ -561,6 +607,13 @@ def test_adapter_chart_layout_block_renders() -> None:
     assert "TemplateNotFound" not in response.text
     assert "http://" not in response.text
     assert "https://" not in response.text
+    assert 'data-chart-unavailable-message="Chart unavailable"' in response.text
+    assert 'data-chart-error-message="Chart render error"' in response.text
+
+    ru_response = client.get("/?lang=ru")
+
+    assert 'data-chart-unavailable-message="График недоступен"' in ru_response.text
+    assert 'data-chart-error-message="Ошибка рендеринга графика"' in ru_response.text
 
 
 def test_chart_layout_html_escapes_adapter_values() -> None:
@@ -632,15 +685,20 @@ def test_chart_templates_do_not_use_unsafe_serialization() -> None:
 
 
 def test_chart_runtime_handles_sync_and_async_render_failures() -> None:
-    base = Path("src/beeui_module/web/templates/base.html").read_text(encoding="utf-8")
+    javascript = Path("src/beeui_module/web/static/js/beeui.js").read_text(
+        encoding="utf-8"
+    )
 
-    assert "function renderChartError(el, state)" in base
-    assert "var renderResult = chart.render();" in base
-    assert "renderResult.then(function()" in base
-    assert "renderChartError(el, 'error');" in base
-    assert "registerChart(chart);" in base
-    assert "catch (_)" in base
-    assert "e.message" not in base
+    assert "function chartError(element, state)" in javascript
+    assert "var rendered = chart.render();" in javascript
+    assert "rendered.then(function ()" in javascript
+    assert 'chartError(element, "unavailable");' in javascript
+    assert 'chartError(element, "error");' in javascript
+    assert "data-chart-unavailable-message" in javascript
+    assert "data-chart-error-message" in javascript
+    assert "window.beeuiRegisterChart(chart);" in javascript
+    assert "catch (_)" in javascript
+    assert "e.message" not in javascript
 
 
 def test_nested_chart_in_group_loads_chart_asset() -> None:
@@ -667,7 +725,10 @@ def test_nested_chart_in_group_loads_chart_asset() -> None:
 
     assert response.status_code == 200
     assert "beeui-chart-container" in response.text
-    assert "/static/vendor/apexcharts/apexcharts.min.js" in response.text
+    javascript = Path("src/beeui_module/web/static/js/beeui.js").read_text(
+        encoding="utf-8"
+    )
+    assert '"apexcharts", prefix + "/vendor/apexcharts/apexcharts.min.js"' in javascript
 
 
 def test_layout_links_use_route_prefix_and_embedded_mount() -> None:
@@ -2535,16 +2596,20 @@ def test_mounted_date_range_uses_local_litepicker_with_prefix_and_locale() -> No
     assert response.text.index(
         "window.disableLitepickerStyles = true;"
     ) < response.text.index("/ui/static/vendor/litepicker/litepicker.min.js")
-    assert "singleMode: false" in response.text
-    assert "numberOfMonths: cols" in response.text
-    assert "numberOfColumns: cols" in response.text
-    assert "getColumns" in response.text
-    assert "beeui-dr-trigger" in response.text
-    assert "suppressSubmit" in response.text
-    assert "Litepicker.Litepicker || Litepicker.default || Litepicker" in response.text
-    assert "ru-RU" in response.text
-    assert "locale_map" in response.text
-    assert "parentEl:" not in response.text
+    javascript = Path("src/beeui_module/web/static/js/beeui.js").read_text(
+        encoding="utf-8"
+    )
+    assert "singleMode: false" in javascript
+    assert "numberOfMonths: dateColumns()" in javascript
+    assert "numberOfColumns: dateColumns()" in javascript
+    assert "function dateLocale()" in javascript
+    assert "beeui-dr-trigger" in javascript
+    assert "beeui-dr-presets" in javascript
+    assert "suppressSubmit" in javascript
+    assert 'window.addEventListener("resize", resizeHandler)' in javascript
+    assert "window.Litepicker.Litepicker || window.Litepicker.default" in javascript
+    assert 'return document.documentElement.lang === "ru" ? "ru-RU"' in javascript
+    assert "parentEl:" not in javascript
 
 
 def test_product_console_navigation_uses_visibility_resolver() -> None:

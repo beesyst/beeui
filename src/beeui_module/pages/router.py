@@ -393,6 +393,7 @@ def _resolve_page_tabs_data(
                 "id": item.tab_id,
                 "title": resolved_title,
                 "href": href,
+                "icon": item.icon,
                 "disabled": item.disabled,
             }
         )
@@ -409,6 +410,9 @@ def _resolve_page_tabs_data(
         "active_id": active_id,
         "tabs_class": tabs_class_for_variant(page.tabs.variant),
         "active_param": page.tabs.active_param,
+        "progressive": page.tabs.progressive,
+        "surface_id": page.page_id,
+        "show_icons": page.tabs.variant in {"icons", "fill_icons"},
         "locale": locale,
         "default_locale": default_locale,
     }
@@ -504,7 +508,9 @@ def register_adapter_custom_pages(
                 query = dict(request.query_params)
                 if "lang" not in query and len(ui_config.locale.available) > 1:
                     query["lang"] = resolve_locale(request, ui_config.locale)
-                result = method(_page.page_id, query)
+                from beeui_module.api.envelopes import async_safe_adapter_call
+
+                result = await async_safe_adapter_call(method, _page.page_id, query)
             except Exception:
                 return _render_page_unavailable(
                     request,

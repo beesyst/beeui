@@ -113,6 +113,7 @@ class PageTabsItem:
     title: LocalizedText
     href: str
     disabled: bool = False
+    icon: str | None = None
 
 
 @dataclass(frozen=True)
@@ -120,6 +121,7 @@ class PageTabsConfig:
     variant: str = "default"
     active_param: str = "tab"
     items: tuple[PageTabsItem, ...] = field(default_factory=tuple)
+    progressive: bool = False
 
 
 @dataclass(frozen=True)
@@ -133,7 +135,7 @@ class BeeUiNavigationItem:
     path: str | None = None
     icon: str | None = None
     disabled: bool = False
-    children: list["BeeUiNavigationItem"] = field(default_factory=list)
+    children: list[BeeUiNavigationItem] = field(default_factory=list)
 
 
 @dataclass(frozen=True)

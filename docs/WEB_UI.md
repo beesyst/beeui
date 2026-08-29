@@ -223,6 +223,16 @@ Product decides.
 - `?tab=` определяет active state;
 - invalid или disabled tab fallback остаётся прежним.
 
+### Iteration 13.15 — progressive page tabs
+
+`pages[].tabs.progressive` is optional and defaults to `false`. When `true`, enabled tab links retain their canonical safe internal `href` and BeeUI may fetch that same-origin URL without a document reload. The response must contain a page-tabs surface with the same configured page id; BeeUI replaces only that surface. The fetch uses `AbortController`, stale responses are ignored, and History is updated only after a successful replacement. `popstate` uses the same bounded fetch path for Back/Forward.
+
+Failure, malformed HTML, mismatched surface, unavailable browser APIs, unsafe/cross-origin URL and any failed request fall back to the original canonical navigation. Fetched executable scripts are removed; JSON chart configuration is parsed only by the fixed BeeUI renderer. BeeUI loads only its fixed package-local ApexCharts and Litepicker paths when a replacement contains the respective controlled component.
+
+`pages[].tabs.items[].icon` is optional. It must be a safe identifier. `icons` and `fill_icons` render the controlled BeeUI Tabler-style mapping; absent or unknown icons render no SVG. No icon value can introduce SVG, HTML, CSS, JavaScript or external asset URLs.
+
+Browser component initialization is idempotent and applies both on initial load and a replaced tab surface. Live table controls, Datepicker and charts retain their existing server-rendered GET and product-owned data contracts.
+
 ### Контракт accordion primitive
 
 `accordion` является generic BeeUI primitive и не привязан к конкретному title или product-specific fallback.
