@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.28.0](https://github.com/beesyst/beeui/compare/beeui-v0.27.0...beeui-v0.28.0) (2026-08-30)
+
+
+### Features
+
+* **web:** add distinct Tabler tab icons and spacing ([#123](https://github.com/beesyst/beeui/issues/123)) ([757605d](https://github.com/beesyst/beeui/commit/757605d394a86f3cdb225a2353c5cf445bbe553e))
+
 ## [0.27.0](https://github.com/beesyst/beeui/compare/beeui-v0.26.4...beeui-v0.27.0) (2026-08-29)
 
 
