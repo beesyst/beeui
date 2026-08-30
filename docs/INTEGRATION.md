@@ -333,6 +333,8 @@ For adapter-backed `data_table`, product may provide optional safe stable `id` m
 
 Configured product pages may opt into `pages[].tabs.progressive: true`. Product still provides canonical safe internal tab `href` values and server-rendered GET responses; it does not provide browser code, tab caches or SPA state. BeeUI replaces only its matching page-tabs surface, initializes its own controlled live-table, Datepicker and chart components, and falls back to normal navigation for failure or unsafe destinations. Optional `items[].icon` is a BeeUI-controlled identifier, not product SVG/HTML.
 
+BeeUI owns the controlled tab icon registry: product supplies only a safe identifier (`dashboard`, `runs`, `list`, `reports`, `chart`, `calendar`, `queue`, `messages`, `ai`, `source`, `attachment`, `evidence`, `integration`, `recommendation`). BeeUI renders its own exact Tabler Icons 2.x outline SVG geometry inline (no CDN, no external asset), with `class="icon me-2"` spacing between icon and label in every tab state. Unknown safe identifier renders no icon; raw SVG/HTML/CSS/JS from config is rejected by validation and never rendered. The registry is product-neutral — no ROP/BeeAgent/Bitrix identifiers are added.
+
 All synchronous `ProductUiAdapter` methods invoked by BeeUI async routes run through one generic async-safe BeeUI boundary. Product method signatures and result/error envelopes do not change; adapters remain responsible for read-model construction, validation, authority and product semantics.
 
 ### Iteration 13.10 — Date-range presentation contract

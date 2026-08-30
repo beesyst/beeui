@@ -416,7 +416,39 @@ Invalid adapter values degrade to default 4 (no 500). Это поле относ
 
 `pages[].tabs` сохраняет URL-driven `<a href>` contract. Optional `progressive: true` добавляет progressive enhancement только для enabled tabs: BeeUI fetches same-origin canonical GET response, replaces only the matching `.beeui-page-tabs-card` surface and updates History after a successful replacement. Without JavaScript, for `progressive: false`, on an unsafe/cross-origin URL, malformed response or fetch failure, browser uses the canonical navigation.
 
-`items[].icon` is optional and accepts only a safe identifier. For `icons` and `fill_icons`, BeeUI renders only its own Tabler-style SVG mapping (`dashboard`, `runs`, `list`, `reports`, `chart`, `calendar`). Unknown identifiers render no icon; raw SVG and HTML are rejected by config validation and are never rendered.
+`items[].icon` is optional and accepts only a safe identifier. For `icons` and `fill_icons`, BeeUI renders only its own controlled Tabler-style SVG mapping. Unknown identifiers render no icon; raw SVG and HTML are rejected by config validation and are never rendered.
+
+#### Controlled tab icon registry
+
+BeeUI owns the tab icon SVG glyphs. Products supply only a safe identifier; raw SVG/HTML/CSS/JS from config is rejected and never rendered.
+
+The glyph bodies are exact Tabler Icons 2.x outline geometry, embedded inline in BeeUI (no CDN or external asset). Icon and label are separated with the Tabler spacing utility `class="icon me-2"` in every tab state (active, inactive, disabled, `icons` and `fill_icons`, progressive or not, localized or not).
+
+| BeeUI identifier | Tabler icon | Semantic concept      |
+| ---------------- | ----------- | --------------------- |
+| `dashboard`      | dashboard   | dashboard / overview  |
+| `runs`           | activity    | runs / activity       |
+| `list`           | list        | queue / list          |
+| `reports`        | chart-bar   | reports / bar chart   |
+| `chart`          | chart-line  | chart / line chart    |
+| `calendar`       | calendar    | calendar / date range |
+| `queue`          | stack       | queue / stack         |
+| `messages`       | messages    | messages / threads    |
+| `ai`             | robot       | AI / assistant        |
+| `source`         | database    | source / database     |
+| `attachment`     | paperclip   | attachment / file     |
+| `evidence`       | search      | evidence / search     |
+| `integration`    | link        | integration / link    |
+| `recommendation` | bulb        | recommendation / idea |
+
+Rules:
+
+- each documented identifier renders a distinct glyph;
+- identifiers are backward-compatible (`dashboard`, `runs`, `list`, `reports`, `chart`, `calendar` keep working);
+- unknown safe identifier renders no icon;
+- unsafe identifier fails config validation;
+- `data-beeui-tab-icon` carries the original identifier;
+- registry is product-neutral; no product-specific identifiers (ROP, BeeAgent, Bitrix, …) are added.
 
 The browser runtime cancels stale transitions, handles Back/Forward, never executes fetched scripts and reinitializes BeeUI-owned live tables, Litepicker Datepicker and ApexCharts after replacement. Runtime assets are loaded only from fixed package-local BeeUI paths.
 

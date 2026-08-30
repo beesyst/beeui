@@ -29,6 +29,7 @@ from beeui_module.pages.router import (
     register_adapter_custom_pages,
     register_configured_pages,
 )
+from beeui_module.pages.tab_icons import tab_icon_svg
 
 
 def _normalize_prefix(route_prefix: str) -> str:
@@ -202,6 +203,7 @@ def create_beeui_app(
     templates.env.autoescape = bool(security_cfg["html_autoescape"])
     templates.env.globals["prefixed_internal_href"] = prefix_internal_href
     templates.env.globals["translate"] = translate
+    templates.env.globals["tab_icon_svg"] = tab_icon_svg
 
     static_path = f"{route_prefix}/static" if route_prefix else "/static"
     app.mount(

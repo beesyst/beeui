@@ -1403,7 +1403,14 @@ def test_page_tabs_progressive_and_icon_invalid_values_fail_fast(
 ) -> None:
     invalid_tabs = (
         ("progressive", "      progressive: enabled\n"),
-        ("icon", "          icon: <svg>\n"),
+        (
+            "icon",
+            "          icon: </span><script>alert(1)</script>\n",
+        ),
+        ("icon", "          icon: javascript:alert(1)\n"),
+        ("icon", "          icon: icon name with spaces\n"),
+        ("icon", "          icon: 0bad\n"),
+        ("icon", "          icon: bad/icon\n"),
     )
     for field, invalid_line in invalid_tabs:
         tab_setting = invalid_line if field == "progressive" else ""
