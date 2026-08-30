@@ -799,6 +799,8 @@ def test_progressive_page_tabs_render_canonical_links_and_controlled_icons() -> 
     assert 'data-beeui-tab-icon="dashboard"' in response.text
     assert 'data-beeui-tab-icon="unknown"' not in response.text
     assert 'aria-disabled="true"' in response.text
+    assert '<svg class="icon me-2"' in response.text
+    assert 'aria-hidden="true"' in response.text
 
     current_tabs = ui_config.pages[0].tabs
     assert current_tabs is not None
@@ -814,6 +816,7 @@ def test_progressive_page_tabs_render_canonical_links_and_controlled_icons() -> 
 
     assert icons_response.status_code == 200
     assert 'data-beeui-tab-icon="dashboard"' in icons_response.text
+    assert '<svg class="icon me-2"' in icons_response.text
     assert "nav-fill" not in icons_response.text
 
 
@@ -848,6 +851,118 @@ def test_progressive_page_tabs_keep_route_prefix_when_mounted() -> None:
     assert response.status_code == 200
     assert 'href="/ui/?lang=ru&amp;tab=overview"' in response.text
     assert 'data-beeui-static-prefix="/ui/static"' in response.text
+
+
+def test_page_tab_icons_spacing_active_inactive_and_disabled() -> None:
+    from beeui_module.pages.models import PageTabsConfig, PageTabsItem
+
+    settings = load_settings(settings_path())
+    ui_config = load_beeui_config(settings_path().parent / "schema.yml")
+    ui_config = replace(
+        ui_config,
+        pages=[
+            replace(
+                ui_config.pages[0],
+                tabs=PageTabsConfig(
+                    variant="icons",
+                    items=(
+                        PageTabsItem(
+                            tab_id="overview",
+                            title="Overview",
+                            href="/?tab=overview",
+                            icon="dashboard",
+                        ),
+                        PageTabsItem(
+                            tab_id="queue",
+                            title="Queue",
+                            href="/?tab=queue",
+                            icon="queue",
+                        ),
+                        PageTabsItem(
+                            tab_id="messages",
+                            title="Messages",
+                            href="/?tab=messages",
+                            icon="messages",
+                        ),
+                        PageTabsItem(
+                            tab_id="disabled",
+                            title="Disabled",
+                            href="/?tab=disabled",
+                            icon="ai",
+                            disabled=True,
+                        ),
+                    ),
+                ),
+            ),
+            ui_config.pages[1],
+        ],
+    )
+    response = TestClient(create_beeui_app(settings=settings, ui_config=ui_config)).get(
+        "/?tab=overview"
+    )
+
+    assert response.status_code == 200
+    html = response.text
+    assert html.count('class="icon me-2"') == 4
+    assert 'aria-hidden="true"' in html
+    for icon in ("dashboard", "queue", "messages", "ai"):
+        assert f'data-beeui-tab-icon="{icon}"' in html
+    assert 'class="nav-link active"' in html
+    assert 'aria-selected="true"' in html
+    assert 'aria-current="page"' in html
+    assert 'aria-selected="false"' in html
+    assert 'aria-disabled="true"' in html
+    tabs_markup = html.split("data-beeui-page-tabs-surface=", 1)[1]
+    tabs_markup = tabs_markup.split("</ul>", 1)[0]
+    assert "<script" not in tabs_markup.lower()
+    assert "onerror" not in tabs_markup.lower()
+    assert "href=" in tabs_markup
+
+
+def test_page_tab_icon_localized_title_stays_escaped_next_to_icon() -> None:
+    from beeui_module.pages.models import PageTabsConfig, PageTabsItem
+
+    settings = load_settings(settings_path())
+    ui_config = load_beeui_config(settings_path().parent / "schema.yml")
+    ui_config = replace(
+        ui_config,
+        pages=[
+            replace(
+                ui_config.pages[0],
+                tabs=PageTabsConfig(
+                    variant="icons",
+                    progressive=True,
+                    items=(
+                        PageTabsItem(
+                            tab_id="overview",
+                            title={"en": "Overview", "ru": "Обзор"},
+                            href="/?tab=overview",
+                            icon="dashboard",
+                        ),
+                        PageTabsItem(
+                            tab_id="queue",
+                            title={"en": "Queue", "ru": "Очередь"},
+                            href="/?tab=queue",
+                            icon="queue",
+                        ),
+                    ),
+                ),
+            ),
+            ui_config.pages[1],
+        ],
+    )
+    response = TestClient(create_beeui_app(settings=settings, ui_config=ui_config)).get(
+        "/?tab=overview&lang=ru"
+    )
+
+    assert response.status_code == 200
+    html = response.text
+    assert "Обзор" in html
+    assert "Очередь" in html
+    assert html.count('class="icon me-2"') == 2
+    assert 'data-beeui-page-tab="true"' in html
+    assert 'data-beeui-page-tabs-progressive="true"' in html
+    assert 'href="/?lang=ru&amp;tab=overview"' in html
 
 
 def test_beeui_js_has_progressive_page_tabs_and_reusable_components() -> None:
