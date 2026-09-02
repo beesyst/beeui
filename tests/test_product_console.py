@@ -1707,6 +1707,58 @@ def test_data_table_toolbar_does_not_introduce_product_strings() -> None:
     assert "mrkt" not in html.lower()
 
 
+def test_data_table_bounded_actions_render_only_valid_metadata() -> None:
+    class BoundedActionAdapter(FakeProductConsoleAdapter):
+        def get_dashboard(self) -> Any:
+            return ok_result(
+                {
+                    "layout": [
+                        {
+                            "type": "data_table",
+                            "title": "Actions",
+                            "toolbar": {
+                                "actions": [
+                                    {
+                                        "action_id": "add_email",
+                                        "label": "Add email",
+                                        "confirmation": "Confirm add",
+                                        "fields": [
+                                            {
+                                                "name": "email",
+                                                "type": "email",
+                                                "label": "Email",
+                                            }
+                                        ],
+                                    },
+                                    {"action_id": "bad", "label": "Missing confirmation"},
+                                ]
+                            },
+                            "columns": [{"key": "actions", "label": "", "cell": "actions"}],
+                            "rows": [
+                                {
+                                    "actions": [
+                                        {
+                                            "action_id": "remove_email",
+                                            "label": "Remove",
+                                            "confirmation": "Confirm remove",
+                                            "args": {"email": "safe@example.test"},
+                                        }
+                                    ]
+                                }
+                            ],
+                        }
+                    ]
+                }
+            )
+
+    response = TestClient(create_beeui_app(adapter=BoundedActionAdapter())).get("/")
+
+    assert response.status_code == 200
+    assert response.text.count("data-beeui-bounded-action") == 2
+    assert "Missing confirmation" not in response.text
+    assert '"type": "email"' in response.text
+
+
 def test_runs_layout_wrapper_preserves_list_api_contract() -> None:
     class LayoutRunsAdapter(FakeProductConsoleAdapter):
         def list_runs(self) -> Any:

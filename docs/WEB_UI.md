@@ -1997,6 +1997,12 @@ Planned routes:
 
 ## Actions
 
+Iteration 13.16 adds a product-neutral `data_table` action presentation
+contract. Bounded actions are explicit and may use only `text` or `email`
+fields, then call protected `POST /api/actions/preview` before an explicit
+confirmation and `POST /api/actions/execute`. BeeUI does not derive actions
+from `href`, accept action URLs, or authorize product mutations.
+
 Action rendering/catalog UI остаются задачей следующих bounded action iterations. Iteration 13 уже реализует protected POST stubs для preview/execute, но каталог действий и execution semantics остаются на product side.
 
 BeeUI can render bounded actions only if product adapter exposes them.

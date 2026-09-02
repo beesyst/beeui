@@ -123,6 +123,140 @@
     }
   };
 
+  function actionApiPath(name) {
+    var body = document.body;
+    var prefix = body ? body.getAttribute("data-beeui-route-prefix") || "" : "";
+    return prefix + "/api/actions/" + name;
+  }
+
+  function csrfPath() {
+    var body = document.body;
+    var prefix = body ? body.getAttribute("data-beeui-route-prefix") || "" : "";
+    return prefix + "/auth/csrf";
+  }
+
+  async function requestBoundedAction(name, body) {
+    var csrfResponse = await fetch(csrfPath(), { credentials: "same-origin" });
+    if (!csrfResponse.ok) throw new Error("CSRF request failed");
+    var csrf = await csrfResponse.json();
+    var headers = { "Content-Type": "application/json", "X-CSRF-Token": (csrf.data || {}).csrf_token || "" };
+    var response = await fetch(actionApiPath(name), { method: "POST", credentials: "same-origin", headers: headers, body: JSON.stringify(body) });
+    var data = await response.json().catch(function () { return {}; });
+    if (!response.ok) throw new Error((data.error || {}).message || "Action request failed");
+    return data;
+  }
+
+  function showBoundedActionModal(action) {
+    var isRussian = document.documentElement.lang.toLowerCase().indexOf("ru") === 0;
+    var labels = isRussian ? {
+      action: "Действие",
+      close: "Закрыть",
+      cancel: "Отмена",
+      confirm: "Подтвердить"
+    } : {
+      action: "Action",
+      close: "Close",
+      cancel: "Cancel",
+      confirm: "Confirm"
+    };
+    var root = document.createElement("div");
+    root.className = "modal modal-blur fade";
+    root.tabIndex = -1;
+    root.setAttribute("role", "dialog");
+    root.innerHTML = '<div class="modal-dialog modal-dialog-centered" role="document"><div class="modal-content"><div class="modal-header"><h5 class="modal-title"></h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><form><div class="modal-body"><div class="text-secondary beeui-action-message"></div></div><div class="modal-footer"><button type="button" class="btn btn-link link-secondary" data-bs-dismiss="modal"></button><button type="submit" class="btn btn-primary"></button></div></form></div></div>';
+    root.querySelector(".modal-title").textContent = action.label || labels.action;
+    root.querySelector(".btn-close").setAttribute("aria-label", labels.close);
+    var form = root.querySelector("form");
+    var body = root.querySelector(".modal-body");
+    var message = root.querySelector(".beeui-action-message");
+    var submit = form.querySelector('[type="submit"]');
+    var pendingPayload = null;
+    root.querySelector(".modal-footer [data-bs-dismiss=\"modal\"]").textContent = labels.cancel;
+    submit.textContent = action.label || labels.action;
+    var fields = action.fields || [];
+    fields.forEach(function (field) {
+      var group = document.createElement("div");
+      group.className = "mb-3";
+      var label = document.createElement("label");
+      label.className = "form-label";
+      label.textContent = field.label || field.name;
+      var input = document.createElement("input");
+      input.className = "form-control";
+      input.name = field.name;
+      input.type = field.type;
+      input.maxLength = field.max_length;
+      input.required = field.required;
+      group.appendChild(label);
+      group.appendChild(input);
+      body.insertBefore(group, message);
+    });
+    var modal = window.bootstrap && window.bootstrap.Modal ? new window.bootstrap.Modal(root) : null;
+    var backdrop = null;
+    var closed = false;
+    function closeModal() {
+      if (closed) return;
+      closed = true;
+      document.removeEventListener("keydown", closeOnEscape);
+      if (modal) {
+        modal.hide();
+        return;
+      }
+      root.remove();
+      if (backdrop) backdrop.remove();
+      document.body.classList.remove("modal-open");
+    }
+    function closeOnEscape(event) {
+      if (event.key === "Escape") closeModal();
+    }
+    root.addEventListener("hidden.bs.modal", function () { root.remove(); });
+    root.querySelectorAll('[data-bs-dismiss="modal"]').forEach(function (dismiss) {
+      dismiss.addEventListener("click", closeModal);
+    });
+    form.addEventListener("submit", function (event) {
+      event.preventDefault();
+      if (!pendingPayload && !form.reportValidity()) return;
+      var payload = pendingPayload || Object.assign({}, action.args || {});
+      if (!pendingPayload) fields.forEach(function (field) { payload[field.name] = form.elements[field.name].value; });
+      submit.disabled = true;
+      if (!pendingPayload) {
+        requestBoundedAction("preview", { action_id: action.action_id, payload: payload }).then(function () {
+          pendingPayload = payload;
+          body.querySelectorAll(".mb-3").forEach(function (field) { field.remove(); });
+          message.textContent = action.confirmation;
+          submit.textContent = labels.confirm;
+          submit.disabled = false;
+        }).catch(function (error) { message.textContent = error.message; submit.disabled = false; });
+        return;
+      }
+      requestBoundedAction("execute", { action_id: action.action_id, payload: payload }).then(function () { window.location.reload(); }).catch(function (error) { message.textContent = error.message; submit.disabled = false; });
+    });
+    document.body.appendChild(root);
+    if (modal) {
+      modal.show();
+      return;
+    }
+    backdrop = document.createElement("div");
+    backdrop.className = "modal-backdrop fade show";
+    backdrop.addEventListener("click", closeModal);
+    document.body.appendChild(backdrop);
+    document.body.classList.add("modal-open");
+    root.style.display = "block";
+    root.setAttribute("aria-modal", "true");
+    root.classList.add("show");
+    root.focus();
+    document.addEventListener("keydown", closeOnEscape);
+  }
+
+  document.addEventListener("click", function (event) {
+    if (!(event.target instanceof Element)) return;
+    var button = event.target.closest("[data-beeui-bounded-action]");
+    if (!button) return;
+    try {
+      var action = JSON.parse(button.getAttribute("data-action") || "{}");
+      showBoundedActionModal(action);
+    } catch (_) { }
+  });
+
   var tableStates = new WeakMap();
 
   function getTableState(table) {

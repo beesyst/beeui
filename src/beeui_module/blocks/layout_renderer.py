@@ -1039,7 +1039,7 @@ def _render_data_table(raw: dict[str, Any], width_class: str) -> dict[str, Any]:
     if isinstance(toolbar_raw, dict):
         toolbar["search"] = bool(toolbar_raw.get("search", False))
         toolbar["entries"] = bool(toolbar_raw.get("entries", False))
-        actions: list[dict[str, str]] = []
+        actions: list[dict[str, Any]] = []
         for action in _safe_dict_list(toolbar_raw.get("actions")):
             href = validate_internal_href(action.get("href"))
             if href is not None:
@@ -1049,6 +1049,10 @@ def _render_data_table(raw: dict[str, Any], width_class: str) -> dict[str, Any]:
                         "href": href,
                     }
                 )
+                continue
+            bounded = _normalize_table_action(action)
+            if bounded is not None:
+                actions.append(bounded)
         toolbar["actions"] = actions
         toolbar["fields"] = _normalize_filter_fields(toolbar_raw.get("fields", []))
         toolbar["hidden"] = _normalize_filter_hidden(toolbar_raw.get("hidden", {}))
@@ -1297,7 +1301,7 @@ def _normalize_data_table_page_size(raw: Any) -> dict[str, Any] | None:
 
 def _render_data_table_cell(cell_raw: Any, cell_type: str) -> dict[str, Any]:
     if cell_type == "actions":
-        actions: list[dict[str, str]] = []
+        actions: list[dict[str, Any]] = []
         for action in _safe_dict_list(
             cell_raw
             if isinstance(cell_raw, list)
@@ -1313,7 +1317,12 @@ def _render_data_table_cell(cell_raw: Any, cell_type: str) -> dict[str, Any]:
                         "href": href,
                     }
                 )
+                continue
+            bounded = _normalize_table_action(action)
+            if bounded is not None:
+                actions.append(bounded)
         return {"type": "actions", "items": actions}
+
 
     if not isinstance(cell_raw, dict):
         return {"type": "text", "value": _display_value(cell_raw)}
@@ -1388,6 +1397,49 @@ def _render_data_table_cell(cell_raw: Any, cell_type: str) -> dict[str, Any]:
         ),
         "tone": tone,
     }
+
+
+def _normalize_table_action(raw: dict[str, Any]) -> dict[str, Any] | None:
+    action_id = raw.get("action_id")
+    if not isinstance(action_id, str) or not _DATA_TABLE_ID_PATTERN.fullmatch(action_id):
+        return None
+    label = _display_value(raw.get("label"), default="")
+    confirmation = _display_value(raw.get("confirmation"), default="")
+    if not label or not confirmation:
+        return None
+    args_raw = raw.get("args", {})
+    if not isinstance(args_raw, dict) or len(args_raw) > 10:
+        return None
+    args: dict[str, str] = {}
+    for key, value in args_raw.items():
+        if not isinstance(key, str) or not _DATA_TABLE_ID_PATTERN.fullmatch(key):
+            return None
+        if not isinstance(value, str) or len(value) > 256:
+            return None
+        args[key] = value
+    fields: list[dict[str, Any]] = []
+    for field in _safe_dict_list(raw.get("fields")):
+        name = field.get("name")
+        field_type = field.get("type")
+        if (
+            not isinstance(name, str)
+            or not _DATA_TABLE_ID_PATTERN.fullmatch(name)
+            or field_type not in {"text", "email"}
+        ):
+            return None
+        max_length = field.get("max_length", 254)
+        if not isinstance(max_length, int) or isinstance(max_length, bool):
+            return None
+        fields.append(
+            {
+                "name": name,
+                "type": field_type,
+                "label": _display_value(field.get("label"), default=name),
+                "required": bool(field.get("required", True)),
+                "max_length": min(max(max_length, 1), 254),
+            }
+        )
+    return {"action_id": action_id, "label": label, "confirmation": confirmation, "args": args, "fields": fields}
 
 
 def _normalize_filter_fields(fields_raw: Any) -> list[dict[str, Any]]:

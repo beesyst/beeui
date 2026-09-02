@@ -10,5 +10,5 @@ if ! command -v uv >/dev/null 2>&1; then
   export PATH="$HOME/.local/bin:$PATH"
 fi
 
-uv sync --frozen --extra dev
-uv run --frozen --extra dev python config/start.py "$@"
+uv sync --frozen --group dev
+uv run --frozen --group dev python config/start.py "$@"
