@@ -28,7 +28,7 @@
         <tr{% if block.selectable %} class="beeui-table-row-selectable"{% endif %}>
           {% if block.selectable %}<td><input type="checkbox" class="form-check-input beeui-table-row-checkbox" disabled></td>{% endif %}
           {% for col in block.columns %}
-          <td{% if block.mobile %} data-label="{{ col.label }}"{% endif %}>
+          <td{% if row.get(col.key, {}).get("type") == "actions" %} class="beeui-table-actions-cell"{% endif %}{% if block.mobile %} data-label="{{ col.label }}"{% endif %}>
             {% set cell = row.get(col.key, {}) %}
             {% if cell.type == "text" %}
               {% if cell.tone %}<span class="text-secondary">{{ cell.value }}</span>{% else %}{{ cell.value }}{% endif %}
@@ -49,7 +49,7 @@
                 <span class="text-secondary small">{{ cell.label }}</span>
               </div>
             {% elif cell.type == "actions" %}
-              <div class="btn-list flex-nowrap">
+              <div class="btn-list flex-nowrap justify-content-end">
               {% for action in cell.get("items", []) %}
                 {% if action.href %}<a href="{{ action.href }}" class="btn btn-sm btn-ghost-primary">{{ action.label }}</a>{% elif action.action_id %}<button type="button" class="btn btn-sm btn-ghost-primary" data-beeui-bounded-action data-action='{{ action|tojson }}'>{{ action.label }}</button>{% else %}<span class="btn btn-sm btn-ghost-primary disabled">{{ action.label }}</span>{% endif %}
               {% endfor %}

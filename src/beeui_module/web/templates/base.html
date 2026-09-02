@@ -14,7 +14,7 @@ try{var d=document.documentElement,c=d.getAttribute('data-beeui-theme-config'),s
     {% if has_date_ranges %}
     <link rel="stylesheet" href="{{ route_prefix }}/static/vendor/litepicker/litepicker.min.css" data-beeui-runtime="litepicker-css" />
     {% endif %}
-    <link rel="stylesheet" href="{{ route_prefix }}/static/css/beeui.css?v=5" />
+    <link rel="stylesheet" href="{{ route_prefix }}/static/css/beeui.css?v=6" />
   </head>
   <body
     class="{{ shell_classes }}"
@@ -44,7 +44,7 @@ try{var d=document.documentElement,c=d.getAttribute('data-beeui-theme-config'),s
     <script>window.disableLitepickerStyles = true;</script>
     <script src="{{ route_prefix }}/static/vendor/litepicker/litepicker.min.js" data-beeui-runtime="litepicker"></script>
     {% endif %}
-    <script src="{{ route_prefix }}/static/js/beeui.js?v=13"></script>
+    <script src="{{ route_prefix }}/static/js/beeui.js?v=17"></script>
     {% block scripts %}{% endblock %}
   </body>
 </html>

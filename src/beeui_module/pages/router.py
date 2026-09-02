@@ -42,6 +42,7 @@ TABS_VARIANT_CLASSES: dict[str, str] = {
     "fill": "nav nav-tabs card-header-tabs nav-fill",
     "icons": "nav nav-tabs card-header-tabs",
     "fill_icons": "nav nav-tabs card-header-tabs nav-fill",
+    "compact_fill_icons": "nav nav-tabs card-header-tabs nav-fill beeui-tabs-compact",
     "dropdown": "nav nav-tabs card-header-tabs",
 }
 ACCORDION_VARIANT_CLASSES: dict[str, str] = {
@@ -412,7 +413,12 @@ def _resolve_page_tabs_data(
         "active_param": page.tabs.active_param,
         "progressive": page.tabs.progressive,
         "surface_id": page.page_id,
-        "show_icons": page.tabs.variant in {"icons", "fill_icons"},
+        "show_icons": page.tabs.variant in {
+            "icons",
+            "fill_icons",
+            "compact_fill_icons",
+        },
+        "compact_icons": page.tabs.variant == "compact_fill_icons",
         "locale": locale,
         "default_locale": default_locale,
     }
