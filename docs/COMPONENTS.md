@@ -95,7 +95,7 @@ Advanced Tabler-compatible data table for adapter-backed `layout[]`. Backward-co
 
 Iteration 13.16 additionally permits explicit bounded operator actions in
 `toolbar.actions[]` and `actions` cells. An action must provide `action_id`,
-`label`, `confirmation`, optional bounded string `args`, and optional `text` or
+`label`, optional bounded `description` and string `args`, and optional `text` or
 `email` fields. `href` actions remain GET-only and unchanged. BeeUI uses only
 its protected preview and execute endpoints; the product owns validation,
 authorization, mutation, and audit.

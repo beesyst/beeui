@@ -46,7 +46,15 @@ class LayoutConfig:
 
 
 TABS_VARIANTS = frozenset(
-    {"default", "reverse", "fill", "icons", "fill_icons", "dropdown"}
+    {
+        "default",
+        "reverse",
+        "fill",
+        "icons",
+        "fill_icons",
+        "compact_fill_icons",
+        "dropdown",
+    }
 )
 ACCORDION_VARIANTS = frozenset(
     {"default", "flush", "tabs", "inverted", "inverted_plus", "icons"}

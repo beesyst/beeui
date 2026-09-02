@@ -6637,12 +6637,11 @@ Existing consumers без `progressive` продолжают работать б
 
 - расширить canonical `data_table` opt-in bounded action contract для toolbar actions и row actions;
 - сохранить существующие GET/href actions обратно совместимыми;
-- поддержать explicit `action_id`, controlled label, confirmation и bounded args;
+- поддержать explicit `action_id`, controlled label и bounded args;
 - поддержать минимальные interactive fields v1: `text` и `email`;
 - использовать существующие `POST /api/actions/preview` и `POST /api/actions/execute`;
 - использовать существующий CSRF contract;
 - выполнить preview перед execute для interactive action flow;
-- показывать explicit confirmation перед mutation;
 - поддержать route prefix и embedded mount;
 - безопасно отображать success/validation/denied/error result;
 - валидировать action presentation payload fail-safe;
@@ -6668,7 +6667,7 @@ Existing consumers без `progressive` продолжают работать б
 
 #### Deliverable
 
-Generic BeeUI `data_table` contract позволяет product adapter/render payload безопасно выразить bounded toolbar or row operator action, включая минимальный email/text input flow, preview, explicit confirmation и execution через existing protected action endpoints.
+Generic BeeUI `data_table` contract позволяет product adapter/render payload безопасно выразить bounded toolbar or row operator action, включая минимальный email/text input flow, preview и execution через existing protected action endpoints.
 
 Existing GET tables/actions remain backward-compatible.
 
@@ -6682,7 +6681,7 @@ Existing GET tables/actions remain backward-compatible.
 - interactive email/text field values are bounded and escaped;
 - unknown/malformed action presentation degrades safely;
 - no mutation is possible through GET;
-- action flow performs preview and explicit confirmation before execute;
+- action flow performs preview before execute;
 - unsafe/external URLs are not accepted as action destinations;
 - arbitrary HTML/JS cannot be supplied through action metadata;
 - route prefix is applied correctly;
@@ -6708,7 +6707,7 @@ Targeted checks:
 - operator + valid CSRF → callback invoked;
 - invalid/missing CSRF → callback not invoked;
 - malformed/unknown action → bounded error/degraded state;
-- preview → confirmation → execute flow;
+- preview → execute flow;
 - route-prefix behavior;
 - embedded mount behavior;
 - GET does not mutate;

@@ -126,13 +126,13 @@
 {{ tab_icon_svg(icon) }}
 {% endmacro %}
 
-{% macro url_tabs(items, active_id, base_url='', tab_class='nav nav-tabs card-header-tabs', active_param='tab', progressive=false, show_icons=false) %}
+{% macro url_tabs(items, active_id, base_url='', tab_class='nav nav-tabs card-header-tabs', active_param='tab', progressive=false, show_icons=false, compact_icons=false) %}
 <ul class="{{ tab_class }}" role="tablist">
   {% for tab in items %}
   {% set tab_href = tab.href if tab.href else (base_url ~ '?' ~ active_param ~ '=' ~ tab.id) %}
   <li class="nav-item" role="presentation">
     {% if tab.disabled %}
-    <span class="nav-link disabled" role="tab" aria-disabled="true">
+    <span class="nav-link disabled" role="tab" aria-disabled="true"{% if compact_icons %} title="{{ tab.title }}"{% endif %}>
       {% if show_icons %}{{ tab_icon(tab.icon) }}<span>{{ tab.title }}</span>{% else %}{{ tab.title }}{% endif %}
     </span>
     {% else %}
@@ -143,6 +143,7 @@
       aria-selected="{{ 'true' if tab.id == active_id else 'false' }}"
       {% if tab.id == active_id %}aria-current="page"{% endif %}
       {% if progressive %}data-beeui-page-tab="true"{% endif %}
+      {% if compact_icons %}title="{{ tab.title }}"{% endif %}
     >
       {% if show_icons %}{{ tab_icon(tab.icon) }}<span>{{ tab.title }}</span>{% else %}{{ tab.title }}{% endif %}
     </a>

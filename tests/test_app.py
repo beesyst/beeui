@@ -759,7 +759,7 @@ def test_progressive_page_tabs_render_canonical_links_and_controlled_icons() -> 
             replace(
                 ui_config.pages[0],
                 tabs=PageTabsConfig(
-                    variant="fill_icons",
+                    variant="compact_fill_icons",
                     progressive=True,
                     items=(
                         PageTabsItem(
@@ -794,6 +794,7 @@ def test_progressive_page_tabs_render_canonical_links_and_controlled_icons() -> 
     assert response.status_code == 200
     assert 'data-beeui-page-tabs-surface="dashboard"' in response.text
     assert 'data-beeui-page-tabs-progressive="true"' in response.text
+    assert 'beeui-tabs-compact' in response.text
     assert 'href="/?tab=overview"' in response.text
     assert 'data-beeui-page-tab="true"' in response.text
     assert 'data-beeui-tab-icon="dashboard"' in response.text

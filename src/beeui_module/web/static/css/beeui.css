@@ -1070,6 +1070,31 @@ a:focus-visible {
   opacity: 0.65;
 }
 
+.beeui-tabs-compact {
+  flex-wrap: nowrap;
+  overflow: hidden;
+}
+
+.beeui-tabs-compact .nav-item {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.beeui-tabs-compact .nav-link {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding-inline: 0.25rem;
+  font-size: clamp(0.6rem, 0.8vw, 0.78rem);
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+
+.beeui-tabs-compact .icon {
+  flex: 0 0 auto;
+  margin-right: 0.2rem !important;
+}
+
 @media (max-width: 767.98px) {
   .litepicker {
     width: min(22rem, calc(100vw - 1rem)) !important;

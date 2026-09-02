@@ -240,7 +240,7 @@ def test_mounted_artifact_and_catalog_links_use_effective_external_prefix() -> N
 
     catalog = client.get("/ui/components?lang=ru")
     assert catalog.status_code == 200
-    assert 'href="/ui/static/css/beeui.css?v=5"' in catalog.text
+    assert 'href="/ui/static/css/beeui.css?v=6"' in catalog.text
     assert 'href="/ui/"' in catalog.text
     assert 'href="/ui/components/interface?lang=ru"' in catalog.text
     assert 'href="/ui/components?lang=en"' in catalog.text
@@ -1721,7 +1721,7 @@ def test_data_table_bounded_actions_render_only_valid_metadata() -> None:
                                     {
                                         "action_id": "add_email",
                                         "label": "Add email",
-                                        "confirmation": "Confirm add",
+                                        "description": "The sender will be blocked.",
                                         "fields": [
                                             {
                                                 "name": "email",
@@ -1730,7 +1730,7 @@ def test_data_table_bounded_actions_render_only_valid_metadata() -> None:
                                             }
                                         ],
                                     },
-                                    {"action_id": "bad", "label": "Missing confirmation"},
+                                    {"action_id": "bad!", "label": "Invalid action"},
                                 ]
                             },
                             "columns": [{"key": "actions", "label": "", "cell": "actions"}],
@@ -1740,7 +1740,6 @@ def test_data_table_bounded_actions_render_only_valid_metadata() -> None:
                                         {
                                             "action_id": "remove_email",
                                             "label": "Remove",
-                                            "confirmation": "Confirm remove",
                                             "args": {"email": "safe@example.test"},
                                         }
                                     ]
@@ -1755,7 +1754,10 @@ def test_data_table_bounded_actions_render_only_valid_metadata() -> None:
 
     assert response.status_code == 200
     assert response.text.count("data-beeui-bounded-action") == 2
-    assert "Missing confirmation" not in response.text
+    assert "Invalid action" not in response.text
+    assert "The sender will be blocked." in response.text
+    assert "beeui-table-actions-cell" in response.text
+    assert "justify-content-end" in response.text
     assert '"type": "email"' in response.text
 
 

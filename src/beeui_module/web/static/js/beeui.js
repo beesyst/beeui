@@ -151,13 +151,11 @@
     var labels = isRussian ? {
       action: "Действие",
       close: "Закрыть",
-      cancel: "Отмена",
-      confirm: "Подтвердить"
+      cancel: "Отмена"
     } : {
       action: "Action",
       close: "Close",
-      cancel: "Cancel",
-      confirm: "Confirm"
+      cancel: "Cancel"
     };
     var root = document.createElement("div");
     root.className = "modal modal-blur fade";
@@ -170,10 +168,16 @@
     var body = root.querySelector(".modal-body");
     var message = root.querySelector(".beeui-action-message");
     var submit = form.querySelector('[type="submit"]');
-    var pendingPayload = null;
+    var description = action.description || "";
     root.querySelector(".modal-footer [data-bs-dismiss=\"modal\"]").textContent = labels.cancel;
     submit.textContent = action.label || labels.action;
     var fields = action.fields || [];
+    if (description && fields.length) {
+      var help = document.createElement("div");
+      help.className = "form-text text-secondary mb-3";
+      help.textContent = description;
+      body.insertBefore(help, message);
+    }
     fields.forEach(function (field) {
       var group = document.createElement("div");
       group.className = "mb-3";
@@ -190,6 +194,7 @@
       group.appendChild(input);
       body.insertBefore(group, message);
     });
+    if (!fields.length) message.textContent = description;
     var modal = window.bootstrap && window.bootstrap.Modal ? new window.bootstrap.Modal(root) : null;
     var backdrop = null;
     var closed = false;
@@ -214,21 +219,13 @@
     });
     form.addEventListener("submit", function (event) {
       event.preventDefault();
-      if (!pendingPayload && !form.reportValidity()) return;
-      var payload = pendingPayload || Object.assign({}, action.args || {});
-      if (!pendingPayload) fields.forEach(function (field) { payload[field.name] = form.elements[field.name].value; });
+      if (!form.reportValidity()) return;
+      var payload = Object.assign({}, action.args || {});
+      fields.forEach(function (field) { payload[field.name] = form.elements[field.name].value; });
       submit.disabled = true;
-      if (!pendingPayload) {
-        requestBoundedAction("preview", { action_id: action.action_id, payload: payload }).then(function () {
-          pendingPayload = payload;
-          body.querySelectorAll(".mb-3").forEach(function (field) { field.remove(); });
-          message.textContent = action.confirmation;
-          submit.textContent = labels.confirm;
-          submit.disabled = false;
-        }).catch(function (error) { message.textContent = error.message; submit.disabled = false; });
-        return;
-      }
-      requestBoundedAction("execute", { action_id: action.action_id, payload: payload }).then(function () { window.location.reload(); }).catch(function (error) { message.textContent = error.message; submit.disabled = false; });
+      requestBoundedAction("preview", { action_id: action.action_id, payload: payload }).then(function () {
+        return requestBoundedAction("execute", { action_id: action.action_id, payload: payload });
+      }).then(function () { window.location.reload(); }).catch(function (error) { message.textContent = error.message; submit.disabled = false; });
     });
     document.body.appendChild(root);
     if (modal) {
