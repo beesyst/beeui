@@ -6625,6 +6625,113 @@ Existing consumers без `progressive` продолжают работать б
 - `pyproject.toml.version` unchanged;
 - `uv.lock` unchanged.
 
+### Итерация 13.16 — Generic bounded table actions v1
+
+**Статус:** PLANNED
+
+#### Goal
+
+Добавить product-neutral presentation contract для bounded operator actions внутри canonical `data_table`, чтобы Bee-продукты могли безопасно предоставлять toolbar/row write actions через уже существующие BeeUI auth/role/CSRF и `/api/actions/*` contracts без собственных Jinja/JavaScript implementations.
+
+#### Scope
+
+- расширить canonical `data_table` opt-in bounded action contract для toolbar actions и row actions;
+- сохранить существующие GET/href actions обратно совместимыми;
+- поддержать explicit `action_id`, controlled label, confirmation и bounded args;
+- поддержать минимальные interactive fields v1: `text` и `email`;
+- использовать существующие `POST /api/actions/preview` и `POST /api/actions/execute`;
+- использовать существующий CSRF contract;
+- выполнить preview перед execute для interactive action flow;
+- показывать explicit confirmation перед mutation;
+- поддержать route prefix и embedded mount;
+- безопасно отображать success/validation/denied/error result;
+- валидировать action presentation payload fail-safe;
+- сохранить Jinja autoescape и controlled rendering;
+- обновить public component/web/integration/security docs, если contract изменён.
+
+#### Excluded
+
+- product-specific ROP/Bitrix/blacklist semantics;
+- generic no-code form builder;
+- arbitrary POST URLs;
+- arbitrary JavaScript/HTML from config or adapter;
+- arbitrary action methods;
+- secret inputs;
+- file upload;
+- config editor;
+- new auth/session model;
+- new product execution authority;
+- direct external API calls from BeeUI;
+- database/storage implementation;
+- frontend build chain;
+- new runtime dependencies без необходимости.
+
+#### Deliverable
+
+Generic BeeUI `data_table` contract позволяет product adapter/render payload безопасно выразить bounded toolbar or row operator action, включая минимальный email/text input flow, preview, explicit confirmation и execution через existing protected action endpoints.
+
+Existing GET tables/actions remain backward-compatible.
+
+#### Acceptance criteria
+
+- existing `data_table` GET toolbar and href actions render and behave unchanged;
+- bounded action is opt-in and cannot be inferred from ordinary href actions;
+- viewer cannot execute an operator action;
+- operator can invoke configured bounded action through existing action endpoints;
+- missing/invalid CSRF rejects request before product callback;
+- interactive email/text field values are bounded and escaped;
+- unknown/malformed action presentation degrades safely;
+- no mutation is possible through GET;
+- action flow performs preview and explicit confirmation before execute;
+- unsafe/external URLs are not accepted as action destinations;
+- arbitrary HTML/JS cannot be supplied through action metadata;
+- route prefix is applied correctly;
+- embedded/iframe presentation works with existing embedding contract;
+- product adapter remains the sole owner of action semantics;
+- BeeUI does not contain ROP/Bitrix-specific behavior.
+
+#### Checks
+
+```text
+uv run pytest -q
+./start.sh doctor
+```
+
+Targeted checks:
+
+- existing data_table regression tests;
+- toolbar bounded-action rendering;
+- row bounded-action rendering;
+- email/text input validation;
+- HTML escaping/XSS cases;
+- viewer → forbidden;
+- operator + valid CSRF → callback invoked;
+- invalid/missing CSRF → callback not invoked;
+- malformed/unknown action → bounded error/degraded state;
+- preview → confirmation → execute flow;
+- route-prefix behavior;
+- embedded mount behavior;
+- GET does not mutate;
+- no secret-like values exposed in HTML/API/logs;
+- DAST-style route tests for protected POST paths;
+- SAST/security review of action/HTML trust boundary.
+
+SCA is not required if dependencies do not change.
+
+#### DoD
+
+- generic bounded table action contract implemented;
+- no product-specific semantics added;
+- existing table behavior backward-compatible;
+- tests pass;
+- route-prefix/embedded behavior verified;
+- CSRF/role boundary verified;
+- action payload remains bounded;
+- docs updated where public contract changed;
+- no new dependency unless separately justified;
+- `pyproject.toml.version` not changed;
+- PR reviewed and merged.
+
 ---
 
 ## Этап 7 — Consumer integration record
