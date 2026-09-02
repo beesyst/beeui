@@ -33,6 +33,7 @@ def test_registry_supports_minimum_nine_distinct_concepts() -> None:
         "evidence",
         "integration",
         "recommendation",
+        "ban",
     }
     assert concepts.issubset(set(TABS_ICON_NAMES))
 
@@ -105,6 +106,7 @@ def test_registry_maps_to_documented_tabler_icons() -> None:
         "evidence": "search",
         "integration": "link",
         "recommendation": "bulb",
+        "ban": "ban",
     }
     for name, tabler_name in expected.items():
         svg = str(tab_icon_svg(name))

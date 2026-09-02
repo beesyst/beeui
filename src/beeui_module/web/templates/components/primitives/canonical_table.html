@@ -82,7 +82,7 @@
           </div>
           {% endif %}
           {% for action in toolbar.actions %}
-            {% if action.href %}<a href="{{ action.href }}" class="btn btn-sm btn-outline-primary">{{ action.label }}</a>{% else %}<span class="btn btn-sm btn-outline-primary disabled">{{ action.label }}</span>{% endif %}
+            {% if action.href %}<a href="{{ action.href }}" class="btn btn-sm btn-outline-primary">{{ action.label }}</a>{% elif action.action_id %}<button type="button" class="btn btn-sm btn-outline-primary" data-beeui-bounded-action data-action='{{ action|tojson }}'>{{ action.label }}</button>{% else %}<span class="btn btn-sm btn-outline-primary disabled">{{ action.label }}</span>{% endif %}
           {% endfor %}
           {% if toolbar.reset and toolbar.reset.href %}<a href="{{ toolbar.reset.href }}" class="btn btn-sm btn-outline-secondary" data-beeui-table-control>{{ toolbar.reset.label }}</a>{% endif %}
           {% if toolbar.apply %}<button type="submit" class="btn btn-sm btn-primary">{{ toolbar.apply.label }}</button>{% endif %}

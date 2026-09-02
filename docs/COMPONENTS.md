@@ -93,6 +93,13 @@ Safe local chart renderer for adapter-backed `layout[]`. Supports controlled cha
 
 Advanced Tabler-compatible data table for adapter-backed `layout[]`. Backward-compatible with existing `table_card`.
 
+Iteration 13.16 additionally permits explicit bounded operator actions in
+`toolbar.actions[]` and `actions` cells. An action must provide `action_id`,
+`label`, `confirmation`, optional bounded string `args`, and optional `text` or
+`email` fields. `href` actions remain GET-only and unchanged. BeeUI uses only
+its protected preview and execute endpoints; the product owns validation,
+authorization, mutation, and audit.
+
 Начиная с Iteration 13.12 toolbar рендерится внутри card-header как часть единой канонической карточки. Column chooser использует горизонтальное многоточие (`icon-tabler-dots`). Malformed columns/rows сохраняют canonical shell, toolbar и показывают bounded degraded сообщение.
 
 Поддерживаемые варианты:

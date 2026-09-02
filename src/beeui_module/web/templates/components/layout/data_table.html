@@ -51,7 +51,7 @@
             {% elif cell.type == "actions" %}
               <div class="btn-list flex-nowrap">
               {% for action in cell.get("items", []) %}
-                {% if action.href %}<a href="{{ action.href }}" class="btn btn-sm btn-ghost-primary">{{ action.label }}</a>{% else %}<span class="btn btn-sm btn-ghost-primary disabled">{{ action.label }}</span>{% endif %}
+                {% if action.href %}<a href="{{ action.href }}" class="btn btn-sm btn-ghost-primary">{{ action.label }}</a>{% elif action.action_id %}<button type="button" class="btn btn-sm btn-ghost-primary" data-beeui-bounded-action data-action='{{ action|tojson }}'>{{ action.label }}</button>{% else %}<span class="btn btn-sm btn-ghost-primary disabled">{{ action.label }}</span>{% endif %}
               {% endfor %}
               </div>
             {% else %}

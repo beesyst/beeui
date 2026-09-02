@@ -19,6 +19,7 @@ try{var d=document.documentElement,c=d.getAttribute('data-beeui-theme-config'),s
   <body
     class="{{ shell_classes }}"
     data-beeui-static-prefix="{{ route_prefix }}/static"
+    data-beeui-route-prefix="{{ route_prefix }}"
   >
     {% include "components/sidebar.html" %}
 
@@ -43,7 +44,7 @@ try{var d=document.documentElement,c=d.getAttribute('data-beeui-theme-config'),s
     <script>window.disableLitepickerStyles = true;</script>
     <script src="{{ route_prefix }}/static/vendor/litepicker/litepicker.min.js" data-beeui-runtime="litepicker"></script>
     {% endif %}
-    <script src="{{ route_prefix }}/static/js/beeui.js?v=6"></script>
+    <script src="{{ route_prefix }}/static/js/beeui.js?v=13"></script>
     {% block scripts %}{% endblock %}
   </body>
 </html>
