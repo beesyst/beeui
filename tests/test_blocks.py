@@ -2835,11 +2835,56 @@ def test_layout_data_table_bounded_action_normalizes_confirmation_and_fields() -
     row_action = result[0]["rows"][0]["a"]["items"][0]
     assert toolbar_action["confirmation"] == "Confirm sender addition"
     assert toolbar_action["fields"] == [
-        {"name": "sender", "type": "text", "label": "sender", "required": True, "max_length": 12},
-        {"name": "email", "type": "email", "label": "email", "required": True, "max_length": 254},
+        {"name": "sender", "type": "text", "label": "sender", "required": True, "max_length": 12, "value": ""},
+        {"name": "email", "type": "email", "label": "email", "required": True, "max_length": 254, "value": ""},
     ]
     assert row_action["action_id"] == "remove_sender"
     assert row_action["confirmation"] == ""
+
+
+def test_layout_data_table_direct_action_is_opt_in_and_bounded() -> None:
+    result = render_layout([{"type": "data_table", "title": "Actions", "toolbar": {"actions": [{"action_id": "save_row", "label": "Save", "flow": "direct_execute", "icon": "edit", "fields": [{"name": "email", "type": "email", "required": True, "value": "alice@example.com"}]}]}, "columns": [{"key": "actions", "label": "", "cell": "actions"}], "rows": [{"actions": []}]}])
+    action = result[0]["toolbar"]["actions"][0]
+    assert action["flow"] == "direct_execute"
+    assert action["fields"][0]["value"] == "alice@example.com"
+
+
+def test_layout_data_table_action_rejects_oversized_field_presentation() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "data_table",
+                "title": "Actions",
+                "toolbar": {
+                    "actions": [
+                        {
+                            "action_id": "save_row",
+                            "label": "Save",
+                            "fields": [
+                                {"name": f"field_{index}", "type": "text"}
+                                for index in range(11)
+                            ],
+                        },
+                        {
+                            "action_id": "bad_label",
+                            "label": "Save",
+                            "fields": [
+                                {
+                                    "name": "email",
+                                    "type": "email",
+                                    "label": "L" * 257,
+                                }
+                            ],
+                        },
+                    ]
+                },
+                "columns": [{"key": "actions", "label": "", "cell": "actions"}],
+                "rows": [{"actions": []}],
+            }
+        ]
+    )
+
+    assert result[0]["toolbar"]["actions"] == []
 
 
 def test_layout_data_table_bounded_action_rejects_unsafe_metadata() -> None:

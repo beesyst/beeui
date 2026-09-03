@@ -146,7 +146,53 @@
     return data;
   }
 
-  function showBoundedActionModal(action) {
+  function boundedActionMessage(error, fallback) {
+    var message = error && typeof error.message === "string" ? error.message : fallback;
+    return message.slice(0, 512);
+  }
+
+  function actionLabels() {
+    return document.documentElement.lang.toLowerCase().indexOf("ru") === 0 ? {
+      save: "Сохранить",
+      cancel: "Отмена",
+      refresh: "Действие выполнено, но таблицу не удалось обновить.",
+      failed: "Не удалось выполнить действие."
+    } : {
+      save: "Save",
+      cancel: "Cancel",
+      refresh: "The action completed, but the table could not be refreshed.",
+      failed: "The action could not be completed."
+    };
+  }
+
+  function showTableActionError(source, text) {
+    var container = source && source.closest(".beeui-live-table[data-beeui-table-id]");
+    var target = container || (source && source.closest("td, form, .modal-content"));
+    if (!target) return;
+    var existing = target.querySelector("[data-beeui-action-error]");
+    if (existing) existing.remove();
+    var message = document.createElement("div");
+    message.className = "alert alert-danger mt-2 mb-0 py-2";
+    message.setAttribute("role", "alert");
+    message.setAttribute("data-beeui-action-error", "");
+    message.textContent = text.slice(0, 512);
+    target.appendChild(message);
+  }
+
+  function refreshDirectActionTable(source) {
+    var labels = actionLabels();
+    var table = source && source.closest(".beeui-live-table[data-beeui-table-id]");
+    if (!table) {
+      showTableActionError(source, labels.refresh);
+      return;
+    }
+    replaceLiveTable(table, new URL(window.location.href), true, function () {
+      showTableActionError(table, labels.refresh);
+    });
+  }
+
+  function showBoundedActionModal(action, source) {
+    var isDirect = action.flow === "direct_execute";
     var isRussian = document.documentElement.lang.toLowerCase().indexOf("ru") === 0;
     var labels = isRussian ? {
       action: "Действие",
@@ -156,7 +202,8 @@
       confirmation: "Подтвердить выполнение",
       execute: "Выполнить",
       previewed: "Предпросмотр готов. Подтвердите выполнение.",
-      changed: "Данные изменены. Выполните предпросмотр снова."
+      changed: "Данные изменены. Выполните предпросмотр снова.",
+      saved: "Данные изменены."
     } : {
       action: "Action",
       close: "Close",
@@ -165,9 +212,11 @@
       confirmation: "Confirm execution",
       execute: "Execute",
       previewed: "Preview is ready. Confirm execution.",
-      changed: "Input changed. Preview again before execution."
+      changed: "Input changed. Preview again before execution.",
+      saved: "Data changed."
     };
     var root = document.createElement("div");
+    root._beeuiActionSource = source || null;
     root.className = "modal modal-blur fade";
     root.tabIndex = -1;
     root.setAttribute("role", "dialog");
@@ -183,9 +232,15 @@
     var confirmationInput = confirmation.querySelector("input");
     var confirmationLabel = confirmation.querySelector("span");
     var description = action.description || "";
+    var actionToken = action.action_id + "-" + String(Date.now()) + "-" + String(Math.random()).slice(2);
+    var cancelButton = root.querySelector(".modal-footer [data-bs-dismiss=\"modal\"]");
     root.querySelector(".modal-footer [data-bs-dismiss=\"modal\"]").textContent = labels.cancel;
-    preview.textContent = labels.preview;
+    preview.textContent = isDirect ? labels.execute : labels.preview;
     execute.textContent = labels.execute;
+    if (isDirect) {
+      cancelButton.className = "btn";
+      preview.className = "btn btn-primary";
+    }
     var fields = action.fields || [];
     if (description && fields.length) {
       var help = document.createElement("div");
@@ -200,11 +255,16 @@
       label.className = "form-label";
       label.textContent = field.label || field.name;
       var input = document.createElement("input");
+      var inputId = "beeui-action-" + actionToken + "-" + field.name;
       input.className = "form-control";
+      input.id = inputId;
       input.name = field.name;
       input.type = field.type;
       input.maxLength = field.max_length;
       input.required = field.required;
+      input.value = field.value || "";
+      label.htmlFor = inputId;
+      if (field.required) label.classList.add("required");
       group.appendChild(label);
       group.appendChild(input);
       body.insertBefore(group, message);
@@ -224,16 +284,6 @@
       execute.classList.add("d-none");
       execute.disabled = true;
       message.textContent = labels.changed;
-    }
-    function previewResultText(data) {
-      var value = data && data.data;
-      if (value === undefined || value === null || value === "") return labels.previewed;
-      try {
-        var text = JSON.stringify(value);
-        return text.length > 2048 ? text.slice(0, 2048) : text;
-      } catch (_) {
-        return labels.previewed;
-      }
     }
     fields.forEach(function (field) {
       form.elements[field.name].addEventListener("input", invalidatePreview);
@@ -269,12 +319,23 @@
       if (!form.reportValidity()) return;
       var payload = currentPayload();
       preview.disabled = true;
+      if (isDirect) {
+        requestBoundedAction("execute", { action_id: action.action_id, payload: payload }).then(function () {
+          closeModal();
+          refreshDirectActionTable(root._beeuiActionSource);
+        }).catch(function (error) {
+          message.textContent = boundedActionMessage(error, actionLabels().failed);
+        }).finally(function () {
+          preview.disabled = false;
+        });
+        return;
+      }
       requestBoundedAction("preview", { action_id: action.action_id, payload: payload }).then(function (data) {
         previewPayload = JSON.stringify(payload);
         confirmationLabel.textContent = action.confirmation || labels.confirmation;
         confirmation.classList.remove("d-none");
         execute.classList.remove("d-none");
-        message.textContent = previewResultText(data);
+        message.textContent = labels.previewed;
       }).catch(function (error) {
         message.textContent = error.message;
       }).finally(function () {
@@ -309,13 +370,119 @@
     document.addEventListener("keydown", closeOnEscape);
   }
 
+  function appendActionIcon(button, icon) {
+    var svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+    svg.setAttribute("class", "icon");
+    svg.setAttribute("width", "24");
+    svg.setAttribute("height", "24");
+    svg.setAttribute("viewBox", "0 0 24 24");
+    svg.setAttribute("stroke-width", "2");
+    svg.setAttribute("stroke", "currentColor");
+    svg.setAttribute("fill", "none");
+    svg.setAttribute("stroke-linecap", "round");
+    svg.setAttribute("stroke-linejoin", "round");
+    svg.setAttribute("aria-hidden", "true");
+    var paths = icon === "device-floppy" ? ["M6 3h11l3 3v15H4V3Z", "M8 3v6h8V3", "M8 21v-7h8v7"] : ["m6 6 12 12", "m18 6-12 12"];
+    paths.forEach(function (d) {
+      var path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+      path.setAttribute("d", d);
+      svg.appendChild(path);
+    });
+    button.appendChild(svg);
+  }
+
+  function iconButton(label, icon) {
+    var button = document.createElement("button");
+    button.type = "button";
+    button.className = "btn btn-action";
+    button.setAttribute("aria-label", label);
+    button.title = label;
+    appendActionIcon(button, icon);
+    return button;
+  }
+
+  function beginInlineEdit(button, action) {
+    var row = button.closest("tr");
+    if (!row || row.getAttribute("data-beeui-editing") === "true") return;
+    var cells = {};
+    (action.fields || []).forEach(function (field) {
+      var cell = row.querySelector('[data-beeui-column-key="' + field.name + '"]');
+      if (!cell) return;
+      var input = document.createElement("input");
+      input.className = "form-control form-control-sm";
+      input.name = field.name;
+      input.type = field.type;
+      input.maxLength = field.max_length;
+      input.required = field.required;
+      input.value = field.value || "";
+      cells[field.name] = { cell: cell, html: cell.cloneNode(true), input: input };
+      cell.replaceChildren(input);
+    });
+    if (!Object.keys(cells).length) return;
+    row.setAttribute("data-beeui-editing", "true");
+    var actionCell = button.closest("td");
+    var previous = actionCell.cloneNode(true);
+    var controls = document.createElement("div");
+    controls.className = "btn-actions flex-nowrap justify-content-end";
+    var labels = actionLabels();
+    var save = iconButton(labels.save, "device-floppy");
+    var cancel = iconButton(labels.cancel, "x");
+    controls.appendChild(save);
+    controls.appendChild(cancel);
+    actionCell.replaceChildren(controls);
+    cancel.addEventListener("click", function () {
+      Object.keys(cells).forEach(function (key) {
+        cells[key].cell.replaceWith(cells[key].html);
+      });
+      actionCell.replaceWith(previous);
+      row.removeAttribute("data-beeui-editing");
+    });
+    save.addEventListener("click", function () {
+      var payload = Object.assign({}, action.args || {});
+      var valid = true;
+      Object.keys(cells).forEach(function (key) {
+        var input = cells[key].input;
+        if (!input.reportValidity()) valid = false;
+        payload[key] = input.value;
+      });
+      if (!valid) return;
+      save.disabled = true;
+      cancel.disabled = true;
+      requestBoundedAction("execute", { action_id: action.action_id, payload: payload }).then(function () {
+        refreshDirectActionTable(row);
+      }).catch(function (error) {
+        var message = document.createElement("div");
+        message.className = "form-text text-danger";
+        message.textContent = boundedActionMessage(error, labels.failed);
+        controls.appendChild(message);
+        save.disabled = false;
+        cancel.disabled = false;
+      });
+    });
+  }
+
   document.addEventListener("click", function (event) {
     if (!(event.target instanceof Element)) return;
     var button = event.target.closest("[data-beeui-bounded-action]");
     if (!button) return;
     try {
       var action = JSON.parse(button.getAttribute("data-action") || "{}");
-      showBoundedActionModal(action);
+      if (action.flow === "direct_execute" && action.inline_edit) {
+        beginInlineEdit(button, action);
+        return;
+      }
+      if (action.flow === "direct_execute" && !(action.fields || []).length) {
+        button.disabled = true;
+        requestBoundedAction("execute", { action_id: action.action_id, payload: action.args || {} }).then(function () {
+          refreshDirectActionTable(button);
+        }).catch(function (error) {
+          button.disabled = false;
+          showTableActionError(button, boundedActionMessage(error, actionLabels().failed));
+        });
+        return;
+      }
+      showBoundedActionModal(action, button);
     } catch (_) { }
   });
 
@@ -386,8 +553,12 @@
     return null;
   }
 
-  function replaceLiveTable(table, url) {
+  function replaceLiveTable(table, url, strict, onFailure) {
     if (!window.fetch || !window.DOMParser || !window.history) {
+      if (strict) {
+        if (typeof onFailure === "function") onFailure();
+        return;
+      }
       window.location.assign(url.href);
       return;
     }
@@ -422,6 +593,10 @@
       }
     }).catch(function (error) {
       if (state.version !== version || (error && error.name === "AbortError")) return;
+      if (strict) {
+        if (typeof onFailure === "function") onFailure();
+        return;
+      }
       window.location.assign(url.href);
     });
   }

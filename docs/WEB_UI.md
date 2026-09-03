@@ -31,6 +31,7 @@
 - package-local Litepicker asset (`static/vendor/litepicker/litepicker.min.js` + `litepicker.min.css`), без CDN;
 - условная загрузка Litepicker CSS/JS только когда на странице есть `filter_form.date_range` или `data_table.toolbar.fields[].date_range`.
 - каноническая toolbar-table композиция (Iteration 13.12): toolbar рендерится внутри card-header, column chooser использует горизонтальное многоточие, malformed columns/rows сохраняют canonical shell с degraded сообщением.
+- bounded table actions use the default Preview → confirmation → Execute flow; an explicit generic `direct_execute` form or controlled inline-row edit uses the same protected transport and refreshes only its live table surface. A direct refresh failure remains visible and does not reload or navigate the document.
 
 Предыдущая основа после Iteration 13.5:
 
@@ -135,7 +136,7 @@
   - raw/debug technical payload in BeeUI accordion «Technical details»;
   - primary UX shows summary cards/KPIs/structured fields first.
 - configurable component defaults (Iteration 13.2):
-  - `components.tabs.variant` — global Tabler tabs variant (`default`, `reverse`, `fill`, `icons`, `fill_icons`, `dropdown`);
+  - `components.tabs.variant` — global Tabler tabs variant (`default`, `reverse`, `fill`, `icons`, `fill_icons`, `compact_fill_icons`, `dropdown`); `compact_fill_icons` is the generic compact icon/fill presentation.
   - `components.accordion.variant` — global accordion variant (`default`, `flush`, `tabs`, `inverted`, `inverted_plus`, `icons`);
   - invalid variants fail fast; missing config uses safe defaults.
 - page-level URL tabs (Iteration 13.2):
@@ -229,9 +230,9 @@ Product decides.
 
 Failure, malformed HTML, mismatched surface, unavailable browser APIs, unsafe/cross-origin URL and any failed request fall back to the original canonical navigation. Fetched executable scripts are removed; JSON chart configuration is parsed only by the fixed BeeUI renderer. BeeUI loads only its fixed package-local ApexCharts and Litepicker paths when a replacement contains the respective controlled component.
 
-`pages[].tabs.items[].icon` is optional. It must be a safe identifier. `icons` and `fill_icons` render the controlled BeeUI Tabler-style mapping; absent or unknown icons render no SVG. No icon value can introduce SVG, HTML, CSS, JavaScript or external asset URLs.
+`pages[].tabs.items[].icon` is optional. It must be a safe identifier. `icons`, `fill_icons` and `compact_fill_icons` render the controlled BeeUI Tabler-style mapping; the compact variant is the generic compact icon/fill presentation. Absent or unknown icons render no SVG. No icon value can introduce SVG, HTML, CSS, JavaScript or external asset URLs.
 
-The controlled tab icon registry lives in `src/beeui_module/pages/tab_icons.py` and the mapping is defined in `src/beeui_module/pages/models.py`. BeeUI owns the SVG glyphs; product supplies only the identifier. Glyph bodies are exact Tabler Icons 2.x outline geometry embedded inline (no CDN, no external asset). Icon and label are separated with the Tabler spacing utility `class="icon me-2"` in every tab state (`icons` and `fill_icons`, active, inactive, disabled, progressive or not, localized or not).
+The controlled tab icon registry lives in `src/beeui_module/pages/tab_icons.py` and the mapping is defined in `src/beeui_module/pages/models.py`. BeeUI owns the SVG glyphs; product supplies only the identifier. Glyph bodies are exact Tabler Icons 2.x outline geometry embedded inline (no CDN, no external asset). Icon and label are separated with the Tabler spacing utility `class="icon me-2"` in every tab state (`icons`, `fill_icons` and `compact_fill_icons`, active, inactive, disabled, progressive or not, localized or not).
 
 | BeeUI identifier | Tabler icon | Semantic concept      |
 | ---------------- | ----------- | --------------------- |
@@ -249,6 +250,7 @@ The controlled tab icon registry lives in `src/beeui_module/pages/tab_icons.py` 
 | `evidence`       | search      | evidence / search     |
 | `integration`    | link        | integration / link    |
 | `recommendation` | bulb        | recommendation / idea |
+| `ban`            | ban         | generic restriction   |
 
 Rules:
 
@@ -1105,7 +1107,7 @@ pages:
 - page `id` must be safe and unique;
 - page paths must be unique;
 - navigation paths must reference known page paths;
-- allowed tabs variants: `default`, `reverse`, `fill`, `icons`, `fill_icons`, `dropdown`;
+- allowed tabs variants: `default`, `reverse`, `fill`, `icons`, `fill_icons`, `compact_fill_icons`, `dropdown`;
 - allowed accordion variants: `default`, `flush`, `tabs`, `inverted`, `inverted_plus`, `icons`;
 - invalid variant values fail-fast; missing config uses safe defaults;
 - `pages[].tabs` supports `variant`, `active_param`, `items[]`, safe internal `href` and disabled tabs;
@@ -2000,9 +2002,11 @@ Planned routes:
 Iteration 13.16 adds a product-neutral `data_table` action presentation
 contract. Bounded actions are explicit and may use only `text` or `email`
 fields, bounded string `args`, and an optional bounded `confirmation` string.
-The browser flow is Preview, successful preview state, separate user confirmation,
-then Execute through protected `POST /api/actions/preview` and
-`POST /api/actions/execute`. BeeUI does not derive actions from `href`, accept
+The default `preview_confirm_execute` browser flow is Preview, successful
+preview state, separate user confirmation, then Execute through protected
+`POST /api/actions/preview` and `POST /api/actions/execute`. Explicit
+`direct_execute` uses only the protected Execute endpoint for bounded toolbar
+forms or controlled inline-row edit. BeeUI does not derive actions from `href`, accept
 action URLs, or authorize product mutations. Existing actions without
 `confirmation` receive a safe BeeUI-owned confirmation fallback.
 

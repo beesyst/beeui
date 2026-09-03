@@ -13,8 +13,9 @@ Canonical `data_table` также поддерживает opt-in progressive en
 Iteration 13.16 extends only the adapter-backed `data_table` presentation with
 an optional bounded action variant. It uses explicit `action_id`, controlled
 escaped labels, bounded string args, optional text/email fields, and optional
-bounded confirmation presentation. Browser presentation is Preview, separate
-confirmation, then Execute; the existing protected POST route and response
+bounded confirmation presentation. The default browser flow is Preview,
+separate confirmation, then Execute; explicit `direct_execute` uses only
+protected Execute for bounded toolbar or inline-row actions. The existing protected POST route and response
 envelopes remain unchanged.
 
 Locale resolution is `valid ?lang=` → valid `beeui_lang` cookie → configured default. Built-in BeeUI-owned presentation labels use the bounded `en`/`ru` catalog; product labels remain product-owned.
@@ -366,7 +367,7 @@ Children render through existing BeeUI block renderer. Depth is bounded at 3 lev
 - `pagination.pages[]` accepts a safe internal `href`, display `label` and optional page `number`. A positive numeric `number` or numeric `label` supplies the page number; missing, non-numeric or non-positive page numbers fall back to the item's 1-based list position for backward-compatible ordering. BeeUI renders first/current/last plus a bounded adjacent window and ellipses. Optional `previous`/`next` are safe internal controls, or are derived from adjacent supplied pages. Entries with an invalid href or a duplicate resolved page number are omitted.
 - Optional `pagination.page_size` is `{label?, current?, options[]}` where each option supplies `label`, optional `value`, safe internal `href` and optional `active`. BeeUI does not invent page-size values; invalid entries are omitted and the list is bounded to 20 options.
 - `toolbar.actions[]` and `actions` cells may be either existing safe `href` GET actions or an opt-in bounded action with `action_id`, `label`, optional `description`, `confirmation`, bounded string `args`, and zero or more `text`/`email` fields. Labels, descriptions, confirmation text, and fields are escaped; malformed or unsafe metadata is omitted.
-- Bounded actions have no adapter-provided destination. A successful preview enables a separate explicit confirmation before browser Execute; input changes invalidate that preview state. This presentation step never replaces server-side authorization, CSRF, or product validation.
+- Bounded actions have no adapter-provided destination. The default `preview_confirm_execute` flow requires preview and separate confirmation; input changes invalidate that state. Explicit `direct_execute` is limited to the same protected Execute endpoint for a bounded form or inline-row action and refreshes only its identified live table. This presentation step never replaces server-side authorization, CSRF, or product validation.
 
 ### Правила безопасности
 

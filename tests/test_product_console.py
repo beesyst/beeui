@@ -1741,6 +1741,7 @@ def test_data_table_bounded_actions_render_only_valid_metadata() -> None:
                                         {
                                             "action_id": "remove_email",
                                             "label": "Remove",
+                                            "icon": "trash",
                                             "args": {"email": "safe@example.test"},
                                         }
                                     ]
@@ -1762,6 +1763,9 @@ def test_data_table_bounded_actions_render_only_valid_metadata() -> None:
     assert "beeui-table-actions-cell" in response.text
     assert "justify-content-end" in response.text
     assert '"type": "email"' in response.text
+    assert 'stroke="currentColor"' in response.text
+    assert 'fill="none"' in response.text
+    assert 'stroke-linecap="round"' in response.text
 
 
 def test_bounded_action_browser_flow_requires_preview_and_confirmation() -> None:
@@ -1775,7 +1779,30 @@ def test_bounded_action_browser_flow_requires_preview_and_confirmation() -> None
     assert "confirmationInput.checked" in source
     assert "previewPayload !== JSON.stringify(payload)" in source
     assert 'execute.addEventListener("click"' in source
-    assert "message.textContent = previewResultText(data);" in source
+    assert "message.textContent = labels.previewed;" in source
+    assert "JSON.stringify(value)" not in source
+
+
+def test_direct_table_actions_use_strict_refresh_and_controlled_icons() -> None:
+    source = (
+        Path(__file__).resolve().parents[1]
+        / "src/beeui_module/web/static/js/beeui.js"
+    ).read_text(encoding="utf-8")
+
+    assert 'replaceLiveTable(table, new URL(window.location.href), true' in source
+    assert 'if (strict) {' in source
+    assert 'window.location.assign(url.href);' in source
+    assert 'refreshDirectActionTable(button);' in source
+    assert 'showTableActionError(button, boundedActionMessage(error' in source
+    assert 'iconButton(labels.save, "device-floppy")' in source
+    assert 'iconButton(labels.cancel, "x")' in source
+    assert 'button.textContent = symbol' not in source
+    assert 'svg.setAttribute("stroke", "currentColor")' in source
+    assert 'svg.setAttribute("fill", "none")' in source
+    assert 'cancelButton.className = "btn"' in source
+    assert 'preview.className = "btn btn-primary"' in source
+    assert 'label.classList.add("required")' in source
+    assert 'label.htmlFor = inputId' in source
 
 
 def test_runs_layout_wrapper_preserves_list_api_contract() -> None:
