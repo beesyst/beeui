@@ -1999,11 +1999,12 @@ Planned routes:
 
 Iteration 13.16 adds a product-neutral `data_table` action presentation
 contract. Bounded actions are explicit and may use only `text` or `email`
-fields, then call protected `POST /api/actions/preview` before
-`POST /api/actions/execute`. BeeUI does not derive actions
-from `href`, accept action URLs, or authorize product mutations.
-
-Action rendering/catalog UI остаются задачей следующих bounded action iterations. Iteration 13 уже реализует protected POST stubs для preview/execute, но каталог действий и execution semantics остаются на product side.
+fields, bounded string `args`, and an optional bounded `confirmation` string.
+The browser flow is Preview, successful preview state, separate user confirmation,
+then Execute through protected `POST /api/actions/preview` and
+`POST /api/actions/execute`. BeeUI does not derive actions from `href`, accept
+action URLs, or authorize product mutations. Existing actions without
+`confirmation` receive a safe BeeUI-owned confirmation fallback.
 
 BeeUI can render bounded actions only if product adapter exposes them.
 
@@ -2013,20 +2014,17 @@ Action item shape:
 {
   "action_id": "operator_launch_preset",
   "label": "Launch allowed preset",
-  "status": "blocked",
-  "reason_code": "active_runtime_running",
-  "reason": "An active runtime is already running.",
-  "action_url": null,
-  "requires_confirmation": true
+  "description": "Starts the bounded operation.",
+  "confirmation": "I confirm this operation.",
+  "args": {"preset": "safe_default"},
+  "fields": [{"name": "note", "type": "text", "max_length": 120}]
 }
 ```
 
-Allowed statuses:
-
-- `allowed`
-- `blocked`
-- `denied`
-- `unavailable`
+All supplied strings are controlled, length-bounded, and escaped; arbitrary
+HTML, JavaScript, destinations, methods, or field types are not accepted.
+Confirmation is a UX/safety step, not a substitute for server-side authorization,
+CSRF protection, or product validation.
 
 Правила:
 

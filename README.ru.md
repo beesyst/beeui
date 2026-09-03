@@ -460,7 +460,7 @@ adapter-backed типов блоков и отдельный `degraded` fallback
 Уже работает:
 
 - всё из Iteration 10: `create_beeui_app(...)`, `mount_beeui(...)`, adapter injection, product metadata, mount path validation;
-- `uv sync --frozen --extra dev`;
+- `uv sync --frozen --group dev`;
 - `uv run pytest -q`;
 - `./start.sh doctor`;
 - `./start.sh version`;
@@ -1794,7 +1794,7 @@ cd beeui
 ### Установка зависимостей
 
 ```bash
-uv sync --frozen --extra dev
+uv sync --frozen --group dev
 ```
 
 ### Тесты
@@ -1818,8 +1818,8 @@ http://127.0.0.1:8780
 ### Без `start.sh`
 
 ```bash
-uv run --frozen --extra dev python config/start.py doctor
-uv run --frozen --extra dev python config/start.py web
+uv run --frozen --group dev python config/start.py doctor
+uv run --frozen --group dev python config/start.py web
 ```
 
 ## Документация

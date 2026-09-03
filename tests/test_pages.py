@@ -1986,7 +1986,7 @@ def test_custom_route_rop_registers_with_adapter(tmp_path: Path) -> None:
     assert 'href="/ui/rop?sort=run"' in response.text
     assert 'aria-sort="ascending"' in response.text
     assert 'class="table-sort asc"' in response.text
-    assert 'href="/ui/static/css/beeui.css?v=5"' in response.text
+    assert 'href="/ui/static/css/beeui.css?v=6"' in response.text
     assert 'href="/ui/"' in response.text
     assert 'href="/ui/rop?lang=ru"' in response.text
     assert 'href="/ui/rop?tab=overview"' in response.text

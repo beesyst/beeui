@@ -123,7 +123,7 @@
 - проверяет наличие `uv`;
 - если `uv` отсутствует — устанавливает его;
 - ставит недостающие зависимости из `uv.lock`;
-- подключает `dev` extra, чтобы локальные тесты работали без отдельной подготовки;
+- подключает dependency group `dev`, чтобы локальные тесты работали без отдельной подготовки;
 - запускает `config/start.py`;
 - не изменяет `uv.lock`.
 
@@ -145,9 +145,9 @@ if ! command -v uv >/dev/null 2>&1; then
   export PATH="$HOME/.local/bin:$PATH"
 fi
 
-uv sync --frozen --extra dev
+uv sync --frozen --group dev
 
-uv run --frozen --extra dev python config/start.py "$@"
+uv run --frozen --group dev python config/start.py "$@"
 ```
 
 ## Тесты
@@ -161,7 +161,7 @@ uv run pytest -q
 Для frozen-проверки:
 
 ```bash
-uv run --frozen --extra dev pytest -q
+uv run --frozen --group dev pytest -q
 ```
 
 ## Добавить runtime-зависимость
@@ -194,10 +194,10 @@ git commit -m "chore(deps): add fastapi"
 
 ## Добавить dev-зависимость
 
-Dev-зависимости оформляются как optional extra `dev`:
+Dev-зависимости оформляются как dependency group `dev`:
 
 ```toml
-[project.optional-dependencies]
+[dependency-groups]
 dev = [
     "pytest",
     "httpx>=0.28",
@@ -207,7 +207,7 @@ dev = [
 Добавлять dev-зависимость нужно так:
 
 ```bash
-uv add --optional dev <package>
+uv add --group dev <package>
 ./start.sh
 uv run pytest -q
 git status
@@ -223,7 +223,7 @@ git commit -m "chore(deps): add <package>"
 Пример:
 
 ```bash
-uv add --optional dev pytest-mock
+uv add --group dev pytest-mock
 ./start.sh
 uv run pytest -q
 git add pyproject.toml uv.lock
@@ -358,7 +358,7 @@ uv run --frozen --extra docs mkdocs build --strict
 | Web demo                          | `./start.sh web --host 127.0.0.1 --port 8780`                                                               |
 | Тесты после запуска               | `uv run pytest -q`                                                                                          |
 | Добавить runtime-зависимость      | `uv add <package>` → `./start.sh` → `uv run pytest -q` → commit `pyproject.toml` + `uv.lock`                |
-| Добавить dev-зависимость          | `uv add --optional dev <package>` → `./start.sh` → `uv run pytest -q` → commit `pyproject.toml` + `uv.lock` |
+| Добавить dev-зависимость          | `uv add --group dev <package>` → `./start.sh` → `uv run pytest -q` → commit `pyproject.toml` + `uv.lock`    |
 | Ручное изменение `pyproject.toml` | `uv lock` → `./start.sh` → `uv run pytest -q` → commit `pyproject.toml` + `uv.lock`                         |
 | Удалить зависимость               | `uv remove <package>` → `./start.sh` → `uv run pytest -q` → commit `pyproject.toml` + `uv.lock`             |
 | Обновить пакет                    | `uv lock --upgrade-package <package>` → `./start.sh` → `uv run pytest -q` → commit `uv.lock`                |
@@ -370,7 +370,7 @@ uv run --frozen --extra docs mkdocs build --strict
 Не делай так в `start.sh`:
 
 ```bash
-uv sync --extra dev
+uv sync --group dev
 ```
 
 Причина: обычный запуск не должен пересобирать `uv.lock`.
@@ -468,15 +468,15 @@ beeagent/config/beeui.yml
 ### Прямой запуск через `uv`
 
 ```bash
-uv sync --frozen --extra dev
-uv run --frozen --extra dev python config/start.py
+uv sync --frozen --group dev
+uv run --frozen --group dev python config/start.py
 ```
 
 Для конкретной CLI-команды:
 
 ```bash
-uv run --frozen --extra dev python config/start.py doctor
-uv run --frozen --extra dev python config/start.py web --host 127.0.0.1 --port 8780
+uv run --frozen --group dev python config/start.py doctor
+uv run --frozen --group dev python config/start.py web --host 127.0.0.1 --port 8780
 ```
 
 В обычной разработке предпочтительный entrypoint — `./start.sh`.

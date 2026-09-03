@@ -151,26 +151,41 @@
     var labels = isRussian ? {
       action: "Действие",
       close: "Закрыть",
-      cancel: "Отмена"
+      cancel: "Отмена",
+      preview: "Предпросмотр",
+      confirmation: "Подтвердить выполнение",
+      execute: "Выполнить",
+      previewed: "Предпросмотр готов. Подтвердите выполнение.",
+      changed: "Данные изменены. Выполните предпросмотр снова."
     } : {
       action: "Action",
       close: "Close",
-      cancel: "Cancel"
+      cancel: "Cancel",
+      preview: "Preview",
+      confirmation: "Confirm execution",
+      execute: "Execute",
+      previewed: "Preview is ready. Confirm execution.",
+      changed: "Input changed. Preview again before execution."
     };
     var root = document.createElement("div");
     root.className = "modal modal-blur fade";
     root.tabIndex = -1;
     root.setAttribute("role", "dialog");
-    root.innerHTML = '<div class="modal-dialog modal-dialog-centered" role="document"><div class="modal-content"><div class="modal-header"><h5 class="modal-title"></h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><form><div class="modal-body"><div class="text-secondary beeui-action-message"></div></div><div class="modal-footer"><button type="button" class="btn btn-link link-secondary" data-bs-dismiss="modal"></button><button type="submit" class="btn btn-primary"></button></div></form></div></div>';
+    root.innerHTML = '<div class="modal-dialog modal-dialog-centered" role="document"><div class="modal-content"><div class="modal-header"><h5 class="modal-title"></h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><form><div class="modal-body"><div class="text-secondary beeui-action-message"></div><label class="form-check beeui-action-confirmation d-none"><input class="form-check-input" type="checkbox"><span class="form-check-label"></span></label></div><div class="modal-footer"><button type="button" class="btn btn-link link-secondary" data-bs-dismiss="modal"></button><button type="submit" class="btn btn-secondary"></button><button type="button" class="btn btn-primary d-none" disabled></button></div></form></div></div>';
     root.querySelector(".modal-title").textContent = action.label || labels.action;
     root.querySelector(".btn-close").setAttribute("aria-label", labels.close);
     var form = root.querySelector("form");
     var body = root.querySelector(".modal-body");
     var message = root.querySelector(".beeui-action-message");
-    var submit = form.querySelector('[type="submit"]');
+    var preview = form.querySelector('[type="submit"]');
+    var execute = form.querySelector('.modal-footer .btn-primary');
+    var confirmation = root.querySelector(".beeui-action-confirmation");
+    var confirmationInput = confirmation.querySelector("input");
+    var confirmationLabel = confirmation.querySelector("span");
     var description = action.description || "";
     root.querySelector(".modal-footer [data-bs-dismiss=\"modal\"]").textContent = labels.cancel;
-    submit.textContent = action.label || labels.action;
+    preview.textContent = labels.preview;
+    execute.textContent = labels.execute;
     var fields = action.fields || [];
     if (description && fields.length) {
       var help = document.createElement("div");
@@ -195,6 +210,38 @@
       body.insertBefore(group, message);
     });
     if (!fields.length) message.textContent = description;
+    var previewPayload = null;
+    function currentPayload() {
+      var payload = Object.assign({}, action.args || {});
+      fields.forEach(function (field) { payload[field.name] = form.elements[field.name].value; });
+      return payload;
+    }
+    function invalidatePreview() {
+      if (previewPayload === null) return;
+      previewPayload = null;
+      confirmationInput.checked = false;
+      confirmation.classList.add("d-none");
+      execute.classList.add("d-none");
+      execute.disabled = true;
+      message.textContent = labels.changed;
+    }
+    function previewResultText(data) {
+      var value = data && data.data;
+      if (value === undefined || value === null || value === "") return labels.previewed;
+      try {
+        var text = JSON.stringify(value);
+        return text.length > 2048 ? text.slice(0, 2048) : text;
+      } catch (_) {
+        return labels.previewed;
+      }
+    }
+    fields.forEach(function (field) {
+      form.elements[field.name].addEventListener("input", invalidatePreview);
+      form.elements[field.name].addEventListener("change", invalidatePreview);
+    });
+    confirmationInput.addEventListener("change", function () {
+      execute.disabled = !confirmationInput.checked || previewPayload === null;
+    });
     var modal = window.bootstrap && window.bootstrap.Modal ? new window.bootstrap.Modal(root) : null;
     var backdrop = null;
     var closed = false;
@@ -220,12 +267,30 @@
     form.addEventListener("submit", function (event) {
       event.preventDefault();
       if (!form.reportValidity()) return;
-      var payload = Object.assign({}, action.args || {});
-      fields.forEach(function (field) { payload[field.name] = form.elements[field.name].value; });
-      submit.disabled = true;
-      requestBoundedAction("preview", { action_id: action.action_id, payload: payload }).then(function () {
-        return requestBoundedAction("execute", { action_id: action.action_id, payload: payload });
-      }).then(function () { window.location.reload(); }).catch(function (error) { message.textContent = error.message; submit.disabled = false; });
+      var payload = currentPayload();
+      preview.disabled = true;
+      requestBoundedAction("preview", { action_id: action.action_id, payload: payload }).then(function (data) {
+        previewPayload = JSON.stringify(payload);
+        confirmationLabel.textContent = action.confirmation || labels.confirmation;
+        confirmation.classList.remove("d-none");
+        execute.classList.remove("d-none");
+        message.textContent = previewResultText(data);
+      }).catch(function (error) {
+        message.textContent = error.message;
+      }).finally(function () {
+        preview.disabled = false;
+      });
+    });
+    execute.addEventListener("click", function () {
+      var payload = currentPayload();
+      if (!confirmationInput.checked || previewPayload !== JSON.stringify(payload)) return;
+      execute.disabled = true;
+      requestBoundedAction("execute", { action_id: action.action_id, payload: payload }).then(function () {
+        window.location.reload();
+      }).catch(function (error) {
+        message.textContent = error.message;
+        execute.disabled = false;
+      });
     });
     document.body.appendChild(root);
     if (modal) {

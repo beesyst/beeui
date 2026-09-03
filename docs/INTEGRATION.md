@@ -179,7 +179,8 @@ BeeCap-side adapter отвечает за:
 - constructing product-neutral chart and data table layout blocks;
 - keeping product/business semantics outside BeeUI;
 - passing only normalized presentation data to BeeUI;
-- implementing bounded action callbacks (future scope).
+- implementing product-owned bounded action callbacks when the product exposes
+  an explicit `data_table` bounded action.
 
 ## Что BeeUI не должен делать во время интеграции
 
@@ -528,3 +529,7 @@ Extends `base.html` with the same shell context (theme, layout, locale, navigati
 - POST routes на config/action endpoints защищены auth + CSRF + role check.
 - Product callbacks не вызываются до прохождения auth/CSRF.
 - Secrets из `config/settings.yml` не попадают в HTML/API/logs.
+- For `data_table` bounded actions, BeeUI owns escaped presentation plus the
+  auth/role/CSRF transport; the product owns action semantics, validation,
+  authorization, mutation, and audit. The browser requires Preview, separate
+  confirmation, and Execute, but confirmation does not grant authority.
