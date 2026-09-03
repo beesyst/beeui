@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.29.0](https://github.com/beesyst/beeui/compare/beeui-v0.28.0...beeui-v0.29.0) (2026-09-03)
+
+
+### Features
+
+* add bounded table actions and ROP sender blacklist ([66ad157](https://github.com/beesyst/beeui/commit/66ad157ffca319e2cc4b1cfd4eca8a2bf379c0c9))
+
+
+### Bug Fixes
+
+* finalize bounded data table actions ([7b8be1f](https://github.com/beesyst/beeui/commit/7b8be1f774369c40bc0cd0a4e2d7ae8e95b51ad4))
+* polish bounded table action UI ([d330fe0](https://github.com/beesyst/beeui/commit/d330fe0db4b98c85f2cae56a6349822a08a6cbde))
+* **tables:** finalize bounded direct actions ([7748f7c](https://github.com/beesyst/beeui/commit/7748f7cb36b570383bd645167b781fed6e9e765f))
+
 ## [0.28.0](https://github.com/beesyst/beeui/compare/beeui-v0.27.0...beeui-v0.28.0) (2026-08-30)
 
 
