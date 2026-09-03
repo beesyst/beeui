@@ -73,12 +73,12 @@
 | --: | -------------------------------------------------------- | ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
 |   0 | Проверить, что рабочая папка чистая и ты на нужной ветке | `git status`                                   | `On branch main` (или другая) + `working tree clean` = всё ок. Если есть “Changes not staged…” — есть незакоммиченные изменения. |
 |   1 | Посмотреть локальные ветки и текущую ветку               | `git branch`                                   | Текущая ветка помечена `*` (например `* main`).                                                                                  |
-|   2 | Создать новую ветку под задачу и переключиться на неё    | `git switch -c docs/contributing`            | Git переключит тебя на новую ветку. Проверка: `git status` покажет `On branch docs/contributing`.                                |
+|   2 | Создать новую ветку под задачу и переключиться на неё    | `git switch -c docs/contributing`              | Git переключит тебя на новую ветку. Проверка: `git status` покажет `On branch docs/contributing`.                                |
 |   3 | Добавить нужный файл(ы) в индекс (staging)               | `git add docs/CONTRIBUTING.md`                 | После этого в `git status` файл будет в `Changes to be committed`.                                                               |
 |   4 | Создать коммит с правильным сообщением                   | `git commit -m "docs: add contributing guide"` | Git создаст коммит и покажет, сколько файлов изменено.                                                                           |
 |   5 | Запушить ветку на GitHub и “привязать” upstream          | `git push -u origin docs/contributing`         | Ветка появится на GitHub. `-u` позволит дальше пушить просто `git push`.                                                         |
 |   6 | Открыть PR на GitHub и влить в `main`                    | _(в браузере)_ PR → **Squash and merge**       | После мержа изменения окажутся в `main`. Обычно ветку можно удалить кнопкой “Delete branch”.                                     |
-|   7 | Обновить локальный `main` после мержа PR                 | `git switch main` + `git pull`               | Локальный `main` подтянет изменения, которые ты влил через PR.                                                                   |
+|   7 | Обновить локальный `main` после мержа PR                 | `git switch main` + `git pull`                 | Локальный `main` подтянет изменения, которые ты влил через PR.                                                                   |
 |   8 | Посмотреть удалённые ветки (origin)                      | `git branch -r`                                | Список веток на сервере, например `origin/main`, `origin/docs/contributing`.                                                     |
 |   9 | Посмотреть все ветки (локальные + удалённые)             | `git branch -a`                                | Полный список: локальные + `remotes/origin/...`.                                                                                 |
 |  10 | (Опционально) Удалить локальную ветку после мержа        | `git branch -d docs/contributing`              | Удалит ветку локально, если она уже смержена. Если не даёт — значит не смержена.                                                 |
@@ -163,7 +163,7 @@ uv publish
 
 ```
 git fetch origin
-git worktree add -b review/pr-141 ../beeui-pr141 origin/feat/137-local_env_and_auth_diagnostics
+git worktree add -b review/pr141 ../beeui-pr141 origin/feat/137-local_env_and_auth_diagnostics
 cd ../beeui-pr141
 code .
 git status
@@ -237,7 +237,7 @@ git push --force-with-lease origin HEAD:feat/137-local_env_and_auth_diagnostics
 ```
 cd ../beeui
 git worktree remove ../beeui-pr141
-git branch -D review/pr-141
+git branch -D review/pr141
 git switch main
 git pull --ff-only
 ```
