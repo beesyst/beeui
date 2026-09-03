@@ -1404,10 +1404,13 @@ def _normalize_table_action(raw: dict[str, Any]) -> dict[str, Any] | None:
     if not isinstance(action_id, str) or not _DATA_TABLE_ID_PATTERN.fullmatch(action_id):
         return None
     label = _display_value(raw.get("label"), default="")
-    if not label:
+    if not label or len(label) > 256:
         return None
     description = _display_value(raw.get("description"), default="")
     if len(description) > 512:
+        return None
+    confirmation = _display_value(raw.get("confirmation"), default="")
+    if len(confirmation) > 512:
         return None
     args_raw = raw.get("args", {})
     if not isinstance(args_raw, dict) or len(args_raw) > 10:
@@ -1445,6 +1448,7 @@ def _normalize_table_action(raw: dict[str, Any]) -> dict[str, Any] | None:
         "action_id": action_id,
         "label": label,
         "description": description,
+        "confirmation": confirmation,
         "args": args,
         "fields": fields,
     }

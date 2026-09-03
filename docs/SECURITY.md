@@ -473,6 +473,13 @@ Actions must not:
 
 Every action attempt should produce an audit artifact when action auditing is enabled.
 
+For generic `data_table` presentation, adapter metadata is limited to explicit
+action IDs, controlled escaped labels, bounded string args, text/email fields,
+and optional bounded confirmation text. BeeUI never accepts an action URL,
+arbitrary HTML, or JavaScript. Preview and explicit browser confirmation reduce
+accidental execution but do not replace product authorization, validation, CSRF,
+or audit.
+
 ## Auth/session security rules
 
 When auth is enabled:

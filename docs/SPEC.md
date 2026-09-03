@@ -838,8 +838,8 @@ beeui/
 
 - проверить наличие `uv`;
 - установить `uv`, если отсутствует;
-- выполнить `uv sync --frozen --extra dev`;
-- запустить `uv run --frozen --extra dev python config/start.py "$@"`;
+- выполнить `uv sync --frozen --group dev`;
+- запустить `uv run --frozen --group dev python config/start.py "$@"`;
 - не изменять `uv.lock` без явного действия разработчика.
 
 ### 20.2 `config/start.py`

@@ -589,6 +589,164 @@ def test_operator_can_call_action_preview() -> None:
     assert response.status_code not in (401, 403)
 
 
+def test_bounded_action_routes_enforce_transport_boundary() -> None:
+    settings = load_settings(settings_path())
+    settings["auth"] = _make_auth_settings(enabled=True)
+    settings["features"]["operator_actions"] = True
+    calls: list[tuple[str, str]] = []
+
+    class ActionAdapter(ProductUiAdapterBase):
+        def __init__(self) -> None:
+            super().__init__(
+                AdapterMetadata(product_id="test", title="Test", version="1.0")
+            )
+
+        def preview_action(
+            self, action_id: str, payload: dict
+        ) -> AdapterResult | AdapterErrorResult:
+            calls.append(("preview", action_id))
+            if action_id != "safe_action":
+                return error_result("not_found", "Unknown action")
+            return ok_result({"preview": "safe"})
+
+        def execute_action(
+            self, action_id: str, payload: dict, actor: dict | None = None
+        ) -> AdapterResult | AdapterErrorResult:
+            calls.append(("execute", action_id))
+            if action_id != "safe_action":
+                return error_result("not_found", "Unknown action")
+            return ok_result({"executed": True})
+
+        def get_dashboard(self) -> AdapterResult | AdapterErrorResult:
+            return ok_result({})
+
+        def list_runs(self) -> AdapterResult | AdapterErrorResult:
+            return ok_result([])
+
+        def get_run(self, run_id: str) -> AdapterResult | AdapterErrorResult:
+            return ok_result({"id": run_id})
+
+        def list_artifacts(self, run_id: str) -> AdapterResult | AdapterErrorResult:
+            return ok_result([])
+
+        def read_artifact(
+            self, run_id: str, artifact_id: str
+        ) -> AdapterResult | AdapterErrorResult:
+            return ok_result({})
+
+        def get_config_read_model(self) -> AdapterResult | AdapterErrorResult:
+            return ok_result({})
+
+    client = TestClient(create_beeui_app(settings=settings, adapter=ActionAdapter()))
+    request = {"action_id": "safe_action", "payload": {"email": "safe@example.test"}}
+
+    assert client.post("/api/actions/preview", json=request).status_code == 401
+    assert calls == []
+
+    _set_viewer_session(client)
+    viewer_csrf = client.get("/auth/csrf").json()["data"]["csrf_token"]
+    assert (
+        client.post(
+            "/api/actions/execute",
+            json=request,
+            headers={"X-CSRF-Token": viewer_csrf},
+        ).status_code
+        == 403
+    )
+    assert calls == []
+
+    client.cookies.clear()
+    _login(client, token=_TEST_OPERATOR_TOKEN)
+    assert client.post("/api/actions/preview", json=request).status_code == 403
+    assert calls == []
+    assert (
+        client.post(
+            "/api/actions/execute",
+            json=request,
+            headers={"X-CSRF-Token": "invalid"},
+        ).status_code
+        == 403
+    )
+    assert calls == []
+
+    csrf = client.get("/auth/csrf").json()["data"]["csrf_token"]
+    assert (
+        client.post(
+            "/api/actions/preview",
+            json=request,
+            headers={"X-CSRF-Token": csrf},
+        ).status_code
+        == 200
+    )
+    assert calls == [("preview", "safe_action")]
+    assert (
+        client.post(
+            "/api/actions/preview",
+            content=b"[]",
+            headers={"X-CSRF-Token": csrf, "Content-Type": "application/json"},
+        ).status_code
+        == 400
+    )
+    assert calls == [("preview", "safe_action")]
+    unknown = client.post(
+        "/api/actions/preview",
+        json={"action_id": "unknown", "payload": {}},
+        headers={"X-CSRF-Token": csrf},
+    )
+    assert unknown.status_code >= 400
+    assert calls == [("preview", "safe_action"), ("preview", "unknown")]
+    assert client.get("/api/actions/execute").status_code == 405
+    assert calls == [("preview", "safe_action"), ("preview", "unknown")]
+    assert (
+        client.post(
+            "/api/actions/execute",
+            json=request,
+            headers={"X-CSRF-Token": csrf},
+        ).status_code
+        == 200
+    )
+    assert calls == [
+        ("preview", "safe_action"),
+        ("preview", "unknown"),
+        ("execute", "safe_action"),
+    ]
+
+    prefixed_settings = load_settings(settings_path())
+    prefixed_settings["auth"] = _make_auth_settings(enabled=True)
+    prefixed_settings["features"]["operator_actions"] = True
+    prefixed_settings["web"]["route_prefix"] = "/bee"
+    prefixed_client = TestClient(
+        create_beeui_app(settings=prefixed_settings, adapter=ActionAdapter())
+    )
+    _login(prefixed_client, token=_TEST_OPERATOR_TOKEN, route_prefix="/bee")
+    prefixed_csrf = prefixed_client.get("/bee/auth/csrf").json()["data"]["csrf_token"]
+    assert (
+        prefixed_client.post(
+            "/bee/api/actions/preview",
+            json=request,
+            headers={"X-CSRF-Token": prefixed_csrf},
+        ).status_code
+        == 200
+    )
+
+    mounted_settings = load_settings(settings_path())
+    mounted_settings["auth"] = _make_auth_settings(enabled=True)
+    mounted_settings["features"]["operator_actions"] = True
+    parent = FastAPI()
+    mount_beeui(parent, path="/ui", settings=mounted_settings, adapter=ActionAdapter())
+    mounted_client = TestClient(parent)
+    _login(mounted_client, token=_TEST_OPERATOR_TOKEN, route_prefix="/ui")
+    mounted_csrf = mounted_client.get("/ui/auth/csrf").json()["data"]["csrf_token"]
+    assert (
+        mounted_client.post(
+            "/ui/api/actions/preview",
+            json=request,
+            headers={"X-CSRF-Token": mounted_csrf},
+        ).status_code
+        == 200
+    )
+
+
 def test_no_adapter_call_when_unauthenticated() -> None:
     settings = load_settings(settings_path())
     settings["auth"] = _make_auth_settings(enabled=True)

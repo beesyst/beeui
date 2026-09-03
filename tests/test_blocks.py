@@ -2804,6 +2804,68 @@ def test_layout_data_table_actions_unsafe_link_rejected() -> None:
     assert cell["items"][0]["href"] == "/runs/001"
 
 
+def test_layout_data_table_bounded_action_normalizes_confirmation_and_fields() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "data_table",
+                "title": "Actions",
+                "width": 12,
+                "toolbar": {
+                    "actions": [
+                        {
+                            "action_id": "add_sender",
+                            "label": "Add sender",
+                            "confirmation": "Confirm sender addition",
+                            "args": {"source": "manual"},
+                            "fields": [
+                                {"name": "sender", "type": "text", "max_length": 12},
+                                {"name": "email", "type": "email", "max_length": 999},
+                            ],
+                        }
+                    ]
+                },
+                "columns": [{"key": "a", "label": "", "cell": "actions"}],
+                "rows": [{"a": [{"action_id": "remove_sender", "label": "Remove"}]}],
+            }
+        ]
+    )
+
+    toolbar_action = result[0]["toolbar"]["actions"][0]
+    row_action = result[0]["rows"][0]["a"]["items"][0]
+    assert toolbar_action["confirmation"] == "Confirm sender addition"
+    assert toolbar_action["fields"] == [
+        {"name": "sender", "type": "text", "label": "sender", "required": True, "max_length": 12},
+        {"name": "email", "type": "email", "label": "email", "required": True, "max_length": 254},
+    ]
+    assert row_action["action_id"] == "remove_sender"
+    assert row_action["confirmation"] == ""
+
+
+def test_layout_data_table_bounded_action_rejects_unsafe_metadata() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "data_table",
+                "title": "Actions",
+                "width": 12,
+                "toolbar": {
+                    "actions": [
+                        {"action_id": "safe", "label": "S" * 257},
+                        {"action_id": "unsafe", "label": "Unsafe", "confirmation": "C" * 513},
+                        {"action_id": "bad_field", "label": "Bad", "fields": [{"name": "x", "type": "url"}]},
+                        {"label": "External", "href": "https://example.test/action"},
+                    ]
+                },
+                "columns": [{"key": "value", "label": "Value"}],
+                "rows": [{"value": "ok"}],
+            }
+        ]
+    )
+
+    assert result[0]["toolbar"]["actions"] == []
+
+
 def test_layout_data_table_missing_values_render_na() -> None:
     result = render_layout(
         [

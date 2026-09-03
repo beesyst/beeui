@@ -1720,8 +1720,9 @@ def test_data_table_bounded_actions_render_only_valid_metadata() -> None:
                                 "actions": [
                                     {
                                         "action_id": "add_email",
-                                        "label": "Add email",
-                                        "description": "The sender will be blocked.",
+                                        "label": "Add <email>",
+                                        "description": "The sender will be <blocked>.",
+                                        "confirmation": "Confirm <email> blocking.",
                                         "fields": [
                                             {
                                                 "name": "email",
@@ -1755,10 +1756,26 @@ def test_data_table_bounded_actions_render_only_valid_metadata() -> None:
     assert response.status_code == 200
     assert response.text.count("data-beeui-bounded-action") == 2
     assert "Invalid action" not in response.text
-    assert "The sender will be blocked." in response.text
+    assert "The sender will be <blocked>." not in response.text
+    assert "Confirm \\u003cemail\\u003e blocking." in response.text
+    assert "Add &lt;email&gt;" in response.text
     assert "beeui-table-actions-cell" in response.text
     assert "justify-content-end" in response.text
     assert '"type": "email"' in response.text
+
+
+def test_bounded_action_browser_flow_requires_preview_and_confirmation() -> None:
+    source = (
+        Path(__file__).resolve().parents[1]
+        / "src/beeui_module/web/static/js/beeui.js"
+    ).read_text(encoding="utf-8")
+
+    assert 'requestBoundedAction("preview", { action_id: action.action_id, payload: payload })' in source
+    assert 'return requestBoundedAction("execute", { action_id: action.action_id, payload: payload });' not in source
+    assert "confirmationInput.checked" in source
+    assert "previewPayload !== JSON.stringify(payload)" in source
+    assert 'execute.addEventListener("click"' in source
+    assert "message.textContent = previewResultText(data);" in source
 
 
 def test_runs_layout_wrapper_preserves_list_api_contract() -> None:
