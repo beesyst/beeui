@@ -332,9 +332,9 @@ Products should pass only safe internal paths for:
 
 For adapter-backed `data_table`, product may provide optional safe stable `id` metadata and `pagination.page_size` links. With `id`, BeeUI enhances only the table's own explicit controls through a same-origin GET and requires the response to contain the same identity before replacement. Product continues to interpret the query and returns the authoritative filtered/sorted/paginated layout. The normal href/form GET path remains the fallback; do not rely on BeeUI for product filter semantics or emit adapter-provided selectors or JavaScript.
 
-Configured product pages may opt into `pages[].tabs.progressive: true`. Product still provides canonical safe internal tab `href` values and server-rendered GET responses; it does not provide browser code, tab caches or SPA state. BeeUI replaces only its matching page-tabs surface, initializes its own controlled live-table, Datepicker and chart components, and falls back to normal navigation for failure or unsafe destinations. Optional `items[].icon` is a BeeUI-controlled identifier, not product SVG/HTML.
+Configured product pages may opt into `pages[].tabs.progressive: true`. Product still provides canonical safe internal tab `href` values and server-rendered GET responses; it does not provide browser code, tab caches or SPA state. BeeUI replaces only its matching page-tabs surface, initializes its own controlled live-table, Datepicker and chart components, and falls back to normal navigation for failure or unsafe destinations. Tab variants are `default`, `reverse`, `fill`, `icons`, `fill_icons`, `compact_fill_icons` and `dropdown`; `compact_fill_icons` is the generic compact icon/fill presentation. Optional `items[].icon` is a BeeUI-controlled identifier, not product SVG/HTML/CSS/JS.
 
-BeeUI owns the controlled tab icon registry: product supplies only a safe identifier (`dashboard`, `runs`, `list`, `reports`, `chart`, `calendar`, `queue`, `messages`, `ai`, `source`, `attachment`, `evidence`, `integration`, `recommendation`). BeeUI renders its own exact Tabler Icons 2.x outline SVG geometry inline (no CDN, no external asset), with `class="icon me-2"` spacing between icon and label in every tab state. Unknown safe identifier renders no icon; raw SVG/HTML/CSS/JS from config is rejected by validation and never rendered. The registry is product-neutral — no ROP/BeeAgent/Bitrix identifiers are added.
+BeeUI owns the controlled tab icon registry: product supplies only a safe identifier (`dashboard`, `runs`, `list`, `reports`, `chart`, `calendar`, `queue`, `messages`, `ai`, `source`, `attachment`, `evidence`, `integration`, `recommendation`, `ban`). BeeUI renders its own exact Tabler Icons 2.x outline SVG geometry inline (no CDN, no external asset), with `class="icon me-2"` spacing between icon and label in every tab state, including `compact_fill_icons`. Unknown safe identifier renders no icon; raw SVG/HTML/CSS/JS from config is rejected by validation and never rendered. The registry is product-neutral — no ROP/BeeAgent/Bitrix identifiers are added.
 
 All synchronous `ProductUiAdapter` methods invoked by BeeUI async routes run through one generic async-safe BeeUI boundary. Product method signatures and result/error envelopes do not change; adapters remain responsible for read-model construction, validation, authority and product semantics.
 
@@ -531,5 +531,9 @@ Extends `base.html` with the same shell context (theme, layout, locale, navigati
 - Secrets из `config/settings.yml` не попадают в HTML/API/logs.
 - For `data_table` bounded actions, BeeUI owns escaped presentation plus the
   auth/role/CSRF transport; the product owns action semantics, validation,
-  authorization, mutation, and audit. The browser requires Preview, separate
-  confirmation, and Execute, but confirmation does not grant authority.
+  authorization, mutation, and audit. The default browser flow requires Preview,
+  separate confirmation, and Execute. Explicit bounded `direct_execute` uses
+  the same transport for a form or controlled inline-row edit, but neither
+  presentation flow grants authority. A successful direct table mutation refreshes
+  only the matching live table; a failed refresh remains bounded and visible
+  without document navigation.

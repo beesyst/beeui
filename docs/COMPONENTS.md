@@ -97,9 +97,11 @@ Iteration 13.16 additionally permits explicit bounded operator actions in
 `toolbar.actions[]` and `actions` cells. An action must provide `action_id`,
 `label`, optional bounded `description`, `confirmation` and string `args`, and
 optional `text` or `email` fields. `href` actions remain GET-only and unchanged.
-BeeUI presents Preview, then a separate explicit confirmation and Execute action
-through its protected endpoints; the product owns validation, authorization,
-mutation, and audit.
+The default `preview_confirm_execute` flow presents Preview, then separate
+confirmation and Execute through protected endpoints. Explicit bounded
+`direct_execute` supports the same transport for a form or controlled inline-row
+edit and refreshes only its identified live table; the product owns validation,
+authorization, mutation, and audit.
 
 Начиная с Iteration 13.12 toolbar рендерится внутри card-header как часть единой канонической карточки. Column chooser использует горизонтальное многоточие (`icon-tabler-dots`). Malformed columns/rows сохраняют canonical shell, toolbar и показывают bounded degraded сообщение.
 
@@ -424,13 +426,13 @@ Invalid adapter values degrade to default 4 (no 500). Это поле относ
 
 `pages[].tabs` сохраняет URL-driven `<a href>` contract. Optional `progressive: true` добавляет progressive enhancement только для enabled tabs: BeeUI fetches same-origin canonical GET response, replaces only the matching `.beeui-page-tabs-card` surface and updates History after a successful replacement. Without JavaScript, for `progressive: false`, on an unsafe/cross-origin URL, malformed response or fetch failure, browser uses the canonical navigation.
 
-`items[].icon` is optional and accepts only a safe identifier. For `icons` and `fill_icons`, BeeUI renders only its own controlled Tabler-style SVG mapping. Unknown identifiers render no icon; raw SVG and HTML are rejected by config validation and are never rendered.
+`items[].icon` is optional and accepts only a safe identifier. For `icons`, `fill_icons` and `compact_fill_icons`, BeeUI renders only its own controlled Tabler-style SVG mapping; the compact variant is the generic compact icon/fill presentation. Unknown identifiers render no icon; raw SVG/HTML/CSS/JS are rejected by config validation and are never rendered.
 
 #### Controlled tab icon registry
 
 BeeUI owns the tab icon SVG glyphs. Products supply only a safe identifier; raw SVG/HTML/CSS/JS from config is rejected and never rendered.
 
-The glyph bodies are exact Tabler Icons 2.x outline geometry, embedded inline in BeeUI (no CDN or external asset). Icon and label are separated with the Tabler spacing utility `class="icon me-2"` in every tab state (active, inactive, disabled, `icons` and `fill_icons`, progressive or not, localized or not).
+The glyph bodies are exact Tabler Icons 2.x outline geometry, embedded inline in BeeUI (no CDN or external asset). Icon and label are separated with the Tabler spacing utility `class="icon me-2"` in every tab state (active, inactive, disabled, `icons`, `fill_icons` and `compact_fill_icons`, progressive or not, localized or not).
 
 | BeeUI identifier | Tabler icon | Semantic concept      |
 | ---------------- | ----------- | --------------------- |
@@ -448,6 +450,7 @@ The glyph bodies are exact Tabler Icons 2.x outline geometry, embedded inline in
 | `evidence`       | search      | evidence / search     |
 | `integration`    | link        | integration / link    |
 | `recommendation` | bulb        | recommendation / idea |
+| `ban`            | ban         | generic restriction   |
 
 Rules:
 

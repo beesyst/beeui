@@ -1412,6 +1412,17 @@ def _normalize_table_action(raw: dict[str, Any]) -> dict[str, Any] | None:
     confirmation = _display_value(raw.get("confirmation"), default="")
     if len(confirmation) > 512:
         return None
+    flow = raw.get("flow", "preview_confirm_execute")
+    if flow not in {"preview_confirm_execute", "direct_execute"}:
+        return None
+    icon = raw.get("icon", "")
+    if icon not in {"", "edit", "trash", "device-floppy", "x"}:
+        return None
+    inline_edit = raw.get("inline_edit", False)
+    if not isinstance(inline_edit, bool):
+        return None
+    if inline_edit and (flow != "direct_execute" or not icon):
+        return None
     args_raw = raw.get("args", {})
     if not isinstance(args_raw, dict) or len(args_raw) > 10:
         return None
@@ -1422,8 +1433,11 @@ def _normalize_table_action(raw: dict[str, Any]) -> dict[str, Any] | None:
         if not isinstance(value, str) or len(value) > 256:
             return None
         args[key] = value
+    fields_raw = raw.get("fields", [])
+    if not isinstance(fields_raw, list) or len(fields_raw) > 10:
+        return None
     fields: list[dict[str, Any]] = []
-    for field in _safe_dict_list(raw.get("fields")):
+    for field in _safe_dict_list(fields_raw):
         name = field.get("name")
         field_type = field.get("type")
         if (
@@ -1435,13 +1449,20 @@ def _normalize_table_action(raw: dict[str, Any]) -> dict[str, Any] | None:
         max_length = field.get("max_length", 254)
         if not isinstance(max_length, int) or isinstance(max_length, bool):
             return None
+        value = field.get("value", field.get("initial", ""))
+        if not isinstance(value, str) or len(value) > min(max(max_length, 1), 254):
+            return None
+        field_label = _display_value(field.get("label"), default=name)
+        if len(field_label) > 256:
+            return None
         fields.append(
             {
                 "name": name,
                 "type": field_type,
-                "label": _display_value(field.get("label"), default=name),
+                "label": field_label,
                 "required": bool(field.get("required", True)),
                 "max_length": min(max(max_length, 1), 254),
+                "value": value,
             }
         )
     return {
@@ -1449,6 +1470,9 @@ def _normalize_table_action(raw: dict[str, Any]) -> dict[str, Any] | None:
         "label": label,
         "description": description,
         "confirmation": confirmation,
+        "flow": flow,
+        "icon": icon,
+        "inline_edit": inline_edit,
         "args": args,
         "fields": fields,
     }

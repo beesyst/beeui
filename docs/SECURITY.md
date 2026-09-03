@@ -475,10 +475,11 @@ Every action attempt should produce an audit artifact when action auditing is en
 
 For generic `data_table` presentation, adapter metadata is limited to explicit
 action IDs, controlled escaped labels, bounded string args, text/email fields,
-and optional bounded confirmation text. BeeUI never accepts an action URL,
-arbitrary HTML, or JavaScript. Preview and explicit browser confirmation reduce
+optional bounded confirmation text, and an allowlisted action flow. BeeUI never accepts an action URL,
+arbitrary HTML, or JavaScript. The default preview and explicit browser confirmation reduce
 accidental execution but do not replace product authorization, validation, CSRF,
-or audit.
+or audit. Explicit `direct_execute` remains limited to the same protected endpoint;
+its table refresh failure never creates navigation authority.
 
 ## Auth/session security rules
 

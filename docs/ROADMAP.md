@@ -6638,10 +6638,12 @@ Existing consumers без `progressive` продолжают работать б
 - расширить canonical `data_table` opt-in bounded action contract для toolbar actions и row actions;
 - сохранить существующие GET/href actions обратно совместимыми;
 - поддержать explicit `action_id`, controlled label, optional bounded confirmation и bounded args;
-- поддержать минимальные interactive fields v1: `text` и `email`;
+- поддержать минимальные interactive fields v1: `text` и `email`, включая bounded initial/default values;
 - использовать существующие `POST /api/actions/preview` и `POST /api/actions/execute`;
 - использовать существующий CSRF contract;
-- выполнить preview, separate explicit confirmation и execute для interactive action flow;
+- сохранить default `preview_confirm_execute`: Preview, separate explicit confirmation и Execute;
+- поддержать explicit opt-in `direct_execute`: protected Execute без browser Preview/confirmation для toolbar form и controlled inline-row edit;
+- поддержать controlled icon-only row actions и strict table-only refresh после successful direct table mutation без document reload;
 - поддержать route prefix и embedded mount;
 - безопасно отображать success/validation/denied/error result;
 - валидировать action presentation payload fail-safe;
@@ -6667,7 +6669,7 @@ Existing consumers без `progressive` продолжают работать б
 
 #### Deliverable
 
-Generic BeeUI `data_table` contract позволяет product adapter/render payload безопасно выразить bounded toolbar or row operator action, включая минимальный email/text input flow, optional bounded confirmation presentation, preview, explicit confirmation и execution через existing protected action endpoints.
+Generic BeeUI `data_table` contract позволяет product adapter/render payload безопасно выразить bounded toolbar or row operator action, включая bounded email/text fields, initial/default values, controlled icons и generic inline-row edit. Default `preview_confirm_execute` сохраняет Preview, explicit confirmation и Execute. Explicit opt-in `direct_execute` использует только protected Execute без browser Preview/confirmation; successful direct table mutation обновляет только matching live table, а bounded refresh failure остаётся visible без document navigation. Server auth/role/CSRF/product validation остаются authoritative.
 
 Existing GET tables/actions remain backward-compatible.
 
@@ -6681,7 +6683,9 @@ Existing GET tables/actions remain backward-compatible.
 - interactive email/text field values are bounded and escaped;
 - unknown/malformed action presentation degrades safely;
 - no mutation is possible through GET;
-- action flow performs preview, explicit confirmation and then execute;
+- default action flow performs preview, explicit confirmation and then execute;
+- explicit direct action calls protected Execute without browser preview or confirmation and never reloads the document after successful table mutation;
+- direct refresh failure remains visibly bounded and does not navigate the document;
 - unsafe/external URLs are not accepted as action destinations;
 - arbitrary HTML/JS cannot be supplied through action metadata;
 - route prefix is applied correctly;
@@ -6707,7 +6711,8 @@ Targeted checks:
 - operator + valid CSRF → callback invoked;
 - invalid/missing CSRF → callback not invoked;
 - malformed/unknown action → bounded error/degraded state;
-- preview → confirmation → execute flow;
+- default preview → confirmation → execute flow and direct execute flow;
+- direct table refresh success/failure without document navigation;
 - route-prefix behavior;
 - embedded mount behavior;
 - GET does not mutate;
@@ -6725,7 +6730,8 @@ SCA is not required if dependencies do not change.
 - tests pass;
 - route-prefix/embedded behavior verified;
 - CSRF/role boundary verified;
-- action payload remains bounded;
+- action payload and field presentation remain bounded;
+- default and direct flows remain explicit and backward-compatible;
 - docs updated where public contract changed;
 - no new dependency unless separately justified;
 - `pyproject.toml.version` not changed;
