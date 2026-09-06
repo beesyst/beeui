@@ -598,6 +598,11 @@ body {
   font-size: 0.875rem;
 }
 
+.beeui-modal-text {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 /* No-data placeholder for empty sections */
 .beeui-no-data {
   font-style: italic;
