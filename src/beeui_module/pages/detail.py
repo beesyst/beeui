@@ -54,8 +54,23 @@ def _apply_preserved_params_to_sections(
 ) -> list[dict[str, Any]]:
     updated_sections: list[dict[str, Any]] = []
     for section in sections:
-        if section.get("kind") not in {"links", "table"}:
+        if section.get("kind") not in {"links", "table", "key_value"}:
             updated_sections.append(section)
+            continue
+
+        if section.get("kind") == "key_value":
+            key_value_items: list[dict[str, Any]] = []
+            for item in section.get("items", []):
+                if not isinstance(item, dict):
+                    continue
+                updated_item = dict(item)
+                href = updated_item.get("href")
+                if isinstance(href, str) and href:
+                    updated_item["href"] = (
+                        add_preserved_params_to_href(href, current_params) or ""
+                    )
+                key_value_items.append(updated_item)
+            updated_sections.append({**section, "items": key_value_items})
             continue
 
         if section.get("kind") == "table":
@@ -173,6 +188,9 @@ def _normalize_key_value_section(section: dict[str, Any]) -> dict[str, Any] | No
         normalized["tone"] = tone
         display = item.get("display")
         normalized["display"] = _display_value(display, default=normalized["value"])
+        href = _validate_internal_href(item.get("href"))
+        if href:
+            normalized["href"] = href
         normalized["collapsible"] = (
             bool(item.get("collapsible", False)) and variant == "long_text"
         )
