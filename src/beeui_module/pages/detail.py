@@ -54,8 +54,30 @@ def _apply_preserved_params_to_sections(
 ) -> list[dict[str, Any]]:
     updated_sections: list[dict[str, Any]] = []
     for section in sections:
-        if section.get("kind") != "links":
+        if section.get("kind") not in {"links", "table"}:
             updated_sections.append(section)
+            continue
+
+        if section.get("kind") == "table":
+            columns = section.get("columns", [])
+            rows: list[dict[str, Any]] = []
+            for row in section.get("rows", []):
+                if not isinstance(row, dict):
+                    continue
+                updated_row = dict(row)
+                for column in columns:
+                    if not isinstance(column, dict) or column.get("cell") != "link":
+                        continue
+                    key = column.get("key")
+                    cell = row.get(key) if isinstance(key, str) else None
+                    if not isinstance(cell, dict):
+                        continue
+                    href = cell.get("href")
+                    if isinstance(href, str) and href:
+                        href = add_preserved_params_to_href(href, current_params) or ""
+                    updated_row[key] = {**cell, "href": href or ""}
+                rows.append(updated_row)
+            updated_sections.append({**section, "rows": rows})
             continue
 
         items: list[dict[str, str]] = []
@@ -198,18 +220,27 @@ def _normalize_table_section(section: dict[str, Any]) -> dict[str, Any] | None:
             {
                 "key": key.strip(),
                 "label": _display_value(col.get("label"), default=key.strip()),
+                "cell": "link" if col.get("cell") == "link" else "text",
             }
         )
     if not columns:
         return None
 
-    rows: list[dict[str, str]] = []
+    rows: list[dict[str, Any]] = []
     for row in raw_rows:
         if not isinstance(row, dict):
             continue
-        safe_row: dict[str, str] = {}
+        safe_row: dict[str, Any] = {}
         for col in columns:
-            safe_row[col["key"]] = _display_value(row.get(col["key"]))
+            value = row.get(col["key"])
+            if col["cell"] == "link":
+                cell = value if isinstance(value, dict) else {}
+                safe_row[col["key"]] = {
+                    "label": _display_value(cell.get("label", value)),
+                    "href": _validate_internal_href(cell.get("href")) or "",
+                }
+            else:
+                safe_row[col["key"]] = _display_value(value)
         rows.append(safe_row)
 
     return {
@@ -354,6 +385,18 @@ def render_beeui_detail_page(
                 and item["href"]
             ):
                 item["href"] = prefix_internal_href(external_prefix, item["href"])
+        if section.get("kind") == "table":
+            for row in section.get("rows", []):
+                if not isinstance(row, dict):
+                    continue
+                for column in section.get("columns", []):
+                    if not isinstance(column, dict) or column.get("cell") != "link":
+                        continue
+                    cell = row.get(column.get("key"))
+                    if isinstance(cell, dict) and isinstance(cell.get("href"), str):
+                        cell["href"] = prefix_internal_href(
+                            external_prefix, cell["href"]
+                        )
 
     context = {
         "route_prefix": external_prefix,
