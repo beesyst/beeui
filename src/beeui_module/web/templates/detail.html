@@ -131,7 +131,16 @@
                   {% for row in section["rows"] %}
                   <tr>
                     {% for col in section["columns"] %}
-                    <td>{{ row[col["key"]] }}</td>
+                    <td>
+                      {% set cell = row[col["key"]] %}
+                      {% if col.get("cell") == "link" and cell["href"] %}
+                      <a href="{{ cell["href"] }}">{{ cell["label"] }}</a>
+                      {% elif col.get("cell") == "link" %}
+                      {{ cell["label"] }}
+                      {% else %}
+                      {{ cell }}
+                      {% endif %}
+                    </td>
                     {% endfor %}
                   </tr>
                   {% endfor %}

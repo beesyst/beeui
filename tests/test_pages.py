@@ -3208,12 +3208,18 @@ def test_detail_page_table_section_renders() -> None:
                 "title": "Rows",
                 "kind": "table",
                 "columns": [
-                    {"key": "name", "label": "Name"},
+                    {"key": "name", "label": "Name", "cell": "link"},
                     {"key": "value", "label": "Value"},
                 ],
                 "rows": [
-                    {"name": "Status", "value": "ok"},
-                    {"name": "Count", "value": "42"},
+                    {
+                        "name": {"label": "Status", "href": "/events/evt_001"},
+                        "value": "ok",
+                    },
+                    {
+                        "name": {"label": "Unsafe", "href": "javascript:alert(1)"},
+                        "value": "42",
+                    },
                 ],
             }
         ],
@@ -3236,6 +3242,8 @@ def test_detail_page_table_section_renders() -> None:
     assert "Name" in body
     assert "Value" in body
     assert "Status" in body
+    assert 'href="/events/evt_001"' in body
+    assert "javascript:alert" not in body
     assert "ok" in body
     assert "42" in body
 
