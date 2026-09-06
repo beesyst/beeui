@@ -14,6 +14,7 @@ _BEEUI_TRANSLATIONS: dict[str, dict[str, str]] = {
     "filter.any": {"en": "Any", "ru": "Любой"},
     "filter.apply": {"en": "Apply", "ru": "Применить"},
     "detail.show_text": {"en": "Show text", "ru": "Показать текст"},
+    "detail.close": {"en": "Close", "ru": "Закрыть"},
     "detail.unavailable": {"en": "Unavailable", "ru": "Недоступно"},
     "chart.title": {"en": "Chart", "ru": "График"},
     "chart.unit": {"en": "Unit:", "ru": "Ед.:"},

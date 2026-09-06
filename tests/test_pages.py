@@ -3648,6 +3648,12 @@ def test_detail_display_is_used_for_long_and_automatic_collapsible_content() -> 
                             "value": "RAW_AUTO_MARKER",
                             "display": "<i>" + ("safe" * 80) + "</i>",
                         },
+                        {
+                            "label": "Message text",
+                            "value": "RAW_MODAL_MARKER",
+                            "display": "<script>unsafe()</script>",
+                            "variant": "modal_text",
+                        },
                     ],
                 }
             ],
@@ -3662,7 +3668,11 @@ def test_detail_display_is_used_for_long_and_automatic_collapsible_content() -> 
 
     assert "RAW_LONG_MARKER" not in body
     assert "RAW_AUTO_MARKER" not in body
+    assert "RAW_MODAL_MARKER" not in body
     assert "&lt;b&gt;Safe long text&lt;/b&gt;" in body
+    assert 'data-bs-toggle="modal"' in body
+    assert "modal-dialog modal-xl modal-dialog-scrollable" in body
+    assert "&lt;script&gt;unsafe()&lt;/script&gt;" in body
     assert "&lt;i&gt;" in body
 
 
@@ -3827,6 +3837,7 @@ def test_beeui_translation_catalog_uses_configured_default_and_safe_fallback() -
     assert translate("chart.error", "unknown", "ru") == "Ошибка рендеринга графика"
     assert translate("unknown.key", "ru") == "unknown.key"
     assert translate("detail.show_text", "ru") == "Показать текст"
+    assert translate("detail.close", "ru") == "Закрыть"
 
 
 def test_mounted_locale_cookie_uses_effective_boundary_path() -> None:

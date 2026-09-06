@@ -30,6 +30,7 @@
     {% if has_sections %}
     <div class="row row-deck row-cards g-3">
       {% for section in sections %}
+        {% set section_index = loop.index0 %}
         {% if section["kind"] == "key_value" %}
         <div class="col-12 col-lg-6">
           <div class="card">
@@ -54,7 +55,26 @@
                   <div class="datagrid-content beeui-text-break">
                     {% set variant = item.get("variant", "text") %}
                     {% set tone = item.get("tone", "default") %}
-                    {% if variant == "long_text" and item.get("collapsible") %}
+                    {% if variant == "modal_text" %}
+                    {% set modal_id = "beeui-detail-text-" ~ section_index ~ "-" ~ loop.index0 %}
+                    <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#{{ modal_id }}">
+                      {{ translate("detail.show_text", locale) }}
+                    </button>
+                    <div class="modal modal-blur fade" id="{{ modal_id }}" tabindex="-1" aria-labelledby="{{ modal_id }}-title" aria-hidden="true">
+                      <div class="modal-dialog modal-xl modal-dialog-scrollable" role="document">
+                        <div class="modal-content">
+                          <div class="modal-header">
+                            <h5 class="modal-title" id="{{ modal_id }}-title">{{ item["label"] }}</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ translate("detail.close", locale) }}"></button>
+                          </div>
+                          <div class="modal-body beeui-modal-text">{{ item["display"] }}</div>
+                          <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ translate("detail.close", locale) }}</button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    {% elif variant == "long_text" and item.get("collapsible") %}
                     <details class="beeui-details">
                       <summary class="beeui-details-summary">
                         {{ translate("detail.show_text", locale) }}

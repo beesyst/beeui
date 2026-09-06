@@ -126,7 +126,7 @@ _ALLOWED_TONES: frozenset[str] = frozenset(
     {"default", "muted", "success", "warning", "danger"}
 )
 _ALLOWED_VARIANTS: frozenset[str] = frozenset(
-    {"text", "badge", "boolean", "confidence", "long_text"}
+    {"text", "badge", "boolean", "confidence", "long_text", "modal_text"}
 )
 
 
