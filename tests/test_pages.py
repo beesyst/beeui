@@ -3120,6 +3120,16 @@ def test_detail_page_key_value_section_renders() -> None:
                 "items": [
                     {"label": "Subject", "value": "Test subject"},
                     {"label": "Sender", "value": "test@example.com"},
+                    {
+                        "label": "Entity ID",
+                        "value": "199324",
+                        "href": "/entities/199324",
+                    },
+                    {
+                        "label": "Unsafe entity",
+                        "value": "199325",
+                        "href": "https://unsafe.example/199325",
+                    },
                 ],
             }
         ],
@@ -3143,6 +3153,8 @@ def test_detail_page_key_value_section_renders() -> None:
     assert "Test subject" in body
     assert "Sender" in body
     assert "test@example.com" in body
+    assert 'href="/entities/199324"' in body
+    assert 'href="https://unsafe.example/199325"' not in body
 
 
 def test_detail_page_text_section_renders() -> None:

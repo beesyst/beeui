@@ -104,6 +104,8 @@
                     <span class="text-warning">{{ item["display"] }}</span>
                     {% elif tone == "danger" %}
                     <span class="text-danger">{{ item["display"] }}</span>
+                    {% elif item.get("href") %}
+                    <a href="{{ item["href"] }}">{{ item["display"] }}</a>
                     {% else %}
                     {{ item["display"] }}
                     {% endif %}
