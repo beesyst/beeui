@@ -74,8 +74,8 @@ export default defineConfig({
           requiredFile: path('./assets/favicon.ico'),
         },
         {
-          // docs css built by this package's sass pipeline (see the `css` and
-          // `watch-css` scripts, which both write here). Source is tmp-assets/
+          // docs css built by this package's `css` and `watch:css` scripts
+          // (both write here). Source is tmp-assets/
           // (not public/) because copy-assets wipes public/ on every restart —
           // anything a watcher writes straight into public/ is lost there.
           from: path('./tmp-assets/css'),
@@ -90,9 +90,7 @@ export default defineConfig({
           requiredFile: path('../core/dist/css/tabler.css'),
         },
         {
-          // Sourced from preview's isolated tmp-assets/ (not dist/) — dist/ is Astro's
-          // own build output there, and reading demo assets from it caused unbounded
-          // growth across repeated builds. See preview/.build/vite.config.mts.
+          // preview's demo assets, from its tmp-assets/ (not dist/ — see copy-assets.ts).
           from: path('../preview/tmp-assets'),
           to: path('./public/preview'),
           label: '@tabler/preview',

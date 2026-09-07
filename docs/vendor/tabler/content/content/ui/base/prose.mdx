@@ -9,7 +9,7 @@ import Prose from '@ui/Prose.astro';
 
 ## How it works
 
-Wrap your content in the `.prose` class to apply long-form typography styles to headings, paragraphs, lists, tables, and other common elements. This is especially useful when rendering Markdown, MDX, or content from a [WYSIWYG editor](/ui/plugins/wysiwyg).
+Wrap your content in the `.prose` class to apply long-form typography styles to headings, paragraphs, lists, tables and other common elements. Use it when you render Markdown, MDX or the output of a [WYSIWYG editor](/ui/plugins/wysiwyg), where you can't add classes to every element.
 
 - Sets a base `font-size` and `line-height` for comfortable reading.
 - Normalizes list spacing and nested list indentation.
@@ -27,7 +27,7 @@ This example shows typical content wrapped in `.prose`.
   <blockquote>
     <p>Documentation is a love letter that you write to your future self.</p>
   </blockquote>
-  <p> The foundation of great documentation starts with <strong>understanding your audience</strong> and their needs. </p>
+  <p>The foundation of great documentation starts with <strong>understanding your audience</strong> and their needs.</p>
 </Prose>
 </Example>
 
@@ -37,9 +37,7 @@ Wrap a short note in `.callout` to make it stand out from the surrounding text, 
 
 <Example>
 <div class="callout">
-  <p>
-    <strong>Tip.</strong> Keep a glossary of terms your readers might not know. It saves you from re-explaining the same concept in every article.
-  </p>
+  <p><strong>Tip.</strong> Keep a glossary of terms your readers might not know. It saves you from re-explaining the same concept in every article.</p>
 </div>
 </Example>
 
@@ -59,7 +57,7 @@ Most of these elements are styled by browsers with only light adjustments from T
 
 ## Headings
 
-Headings help readers scan long documents quickly. Use them to create a clear hierarchy and maintain a logical flow.
+Headings inside `.prose` get their sizes and margins from the wrapper. Keep them in order, so the document has one outline.
 
 ### Code
 
@@ -67,7 +65,7 @@ Inline code is available with `<code>`. For multi-line snippets, use `<pre><code
 
 <Example>
 <Prose>
-  <p> Inline code looks like <code>console.log("Hello")</code> and uses monospace styling. </p>
+  <p>Inline code looks like <code>console.log("Hello")</code> and uses monospace styling.</p>
   <pre><code>// Create a function that returns a sum function add(a, b) &#123; return a + b; &#125; </code></pre>
 </Prose>
 </Example>
@@ -149,4 +147,4 @@ Tables work best for comparing related data points.
 - Images in prose need `alt` text. Use `alt=""` only when the caption already says the same thing.
 - Links should make sense on their own. "Read more" repeated ten times gives a screen reader user a list of identical entries.
 - Tables in prose need a `th` row. Prose styles them, but only the markup makes them readable.
-- Do not rely on the prose colours for meaning. Keep the emphasis in `strong` and `em`.
+- Do not rely on the prose colors for meaning. Keep the emphasis in `strong` and `em`.

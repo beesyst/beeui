@@ -1,6 +1,8 @@
-// Docs-only stylesheet, compiled by the `css` script into tmp-assets/css/
-// (copy-assets serves it as /css/docs.css). Inlines the DocSearch base styles
-// and themes them with Tabler variables.
+// Docs-only stylesheet, built by the `css` script through the shared css
+// pipeline (.build/build-css.ts, with --no-prefix) into tmp-assets/css/;
+// copy-assets serves it as /css/docs.css. Tabler variables are written with
+// their public `--tblr-` prefix here: the inlined DocSearch stylesheet below
+// has variables its JS sets at runtime, so the build must not rename any.
 @use '@docsearch/css/dist/style.css';
 
 // DocSearch ships its own palette — an Algolia blue plus lavender greys — and
@@ -26,8 +28,7 @@
   --docsearch-footer-background: var(--tblr-bg-surface);
   --docsearch-key-background: var(--tblr-bg-surface-secondary);
   --docsearch-key-color: var(--tblr-secondary);
-  --docsearch-key-shadow: 0 0 0 1px var(--tblr-border-color);
-  --docsearch-key-gradient: var(--tblr-bg-surface-secondary);
+  --docsearch-key-pressed-shadow: 0 0 0 1px var(--tblr-border-color);
 }
 
 .DocSearch-Button {
@@ -521,4 +522,90 @@ header > .navbar {
 .docs-example-code-attached .shiki {
   border-start-start-radius: 0;
   border-start-end-radius: 0;
+}
+
+// -----------------------------------------------------------------------------
+// Callouts: a tinted aside for a note, a tip or a warning inside prose. The icon
+// carries the state color while the text stays body color, so the block reads as
+// part of the page — and so a pale state like yellow never has to carry text.
+// -----------------------------------------------------------------------------
+.callout {
+  display: flex;
+  gap: 0.75rem;
+  padding: 1rem 1.25rem;
+  margin-block: 1.5rem;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--tblr-body-color);
+  background: var(--tblr-bg-surface-secondary);
+  border: 1px solid var(--tblr-border-color);
+  border-radius: var(--tblr-border-radius-lg);
+}
+
+.callout-icon {
+  flex: none;
+  margin-top: 0.0625rem;
+  color: var(--tblr-secondary);
+}
+
+.callout-title {
+  margin-bottom: 0.25rem;
+  font-weight: var(--tblr-font-weight-medium);
+}
+
+// The slot holds markdown, so the trailing paragraph or list brings its own
+// bottom margin — which would pad the callout unevenly.
+.callout-body > :last-child {
+  margin-bottom: 0;
+}
+
+// The prose link treatment targets direct children of .prose, so it stops at the
+// callout. Links inside one get the same quiet underline (WCAG 1.4.1).
+.callout a:not(.btn) {
+  text-decoration: underline;
+  text-decoration-color: color-mix(in sRGB, var(--tblr-primary) 40%, transparent);
+  text-underline-offset: 3px;
+
+  &:hover {
+    text-decoration-color: var(--tblr-primary);
+  }
+}
+
+@each $state, $color in ('info': 'azure', 'tip': 'green', 'warning': 'yellow', 'danger': 'red') {
+  .callout-#{$state} {
+    background: var(--tblr-#{$color}-lt);
+    border-color: color-mix(in srgb, var(--tblr-#{$color}) 24%, transparent);
+
+    .callout-icon {
+      color: var(--tblr-#{$color});
+    }
+  }
+}
+
+//
+// Sticky header
+//
+// `position: sticky` only travels inside its containing block. The docs shell
+// has no `.page` wrapper - the header is a child of `body` - and core's
+// `body { height: 100% }` makes that block exactly one viewport tall, so the
+// header would unstick after the first screen (#2332). Let the docs body grow
+// with its content instead; `.page` does the same thing for the app layouts.
+body {
+  height: auto;
+  min-height: 100%;
+}
+
+:root {
+  // Matches `$navbar-height` in core - the height of the docs navbar.
+  --docs-header-height: 3.5rem;
+}
+
+// Anchors from the table of contents would otherwise land under the header.
+html {
+  scroll-padding-top: var(--docs-header-height);
+}
+
+// The table of contents sticks too, so it has to clear the header (#2421).
+.docs-toc-sticky {
+  top: var(--docs-header-height);
 }
