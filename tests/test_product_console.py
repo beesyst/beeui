@@ -240,7 +240,7 @@ def test_mounted_artifact_and_catalog_links_use_effective_external_prefix() -> N
 
     catalog = client.get("/ui/components?lang=ru")
     assert catalog.status_code == 200
-    assert 'href="/ui/static/css/beeui.css?v=6"' in catalog.text
+    assert 'href="/ui/static/css/beeui.css?v=7"' in catalog.text
     assert 'href="/ui/"' in catalog.text
     assert 'href="/ui/components/interface?lang=ru"' in catalog.text
     assert 'href="/ui/components?lang=en"' in catalog.text
@@ -1734,7 +1734,9 @@ def test_data_table_bounded_actions_render_only_valid_metadata() -> None:
                                     {"action_id": "bad!", "label": "Invalid action"},
                                 ]
                             },
-                            "columns": [{"key": "actions", "label": "", "cell": "actions"}],
+                            "columns": [
+                                {"key": "actions", "label": "", "cell": "actions"}
+                            ],
                             "rows": [
                                 {
                                     "actions": [
@@ -1770,12 +1772,17 @@ def test_data_table_bounded_actions_render_only_valid_metadata() -> None:
 
 def test_bounded_action_browser_flow_requires_preview_and_confirmation() -> None:
     source = (
-        Path(__file__).resolve().parents[1]
-        / "src/beeui_module/web/static/js/beeui.js"
+        Path(__file__).resolve().parents[1] / "src/beeui_module/web/static/js/beeui.js"
     ).read_text(encoding="utf-8")
 
-    assert 'requestBoundedAction("preview", { action_id: action.action_id, payload: payload })' in source
-    assert 'return requestBoundedAction("execute", { action_id: action.action_id, payload: payload });' not in source
+    assert (
+        'requestBoundedAction("preview", { action_id: action.action_id, payload: payload })'
+        in source
+    )
+    assert (
+        'return requestBoundedAction("execute", { action_id: action.action_id, payload: payload });'
+        not in source
+    )
     assert "confirmationInput.checked" in source
     assert "previewPayload !== JSON.stringify(payload)" in source
     assert 'execute.addEventListener("click"' in source
@@ -1785,24 +1792,23 @@ def test_bounded_action_browser_flow_requires_preview_and_confirmation() -> None
 
 def test_direct_table_actions_use_strict_refresh_and_controlled_icons() -> None:
     source = (
-        Path(__file__).resolve().parents[1]
-        / "src/beeui_module/web/static/js/beeui.js"
+        Path(__file__).resolve().parents[1] / "src/beeui_module/web/static/js/beeui.js"
     ).read_text(encoding="utf-8")
 
-    assert 'replaceLiveTable(table, new URL(window.location.href), true' in source
-    assert 'if (strict) {' in source
-    assert 'window.location.assign(url.href);' in source
-    assert 'refreshDirectActionTable(button);' in source
-    assert 'showTableActionError(button, boundedActionMessage(error' in source
+    assert "replaceLiveTable(table, new URL(window.location.href), true" in source
+    assert "if (strict) {" in source
+    assert "window.location.assign(url.href);" in source
+    assert "refreshDirectActionTable(button);" in source
+    assert "showTableActionError(button, boundedActionMessage(error" in source
     assert 'iconButton(labels.save, "device-floppy")' in source
     assert 'iconButton(labels.cancel, "x")' in source
-    assert 'button.textContent = symbol' not in source
+    assert "button.textContent = symbol" not in source
     assert 'svg.setAttribute("stroke", "currentColor")' in source
     assert 'svg.setAttribute("fill", "none")' in source
     assert 'cancelButton.className = "btn"' in source
     assert 'preview.className = "btn btn-primary"' in source
     assert 'label.classList.add("required")' in source
-    assert 'label.htmlFor = inputId' in source
+    assert "label.htmlFor = inputId" in source
 
 
 def test_runs_layout_wrapper_preserves_list_api_contract() -> None:
@@ -1846,11 +1852,17 @@ def test_operator_hero_block_renders_through_layout() -> None:
                             "subtitle": "Runtime: stopped",
                             "status": "ok",
                             "width": 12,
+                            "illustration": {
+                                "asset": "tabler_email_dark",
+                                "alt": "",
+                            },
                             "items": [
                                 {
                                     "label": "Latest run",
                                     "value": "run_001",
                                     "href": "/runs/run_001",
+                                    "metric": True,
+                                    "trend": {"percentage": 12, "direction": "up"},
                                 },
                                 {"label": "Runtime", "value": "stopped"},
                             ],
@@ -1955,7 +1967,8 @@ def test_operator_hero_block_renders_through_layout() -> None:
                 }
             )
 
-    response = TestClient(create_beeui_app(adapter=NewBlocksAdapter())).get("/")
+    client = TestClient(create_beeui_app(adapter=NewBlocksAdapter()))
+    response = client.get("/")
 
     assert response.status_code == 200
     for marker in (
@@ -1978,6 +1991,16 @@ def test_operator_hero_block_renders_through_layout() -> None:
         "lifecycle.jsonl",
     ):
         assert marker in response.text
+
+    assert 'class="h3 me-2 mb-0">run_001<' in response.text
+    assert "text-green d-inline-flex align-items-center lh-1" in response.text
+    assert (
+        'src="/static/vendor/tabler/illustrations/dark/email.png" alt=""'
+        in response.text
+    )
+    asset = client.get("/static/vendor/tabler/illustrations/dark/email.png")
+    assert asset.status_code == 200
+    assert asset.headers["content-type"] == "image/png"
 
     for forbidden in (
         "http://",
@@ -2042,6 +2065,9 @@ def test_operator_hero_groups_period_links_into_dropdown() -> None:
     assert "Today" in response.text
     assert "Last 7 days" in response.text
     assert "Last 30 days" in response.text
+    assert (
+        "btn btn-link btn-sm dropdown-toggle p-0 text-decoration-none" in response.text
+    )
     assert 'btn btn-outline-primary btn-sm me-1">Today<' not in response.text
 
 

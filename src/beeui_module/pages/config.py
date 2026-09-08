@@ -475,7 +475,7 @@ def _parse_page_tabs(
         raise ValueError(f"pages.{page_id}.tabs must be a mapping")
     _validate_exact_keys(
         payload,
-        {"variant", "active_param", "progressive", "items"},
+        {"variant", "active_param", "progressive", "surface", "items"},
         f"pages.{page_id}.tabs",
     )
 
@@ -501,6 +501,12 @@ def _parse_page_tabs(
     progressive = payload.get("progressive", False)
     if not isinstance(progressive, bool):
         raise ValueError(f"pages.{page_id}.tabs.progressive must be a boolean")
+
+    surface = payload.get("surface", "attached")
+    if surface not in {"attached", "separated"}:
+        raise ValueError(
+            f"pages.{page_id}.tabs.surface must be 'attached' or 'separated'"
+        )
 
     items_raw = payload.get("items")
     if not isinstance(items_raw, list):
@@ -568,6 +574,7 @@ def _parse_page_tabs(
         active_param=active_param,
         items=tuple(items),
         progressive=progressive,
+        surface=surface,
     )
 
 

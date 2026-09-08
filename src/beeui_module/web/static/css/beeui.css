@@ -22,6 +22,13 @@
   --beeui-sidebar-width: 18rem;
 }
 
+.beeui-operator-hero-illustration {
+  width: 100%;
+  max-height: 18rem;
+  max-width: 24rem;
+  object-fit: contain;
+}
+
 [data-bs-theme="dark"] {
   --beeui-body-bg: #141720;
   --beeui-body-bg-secondary: #181b26;
@@ -351,17 +358,37 @@ body {
   box-shadow: var(--beeui-card-shadow-hover);
 }
 
-.beeui-chart-card .card-header {
+.beeui-layout-card .card-header {
   background: color-mix(in srgb, var(--beeui-surface), var(--beeui-accent) 2%);
   border-bottom: 1px solid var(--beeui-border-light);
   padding: 0.75rem 1rem;
+}
+
+.beeui-page-tabs-card-separated {
+  padding: var(--beeui-page-gap);
+  border: 1px solid var(--beeui-border);
+  border-radius: var(--beeui-radius);
+  background: var(--beeui-body-bg-secondary);
+}
+
+.beeui-page-tabs-card-separated > .beeui-page-tabs-blocks {
+  margin-top: var(--beeui-page-gap);
+}
+
+.beeui-page-tabs-card-separated .card-header-tabs .nav-link.active {
+  position: relative;
+  z-index: 1;
+  background: var(--beeui-body-bg-secondary);
+  border-bottom-color: var(--beeui-body-bg-secondary);
+  box-shadow: 0 2px 0 var(--beeui-body-bg-secondary);
 }
 
 .beeui-chart-card .card-body {
   padding: 0.5rem 1rem 0.75rem;
 }
 
-.beeui-chart-card .card-title {
+.beeui-chart-card .card-title,
+.beeui-operator-hero .card-title {
   font-size: 0.9rem;
   font-weight: 600;
 }

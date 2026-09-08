@@ -230,6 +230,7 @@ class PageTabsConfig:
     active_param: str = "tab"
     items: tuple[PageTabsItem, ...] = field(default_factory=tuple)
     progressive: bool = False
+    surface: str = "attached"
 
 
 @dataclass(frozen=True)

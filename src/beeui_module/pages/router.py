@@ -412,6 +412,7 @@ def _resolve_page_tabs_data(
         "tabs_class": tabs_class_for_variant(page.tabs.variant),
         "active_param": page.tabs.active_param,
         "progressive": page.tabs.progressive,
+        "surface": page.tabs.surface,
         "surface_id": page.page_id,
         "show_icons": page.tabs.variant in {
             "icons",

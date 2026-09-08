@@ -965,7 +965,7 @@ def test_data_table_page_size_footer_uses_accessible_fallback_label(
     assert ">Показать<" not in russian.text
     assert 'aria-label="Show entries"' in english.text
     assert 'aria-label="Показать записей"' in russian.text
-    assert 'data-beeui-page-size-select' in english.text
+    assert "data-beeui-page-size-select" in english.text
     assert '<option value="/table?size=25" selected>25</option>' in english.text
     assert '<option value="/table?size=50">50</option>' in english.text
     assert '<option value="/table?size=100">100</option>' in english.text
@@ -1767,6 +1767,7 @@ def test_page_tabs_no_standalone_tabs_card(tmp_path: Path) -> None:
         "    blocks: []\n"
         "    tabs:\n"
         "      active_param: tab\n"
+        "      surface: separated\n"
         "      items:\n"
         "        - id: overview\n"
         "          title: Overview\n"
@@ -1781,14 +1782,27 @@ def test_page_tabs_no_standalone_tabs_card(tmp_path: Path) -> None:
     response = client.get("/")
 
     assert response.status_code == 200
-    assert 'class="card beeui-page-tabs-card"' in response.text
+    assert (
+        'class="beeui-page-tabs-card beeui-page-tabs-card-separated"' in response.text
+    )
+    assert (
+        'class="card beeui-page-tabs-card beeui-page-tabs-card-separated"'
+        not in response.text
+    )
 
-    tabs_card_start = response.text.index('class="card beeui-page-tabs-card"')
+    tabs_card_start = response.text.index(
+        'class="beeui-page-tabs-card beeui-page-tabs-card-separated"'
+    )
     before_tabs_card = response.text[:tabs_card_start]
     assert "card-header-tabs" not in before_tabs_card, (
         "Must not contain standalone tabs card before beeui-page-tabs-card"
     )
     assert '<div class="card mb-3">' not in before_tabs_card
+    page_blocks_start = response.text.index(
+        'class="beeui-page-tabs-blocks" aria-label="Page blocks"'
+    )
+    assert '<div class="card">' in response.text[tabs_card_start:page_blocks_start]
+    assert 'class="beeui-page-tabs-blocks" aria-label="Page blocks"' in response.text
 
 
 def test_page_without_tabs_renders_blocks_normally(tmp_path: Path) -> None:
@@ -1986,7 +2000,7 @@ def test_custom_route_rop_registers_with_adapter(tmp_path: Path) -> None:
     assert 'href="/ui/rop?sort=run"' in response.text
     assert 'aria-sort="ascending"' in response.text
     assert 'class="table-sort asc"' in response.text
-    assert 'href="/ui/static/css/beeui.css?v=6"' in response.text
+    assert 'href="/ui/static/css/beeui.css?v=7"' in response.text
     assert 'href="/ui/"' in response.text
     assert 'href="/ui/rop?lang=ru"' in response.text
     assert 'href="/ui/rop?tab=overview"' in response.text

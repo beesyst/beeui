@@ -6,11 +6,20 @@ title %}{{ page_title }} · {{ app_title }}{% endblock %} {% block content %}
 <div class="page-body">
   <div class="{{ layout.container_class }}">
     {% if page_tabs %}
+    {% if page_tabs.surface == 'separated' %}
+    <div
+      class="beeui-page-tabs-card beeui-page-tabs-card-separated"
+      data-beeui-page-tabs-surface="{{ page_tabs.surface_id }}"
+      {% if page_tabs.progressive %}data-beeui-page-tabs-progressive="true"{% endif %}
+    >
+      <div class="card">
+    {% else %}
     <div
       class="card beeui-page-tabs-card"
       data-beeui-page-tabs-surface="{{ page_tabs.surface_id }}"
       {% if page_tabs.progressive %}data-beeui-page-tabs-progressive="true"{% endif %}
     >
+    {% endif %}
       <div class="card-header">
         {{ url_tabs(
           items=page_tabs.tab_items,
@@ -22,8 +31,8 @@ title %}{{ page_title }} · {{ app_title }}{% endblock %} {% block content %}
           compact_icons=page_tabs.compact_icons
         ) }}
       </div>
-      <div class="card-body">
-        <section aria-label="Page blocks">
+      {% if page_tabs.surface == 'separated' %}</div>{% else %}<div class="card-body">{% endif %}
+        <section{% if page_tabs.surface == 'separated' %} class="beeui-page-tabs-blocks"{% endif %} aria-label="Page blocks">
           {% if has_layout %}
           <div class="row row-deck row-cards g-3">
             {% for block in layout_blocks %}
@@ -47,7 +56,7 @@ title %}{{ page_title }} · {{ app_title }}{% endblock %} {% block content %}
           </div>
           {% else %} {% include "components/empty_state.html" %} {% endif %}
         </section>
-      </div>
+      {% if page_tabs.surface != 'separated' %}</div>{% endif %}
     </div>
     {% else %}
     <section aria-label="Page blocks">

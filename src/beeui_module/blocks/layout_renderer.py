@@ -98,6 +98,9 @@ _CHART_DISPLAY_TEXT_LIMIT = 256
 _PROGRESS_TONES: frozenset[str] = frozenset(
     {"bg-primary", "bg-secondary", "bg-success", "bg-warning", "bg-danger", "bg-info"}
 )
+_OPERATOR_HERO_ILLUSTRATIONS: dict[str, str] = {
+    "tabler_email_dark": "vendor/tabler/illustrations/dark/email.png",
+}
 
 
 def _resolve_width_class(width: Any) -> str:
@@ -705,6 +708,23 @@ def _render_operator_hero(raw: dict[str, Any], width_class: str) -> dict[str, An
             "value": _display_value(item.get("value")),
             "href": href,
         }
+        if isinstance(item.get("metric"), bool):
+            normalized_item["metric"] = item["metric"]
+        trend = item.get("trend")
+        if isinstance(trend, dict):
+            percentage = trend.get("percentage")
+            direction = trend.get("direction")
+            if (
+                isinstance(percentage, (int, float))
+                and not isinstance(percentage, bool)
+                and math.isfinite(percentage)
+                and isinstance(direction, str)
+                and direction in {"up", "down", "neutral"}
+            ):
+                normalized_item["trend"] = {
+                    "percentage": percentage,
+                    "direction": direction,
+                }
         progress = item.get("progress")
         if (
             isinstance(progress, (int, float))
@@ -737,7 +757,7 @@ def _render_operator_hero(raw: dict[str, Any], width_class: str) -> dict[str, An
                 normalized_link["active"] = False
             primary_links.append(normalized_link)
 
-    return {
+    normalized: dict[str, Any] = {
         "type": "operator_hero",
         "width_class": width_class,
         "title": _display_value(raw.get("title")),
@@ -746,6 +766,17 @@ def _render_operator_hero(raw: dict[str, Any], width_class: str) -> dict[str, An
         "items": items,
         "primary_links": primary_links,
     }
+    illustration = raw.get("illustration")
+    if isinstance(illustration, dict):
+        asset = illustration.get("asset")
+        source = _OPERATOR_HERO_ILLUSTRATIONS.get(asset)
+        if source is not None:
+            alt = illustration.get("alt", "")
+            normalized["illustration"] = {
+                "source": source,
+                "alt": alt if isinstance(alt, str) else "",
+            }
+    return normalized
 
 
 def _render_venue_card(raw: dict[str, Any], width_class: str) -> dict[str, Any]:
@@ -1323,7 +1354,6 @@ def _render_data_table_cell(cell_raw: Any, cell_type: str) -> dict[str, Any]:
                 actions.append(bounded)
         return {"type": "actions", "items": actions}
 
-
     if not isinstance(cell_raw, dict):
         return {"type": "text", "value": _display_value(cell_raw)}
 
@@ -1401,7 +1431,9 @@ def _render_data_table_cell(cell_raw: Any, cell_type: str) -> dict[str, Any]:
 
 def _normalize_table_action(raw: dict[str, Any]) -> dict[str, Any] | None:
     action_id = raw.get("action_id")
-    if not isinstance(action_id, str) or not _DATA_TABLE_ID_PATTERN.fullmatch(action_id):
+    if not isinstance(action_id, str) or not _DATA_TABLE_ID_PATTERN.fullmatch(
+        action_id
+    ):
         return None
     label = _display_value(raw.get("label"), default="")
     if not label or len(label) > 256:

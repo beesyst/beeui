@@ -995,11 +995,14 @@ def test_layout_operator_hero_renders() -> None:
                 "subtitle": "Runtime: stopped",
                 "status": "ok",
                 "width": 12,
+                "illustration": {"asset": "tabler_email_dark", "alt": ""},
                 "items": [
                     {
                         "label": "Latest run",
                         "value": "run_001",
                         "href": "/runs/run_001",
+                        "metric": True,
+                        "trend": {"percentage": 12, "direction": "up"},
                     },
                     {"label": "Runtime", "value": "stopped"},
                     {"label": "Active venues", "value": "mrkt / live"},
@@ -1016,11 +1019,57 @@ def test_layout_operator_hero_renders() -> None:
     assert block["title"] == "System Snapshot"
     assert block["subtitle"] == "Runtime: stopped"
     assert block["status"] == "ok"
+    assert block["illustration"] == {
+        "source": "vendor/tabler/illustrations/dark/email.png",
+        "alt": "",
+    }
     assert len(block["items"]) == 3
     assert block["items"][0]["href"] == "/runs/run_001"
+    assert block["items"][0]["metric"] is True
+    assert block["items"][0]["trend"] == {"percentage": 12, "direction": "up"}
     assert block["items"][1]["href"] is None
     assert len(block["primary_links"]) == 1
     assert block["primary_links"][0]["href"] == "/runs/run_001"
+
+
+def test_layout_operator_hero_omits_invalid_trend() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "operator_hero",
+                "title": "Test",
+                "items": [
+                    {
+                        "label": "Emails",
+                        "value": "12",
+                        "metric": "yes",
+                        "trend": {"percentage": "<script>", "direction": "sideways"},
+                    }
+                ],
+            }
+        ]
+    )
+
+    assert "metric" not in result[0]["items"][0]
+    assert "trend" not in result[0]["items"][0]
+    assert "illustration" not in result[0]
+
+
+def test_layout_operator_hero_omits_unregistered_illustration() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "operator_hero",
+                "title": "Test",
+                "illustration": {
+                    "asset": "https://preview.tabler.io/static/illustrations/dark/email.png"
+                },
+                "items": [{"label": "Emails", "value": "12"}],
+            }
+        ]
+    )
+
+    assert "illustration" not in result[0]
 
 
 def test_layout_operator_hero_rejects_unsafe_links() -> None:
@@ -2835,15 +2884,56 @@ def test_layout_data_table_bounded_action_normalizes_confirmation_and_fields() -
     row_action = result[0]["rows"][0]["a"]["items"][0]
     assert toolbar_action["confirmation"] == "Confirm sender addition"
     assert toolbar_action["fields"] == [
-        {"name": "sender", "type": "text", "label": "sender", "required": True, "max_length": 12, "value": ""},
-        {"name": "email", "type": "email", "label": "email", "required": True, "max_length": 254, "value": ""},
+        {
+            "name": "sender",
+            "type": "text",
+            "label": "sender",
+            "required": True,
+            "max_length": 12,
+            "value": "",
+        },
+        {
+            "name": "email",
+            "type": "email",
+            "label": "email",
+            "required": True,
+            "max_length": 254,
+            "value": "",
+        },
     ]
     assert row_action["action_id"] == "remove_sender"
     assert row_action["confirmation"] == ""
 
 
 def test_layout_data_table_direct_action_is_opt_in_and_bounded() -> None:
-    result = render_layout([{"type": "data_table", "title": "Actions", "toolbar": {"actions": [{"action_id": "save_row", "label": "Save", "flow": "direct_execute", "icon": "edit", "fields": [{"name": "email", "type": "email", "required": True, "value": "alice@example.com"}]}]}, "columns": [{"key": "actions", "label": "", "cell": "actions"}], "rows": [{"actions": []}]}])
+    result = render_layout(
+        [
+            {
+                "type": "data_table",
+                "title": "Actions",
+                "toolbar": {
+                    "actions": [
+                        {
+                            "action_id": "save_row",
+                            "label": "Save",
+                            "flow": "direct_execute",
+                            "icon": "edit",
+                            "fields": [
+                                {
+                                    "name": "email",
+                                    "type": "email",
+                                    "required": True,
+                                    "value": "alice@example.com",
+                                }
+                            ],
+                        }
+                    ]
+                },
+                "columns": [{"key": "actions", "label": "", "cell": "actions"}],
+                "rows": [{"actions": []}],
+            }
+        ]
+    )
     action = result[0]["toolbar"]["actions"][0]
     assert action["flow"] == "direct_execute"
     assert action["fields"][0]["value"] == "alice@example.com"
@@ -2897,8 +2987,16 @@ def test_layout_data_table_bounded_action_rejects_unsafe_metadata() -> None:
                 "toolbar": {
                     "actions": [
                         {"action_id": "safe", "label": "S" * 257},
-                        {"action_id": "unsafe", "label": "Unsafe", "confirmation": "C" * 513},
-                        {"action_id": "bad_field", "label": "Bad", "fields": [{"name": "x", "type": "url"}]},
+                        {
+                            "action_id": "unsafe",
+                            "label": "Unsafe",
+                            "confirmation": "C" * 513,
+                        },
+                        {
+                            "action_id": "bad_field",
+                            "label": "Bad",
+                            "fields": [{"name": "x", "type": "url"}],
+                        },
                         {"label": "External", "href": "https://example.test/action"},
                     ]
                 },
