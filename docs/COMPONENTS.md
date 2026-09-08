@@ -420,7 +420,7 @@ Invalid adapter values degrade to default 4 (no 500). Это поле относ
 </div>
 ```
 
-Страницы с tabs рендерят blocks внутри `.card.beeui-page-tabs-card` в пределах того же page-body.
+Страницы с tabs по умолчанию рендерят blocks внутри `.card.beeui-page-tabs-card` в пределах того же page-body. Optional `pages[].tabs.surface: separated` uses `.beeui-page-tabs-card` as the progressive replacement wrapper, keeps tabs in its own `.card`, and renders blocks after that card as independently surfaced cards.
 
 ### Progressive page tabs (Iteration 13.15)
 
@@ -556,6 +556,10 @@ Iteration 12.4 adds 6 new adapter-backed `layout[]` block types for product-neut
 | `run_table`     | `components/layout/run_table.html`     | Operator run/event/artifact table with internal links for run_id and artifact    |
 
 `operator_hero.items[].progress` accepts only finite numeric values and is clamped to `0..100`. `progress_tone` accepts only generic `bg-primary`, `bg-secondary`, `bg-success`, `bg-warning`, `bg-danger`, or `bg-info`; invalid values use `bg-primary`.
+
+`operator_hero.items[].metric` is optional boolean. When true, BeeUI renders the item value with the generic Tabler metric pattern. Optional `trend` requires finite numeric `percentage` and allowlisted `direction` of `up`, `down`, or `neutral`; malformed trend data is omitted.
+
+`operator_hero.illustration` is optional. It accepts only a registered package-local asset and optional string `alt`; unsupported assets and malformed values are omitted. `tabler_email_dark` resolves to the package-local `vendor/tabler/illustrations/dark/email.png`.
 
 All block templates use Tabler-compatible markup (`card`, `card-header`, `card-body`, `datagrid`, `table table-vcenter card-table`, `list-group`, `badge`, `status-dot`, `alert`) and pass through Jinja autoescaping.
 

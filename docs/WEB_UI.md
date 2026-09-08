@@ -61,7 +61,7 @@
 - предпросмотр JSON/JSONL/текста с ограниченными лимитами и placeholder редактирования секретов.
 - реальные локальные скомпилированные CSS/JS-ресурсы `@tabler/core@1.4.0`;
 - усиление визуального соответствия Tabler для продуктовой консоли на основе адаптера;
-- attached page tabs card-рендеринг для страниц с `pages[].tabs`;
+- attached page tabs card-рендеринг для страниц с `pages[].tabs`, with an optional generic separated blocks surface;
 - generic Tabler-compatible рендеринг accordion toggle;
 - варианты accordion управляются конфигом и используют inline SVG toggle-иконки;
 - consistent page-body spacing через единый wrapper для всех render paths (dashboard, runs, custom pages, tabs);
@@ -140,7 +140,7 @@
   - `components.accordion.variant` — global accordion variant (`default`, `flush`, `tabs`, `inverted`, `inverted_plus`, `icons`);
   - invalid variants fail fast; missing config uses safe defaults.
 - page-level URL tabs (Iteration 13.2):
-  - optional `pages[].tabs` config with variant, active_param, items;
+- optional `pages[].tabs` config with variant, active_param, progressive, surface and items;
   - URL-driven tab links with safe href validation;
   - active tab resolved from query param with allowlist fallback;
   - duplicate/unsafe tab items rejected during config validation.
@@ -190,7 +190,7 @@ Product decides.
 
 ### Контракт attached page tabs card
 
-Если page содержит `pages[].tabs`, BeeUI рендерит tabs и page blocks внутри одной card. Tabs не выводятся отдельной standalone card перед blocks.
+Если page содержит `pages[].tabs`, BeeUI по умолчанию рендерит tabs и page blocks внутри одной card. Tabs не выводятся отдельной standalone card перед blocks. `surface: separated` использует `.beeui-page-tabs-card` как wrapper progressive replacement, сохраняет tabs в собственной `.card` и выводит blocks после этой card, чтобы их собственные surfaces и gutters были видимы.
 
 Структура:
 
@@ -219,6 +219,7 @@ Product decides.
 
 - page title/subtitle остаются снаружи card и рендерятся выше tabs;
 - если `pages[].tabs` отсутствует, page blocks рендерятся как раньше, без tabs-card;
+- `pages[].tabs.surface` принимает только `attached` (default) или `separated`;
 - BeeUI не использует JS-only hidden panes для page tabs;
 - navigation остаётся URL-driven через обычные links;
 - `?tab=` определяет active state;

@@ -1,9 +1,9 @@
-<div class="card">
+<div class="card beeui-layout-card beeui-operator-hero">
   <div class="card-header">
     <div>
       <h3 class="card-title mb-0">{{ block.title }}</h3>
       {% if block.subtitle %}
-        <div class="text-secondary small">{{ block.subtitle }}</div>
+        <div class="text-secondary small mt-1">{{ block.subtitle }}</div>
       {% endif %}
     </div>
     {% if block.primary_links %}
@@ -19,7 +19,7 @@
           {% set active_period_link = ns.period_links[0] %}
         {% endif %}
         <div class="dropdown ms-auto">
-          <button class="btn btn-outline-primary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+          <button class="btn btn-link btn-sm dropdown-toggle p-0 text-decoration-none text-secondary" type="button" data-bs-toggle="dropdown" aria-expanded="false">
             {{ active_period_link.label }}
           </button>
           <div class="dropdown-menu dropdown-menu-end">
@@ -32,13 +32,31 @@
     {% endif %}
   </div>
   <div class="card-body">
+    {% if block.illustration %}<div class="row g-3 align-items-center"><div class="col-12 col-md-5">{% endif %}
     {% if block["items"] %}
-      <div class="datagrid mb-3">
+      <div class="{% if block.illustration %}row g-5 mb-3{% else %}datagrid mb-3{% endif %}">
         {% for item in block["items"] %}
-          <div class="datagrid-item">
-            <div class="datagrid-title">{{ item.label }}</div>
-            <div class="datagrid-content">
-              {% if item.href %}
+          <div class="{% if block.illustration and item.metric %}col-6{% else %}datagrid-item{% endif %}">
+            <div class="{% if block.illustration and item.metric %}text-secondary{% else %}datagrid-title{% endif %}">{{ item.label }}</div>
+            <div class="{% if block.illustration and item.metric %}mt-1{% else %}datagrid-content{% endif %}">
+              {% if item.metric %}
+                <div class="d-flex align-items-baseline">
+                  <div class="{% if block.illustration %}h3 me-2 mb-0{% else %}h1 mb-0{% endif %}">{{ item.value }}</div>
+                  {% if item.trend %}
+                    {% set trend_tone = 'text-secondary' if item.trend.direction == 'neutral' else 'text-green' if item.trend.direction == 'up' else 'text-red' %}
+                    <span class="{{ trend_tone }} d-inline-flex align-items-center lh-1">
+                      {{ '%g' | format(item.trend.percentage) }}%
+                      {% if item.trend.direction == 'up' %}
+                        <svg class="icon icon-sm ms-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5l0 14m6 -8l-6 -6l-6 6" /></svg>
+                      {% elif item.trend.direction == 'down' %}
+                        <svg class="icon icon-sm ms-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19l0 -14m6 8l-6 6l-6 -6" /></svg>
+                      {% else %}
+                        <svg class="icon icon-sm ms-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l14 0" /></svg>
+                      {% endif %}
+                    </span>
+                  {% endif %}
+                </div>
+              {% elif item.href %}
                 <a href="{{ url_prefix }}{{ item.href }}">{{ item.value }}</a>
               {% else %}
                 {{ item.value }}
@@ -61,6 +79,13 @@
           {% endif %}
         {% endfor %}
       </div>
+    {% endif %}
+    {% if block.illustration %}
+      </div>
+      <div class="col-12 col-md-7 text-center text-md-end">
+        <img src="{{ route_prefix }}/static/{{ block.illustration.source }}" alt="{{ block.illustration.alt }}" class="img-fluid beeui-operator-hero-illustration" />
+      </div>
+    </div>
     {% endif %}
   </div>
 </div>
