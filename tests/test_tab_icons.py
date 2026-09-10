@@ -1,114 +1,38 @@
-from __future__ import annotations
+from pathlib import Path
 
-import re
-
-from beeui_module.pages.models import (
-    TABS_ICON_NAMES,
-    TABS_ICON_SVGS,
-)
-from beeui_module.pages.tab_icons import (
-    supported_tab_icon_names,
-    tab_icon_svg,
-)
+from beeui_module.pages.icons import is_safe_icon_name, safe_icon_name
 
 
-def _svg_bodies() -> dict[str, str]:
-    bodies: dict[str, str] = {}
-    for name in supported_tab_icon_names():
-        svg = tab_icon_svg(name)
-        paths = "".join(re.findall(r'<path d="([^"]+)"/>', str(svg)))
-        bodies[name] = paths
-    return bodies
-
-
-def test_registry_supports_minimum_nine_distinct_concepts() -> None:
-    assert len(TABS_ICON_NAMES) >= 9
-    concepts = {
+def test_canonical_tabler_icon_names_are_safe() -> None:
+    for name in (
         "dashboard",
-        "queue",
-        "messages",
-        "ai",
-        "source",
-        "attachment",
-        "evidence",
-        "integration",
-        "recommendation",
+        "users",
+        "activity",
+        "apps",
+        "dashboard",
+        "stack",
+        "database",
         "ban",
-    }
-    assert concepts.issubset(set(TABS_ICON_NAMES))
+    ):
+        assert is_safe_icon_name(name)
+        assert safe_icon_name(name) == name
 
 
-def test_every_documented_identifier_has_distinct_glyph() -> None:
-    bodies = _svg_bodies()
-    assert set(bodies) == set(TABS_ICON_NAMES)
-    for name, body in bodies.items():
-        assert body, f"identifier {name} must render a non-empty glyph"
-    signatures = set(bodies.values())
-    assert len(signatures) == len(TABS_ICON_NAMES)
+def test_unsafe_icon_names_are_omitted() -> None:
+    for value in ("", "Dashboard", "bad_icon", "<svg>", "icon onload=alert(1)"):
+        assert not is_safe_icon_name(value)
+        assert safe_icon_name(value) is None
 
 
-def test_old_runs_and_list_are_distinct_glyphs() -> None:
-    bodies = _svg_bodies()
-    assert bodies["runs"] != bodies["list"]
+def test_webfont_assets_are_packaged() -> None:
+    root = Path(__file__).parents[1]
+    package_data = (root / "pyproject.toml").read_text(encoding="utf-8")
+    stylesheet = (
+        root / "src/beeui_module/web/static/vendor/tabler-icons/tabler-icons.min.css"
+    ).read_text(encoding="utf-8")
 
-
-def test_old_reports_and_chart_are_distinct_glyphs() -> None:
-    bodies = _svg_bodies()
-    assert bodies["reports"] != bodies["chart"]
-
-
-def test_backward_compatible_identifiers_supported() -> None:
-    for name in ("dashboard", "runs", "list", "reports", "chart", "calendar"):
-        assert name in TABS_ICON_NAMES
-        assert name in TABS_ICON_SVGS
-        assert tab_icon_svg(name) != ""
-
-
-def test_spacing_and_tabler_presentation_contract() -> None:
-    svg = tab_icon_svg("dashboard")
-    assert 'class="icon me-2"' in str(svg)
-    assert 'viewBox="0 0 24 24"' in str(svg)
-    assert 'stroke="currentColor"' in str(svg)
-    assert 'aria-hidden="true"' in str(svg)
-
-
-def test_unknown_safe_identifier_renders_no_icon() -> None:
-    assert tab_icon_svg("some_unknown_icon") == ""
-
-
-def test_none_renders_no_icon() -> None:
-    assert tab_icon_svg(None) == ""
-
-
-def test_render_output_contains_no_unsafe_markup_for_any_identifier() -> None:
-    for name in supported_tab_icon_names():
-        svg = tab_icon_svg(name)
-        assert "<script" not in str(svg).lower()
-        assert "onerror" not in str(svg).lower()
-        assert "href=" not in str(svg)
-        assert "http://" not in str(svg)
-        assert "https://" not in str(svg)
-
-
-def test_registry_maps_to_documented_tabler_icons() -> None:
-    expected = {
-        "dashboard": "dashboard",
-        "runs": "activity",
-        "list": "list",
-        "reports": "chart-bar",
-        "chart": "chart-line",
-        "calendar": "calendar",
-        "queue": "stack",
-        "messages": "messages",
-        "ai": "robot",
-        "source": "database",
-        "attachment": "paperclip",
-        "evidence": "search",
-        "integration": "link",
-        "recommendation": "bulb",
-        "ban": "ban",
-    }
-    for name, tabler_name in expected.items():
-        svg = str(tab_icon_svg(name))
-        assert f'data-beeui-tab-icon="{name}"' in svg
-        assert name in TABS_ICON_SVGS
+    assert '"static/vendor/tabler-icons/**/*",' in package_data
+    assert (root / "src/beeui_module/web/static/vendor/tabler-icons/LICENSE").is_file()
+    assert (root / "src/beeui_module/web/static/vendor/tabler-icons/VERSION").is_file()
+    for name in ("dashboard", "users", "activity", "apps", "stack", "database", "ban"):
+        assert f".ti-{name}:before" in stylesheet

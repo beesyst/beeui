@@ -1,0 +1,4 @@
+{% macro tabler_icon(name, presentation_class='') %}
+{% set icon_name = safe_icon_name(name) if safe_icon_name is defined else name %}
+{% if icon_name %}<i class="ti ti-{{ icon_name }}{% if presentation_class %} {{ presentation_class }}{% endif %}" aria-hidden="true" data-beeui-icon="{{ icon_name }}"></i>{% endif %}
+{% endmacro %}

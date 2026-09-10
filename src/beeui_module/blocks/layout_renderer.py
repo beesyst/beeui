@@ -7,6 +7,7 @@ import re
 from typing import Any
 
 from beeui_module.pages.links import prefix_internal_href, validate_internal_href
+from beeui_module.pages.icons import safe_icon_name
 
 _WIDTH_MAP: dict[int, str] = {
     12: "col-12",
@@ -101,6 +102,28 @@ _PROGRESS_TONES: frozenset[str] = frozenset(
 _OPERATOR_HERO_ILLUSTRATIONS: dict[str, str] = {
     "tabler_email_dark": "vendor/tabler/illustrations/dark/email.png",
 }
+_METRIC_CARD_ICON_TONES: frozenset[str] = frozenset(
+    {
+        "primary",
+        "secondary",
+        "success",
+        "warning",
+        "danger",
+        "info",
+        "blue",
+        "azure",
+        "indigo",
+        "purple",
+        "pink",
+        "red",
+        "orange",
+        "yellow",
+        "lime",
+        "green",
+        "teal",
+        "cyan",
+    }
+)
 
 
 def _resolve_width_class(width: Any) -> str:
@@ -379,6 +402,13 @@ def _render_metric_card(raw: dict[str, Any], width_class: str) -> dict[str, Any]
     _require_title(raw)
     _require_scalar(raw, "value")
 
+    href = validate_internal_href(raw.get("href"))
+    icon = safe_icon_name(raw.get("icon")) or ""
+
+    icon_tone = raw.get("icon_tone")
+    if not isinstance(icon_tone, str) or icon_tone not in _METRIC_CARD_ICON_TONES:
+        icon_tone = "primary"
+
     return {
         "type": "metric_card",
         "width_class": width_class,
@@ -386,6 +416,9 @@ def _render_metric_card(raw: dict[str, Any], width_class: str) -> dict[str, Any]
         "value": _safe_str(raw.get("value", "n/a")),
         "status": _safe_str(raw.get("status", "")),
         "hint": _safe_str(raw.get("hint", "")),
+        "href": href,
+        "icon": icon,
+        "icon_tone": icon_tone,
     }
 
 
@@ -539,7 +572,7 @@ def _render_raw_json_panel(raw: dict[str, Any], width_class: str) -> dict[str, A
     }
 
 
-_ALLOWED_CHART_KINDS: frozenset = frozenset({"line", "bar", "area", "donut"})
+_ALLOWED_CHART_KINDS: frozenset = frozenset({"line", "bar", "area", "donut", "funnel"})
 
 
 def _render_chart(raw: dict[str, Any], width_class: str) -> dict[str, Any]:
@@ -558,9 +591,10 @@ def _render_chart(raw: dict[str, Any], width_class: str) -> dict[str, Any]:
         height = 300
 
     resolved_kind = kind or "line"
+    apex_kind = "bar" if resolved_kind == "funnel" else resolved_kind
     chart_config: dict[str, Any] = {
         "chart": {
-            "type": resolved_kind,
+            "type": apex_kind,
             "height": height,
             "toolbar": {"show": False},
             "zoom": {"enabled": False},
@@ -600,9 +634,51 @@ def _render_chart(raw: dict[str, Any], width_class: str) -> dict[str, Any]:
             xaxis["categories"] = categories
         chart_config["xaxis"] = xaxis
 
-    colors = _normalize_chart_colors(raw.get("colors"))
-    if colors:
-        chart_config["colors"] = colors
+    if resolved_kind == "funnel":
+        colors = _normalize_chart_colors(raw.get("colors"))
+        bar_options: dict[str, Any] = {
+            "horizontal": True,
+            "distributed": True,
+            "isFunnel": True,
+            "isFunnel3d": False,
+        }
+
+        bar_height = raw.get("barHeight")
+        if isinstance(bar_height, str) and _BAR_HEIGHT_PATTERN.fullmatch(bar_height):
+            bar_options["barHeight"] = bar_height
+
+        chart_config["plotOptions"] = {"bar": bar_options}
+        chart_config["dataLabels"] = {"enabled": True}
+        chart_config["stroke"] = {"width": 0}
+        chart_config["grid"] = {"show": False}
+        chart_config["xaxis"] = {
+            "categories": categories,
+            "labels": {"show": False},
+            "axisBorder": {"show": False},
+            "axisTicks": {"show": False},
+            "crosshairs": {"show": False},
+        }
+        chart_config["yaxis"] = {"show": False}
+        chart_config["colors"] = colors or [
+            "var(--tblr-chart-1)",
+            "var(--tblr-chart-2)",
+            "var(--tblr-chart-3)",
+            "var(--tblr-chart-4)",
+            "var(--tblr-chart-5)",
+        ]
+        chart_config["legend"] = {
+            "show": True,
+            "position": "bottom",
+            "fontSize": "12px",
+            "labels": {"colors": "var(--beeui-text-secondary)"},
+            "markers": {"width": 8, "height": 8, "radius": 0},
+            "itemMargin": {"horizontal": 8, "vertical": 4},
+            "customLegendItems": categories,
+        }
+    else:
+        colors = _normalize_chart_colors(raw.get("colors"))
+        if colors:
+            chart_config["colors"] = colors
 
     horizontal = (
         raw.get("horizontal") if isinstance(raw.get("horizontal"), bool) else False
@@ -766,6 +842,15 @@ def _render_operator_hero(raw: dict[str, Any], width_class: str) -> dict[str, An
         "items": items,
         "primary_links": primary_links,
     }
+    subtitle_lines = raw.get("subtitle_lines")
+    if isinstance(subtitle_lines, list):
+        normalized_lines = [
+            _display_value(line, default="")
+            for line in subtitle_lines[:2]
+            if isinstance(line, str) and line.strip()
+        ]
+        if normalized_lines:
+            normalized["subtitle_lines"] = normalized_lines
     illustration = raw.get("illustration")
     if isinstance(illustration, dict):
         asset = illustration.get("asset")

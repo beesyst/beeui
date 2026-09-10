@@ -794,13 +794,13 @@ def test_progressive_page_tabs_render_canonical_links_and_controlled_icons() -> 
     assert response.status_code == 200
     assert 'data-beeui-page-tabs-surface="dashboard"' in response.text
     assert 'data-beeui-page-tabs-progressive="true"' in response.text
-    assert 'beeui-tabs-compact' in response.text
+    assert "beeui-tabs-compact" in response.text
     assert 'href="/?tab=overview"' in response.text
     assert 'data-beeui-page-tab="true"' in response.text
-    assert 'data-beeui-tab-icon="dashboard"' in response.text
-    assert 'data-beeui-tab-icon="unknown"' not in response.text
+    assert 'data-beeui-icon="dashboard"' in response.text
+    assert 'data-beeui-icon="unknown"' in response.text
     assert 'aria-disabled="true"' in response.text
-    assert '<svg class="icon me-2"' in response.text
+    assert '<i class="ti ti-dashboard icon me-2"' in response.text
     assert 'aria-hidden="true"' in response.text
 
     current_tabs = ui_config.pages[0].tabs
@@ -816,8 +816,8 @@ def test_progressive_page_tabs_render_canonical_links_and_controlled_icons() -> 
     ).get("/?tab=overview")
 
     assert icons_response.status_code == 200
-    assert 'data-beeui-tab-icon="dashboard"' in icons_response.text
-    assert '<svg class="icon me-2"' in icons_response.text
+    assert 'data-beeui-icon="dashboard"' in icons_response.text
+    assert '<i class="ti ti-dashboard icon me-2"' in icons_response.text
     assert "nav-fill" not in icons_response.text
 
 
@@ -852,6 +852,19 @@ def test_progressive_page_tabs_keep_route_prefix_when_mounted() -> None:
     assert response.status_code == 200
     assert 'href="/ui/?lang=ru&amp;tab=overview"' in response.text
     assert 'data-beeui-static-prefix="/ui/static"' in response.text
+    assert (
+        'href="/ui/static/vendor/tabler-icons/tabler-icons.min.css?v=3.46.0"'
+        in response.text
+    )
+    asset = TestClient(parent).get(
+        "/ui/static/vendor/tabler-icons/tabler-icons.min.css"
+    )
+    font = TestClient(parent).get(
+        "/ui/static/vendor/tabler-icons/fonts/tabler-icons.woff2"
+    )
+    assert asset.status_code == 200
+    assert 'url("./fonts/tabler-icons.woff2?v3.46.0")' in asset.text
+    assert font.status_code == 200
 
 
 def test_page_tab_icons_spacing_active_inactive_and_disabled() -> None:
@@ -904,10 +917,10 @@ def test_page_tab_icons_spacing_active_inactive_and_disabled() -> None:
 
     assert response.status_code == 200
     html = response.text
-    assert html.count('class="icon me-2"') == 4
+    assert html.count(' icon me-2"') == 4
     assert 'aria-hidden="true"' in html
     for icon in ("dashboard", "queue", "messages", "ai"):
-        assert f'data-beeui-tab-icon="{icon}"' in html
+        assert f'data-beeui-icon="{icon}"' in html
     assert 'class="nav-link active"' in html
     assert 'aria-selected="true"' in html
     assert 'aria-current="page"' in html
@@ -960,7 +973,7 @@ def test_page_tab_icon_localized_title_stays_escaped_next_to_icon() -> None:
     html = response.text
     assert "Обзор" in html
     assert "Очередь" in html
-    assert html.count('class="icon me-2"') == 2
+    assert html.count(' icon me-2"') == 2
     assert 'data-beeui-page-tab="true"' in html
     assert 'data-beeui-page-tabs-progressive="true"' in html
     assert 'href="/?lang=ru&amp;tab=overview"' in html

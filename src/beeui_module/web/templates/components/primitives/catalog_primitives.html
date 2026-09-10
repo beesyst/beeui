@@ -1,3 +1,5 @@
+{% from "components/primitives/icon.html" import tabler_icon %}
+
 {% macro alert(title, message, tone='info') %}
 <div class="alert alert-{{ tone }}" role="alert">
   <h4 class="alert-title">{{ title }}</h4>
@@ -122,10 +124,6 @@
 </ul>
 {% endmacro %}
 
-{% macro tab_icon(icon) %}
-{{ tab_icon_svg(icon) }}
-{% endmacro %}
-
 {% macro url_tabs(items, active_id, base_url='', tab_class='nav nav-tabs card-header-tabs', active_param='tab', progressive=false, show_icons=false, compact_icons=false) %}
 <ul class="{{ tab_class }}" role="tablist">
   {% for tab in items %}
@@ -133,7 +131,7 @@
   <li class="nav-item" role="presentation">
     {% if tab.disabled %}
     <span class="nav-link disabled" role="tab" aria-disabled="true"{% if compact_icons %} title="{{ tab.title }}"{% endif %}>
-      {% if show_icons %}{{ tab_icon(tab.icon) }}<span>{{ tab.title }}</span>{% else %}{{ tab.title }}{% endif %}
+      {% if show_icons %}{{ tabler_icon(tab.icon, 'icon me-2') }}<span>{{ tab.title }}</span>{% else %}{{ tab.title }}{% endif %}
     </span>
     {% else %}
     <a
@@ -145,7 +143,7 @@
       {% if progressive %}data-beeui-page-tab="true"{% endif %}
       {% if compact_icons %}title="{{ tab.title }}"{% endif %}
     >
-      {% if show_icons %}{{ tab_icon(tab.icon) }}<span>{{ tab.title }}</span>{% else %}{{ tab.title }}{% endif %}
+      {% if show_icons %}{{ tabler_icon(tab.icon, 'icon me-2') }}<span>{{ tab.title }}</span>{% else %}{{ tab.title }}{% endif %}
     </a>
     {% endif %}
   </li>

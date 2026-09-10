@@ -36,7 +36,7 @@
           <div class="card">
             {% if section.get("title") %}
             <div class="card-header">
-              <h3 class="card-title">{{ section["title"] }}</h3>
+              <h3 class="beeui-section-title">{{ section["title"] }}</h3>
             </div>
             {% endif %}
 
@@ -57,19 +57,32 @@
                     {% set tone = item.get("tone", "default") %}
                     {% if variant == "modal_text" %}
                     {% set modal_id = "beeui-detail-text-" ~ section_index ~ "-" ~ loop.index0 %}
-                    <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#{{ modal_id }}">
-                      {{ translate("detail.show_text", locale) }}
+                    <button type="button" class="btn btn-sm" data-bs-toggle="modal" data-bs-target="#{{ modal_id }}">
+                      {{ item.get("modal_trigger_label", translate("detail.show_text", locale)) }}
                     </button>
                     <div class="modal modal-blur fade" id="{{ modal_id }}" tabindex="-1" aria-labelledby="{{ modal_id }}-title" aria-hidden="true">
-                      <div class="modal-dialog modal-xl modal-dialog-scrollable" role="document">
-                        <div class="modal-content">
+                      <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" role="document">
+                        <div class="modal-content beeui-detail-modal">
                           <div class="modal-header">
-                            <h5 class="modal-title" id="{{ modal_id }}-title">{{ item["label"] }}</h5>
+                            <h5 class="modal-title" id="{{ modal_id }}-title">{{ item.get("modal_title", item["label"]) }}</h5>
                             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ translate("detail.close", locale) }}"></button>
                           </div>
-                          <div class="modal-body beeui-modal-text">{{ item["display"] }}</div>
+                          <div class="modal-body">
+                            {% if item.get("modal_fields") %}
+                            <div class="datagrid">
+                              {% for field in item["modal_fields"] %}
+                              <div class="datagrid-item">
+                                <div class="datagrid-title">{{ field["label"] }}</div>
+                                <div class="datagrid-content beeui-text-break{% if field["multiline"] %} beeui-modal-text{% endif %}">{{ field["value"] }}</div>
+                              </div>
+                              {% endfor %}
+                            </div>
+                            {% else %}
+                            <div class="beeui-modal-text">{{ item["display"] }}</div>
+                            {% endif %}
+                          </div>
                           <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ translate("detail.close", locale) }}</button>
+                            <button type="button" class="btn me-auto" data-bs-dismiss="modal">{{ translate("detail.close", locale) }}</button>
                           </div>
                         </div>
                       </div>
@@ -123,7 +136,7 @@
           <div class="card">
             {% if section.get("title") %}
             <div class="card-header">
-              <h3 class="card-title">{{ section["title"] }}</h3>
+              <h3 class="beeui-section-title">{{ section["title"] }}</h3>
             </div>
             {% endif %}
             <div class="card-body">
@@ -137,7 +150,7 @@
           <div class="card">
             {% if section.get("title") %}
             <div class="card-header">
-              <h3 class="card-title">{{ section["title"] }}</h3>
+              <h3 class="beeui-section-title">{{ section["title"] }}</h3>
             </div>
             {% endif %}
             <div class="table-responsive">
@@ -177,7 +190,7 @@
           <div class="card">
             {% if section.get("title") %}
             <div class="card-header">
-              <h3 class="card-title">{{ section["title"] }}</h3>
+              <h3 class="beeui-section-title">{{ section["title"] }}</h3>
             </div>
             {% endif %}
             <div class="list-group list-group-flush">

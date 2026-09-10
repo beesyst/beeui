@@ -188,6 +188,31 @@ def _normalize_key_value_section(section: dict[str, Any]) -> dict[str, Any] | No
         normalized["tone"] = tone
         display = item.get("display")
         normalized["display"] = _display_value(display, default=normalized["value"])
+        if variant == "modal_text":
+            trigger_label = item.get("modal_trigger_label")
+            if isinstance(trigger_label, str) and trigger_label.strip():
+                normalized["modal_trigger_label"] = _display_value(trigger_label)
+            modal_title = item.get("modal_title")
+            if isinstance(modal_title, str) and modal_title.strip():
+                normalized["modal_title"] = _display_value(modal_title)
+            raw_fields = item.get("modal_fields")
+            if isinstance(raw_fields, list):
+                modal_fields: list[dict[str, Any]] = []
+                for field in raw_fields:
+                    if not isinstance(field, dict):
+                        continue
+                    label = field.get("label")
+                    if not isinstance(label, str) or not label.strip():
+                        continue
+                    modal_fields.append(
+                        {
+                            "label": _display_value(label),
+                            "value": _display_value(field.get("value")),
+                            "multiline": field.get("multiline") is True,
+                        }
+                    )
+                if modal_fields:
+                    normalized["modal_fields"] = modal_fields
         href = _validate_internal_href(item.get("href"))
         if href:
             normalized["href"] = href

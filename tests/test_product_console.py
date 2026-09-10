@@ -240,7 +240,7 @@ def test_mounted_artifact_and_catalog_links_use_effective_external_prefix() -> N
 
     catalog = client.get("/ui/components?lang=ru")
     assert catalog.status_code == 200
-    assert 'href="/ui/static/css/beeui.css?v=7"' in catalog.text
+    assert 'href="/ui/static/css/beeui.css?v=19"' in catalog.text
     assert 'href="/ui/"' in catalog.text
     assert 'href="/ui/components/interface?lang=ru"' in catalog.text
     assert 'href="/ui/components?lang=en"' in catalog.text
@@ -699,6 +699,60 @@ def test_chart_runtime_handles_sync_and_async_render_failures() -> None:
     assert "window.beeuiRegisterChart(chart);" in javascript
     assert "catch (_)" in javascript
     assert "e.message" not in javascript
+
+
+def test_funnel_runtime_uses_bounded_colors_and_escaped_one_line_tooltip() -> None:
+    javascript = Path("src/beeui_module/web/static/js/beeui.js").read_text(
+        encoding="utf-8"
+    )
+    stylesheet = Path("src/beeui_module/web/static/css/beeui.css").read_text(
+        encoding="utf-8"
+    )
+
+    assert "function resolveTablerChartColors(config)" in javascript
+    for token in (
+        "primary",
+        "secondary",
+        "success",
+        "warning",
+        "danger",
+        "info",
+        "blue",
+        "azure",
+        "indigo",
+        "purple",
+        "pink",
+        "red",
+        "orange",
+        "yellow",
+        "lime",
+        "green",
+        "teal",
+        "cyan",
+        "chart-[1-5]",
+    ):
+        assert token in javascript
+    assert "function configureFunnelTooltip(config)" in javascript
+    assert "function escapeChartTooltipHtml(value)" in javascript
+    assert "function isSafeTooltipColor(color)" in javascript
+    assert '"beeui-funnel-tooltip"' in javascript
+    assert "dataPointIndex" in javascript
+    assert "configureFunnelTooltip(config);" in javascript
+    assert ".beeui-chart-container-funnel .apexcharts-legend" in stylesheet
+    assert "flex-wrap: wrap;" in stylesheet
+    assert "justify-content: center;" in stylesheet
+    assert "width: 0.5rem !important;" in stylesheet
+    assert "height: 0.5rem !important;" in stylesheet
+    assert "border-radius: 0 !important;" in stylesheet
+    assert "margin-right: 0.375rem !important;" in stylesheet
+    assert (
+        ".beeui-chart-card .beeui-chart-container-funnel .apexcharts-grid line,\n"
+        ".beeui-chart-card .beeui-chart-container-funnel .apexcharts-grid-borders line {\n"
+        "  stroke: transparent;\n}" in stylesheet
+    )
+    assert ".beeui-funnel-tooltip" in stylesheet
+    assert "display: inline-flex;" in stylesheet
+    assert "white-space: nowrap;" in stylesheet
 
 
 def test_nested_chart_in_group_loads_chart_asset() -> None:
@@ -1863,8 +1917,17 @@ def test_operator_hero_block_renders_through_layout() -> None:
                                     "href": "/runs/run_001",
                                     "metric": True,
                                     "trend": {"percentage": 12, "direction": "up"},
+                                    "progress": 50,
+                                    "progress_tone": "bg-success",
                                 },
-                                {"label": "Runtime", "value": "stopped"},
+                                {
+                                    "label": "Runtime",
+                                    "value": "stopped",
+                                    "metric": True,
+                                    "trend": {"percentage": 0, "direction": "neutral"},
+                                    "progress": 50,
+                                    "progress_tone": "bg-danger",
+                                },
                             ],
                             "primary_links": [
                                 {
@@ -1992,12 +2055,17 @@ def test_operator_hero_block_renders_through_layout() -> None:
     ):
         assert marker in response.text
 
-    assert 'class="h3 me-2 mb-0">run_001<' in response.text
-    assert "text-green d-inline-flex align-items-center lh-1" in response.text
     assert (
-        'src="/static/vendor/tabler/illustrations/dark/email.png" alt=""'
+        'class="d-flex align-items-baseline justify-content-between gap-2 w-100"'
         in response.text
     )
+    assert 'class="h3 mb-0"' in response.text
+    assert "text-success ms-auto d-inline-flex align-items-center lh-1" in response.text
+    assert "text-danger ms-auto d-inline-flex align-items-center lh-1" in response.text
+    assert "progress-bar bg-success" in response.text
+    assert "progress-bar bg-danger" in response.text
+    assert 'src="/static/vendor/tabler/illustrations/dark/email.png"' in response.text
+    assert 'alt=""' in response.text
     asset = client.get("/static/vendor/tabler/illustrations/dark/email.png")
     assert asset.status_code == 200
     assert asset.headers["content-type"] == "image/png"

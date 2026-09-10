@@ -231,36 +231,7 @@ Product decides.
 
 Failure, malformed HTML, mismatched surface, unavailable browser APIs, unsafe/cross-origin URL and any failed request fall back to the original canonical navigation. Fetched executable scripts are removed; JSON chart configuration is parsed only by the fixed BeeUI renderer. BeeUI loads only its fixed package-local ApexCharts and Litepicker paths when a replacement contains the respective controlled component.
 
-`pages[].tabs.items[].icon` is optional. It must be a safe identifier. `icons`, `fill_icons` and `compact_fill_icons` render the controlled BeeUI Tabler-style mapping; the compact variant is the generic compact icon/fill presentation. Absent or unknown icons render no SVG. No icon value can introduce SVG, HTML, CSS, JavaScript or external asset URLs.
-
-The controlled tab icon registry lives in `src/beeui_module/pages/tab_icons.py` and the mapping is defined in `src/beeui_module/pages/models.py`. BeeUI owns the SVG glyphs; product supplies only the identifier. Glyph bodies are exact Tabler Icons 2.x outline geometry embedded inline (no CDN, no external asset). Icon and label are separated with the Tabler spacing utility `class="icon me-2"` in every tab state (`icons`, `fill_icons` and `compact_fill_icons`, active, inactive, disabled, progressive or not, localized or not).
-
-| BeeUI identifier | Tabler icon | Semantic concept      |
-| ---------------- | ----------- | --------------------- |
-| `dashboard`      | dashboard   | dashboard / overview  |
-| `runs`           | activity    | runs / activity       |
-| `list`           | list        | queue / list          |
-| `reports`        | chart-bar   | reports / bar chart   |
-| `chart`          | chart-line  | chart / line chart    |
-| `calendar`       | calendar    | calendar / date range |
-| `queue`          | stack       | queue / stack         |
-| `messages`       | messages    | messages / threads    |
-| `ai`             | robot       | AI / assistant        |
-| `source`         | database    | source / database     |
-| `attachment`     | paperclip   | attachment / file     |
-| `evidence`       | search      | evidence / search     |
-| `integration`    | link        | integration / link    |
-| `recommendation` | bulb        | recommendation / idea |
-| `ban`            | ban         | generic restriction   |
-
-Rules:
-
-- every documented identifier renders a distinct glyph;
-- old identifiers (`dashboard`, `runs`, `list`, `reports`, `chart`, `calendar`) stay backward-compatible;
-- unknown safe identifier renders no icon;
-- unsafe identifier fails config validation;
-- `data-beeui-tab-icon` carries the original identifier;
-- registry is product-neutral: no product-specific identifiers such as ROP, BeeAgent or Bitrix are added.
+`pages[].tabs.items[].icon` is optional. It must be a safe canonical Tabler icon name (`^[a-z][a-z0-9-]*$`). Tabs and sidebar render the same generic `<i class="ti ti-…">` primitive from the locally vendored official `@tabler/icons-webfont` 3.46.0 package. Product config cannot provide SVG, HTML, CSS, JavaScript, URLs or a provider; unsafe names fail validation and unknown safe names do not crash rendering. The asset is package-local, with no CDN or external runtime request.
 
 Browser component initialization is idempotent and applies both on initial load and a replaced tab surface. Live table controls, Datepicker and charts retain their existing server-rendered GET and product-owned data contracts.
 
@@ -2021,8 +1992,8 @@ Action item shape:
   "label": "Launch allowed preset",
   "description": "Starts the bounded operation.",
   "confirmation": "I confirm this operation.",
-  "args": {"preset": "safe_default"},
-  "fields": [{"name": "note", "type": "text", "max_length": 120}]
+  "args": { "preset": "safe_default" },
+  "fields": [{ "name": "note", "type": "text", "max_length": 120 }]
 }
 ```
 

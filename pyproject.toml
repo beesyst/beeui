@@ -40,6 +40,7 @@ where = ["src"]
     "static/css/*.css",
     "static/js/*.js",
     "static/vendor/tabler/**/*",
+    "static/vendor/tabler-icons/**/*",
     "static/vendor/apexcharts/**/*",
     "static/vendor/litepicker/**/*",
 ]
