@@ -924,6 +924,58 @@
     element.appendChild(empty);
   }
 
+  function resolveTablerChartColors(config) {
+    if (!Array.isArray(config.colors)) return;
+    var style = window.getComputedStyle(document.documentElement);
+    var tablerChartColorPattern = /^var\(--tblr-(?:primary|secondary|success|warning|danger|info|blue|azure|indigo|purple|pink|red|orange|yellow|lime|green|teal|cyan|chart-[1-5])\)$/;
+    config.colors = config.colors.map(function (color) {
+      var match = typeof color === "string" && color.match(tablerChartColorPattern);
+      if (!match) return color;
+      var probe = document.createElement("span");
+      probe.style.color = style.getPropertyValue(color.slice(4, -1)).trim();
+      document.body.appendChild(probe);
+      var resolved = window.getComputedStyle(probe).color;
+      probe.remove();
+      return resolved || color;
+    });
+  }
+
+  function escapeChartTooltipHtml(value) {
+    return String(value).replace(/[&<>"']/g, function (character) {
+      return {
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;",
+      }[character];
+    });
+  }
+
+  function isSafeTooltipColor(color) {
+    return typeof color === "string" && /^(?:#[0-9a-f]{6}|rgba?\(\s*(?:25[0-5]|2[0-4]\d|1?\d?\d)\s*,\s*(?:25[0-5]|2[0-4]\d|1?\d?\d)\s*,\s*(?:25[0-5]|2[0-4]\d|1?\d?\d)(?:\s*,\s*(?:0|1|0?\.\d+))?\s*\))$/i.test(color);
+  }
+
+  function configureFunnelTooltip(config) {
+    var barOptions = config.plotOptions && config.plotOptions.bar;
+    if (!config.chart || config.chart.type !== "bar" || !barOptions || barOptions.isFunnel !== true) return;
+
+    var categories = config.xaxis && Array.isArray(config.xaxis.categories) ? config.xaxis.categories : [];
+    var data = config.series && config.series[0] && Array.isArray(config.series[0].data) ? config.series[0].data : [];
+    var colors = Array.isArray(config.colors) ? config.colors : [];
+    config.tooltip = {
+      custom: function ({ dataPointIndex }) {
+        var label = escapeChartTooltipHtml(categories[dataPointIndex] || "");
+        var value = escapeChartTooltipHtml(data[dataPointIndex] || 0);
+        var color = colors[dataPointIndex];
+        var marker = isSafeTooltipColor(color)
+          ? '<span class="beeui-funnel-tooltip-marker" style="background-color: ' + color + '"></span>'
+          : "";
+        return '<div class="beeui-funnel-tooltip">' + marker + "<span>" + label + ": " + value + "</span></div>";
+      },
+    };
+  }
+
   function initCharts(scope) {
     if (typeof window.ApexCharts === "undefined") return;
     var target = scope || document;
@@ -938,6 +990,8 @@
         var config = JSON.parse(configNode.textContent || "{}");
         config.chart = config.chart || {};
         config.chart.el = element;
+        resolveTablerChartColors(config);
+        configureFunnelTooltip(config);
         config.theme = config.theme || {};
         config.theme.mode = getEffectiveTheme() === "dark" ? "dark" : "light";
         var chart = new window.ApexCharts(element, config);

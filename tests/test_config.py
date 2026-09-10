@@ -1410,6 +1410,7 @@ def test_page_tabs_progressive_and_icon_invalid_values_fail_fast(
         ("icon", "          icon: javascript:alert(1)\n"),
         ("icon", "          icon: icon name with spaces\n"),
         ("icon", "          icon: 0bad\n"),
+        ("icon", "          icon: bad_icon\n"),
         ("icon", "          icon: bad/icon\n"),
     )
     for field, invalid_line in invalid_tabs:

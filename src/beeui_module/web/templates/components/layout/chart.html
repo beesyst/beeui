@@ -1,9 +1,9 @@
 <div class="card beeui-layout-card beeui-chart-card">
   <div class="card-header">
     <div>
-      <h3 class="card-title mb-0">{{ block.title or translate("chart.title", locale) }}</h3>
+      <h3 class="beeui-section-title">{{ block.title or translate("chart.title", locale) }}</h3>
       {% if block.subtitle %}
-        <div class="text-secondary small mt-1">{{ block.subtitle }}</div>
+        <div class="beeui-section-subtitle mt-1">{{ block.subtitle }}</div>
       {% endif %}
     </div>
     {% if block.status %}
@@ -14,7 +14,7 @@
   <div class="card-body">
     {% if block.state == "ready" %}
       <div
-        class="beeui-chart-container"
+        class="beeui-chart-container beeui-chart-container-{{ block.kind }}"
         id="{{ block.chart_id }}"
         data-chart-config-id="{{ block.chart_id }}-config"
         data-chart-height="{{ block.height }}"

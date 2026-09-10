@@ -340,13 +340,14 @@ def test_page_blocks_use_tabler_grid_without_wrapper_card() -> None:
     assert 'class="row row-deck row-cards beeui-block-grid"' in page_blocks
 
 
-def test_sidebar_renders_allowlisted_navigation_icons() -> None:
+def test_sidebar_renders_generic_navigation_icons() -> None:
     response = TestClient(create_beeui_app()).get("/")
 
     assert response.status_code == 200
     for icon in ("dashboard", "runs", "reports"):
         assert f'data-beeui-icon="{icon}"' in response.text
     assert response.text.count("data-beeui-icon=") == 3
+    assert 'class="ti ti-dashboard icon icon-1"' in response.text
     assert "http://" not in response.text.lower()
     assert "https://" not in response.text.lower()
 
@@ -1803,6 +1804,29 @@ def test_page_tabs_no_standalone_tabs_card(tmp_path: Path) -> None:
     )
     assert '<div class="card">' in response.text[tabs_card_start:page_blocks_start]
     assert 'class="beeui-page-tabs-blocks" aria-label="Page blocks"' in response.text
+    stylesheet = (
+        Path(__file__).parents[1] / "src/beeui_module/web/static/css/beeui.css"
+    ).read_text(encoding="utf-8")
+    assert (
+        "--beeui-page-tabs-separated-bg: var(--beeui-body-bg-secondary);" in stylesheet
+    )
+    assert "background: var(--beeui-page-tabs-separated-bg);" in stylesheet
+    assert (
+        ".beeui-page-tabs-card-separated > .card {\n"
+        "  border-bottom: 0;\n"
+        "  box-shadow: none;\n}" in stylesheet
+    )
+    assert (
+        ".beeui-page-tabs-card-separated > .card > .card-header {\n  border-bottom: 0;"
+        not in stylesheet
+    )
+    assert (
+        ".beeui-page-tabs-card-separated .card-header-tabs .nav-link.active {\n"
+        "  background-color: var(--beeui-page-tabs-separated-bg);\n"
+        "  border-bottom-color: var(--beeui-page-tabs-separated-bg);\n}" in stylesheet
+    )
+    assert ".nav-link.active::after" not in stylesheet
+    assert ".nav-tabs .nav-link.active" not in stylesheet
 
 
 def test_page_without_tabs_renders_blocks_normally(tmp_path: Path) -> None:
@@ -2000,7 +2024,7 @@ def test_custom_route_rop_registers_with_adapter(tmp_path: Path) -> None:
     assert 'href="/ui/rop?sort=run"' in response.text
     assert 'aria-sort="ascending"' in response.text
     assert 'class="table-sort asc"' in response.text
-    assert 'href="/ui/static/css/beeui.css?v=7"' in response.text
+    assert 'href="/ui/static/css/beeui.css?v=19"' in response.text
     assert 'href="/ui/"' in response.text
     assert 'href="/ui/rop?lang=ru"' in response.text
     assert 'href="/ui/rop?tab=overview"' in response.text
@@ -3679,6 +3703,15 @@ def test_detail_display_is_used_for_long_and_automatic_collapsible_content() -> 
                             "value": "RAW_MODAL_MARKER",
                             "display": "<script>unsafe()</script>",
                             "variant": "modal_text",
+                            "modal_trigger_label": "<b>Trigger</b>",
+                            "modal_title": "<i>Title</i>",
+                            "modal_fields": [
+                                {
+                                    "label": "<em>Field</em>",
+                                    "value": "<script>field()</script>",
+                                    "multiline": True,
+                                }
+                            ],
                         },
                     ],
                 }
@@ -3697,9 +3730,66 @@ def test_detail_display_is_used_for_long_and_automatic_collapsible_content() -> 
     assert "RAW_MODAL_MARKER" not in body
     assert "&lt;b&gt;Safe long text&lt;/b&gt;" in body
     assert 'data-bs-toggle="modal"' in body
-    assert "modal-dialog modal-xl modal-dialog-scrollable" in body
-    assert "&lt;script&gt;unsafe()&lt;/script&gt;" in body
+    assert "modal-dialog modal-dialog-centered modal-dialog-scrollable" in body
+    assert 'class="btn btn-sm"' in body
+    assert 'class="btn btn-primary btn-sm"' not in body
+    assert 'class="btn btn-outline-' not in body
+    assert 'class="btn btn-ghost-' not in body
+    assert 'class="modal-content beeui-detail-modal"' in body
+    assert 'class="btn me-auto"' in body
+    assert "Save changes" not in body
+    css = (_resolve_templates_dir().parent / "static" / "css" / "beeui.css").read_text(
+        encoding="utf-8"
+    )
+    assert ".beeui-detail-modal > .modal-header" in css
+    assert "border-bottom: 1px solid var(--beeui-border-light);" in css
+    assert ".beeui-detail-modal > .modal-footer" in css
+    assert "border-top: 1px solid var(--beeui-border-light);" in css
+    assert "unsafe()" not in body
+    assert "&lt;b&gt;Trigger&lt;/b&gt;" in body
+    assert "&lt;i&gt;Title&lt;/i&gt;" in body
+    assert "&lt;em&gt;Field&lt;/em&gt;" in body
+    assert "&lt;script&gt;field()&lt;/script&gt;" in body
     assert "&lt;i&gt;" in body
+
+
+def test_detail_modal_text_normalizes_optional_metadata() -> None:
+    from beeui_module.pages.detail import normalize_detail_page
+
+    page = normalize_detail_page(
+        {
+            "page_id": "detail",
+            "title": "Detail",
+            "sections": [
+                {
+                    "kind": "key_value",
+                    "items": [
+                        {
+                            "label": "Text",
+                            "value": "value",
+                            "variant": "modal_text",
+                            "modal_trigger_label": "Show",
+                            "modal_title": "Title",
+                            "modal_fields": [
+                                {"label": "Field", "value": "Value"},
+                                {"label": "Body", "value": "Text", "multiline": True},
+                                {"label": "", "value": "ignored"},
+                                "ignored",
+                            ],
+                        }
+                    ],
+                }
+            ],
+        }
+    )
+
+    item = page["sections"][0]["items"][0]
+    assert item["modal_trigger_label"] == "Show"
+    assert item["modal_title"] == "Title"
+    assert item["modal_fields"] == [
+        {"label": "Field", "value": "Value", "multiline": False},
+        {"label": "Body", "value": "Text", "multiline": True},
+    ]
 
 
 def test_detail_page_raw_extra_fields_not_rendered() -> None:
@@ -3764,6 +3854,14 @@ def test_detail_page_template_has_no_unsafe_safe_filter() -> None:
         encoding="utf-8"
     )
     assert "|safe" not in detail_html
+
+
+def test_detail_page_section_titles_use_semantic_typography() -> None:
+    detail_html = Path("src/beeui_module/web/templates/detail.html").read_text(
+        encoding="utf-8"
+    )
+    assert detail_html.count('<h3 class="beeui-section-title">') == 4
+    assert '{% include "components/page_header.html" %}' in detail_html
 
 
 def test_detail_page_ghost_section_omitted() -> None:

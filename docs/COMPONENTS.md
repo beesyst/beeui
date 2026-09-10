@@ -36,32 +36,33 @@ Safe local chart renderer for adapter-backed `layout[]`. Supports controlled cha
 
 Поддерживаемые виды:
 
-| Kind    | Chart type                                               |
-| ------- | -------------------------------------------------------- |
-| `line`  | ApexCharts line chart                                    |
-| `bar`   | ApexCharts bar chart                                     |
-| `area`  | ApexCharts area chart                                    |
-| `donut` | ApexCharts donut chart (uses `labels`, not `categories`) |
+| Kind     | Chart type                                               |
+| -------- | -------------------------------------------------------- |
+| `line`   | ApexCharts line chart                                    |
+| `bar`    | ApexCharts bar chart                                     |
+| `area`   | ApexCharts area chart                                    |
+| `donut`  | ApexCharts donut chart (uses `labels`, not `categories`) |
+| `funnel` | Controlled ApexCharts bar funnel (uses `categories`)     |
 
 Контролируемые поля:
 
-| Field           | Type   | Default           | Description                                                                                   |
-| --------------- | ------ | ----------------- | --------------------------------------------------------------------------------------------- |
-| `title`         | string | `"Chart"`         | Card title                                                                                    |
-| `subtitle`      | string | `""`              | Card subtitle                                                                                 |
-| `kind`          | string | `"line"`          | Chart kind: `line`, `bar`, `area`, `donut`                                                    |
-| `height`        | int    | `300`             | Chart height in px (50..800, clamped)                                                         |
-| `series`        | list   | `[]`              | Line/bar/area: `[{"name": str, "data": [finite number]}]`; donut: non-empty `[finite number]` |
-| `categories`    | list   | `[]`              | X-axis labels for line/bar/area                                                               |
-| `labels`        | list   | `[]`              | Segment labels for donut                                                                      |
-| `unit`          | string | `""`              | Display unit below chart                                                                      |
-| `empty_message` | string | `"No chart data"` | Message when data is empty                                                                    |
-| `status`        | string | `""`              | Badge text in card header                                                                     |
-| `hint`          | string | `""`              | Hint text below chart                                                                         |
-| `chart_id`      | string | deterministic id  | `[A-Za-z][A-Za-z0-9_-]{0,63}`; invalid value uses deterministic fallback                      |
-| `colors`        | list   | `[]`              | Up to 12 generic BeeUI tokens or strict `#[0-9A-Fa-f]{6}` values                              |
-| `horizontal`    | bool   | `false`           | Horizontal bar layout only for `bar` charts                                                   |
-| `barHeight`     | string | `"50%"`           | Horizontal bar height from `1%` to `100%`                                                     |
+| Field           | Type   | Default           | Description                                                                                          |
+| --------------- | ------ | ----------------- | ---------------------------------------------------------------------------------------------------- |
+| `title`         | string | `"Chart"`         | Card title                                                                                           |
+| `subtitle`      | string | `""`              | Card subtitle                                                                                        |
+| `kind`          | string | `"line"`          | Chart kind: `line`, `bar`, `area`, `donut`, `funnel`                                                 |
+| `height`        | int    | `300`             | Chart height in px (50..800, clamped)                                                                |
+| `series`        | list   | `[]`              | Line/bar/area/funnel: `[{"name": str, "data": [finite number]}]`; donut: non-empty `[finite number]` |
+| `categories`    | list   | `[]`              | X-axis labels for line/bar/area/funnel                                                               |
+| `labels`        | list   | `[]`              | Segment labels for donut                                                                             |
+| `unit`          | string | `""`              | Display unit below chart                                                                             |
+| `empty_message` | string | `"No chart data"` | Message when data is empty                                                                           |
+| `status`        | string | `""`              | Badge text in card header                                                                            |
+| `hint`          | string | `""`              | Hint text below chart                                                                                |
+| `chart_id`      | string | deterministic id  | `[A-Za-z][A-Za-z0-9_-]{0,63}`; invalid value uses deterministic fallback                             |
+| `colors`        | list   | `[]`              | Up to 12 generic BeeUI tokens or strict `#[0-9A-Fa-f]{6}` values                                     |
+| `horizontal`    | bool   | `false`           | Horizontal bar layout only for `bar` charts                                                          |
+| `barHeight`     | string | `"50%"`           | Horizontal bar height from `1%` to `100%`                                                            |
 
 Правила:
 
@@ -397,6 +398,10 @@ HTML-форма:
 - depth limit `3`; exceeded depth returns `degraded` block;
 - некорректный group payload рендерится как `degraded` block, без 500.
 
+### Metric card
+
+`metric_card` supports optional `href`, `icon` and `icon_tone`. BeeUI accepts only internal `href` values, normalizes the Tabler icon name and allowlists the tone. A card without `href` keeps legacy non-clickable rendering.
+
 ### Колонки KPI grid
 
 `kpi_grid` поддерживает optional `columns` (1..4):
@@ -426,40 +431,7 @@ Invalid adapter values degrade to default 4 (no 500). Это поле относ
 
 `pages[].tabs` сохраняет URL-driven `<a href>` contract. Optional `progressive: true` добавляет progressive enhancement только для enabled tabs: BeeUI fetches same-origin canonical GET response, replaces only the matching `.beeui-page-tabs-card` surface and updates History after a successful replacement. Without JavaScript, for `progressive: false`, on an unsafe/cross-origin URL, malformed response or fetch failure, browser uses the canonical navigation.
 
-`items[].icon` is optional and accepts only a safe identifier. For `icons`, `fill_icons` and `compact_fill_icons`, BeeUI renders only its own controlled Tabler-style SVG mapping; the compact variant is the generic compact icon/fill presentation. Unknown identifiers render no icon; raw SVG/HTML/CSS/JS are rejected by config validation and are never rendered.
-
-#### Controlled tab icon registry
-
-BeeUI owns the tab icon SVG glyphs. Products supply only a safe identifier; raw SVG/HTML/CSS/JS from config is rejected and never rendered.
-
-The glyph bodies are exact Tabler Icons 2.x outline geometry, embedded inline in BeeUI (no CDN or external asset). Icon and label are separated with the Tabler spacing utility `class="icon me-2"` in every tab state (active, inactive, disabled, `icons`, `fill_icons` and `compact_fill_icons`, progressive or not, localized or not).
-
-| BeeUI identifier | Tabler icon | Semantic concept      |
-| ---------------- | ----------- | --------------------- |
-| `dashboard`      | dashboard   | dashboard / overview  |
-| `runs`           | activity    | runs / activity       |
-| `list`           | list        | queue / list          |
-| `reports`        | chart-bar   | reports / bar chart   |
-| `chart`          | chart-line  | chart / line chart    |
-| `calendar`       | calendar    | calendar / date range |
-| `queue`          | stack       | queue / stack         |
-| `messages`       | messages    | messages / threads    |
-| `ai`             | robot       | AI / assistant        |
-| `source`         | database    | source / database     |
-| `attachment`     | paperclip   | attachment / file     |
-| `evidence`       | search      | evidence / search     |
-| `integration`    | link        | integration / link    |
-| `recommendation` | bulb        | recommendation / idea |
-| `ban`            | ban         | generic restriction   |
-
-Rules:
-
-- each documented identifier renders a distinct glyph;
-- identifiers are backward-compatible (`dashboard`, `runs`, `list`, `reports`, `chart`, `calendar` keep working);
-- unknown safe identifier renders no icon;
-- unsafe identifier fails config validation;
-- `data-beeui-tab-icon` carries the original identifier;
-- registry is product-neutral; no product-specific identifiers (ROP, BeeAgent, Bitrix, …) are added.
+`items[].icon` is optional and accepts a safe canonical Tabler icon name (`^[a-z][a-z0-9-]*$`). For `icons`, `fill_icons` and `compact_fill_icons`, tabs and sidebar use the same generic primitive and the locally vendored official `@tabler/icons-webfont` 3.46.0 asset. Products supply only the identifier; raw SVG/HTML/CSS/JS, icon URLs and provider settings are rejected. Unknown syntactically safe names render their local webfont class without crashing; no CDN or external runtime asset is used.
 
 The browser runtime cancels stale transitions, handles Back/Forward, never executes fetched scripts and reinitializes BeeUI-owned live tables, Litepicker Datepicker and ApexCharts after replacement. Runtime assets are loaded only from fixed package-local BeeUI paths.
 
@@ -595,6 +567,11 @@ Public entrypoint: `render_beeui_detail_page(request, page, *, templates, route_
 - External/unsafe links render as inert text.
 - Raw implicit fields (`raw_eml`, `attachment_content`, `payload_bytes`, `content_bytes`) are not included in normalized output.
 - HTML autoescape remains enabled; no `|safe` for adapter/product values.
+- A `key_value` item with `variant: "modal_text"` may optionally provide
+  `modal_trigger_label`, `modal_title` and `modal_fields[]` (`label`, `value`,
+  optional `multiline: true`). Missing modal metadata remains backward-compatible:
+  the localized `detail.show_text` trigger, item label title and escaped `display`
+  body are used. Malformed modal fields are omitted.
 
 ### Template markup
 

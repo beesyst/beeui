@@ -20,6 +20,7 @@ from beeui_module.data.models import (
 from beeui_module.pages.locale import (
     validate_localized_text,
 )
+from beeui_module.pages.icons import is_safe_icon_name
 from beeui_module.pages.models import (
     ACCORDION_VARIANTS,
     TABS_VARIANTS,
@@ -547,11 +548,10 @@ def _parse_page_tabs(
         href = _validate_tab_href(item_raw.get("href"), page_id, idx)
 
         icon = item_raw.get("icon")
-        if icon is not None:
-            if not isinstance(icon, str) or not _SAFE_IDENTIFIER_RE.fullmatch(icon):
-                raise ValueError(
-                    f"pages.{page_id}.tabs.items[{idx}].icon must be a safe identifier"
-                )
+        if icon is not None and not is_safe_icon_name(icon):
+            raise ValueError(
+                f"pages.{page_id}.tabs.items[{idx}].icon must be a safe icon name"
+            )
 
         disabled = item_raw.get("disabled", False)
         if not isinstance(disabled, bool):
@@ -788,8 +788,8 @@ def _parse_navigation_item(
     )
 
     icon = item.get("icon")
-    if icon is not None and (not isinstance(icon, str) or not icon.strip()):
-        raise ValueError(f"{prefix}.icon must be a non-empty string")
+    if icon is not None and not is_safe_icon_name(icon):
+        raise ValueError(f"{prefix}.icon must be a safe icon name")
 
     disabled = item.get("disabled", False)
     if not isinstance(disabled, bool):

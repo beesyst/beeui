@@ -422,6 +422,55 @@ def test_layout_metric_card_renders() -> None:
     assert block["hint"] == "No closed trades"
 
 
+def test_layout_metric_card_normalizes_optional_presentation_fields() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "metric_card",
+                "title": "Urgent",
+                "value": 2,
+                "href": "/rop?tab=queue",
+                "icon": "alert-triangle",
+                "icon_tone": "red",
+            },
+            {
+                "type": "metric_card",
+                "title": "Unsafe",
+                "value": 0,
+                "href": "//example.test/queue",
+                "icon": "<img>",
+                "icon_tone": "bg-danger",
+            },
+        ]
+    )
+    linked, malformed = result
+    assert linked["href"] == "/rop?tab=queue"
+    assert linked["icon"] == "alert-triangle"
+    assert linked["icon_tone"] == "red"
+    assert malformed["href"] is None
+    assert malformed["icon"] == ""
+    assert malformed["icon_tone"] == "primary"
+
+
+def test_layout_metric_card_template_supports_linked_cards() -> None:
+    content = Path(
+        "src/beeui_module/web/templates/components/layout/metric_card.html"
+    ).read_text(encoding="utf-8")
+    assert "{% if block.href %}" in content
+    assert '<a\n  href="{{ url_prefix }}{{ block.href }}"' in content
+    assert (
+        'class="card h-100 text-reset text-decoration-none beeui-metric-card"'
+        in content
+    )
+    assert 'tabler_icon(block.icon, "icon-md")' in content
+    assert '<div class="beeui-section-title">{{ block.title }}</div>' in content
+    assert (
+        '<div class="subheader beeui-section-title">{{ block.title }}</div>' in content
+    )
+    assert content.count('class="beeui-metric-value"') == 2
+    assert "block.hint" not in content.split("{% else %}", 1)[0]
+
+
 def test_layout_kpi_strip_renders() -> None:
     result = render_layout(
         [
@@ -993,6 +1042,7 @@ def test_layout_operator_hero_renders() -> None:
                 "type": "operator_hero",
                 "title": "System Snapshot",
                 "subtitle": "Runtime: stopped",
+                "subtitle_lines": ["Runtime:", "stopped"],
                 "status": "ok",
                 "width": 12,
                 "illustration": {"asset": "tabler_email_dark", "alt": ""},
@@ -1018,6 +1068,7 @@ def test_layout_operator_hero_renders() -> None:
     assert block["type"] == "operator_hero"
     assert block["title"] == "System Snapshot"
     assert block["subtitle"] == "Runtime: stopped"
+    assert block["subtitle_lines"] == ["Runtime:", "stopped"]
     assert block["status"] == "ok"
     assert block["illustration"] == {
         "source": "vendor/tabler/illustrations/dark/email.png",
@@ -1030,6 +1081,62 @@ def test_layout_operator_hero_renders() -> None:
     assert block["items"][1]["href"] is None
     assert len(block["primary_links"]) == 1
     assert block["primary_links"][0]["href"] == "/runs/run_001"
+
+
+def test_layout_operator_hero_template_renders_trend_direction_icons() -> None:
+    content = Path(
+        "src/beeui_module/web/templates/components/layout/operator_hero.html"
+    ).read_text(encoding="utf-8")
+    percent_position = content.index("{{ '%g' | format(item.trend.percentage) }}%")
+    assert percent_position < content.index("ti-arrow-up", percent_position)
+    assert "ti-arrow-up icon icon-sm ms-1" in content
+    assert "ti-arrow-down icon icon-sm ms-1" in content
+    assert "ti-minus icon icon-sm ms-1" in content
+    assert (
+        '<i class="ti ti-arrow-up icon icon-sm ms-1" aria-hidden="true"></i>' in content
+    )
+    assert content.count('class="beeui-section-title"') == 1
+    assert 'class="datagrid-title beeui-section-title"' in content
+    assert (
+        '<p class="beeui-section-subtitle mb-0" aria-label="{{ block.subtitle }}">'
+        in content
+    )
+    assert '<span class="d-block">{{ line }}</span>' in content
+    assert '<div class="beeui-section-subtitle mt-1">' in content
+
+
+def test_layout_chart_template_uses_normal_subtitle_typography() -> None:
+    content = Path(
+        "src/beeui_module/web/templates/components/layout/chart.html"
+    ).read_text(encoding="utf-8")
+    assert '<h3 class="beeui-section-title">' in content
+    assert (
+        '<div class="beeui-section-subtitle mt-1">{{ block.subtitle }}</div>' in content
+    )
+
+
+def test_dashboard_typography_tokens_are_centralized() -> None:
+    content = Path("src/beeui_module/web/static/css/beeui.css").read_text(
+        encoding="utf-8"
+    )
+    for token in (
+        "--beeui-section-title-size",
+        "--beeui-section-subtitle-size",
+        "--beeui-metric-value-size",
+    ):
+        assert token in content
+    for selector in (
+        ".beeui-section-title",
+        ".beeui-section-subtitle",
+        ".beeui-metric-value",
+    ):
+        assert selector in content
+    assert content.count(".beeui-metric-value {") == 1
+    assert "font-size: 1.75rem;" not in content
+    assert (
+        ".beeui-section-subtitle {\n  font-size: var(--beeui-section-subtitle-size);\n  font-weight: 400;"
+        in content
+    )
 
 
 def test_layout_operator_hero_omits_invalid_trend() -> None:
@@ -2136,6 +2243,88 @@ def test_layout_chart_donut_renders() -> None:
     assert block["has_data"] is True
 
 
+def test_layout_chart_funnel_uses_controlled_tabler_config() -> None:
+    categories = ["Irrelevant", "Duplicate", "New lead", "Deal"]
+    values = [31, 5, 3, 1]
+    colors = ["blue", "azure", "red", "orange"]
+    block = render_layout(
+        [
+            {
+                "type": "chart",
+                "title": "Classification",
+                "kind": "funnel",
+                "series": [{"name": "Classification", "data": values}],
+                "categories": categories,
+                "colors": colors,
+                "plotOptions": {"bar": {"horizontal": False}},
+                "options": {"legend": {"show": False}},
+            }
+        ]
+    )[0]
+
+    config = block["chart_config"]
+    assert block["kind"] == "funnel"
+    assert block["series"] == [{"name": "Classification", "data": values}]
+    assert block["categories"] == categories
+    assert config["chart"]["type"] == "bar"
+    assert config["plotOptions"]["bar"] == {
+        "horizontal": True,
+        "distributed": True,
+        "isFunnel": True,
+        "isFunnel3d": False,
+    }
+    assert config["dataLabels"] == {"enabled": True}
+    assert config["stroke"] == {"width": 0}
+    assert config["grid"] == {"show": False}
+    assert config["xaxis"] == {
+        "categories": categories,
+        "labels": {"show": False},
+        "axisBorder": {"show": False},
+        "axisTicks": {"show": False},
+        "crosshairs": {"show": False},
+    }
+    assert config["yaxis"] == {"show": False}
+    assert config["colors"] == [
+        "var(--tblr-blue)",
+        "var(--tblr-azure)",
+        "var(--tblr-red)",
+        "var(--tblr-orange)",
+    ]
+    assert config["legend"] == {
+        "show": True,
+        "position": "bottom",
+        "fontSize": "12px",
+        "labels": {"colors": "var(--beeui-text-secondary)"},
+        "markers": {"width": 8, "height": 8, "radius": 0},
+        "itemMargin": {"horizontal": 8, "vertical": 4},
+        "customLegendItems": categories,
+    }
+    assert "options" not in config
+    assert "plotOptions" not in config["plotOptions"]["bar"]
+
+
+def test_layout_chart_funnel_uses_tabler_colors_when_product_omits_colors() -> None:
+    block = render_layout(
+        [
+            {
+                "type": "chart",
+                "title": "Funnel",
+                "kind": "funnel",
+                "series": [{"name": "Funnel", "data": [3, 2, 1]}],
+                "categories": ["First", "Second", "Third"],
+            }
+        ]
+    )[0]
+
+    assert block["chart_config"]["colors"] == [
+        "var(--tblr-chart-1)",
+        "var(--tblr-chart-2)",
+        "var(--tblr-chart-3)",
+        "var(--tblr-chart-4)",
+        "var(--tblr-chart-5)",
+    ]
+
+
 def test_layout_chart_unsupported_kind_degrades() -> None:
     result = render_layout(
         [
@@ -2258,6 +2447,7 @@ def test_layout_chart_valid_series_and_empty_state_are_distinct() -> None:
         ("bar", [{"name": "bar", "data": [1, 2]}]),
         ("area", [{"name": "area", "data": [1, 2]}]),
         ("donut", [1, 2.5]),
+        ("funnel", [{"name": "funnel", "data": [1, 2.5]}]),
     ]
     for kind, series in payloads:
         block = render_layout(

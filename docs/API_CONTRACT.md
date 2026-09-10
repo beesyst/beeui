@@ -200,28 +200,32 @@ Adapter-backed payloads (`dashboard`, `run`, `venue dashboard`, optionally `runs
 
 ### Поддерживаемые block types
 
-| Type                 | Описание                                                                                                                                                                              |
-| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `hero_snapshot`      | Card с title/subtitle/status, списком items (label+value+опциональный href) и links                                                                                                   |
-| `metric_card`        | Compact card с title, value, status badge и hint                                                                                                                                      |
-| `kpi_strip`          | Горизонтальная полоса KPI items (label+value+status)                                                                                                                                  |
-| `kpi_grid`           | Responsive KPI stat cards с label/value/unit/status/hint; optional `columns` (1..4, default 4)                                                                                        |
-| `venue_summary_grid` | Card c grid layout venue summary items                                                                                                                                                |
-| `venue_card`         | Compact venue summary card с items, alerts и links                                                                                                                                    |
-| `mode_cards`         | Cards для режимов (label+value+status+опциональный href/latest/latest_href)                                                                                                           |
+| Type                 | Описание                                                                                                                                                                                                                                                                                        |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `hero_snapshot`      | Card с title/subtitle/status, списком items (label+value+опциональный href) и links                                                                                                                                                                                                             |
+| `metric_card`        | Compact card с title, value, status badge и hint; optional `href`, `icon`, `icon_tone`                                                                                                                                                                                                          |
+| `kpi_strip`          | Горизонтальная полоса KPI items (label+value+status)                                                                                                                                                                                                                                            |
+| `kpi_grid`           | Responsive KPI stat cards с label/value/unit/status/hint; optional `columns` (1..4, default 4)                                                                                                                                                                                                  |
+| `venue_summary_grid` | Card c grid layout venue summary items                                                                                                                                                                                                                                                          |
+| `venue_card`         | Compact venue summary card с items, alerts и links                                                                                                                                                                                                                                              |
+| `mode_cards`         | Cards для режимов (label+value+status+опциональный href/latest/latest_href)                                                                                                                                                                                                                     |
 | `operator_hero`      | High-level system/operator snapshot с title/subtitle/status, datagrid items и primary_links; item may opt into a numeric metric and a finite numeric trend with allowlisted up/down/neutral direction; optional illustration accepts only a registered package-local asset with an optional alt |
-| `state_grid`         | Dense key/value state section с datagrid layout и опциональным status badge                                                                                                           |
-| `quick_links`        | List group internal operator links                                                                                                                                                    |
-| `run_table`          | Operator run/event/artifact table с columns и dict rows (run_href, artifact_href)                                                                                                     |
-| `status_table`       | Table с columns/rows                                                                                                                                                                  |
-| `event_table`        | Table с columns/rows для событий                                                                                                                                                      |
-| `attention_list`     | List group с severity-dot indicators (severity: warning/error/info/ok/unknown)                                                                                                        |
-| `artifact_links`     | List group artifact links с content_type badge                                                                                                                                        |
-| `raw_json_panel`     | Card c raw JSON data                                                                                                                                                                  |
-| `chart`              | Safe local chart renderer через package-local ApexCharts asset; поддерживает line/bar/area/donut; config сериализуется через `tojson`; arbitrary ApexCharts options не пробрасываются |
-| `group`              | Nested container с `direction` (vertical), `children` (list of layout blocks), bounded recursion depth 3                                                                              |
-| `data_table`         | Advanced Tabler-compatible table с toolbar, pagination, mobile labels, selectable rows и typed cells                                                                                  |
-| `degraded`           | Fallback для malformed/unsupported blocks                                                                                                                                             |
+| `state_grid`         | Dense key/value state section с datagrid layout и опциональным status badge                                                                                                                                                                                                                     |
+| `quick_links`        | List group internal operator links                                                                                                                                                                                                                                                              |
+| `run_table`          | Operator run/event/artifact table с columns и dict rows (run_href, artifact_href)                                                                                                                                                                                                               |
+| `status_table`       | Table с columns/rows                                                                                                                                                                                                                                                                            |
+| `event_table`        | Table с columns/rows для событий                                                                                                                                                                                                                                                                |
+| `attention_list`     | List group с severity-dot indicators (severity: warning/error/info/ok/unknown)                                                                                                                                                                                                                  |
+| `artifact_links`     | List group artifact links с content_type badge                                                                                                                                                                                                                                                  |
+| `raw_json_panel`     | Card c raw JSON data                                                                                                                                                                                                                                                                            |
+| `chart`              | Safe local chart renderer через package-local ApexCharts asset; поддерживает line/bar/area/donut/funnel; config сериализуется через `tojson`; arbitrary ApexCharts options не пробрасываются                                                                                                    |
+| `group`              | Nested container с `direction` (vertical), `children` (list of layout blocks), bounded recursion depth 3                                                                                                                                                                                        |
+| `data_table`         | Advanced Tabler-compatible table с toolbar, pagination, mobile labels, selectable rows и typed cells                                                                                                                                                                                            |
+| `degraded`           | Fallback для malformed/unsupported blocks                                                                                                                                                                                                                                                       |
+
+### Metric card
+
+`metric_card` accepts optional presentation fields `href`, `icon` and `icon_tone`. `href` is internal-only and invalid, protocol-relative or external values are omitted. `icon` is normalized through the safe Tabler icon-name contract. `icon_tone` uses a fixed BeeUI allowlist and invalid values fall back to `primary`. Payloads without `href` preserve legacy non-clickable metric-card rendering.
 
 ### Mapping `width`/`span`/`size`
 
@@ -279,21 +283,21 @@ Children render through existing BeeUI block renderer. Depth is bounded at 3 lev
 
 Поля:
 
-| Field                     | Type       | Обязательное | Описание                                                                         |
-| ------------------------- | ---------- | ------------ | -------------------------------------------------------------------------------- |
-| `type`                    | string     | yes          | Должно быть `"chart"`                                                            |
-| `title`                   | string     | no           | Заголовок                                                                        |
-| `subtitle`                | string     | no           | Подзаголовок                                                                     |
-| `kind`                    | string     | no           | `line`, `bar`, `area`, `donut`; unsupported or malformed kind renders `degraded` |
-| `height`                  | int        | no           | Ограниченная высота                                                              |
-| `series`                  | array      | no           | Series payload для выбранного kind                                               |
-| `categories`              | array      | no           | X-axis categories для line/bar/area                                              |
-| `labels`                  | array      | no           | Labels для donut                                                                 |
-| `unit`                    | string     | no           | Единица отображения                                                              |
-| `empty_message`           | string     | no           | Сообщение для empty state                                                        |
-| `status`                  | string     | no           | Текст статуса                                                                    |
-| `hint`                    | string     | no           | Подсказка                                                                        |
-| `width` / `span` / `size` | int/string | no           | Стандартный adapter-backed sizing                                                |
+| Field                     | Type       | Обязательное | Описание                                                                                   |
+| ------------------------- | ---------- | ------------ | ------------------------------------------------------------------------------------------ |
+| `type`                    | string     | yes          | Должно быть `"chart"`                                                                      |
+| `title`                   | string     | no           | Заголовок                                                                                  |
+| `subtitle`                | string     | no           | Подзаголовок                                                                               |
+| `kind`                    | string     | no           | `line`, `bar`, `area`, `donut`, `funnel`; unsupported or malformed kind renders `degraded` |
+| `height`                  | int        | no           | Ограниченная высота                                                                        |
+| `series`                  | array      | no           | Series payload для выбранного kind                                                         |
+| `categories`              | array      | no           | X-axis categories для line/bar/area/funnel                                                 |
+| `labels`                  | array      | no           | Labels для donut                                                                           |
+| `unit`                    | string     | no           | Единица отображения                                                                        |
+| `empty_message`           | string     | no           | Сообщение для empty state                                                                  |
+| `status`                  | string     | no           | Текст статуса                                                                              |
+| `hint`                    | string     | no           | Подсказка                                                                                  |
+| `width` / `span` / `size` | int/string | no           | Стандартный adapter-backed sizing                                                          |
 
 Правила:
 

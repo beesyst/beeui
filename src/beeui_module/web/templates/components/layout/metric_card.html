@@ -1,14 +1,41 @@
+{% from "components/primitives/icon.html" import tabler_icon %}
+
+{% if block.href %}
+<a
+  href="{{ url_prefix }}{{ block.href }}"
+  class="card h-100 text-reset text-decoration-none beeui-metric-card"
+>
+  <div class="card-body">
+    <div class="d-flex align-items-center">
+      {% if block.icon %}
+        <span class="avatar bg-{{ block.icon_tone }}-lt text-{{ block.icon_tone }} me-3">
+          {{ tabler_icon(block.icon, "icon-md") }}
+        </span>
+      {% endif %}
+
+      <div class="flex-fill min-w-0">
+        <div class="beeui-section-title">{{ block.title }}</div>
+        <div class="beeui-metric-value">{{ block.value }}</div>
+      </div>
+    </div>
+  </div>
+</a>
+{% else %}
 <div class="card">
   <div class="card-body">
     <div class="d-flex align-items-center">
-      <div class="subheader">{{ block.title }}</div>
+      <div class="subheader beeui-section-title">{{ block.title }}</div>
+
       {% if block.status %}
-      <span class="badge bg-secondary-lt ms-auto">{{ block.status }}</span>
+        <span class="badge bg-secondary-lt ms-auto">{{ block.status }}</span>
       {% endif %}
     </div>
-    <div class="h1 mb-1">{{ block.value }}</div>
+
+    <div class="beeui-metric-value">{{ block.value }}</div>
+
     {% if block.hint %}
-    <div class="text-secondary small mt-1">{{ block.hint }}</div>
+      <div class="text-secondary small mt-1">{{ block.hint }}</div>
     {% endif %}
   </div>
 </div>
+{% endif %}
