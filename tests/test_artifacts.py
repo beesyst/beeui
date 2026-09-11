@@ -160,8 +160,37 @@ class TestRedaction:
 
     def test_redact_primitive(self) -> None:
         assert redact_value("hello") == "hello"
+        assert redact_value("Password") == "Password"
+        assert redact_value("Provide the username and password") == (
+            "Provide the username and password"
+        )
         assert redact_value(42) == 42
         assert redact_value(None) is None
+
+    def test_redact_structured_metadata_without_redacting_schema_strings(self) -> None:
+        data = {
+            "layout": [
+                {
+                    "key": "password",
+                    "name": "password",
+                    "type": "password",
+                    "label": "Password",
+                }
+            ],
+            "password": "synthetic-secret",
+            "nested": {"api_key": "synthetic-key"},
+        }
+
+        redacted = redact_value(data)
+
+        assert redacted["layout"][0] == {
+            "key": "password",
+            "name": "password",
+            "type": "password",
+            "label": "Password",
+        }
+        assert redacted["password"] == "*** REDACTED ***"
+        assert redacted["nested"]["api_key"] == "*** REDACTED ***"
 
 
 class TestPreviewJson:

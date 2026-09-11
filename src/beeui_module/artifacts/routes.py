@@ -14,6 +14,12 @@ from beeui_module.adapters.ids import validate_artifact_id, validate_run_id
 from beeui_module.api.envelopes import async_safe_adapter_call
 from beeui_module.artifacts.models import ArtifactPreview
 from beeui_module.artifacts.preview import build_preview
+from beeui_module.artifacts.redaction import (
+    redact_adapter_error,
+    redact_adapter_message,
+    redact_adapter_warnings,
+    redact_value,
+)
 from beeui_module.pages.links import effective_external_prefix, prefix_internal_href
 from beeui_module.pages.locale import (
     resolve_locale as _resolve_locale,
@@ -40,6 +46,16 @@ def _adapter_unavailable_response() -> dict[str, Any]:
         "status": "error",
         "error": {"code": "adapter_unavailable", "message": "Adapter is not available"},
     }
+
+
+def _redacted_adapter_error_result(
+    adapter_result: AdapterErrorResult,
+) -> dict[str, Any]:
+    result = adapter_result.to_dict()
+    result["error"] = redact_adapter_error(result["error"])
+    result["warnings"] = redact_adapter_warnings(result["warnings"])
+    result["meta"] = redact_value(result["meta"])
+    return result
 
 
 def _normalize_artifact_items(
@@ -102,14 +118,14 @@ def _artifact_list_to_json(
 ) -> dict[str, Any]:
     """Convert adapter list result to JSON response dict."""
     if isinstance(adapter_result, AdapterErrorResult):
-        return adapter_result.to_dict()
+        return _redacted_adapter_error_result(adapter_result)
     d = adapter_result.to_dict()
     artifacts, item_warnings = _normalize_artifact_items(d["data"])
     return {
         "status": d["status"],
         "data": artifacts,
-        "warnings": [*d["warnings"], *item_warnings],
-        "meta": d["meta"],
+        "warnings": redact_adapter_warnings([*d["warnings"], *item_warnings]),
+        "meta": redact_value(d["meta"]),
     }
 
 
@@ -118,8 +134,7 @@ def _artifact_preview_to_json(
     preview: ArtifactPreview,
 ) -> dict[str, Any]:
     if isinstance(adapter_result, AdapterErrorResult):
-        base = adapter_result.to_dict()
-        return base
+        return _redacted_adapter_error_result(adapter_result)
 
     d = adapter_result.to_dict()
     return {
@@ -135,8 +150,8 @@ def _artifact_preview_to_json(
             "error": preview.error,
             "metadata_only": preview.metadata_only,
         },
-        "warnings": d["warnings"],
-        "meta": d["meta"],
+        "warnings": redact_adapter_warnings(d["warnings"]),
+        "meta": redact_value(d["meta"]),
     }
 
 
@@ -296,7 +311,7 @@ def register_artifact_routes(
         artifacts: list[dict[str, Any]] = []
 
         if isinstance(result, AdapterErrorResult):
-            error = result.error.get("message", "Unknown error")
+            error = redact_adapter_message(result.error.get("message", "Unknown error"))
         else:
             raw_data = result.data
             if isinstance(raw_data, list):
@@ -390,7 +405,7 @@ def register_artifact_routes(
         preview: ArtifactPreview | None = None
 
         if isinstance(result, AdapterErrorResult):
-            error = result.error.get("message", "Unknown error")
+            error = redact_adapter_message(result.error.get("message", "Unknown error"))
         else:
             data = result.data
             if isinstance(data, dict):
@@ -483,7 +498,7 @@ def register_artifact_routes(
             artifact_id,
         )
         if isinstance(result, AdapterErrorResult):
-            return JSONResponse(result.to_dict())
+            return JSONResponse(_redacted_adapter_error_result(result))
 
         data = result.data
         if not isinstance(data, dict):

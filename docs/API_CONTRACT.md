@@ -12,7 +12,8 @@ Canonical `data_table` также поддерживает opt-in progressive en
 
 Iteration 13.16 extends only the adapter-backed `data_table` presentation with
 an optional bounded action variant. It uses explicit `action_id`, controlled
-escaped labels, bounded string args, optional text/email fields, and optional
+escaped labels, bounded string args, optional text/email/number/select/checkbox/radio/password
+fields, and optional
 bounded confirmation presentation. The default browser flow is Preview,
 separate confirmation, then Execute; explicit `direct_execute` uses only
 protected Execute for bounded toolbar or inline-row actions. The existing protected POST route and response
@@ -370,8 +371,12 @@ Children render through existing BeeUI block renderer. Depth is bounded at 3 lev
 - Canonical functional table GET forms and their text search inputs set `autocomplete="off"` to suppress browser autocomplete and search-history suggestions without changing field names or GET fallback.
 - `pagination.pages[]` accepts a safe internal `href`, display `label` and optional page `number`. A positive numeric `number` or numeric `label` supplies the page number; missing, non-numeric or non-positive page numbers fall back to the item's 1-based list position for backward-compatible ordering. BeeUI renders first/current/last plus a bounded adjacent window and ellipses. Optional `previous`/`next` are safe internal controls, or are derived from adjacent supplied pages. Entries with an invalid href or a duplicate resolved page number are omitted.
 - Optional `pagination.page_size` is `{label?, current?, options[]}` where each option supplies `label`, optional `value`, safe internal `href` and optional `active`. BeeUI does not invent page-size values; invalid entries are omitted and the list is bounded to 20 options.
-- `toolbar.actions[]` and `actions` cells may be either existing safe `href` GET actions or an opt-in bounded action with `action_id`, `label`, optional `description`, `confirmation`, bounded string `args`, and zero or more `text`/`email` fields. Labels, descriptions, confirmation text, and fields are escaped; malformed or unsafe metadata is omitted.
+- `toolbar.actions[]` and `actions` cells may be either existing safe `href` GET actions or an opt-in bounded action with `action_id`, `label`, optional `description`, `confirmation`, bounded string `args`, and zero or more `text`/`email`/`number`/`select`/`checkbox`/`radio`/`password` fields. Labels, descriptions, confirmation text, options, and fields are escaped; malformed or unsafe metadata is omitted. A field may optionally declare a bounded `column_key` for its inline presentation cell; it defaults to `name` and never changes the submitted payload key. A password field always normalizes to an empty value and renders a fresh `password` control; no supplied password metadata is exposed. `inline_edit_mode: "row_form"` is a generic opt-in direct-action editor for fields that are not visible table columns. An inline `direct_execute` action may declare a same-cell bounded `pending_action_id`; BeeUI restores the normal action cell, shows its pending indicator on that action, and executes only the submitted action, never the pending action.
 - Bounded actions have no adapter-provided destination. The default `preview_confirm_execute` flow requires preview and separate confirmation; input changes invalidate that state. Explicit `direct_execute` is limited to the same protected Execute endpoint for a bounded form or inline-row action and refreshes only its identified live table. This presentation step never replaces server-side authorization, CSRF, or product validation.
+- A bounded direct form action with fields may declare `follow_up_action_id` and `follow_up_match_arg`. After primary success and table refresh, BeeUI uses the response value only to match an already-rendered bounded action, then executes that action's own ID and args. It accepts no adapter URL or browser callback. This is distinct from inline `pending_action_id`, which remains presentation-only.
+- The resolved follow-up target must itself be a plain no-input, no-confirmation `direct_execute` action.
+- Default BeeUI modal and Detail section-card surfaces are centralized and theme-aware; modal headers and footers and scoped Detail card headers use the standard tinted surface.
+- Icon actions use canonical Tabler icon presentation. While an icon action is pending, its generic border is removed without altering the shared focus-visible treatment.
 
 ### Правила безопасности
 

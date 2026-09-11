@@ -179,7 +179,7 @@
     target.appendChild(message);
   }
 
-  function refreshDirectActionTable(source) {
+  function refreshDirectActionTable(source, onSuccess) {
     var labels = actionLabels();
     var table = source && source.closest(".beeui-live-table[data-beeui-table-id]");
     if (!table) {
@@ -188,7 +188,39 @@
     }
     replaceLiveTable(table, new URL(window.location.href), true, function () {
       showTableActionError(table, labels.refresh);
-    });
+    }, onSuccess);
+  }
+
+  function runRenderedFollowUp(table, action, response) {
+    var data = response && response.data;
+    var matchValue = data && data[action.follow_up_match_arg];
+    if (typeof matchValue !== "string") return;
+    var buttons = table.querySelectorAll("[data-beeui-bounded-action]");
+    for (var index = 0; index < buttons.length; index += 1) {
+      try {
+        var targetButton = buttons[index];
+        var target = JSON.parse(targetButton.getAttribute("data-action") || "{}");
+        if (
+          target.action_id !== action.follow_up_action_id
+          || target.flow !== "direct_execute"
+          || target.inline_edit
+          || target.inline_edit_mode
+          || (target.fields || []).length
+          || target.confirmation
+          || !target.args
+          || target.args[action.follow_up_match_arg] !== matchValue
+        ) continue;
+        var restore = setDirectActionPending(targetButton);
+        requestBoundedAction("execute", { action_id: target.action_id, payload: target.args }).then(function () {
+          refreshDirectActionTable(table);
+        }).catch(function (error) {
+          restore();
+          showTableActionError(targetButton, boundedActionMessage(error, actionLabels().failed));
+        });
+        return;
+      } catch (_error) {
+      }
+    }
   }
 
   function showBoundedActionModal(action, source) {
@@ -249,31 +281,99 @@
       body.insertBefore(help, message);
     }
     fields.forEach(function (field) {
+      if (field.type === "radio") {
+        var fieldset = document.createElement("fieldset");
+        fieldset.className = "mb-3";
+        var legend = document.createElement("legend");
+        legend.className = "form-label";
+        legend.textContent = field.label || field.name;
+        if (field.required) legend.classList.add("required");
+        fieldset.appendChild(legend);
+        (field.options || []).forEach(function (option, index) {
+          var choice = document.createElement("div");
+          choice.className = "form-check form-check-inline";
+          var input = document.createElement("input");
+          var inputId = "beeui-action-" + actionToken + "-" + field.name + "-" + String(index);
+          input.className = "form-check-input";
+          input.type = "radio";
+          input.id = inputId;
+          input.name = field.name;
+          input.value = option.value;
+          input.required = field.required;
+          input.checked = String(field.value) === String(option.value);
+          var label = document.createElement("label");
+          label.className = "form-check-label";
+          label.htmlFor = inputId;
+          label.textContent = option.label;
+          choice.appendChild(input);
+          choice.appendChild(label);
+          fieldset.appendChild(choice);
+        });
+        fieldset._beeuiVisibleWhen = field.visible_when || null;
+        body.insertBefore(fieldset, message);
+        return;
+      }
       var group = document.createElement("div");
       group.className = "mb-3";
       var label = document.createElement("label");
       label.className = "form-label";
       label.textContent = field.label || field.name;
-      var input = document.createElement("input");
+      var input = field.type === "select" ? document.createElement("select") : document.createElement("input");
       var inputId = "beeui-action-" + actionToken + "-" + field.name;
       input.className = "form-control";
       input.id = inputId;
       input.name = field.name;
-      input.type = field.type;
-      input.maxLength = field.max_length;
+      if (field.type === "select") {
+        (field.options || []).forEach(function (option) { var choice = document.createElement("option"); choice.value = option.value; choice.textContent = option.label; input.appendChild(choice); });
+      } else {
+        input.type = field.type;
+      }
+      if (field.type === "password") input.autocomplete = "new-password";
+      if (field.max_length) input.maxLength = field.max_length;
+      if (field.min !== null && field.min !== undefined) input.min = field.min;
+      if (field.max !== null && field.max !== undefined) input.max = field.max;
       input.required = field.required;
-      input.value = field.value || "";
+      if (field.type === "checkbox") input.checked = field.value === true;
+      else if (field.type !== "password") input.value = field.value || "";
       label.htmlFor = inputId;
       if (field.required) label.classList.add("required");
       group.appendChild(label);
       group.appendChild(input);
+      group._beeuiVisibleWhen = field.visible_when || null;
       body.insertBefore(group, message);
     });
+    function syncFieldVisibility() {
+      Array.prototype.forEach.call(body.querySelectorAll(".mb-3"), function (group) {
+        var condition = group._beeuiVisibleWhen;
+        if (!condition) return;
+        var name = Object.keys(condition)[0];
+        var control = form.elements[name];
+        group.hidden = !control || String(control.value) !== String(condition[name]);
+      });
+    }
+    fields.forEach(function (field) {
+      if (!field.visible_when) return;
+      var name = Object.keys(field.visible_when)[0];
+      Array.prototype.forEach.call(
+        form.querySelectorAll('[name="' + name + '"]'),
+        function (control) { control.addEventListener("change", syncFieldVisibility); }
+      );
+    });
+    syncFieldVisibility();
     if (!fields.length) message.textContent = description;
     var previewPayload = null;
     function currentPayload() {
       var payload = Object.assign({}, action.args || {});
-      fields.forEach(function (field) { payload[field.name] = form.elements[field.name].value; });
+      fields.forEach(function (field) {
+        if (field.type === "checkbox") {
+          payload[field.name] = form.elements[field.name].checked;
+        } else if (field.type === "radio") {
+          var selected = form.querySelector('[name="' + field.name + '"]:checked');
+          payload[field.name] = selected ? selected.value : "";
+        } else {
+          payload[field.name] = form.elements[field.name].value;
+        }
+      });
       return payload;
     }
     function invalidatePreview() {
@@ -286,8 +386,13 @@
       message.textContent = labels.changed;
     }
     fields.forEach(function (field) {
-      form.elements[field.name].addEventListener("input", invalidatePreview);
-      form.elements[field.name].addEventListener("change", invalidatePreview);
+      Array.prototype.forEach.call(
+        form.querySelectorAll('[name="' + field.name + '"]'),
+        function (control) {
+          control.addEventListener("input", invalidatePreview);
+          control.addEventListener("change", invalidatePreview);
+        }
+      );
     });
     confirmationInput.addEventListener("change", function () {
       execute.disabled = !confirmationInput.checked || previewPayload === null;
@@ -320,9 +425,11 @@
       var payload = currentPayload();
       preview.disabled = true;
       if (isDirect) {
-        requestBoundedAction("execute", { action_id: action.action_id, payload: payload }).then(function () {
+        requestBoundedAction("execute", { action_id: action.action_id, payload: payload }).then(function (response) {
           closeModal();
-          refreshDirectActionTable(root._beeuiActionSource);
+          refreshDirectActionTable(root._beeuiActionSource, function (table) {
+            if (action.follow_up_action_id) runRenderedFollowUp(table, action, response);
+          });
         }).catch(function (error) {
           message.textContent = boundedActionMessage(error, actionLabels().failed);
         }).finally(function () {
@@ -347,7 +454,8 @@
       if (!confirmationInput.checked || previewPayload !== JSON.stringify(payload)) return;
       execute.disabled = true;
       requestBoundedAction("execute", { action_id: action.action_id, payload: payload }).then(function () {
-        window.location.reload();
+        closeModal();
+        refreshDirectActionTable(root._beeuiActionSource);
       }).catch(function (error) {
         message.textContent = error.message;
         execute.disabled = false;
@@ -402,20 +510,40 @@
     return button;
   }
 
+  function setDirectActionPending(button) {
+    var original = button.innerHTML;
+    button.disabled = true;
+    button.setAttribute("aria-busy", "true");
+    button.classList.add("beeui-action-pending");
+    if (button.querySelector("i")) {
+      var spinner = document.createElement("span");
+      spinner.className = "spinner-border spinner-border-sm text-secondary";
+      spinner.setAttribute("aria-hidden", "true");
+      button.replaceChildren(spinner);
+    }
+    return function () {
+      button.innerHTML = original;
+      button.disabled = false;
+      button.removeAttribute("aria-busy");
+      button.classList.remove("beeui-action-pending");
+    };
+  }
+
   function beginInlineEdit(button, action) {
     var row = button.closest("tr");
     if (!row || row.getAttribute("data-beeui-editing") === "true") return;
     var cells = {};
     (action.fields || []).forEach(function (field) {
-      var cell = row.querySelector('[data-beeui-column-key="' + field.name + '"]');
+      var cell = row.querySelector('[data-beeui-column-key="' + (field.column_key || field.name) + '"]');
       if (!cell) return;
       var input = document.createElement("input");
       input.className = "form-control form-control-sm";
       input.name = field.name;
       input.type = field.type;
+      if (field.type === "password") input.autocomplete = "new-password";
       input.maxLength = field.max_length;
       input.required = field.required;
-      input.value = field.value || "";
+      if (field.type !== "password") input.value = field.value || "";
       cells[field.name] = { cell: cell, html: cell.cloneNode(true), input: input };
       cell.replaceChildren(input);
     });
@@ -431,12 +559,30 @@
     controls.appendChild(save);
     controls.appendChild(cancel);
     actionCell.replaceChildren(controls);
-    cancel.addEventListener("click", function () {
+    function restoreInlineEditor() {
       Object.keys(cells).forEach(function (key) {
         cells[key].cell.replaceWith(cells[key].html);
       });
       actionCell.replaceWith(previous);
       row.removeAttribute("data-beeui-editing");
+      return previous;
+    }
+    function pendingActionButton() {
+      var pending = action.pending_action_id;
+      if (!pending) return null;
+      var actions = previous.querySelectorAll("[data-beeui-bounded-action]");
+      for (var index = 0; index < actions.length; index += 1) {
+        try {
+          if (JSON.parse(actions[index].getAttribute("data-action")).action_id === pending) {
+            return actions[index];
+          }
+        } catch (_error) {
+        }
+      }
+      return null;
+    }
+    cancel.addEventListener("click", function () {
+      restoreInlineEditor();
     });
     save.addEventListener("click", function () {
       var payload = Object.assign({}, action.args || {});
@@ -449,6 +595,18 @@
       if (!valid) return;
       save.disabled = true;
       cancel.disabled = true;
+      var pending = pendingActionButton();
+      if (action.pending_action_id) {
+        restoreInlineEditor();
+        var restorePending = pending ? setDirectActionPending(pending) : null;
+        requestBoundedAction("execute", { action_id: action.action_id, payload: payload }).then(function () {
+          refreshDirectActionTable(row);
+        }).catch(function (error) {
+          if (restorePending) restorePending();
+          showTableActionError(pending || previous, boundedActionMessage(error, labels.failed));
+        });
+        return;
+      }
       requestBoundedAction("execute", { action_id: action.action_id, payload: payload }).then(function () {
         refreshDirectActionTable(row);
       }).catch(function (error) {
@@ -462,27 +620,79 @@
     });
   }
 
+  function beginRowForm(button, action) {
+    var row = button.closest("tr");
+    if (!row || row.getAttribute("data-beeui-editing") === "true") return;
+    row.setAttribute("data-beeui-editing", "true");
+    var formRow = document.createElement("tr");
+    formRow.className = "beeui-row-form";
+    var cell = document.createElement("td");
+    cell.colSpan = row.children.length;
+    var form = document.createElement("form");
+    form.className = "p-2";
+    var fields = action.fields || [];
+    fields.forEach(function (field) {
+      var group = document.createElement("div"); group.className = "mb-2";
+      var label = document.createElement("label"); label.className = "form-label"; label.textContent = field.label || field.name; group.appendChild(label);
+      var input = field.type === "select" ? document.createElement("select") : document.createElement("input");
+      input.className = "form-control form-control-sm"; input.name = field.name; input.required = field.required;
+      if (field.type === "select") (field.options || []).forEach(function (option) { var choice = document.createElement("option"); choice.value = option.value; choice.textContent = option.label; input.appendChild(choice); });
+      else input.type = field.type;
+      if (field.type === "password") input.autocomplete = "new-password";
+      if (field.max_length) input.maxLength = field.max_length;
+      if (field.min !== null && field.min !== undefined) input.min = field.min;
+      if (field.max !== null && field.max !== undefined) input.max = field.max;
+      if (field.type === "checkbox") input.checked = field.value === true; else if (field.type !== "password") input.value = field.value || "";
+      group.appendChild(input); form.appendChild(group);
+    });
+    var controls = document.createElement("div"); controls.className = "btn-list";
+    var save = document.createElement("button"); save.type = "submit"; save.className = "btn btn-primary btn-sm"; save.textContent = actionLabels().save;
+    var cancel = document.createElement("button"); cancel.type = "button"; cancel.className = "btn btn-secondary btn-sm"; cancel.textContent = actionLabels().cancel;
+    var message = document.createElement("div"); message.className = "form-text text-danger";
+    controls.appendChild(save); controls.appendChild(cancel); form.appendChild(controls); form.appendChild(message); cell.appendChild(form); formRow.appendChild(cell); row.after(formRow);
+    cancel.addEventListener("click", function () { formRow.remove(); row.removeAttribute("data-beeui-editing"); });
+    form.addEventListener("submit", function (event) { event.preventDefault(); if (!form.reportValidity()) return; var payload = Object.assign({}, action.args || {}); fields.forEach(function (field) { payload[field.name] = field.type === "checkbox" ? form.elements[field.name].checked : form.elements[field.name].value; }); save.disabled = true; requestBoundedAction("execute", { action_id: action.action_id, payload: payload }).then(function () { refreshDirectActionTable(row); }).catch(function (error) { message.textContent = boundedActionMessage(error, actionLabels().failed); save.disabled = false; }); });
+  }
+
   document.addEventListener("click", function (event) {
     if (!(event.target instanceof Element)) return;
     var button = event.target.closest("[data-beeui-bounded-action]");
     if (!button) return;
     try {
       var action = JSON.parse(button.getAttribute("data-action") || "{}");
+      if (action.flow === "direct_execute" && action.inline_edit_mode === "row_form") {
+        beginRowForm(button, action);
+        return;
+      }
       if (action.flow === "direct_execute" && action.inline_edit) {
         beginInlineEdit(button, action);
         return;
       }
       if (action.flow === "direct_execute" && !(action.fields || []).length) {
-        button.disabled = true;
+        if (action.confirmation && !window.confirm(action.confirmation)) return;
+        var restore = setDirectActionPending(button);
         requestBoundedAction("execute", { action_id: action.action_id, payload: action.args || {} }).then(function () {
           refreshDirectActionTable(button);
         }).catch(function (error) {
-          button.disabled = false;
+          restore();
           showTableActionError(button, boundedActionMessage(error, actionLabels().failed));
         });
         return;
       }
       showBoundedActionModal(action, button);
+    } catch (_) { }
+  });
+
+  document.addEventListener("change", function (event) {
+    var input = event.target;
+    if (!(input instanceof HTMLInputElement) || !input.matches("[data-beeui-toggle]")) return;
+    try {
+      var action = JSON.parse(input.getAttribute("data-action") || "{}");
+      var previous = !input.checked;
+      var payload = Object.assign({}, action.args || {});
+      payload[action.field] = input.checked;
+      input.disabled = true;
+      requestBoundedAction("execute", { action_id: action.action_id, payload: payload }).then(function () { refreshDirectActionTable(input); }).catch(function (error) { input.checked = previous; input.disabled = false; showTableActionError(input, boundedActionMessage(error, actionLabels().failed)); });
     } catch (_) { }
   });
 
@@ -553,7 +763,7 @@
     return null;
   }
 
-  function replaceLiveTable(table, url, strict, onFailure) {
+  function replaceLiveTable(table, url, strict, onFailure, onSuccess) {
     if (!window.fetch || !window.DOMParser || !window.history) {
       if (strict) {
         if (typeof onFailure === "function") onFailure();
@@ -591,6 +801,7 @@
       if (typeof window.beeuiInitComponents === "function") {
         window.beeuiInitComponents(replacement);
       }
+      if (typeof onSuccess === "function") onSuccess(replacement);
     }).catch(function (error) {
       if (state.version !== version || (error && error.name === "AbortError")) return;
       if (strict) {

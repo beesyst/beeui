@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import re
 from dataclasses import replace
 from pathlib import Path
@@ -1542,10 +1543,58 @@ def test_custom_adapter_page_redacts_payload_before_render(tmp_path: Path) -> No
                 {
                     "layout": [
                         {
+                            "type": "data_table",
+                            "title": "Sources",
+                            "columns": [
+                                {"key": "name", "label": "Name"},
+                                {"key": "masked_value", "label": "Password"},
+                                {"key": "actions", "label": "", "cell": "actions"},
+                            ],
+                            "rows": [
+                                {
+                                    "name": {"label": "Synthetic mailbox"},
+                                    "masked_value": {"label": "********"},
+                                    "password": "synthetic-secret",
+                                    "actions": [
+                                        {
+                                            "action_id": "source_add",
+                                            "label": "Add",
+                                            "flow": "direct_execute",
+                                            "fields": [
+                                                {
+                                                    "name": "password",
+                                                    "type": "password",
+                                                    "label": "Password",
+                                                    "required": True,
+                                                    "max_length": 128,
+                                                    "value": "",
+                                                }
+                                            ],
+                                        },
+                                        {
+                                            "action_id": "source_update",
+                                            "label": "Edit",
+                                            "flow": "direct_execute",
+                                            "fields": [
+                                                {
+                                                    "name": "password",
+                                                    "type": "password",
+                                                    "label": "Password",
+                                                    "required": False,
+                                                    "max_length": 128,
+                                                    "value": "",
+                                                }
+                                            ],
+                                        },
+                                    ],
+                                }
+                            ],
+                        },
+                        {
                             "type": "raw_json_panel",
                             "title": "Debug",
                             "data": {"api_key": "secret-value"},
-                        }
+                        },
                     ]
                 }
             )
@@ -1555,12 +1604,43 @@ def test_custom_adapter_page_redacts_payload_before_render(tmp_path: Path) -> No
         config_path=str(ui_cfg_path),
         adapter=RedactedPageAdapter(),
     )
-    client = TestClient(app)
-
-    response = client.get("/rop")
+    route = next(
+        route for route in app.routes if getattr(route, "path", None) == "/rop"
+    )
+    request = Request(
+        {
+            "type": "http",
+            "method": "GET",
+            "path": "/rop",
+            "raw_path": b"/rop",
+            "query_string": b"",
+            "headers": [],
+            "client": ("testclient", 50000),
+            "server": ("testserver", 80),
+            "scheme": "http",
+            "app": app,
+        }
+    )
+    loop = asyncio.new_event_loop()
+    try:
+        response = loop.run_until_complete(route.endpoint(request))
+    finally:
+        loop.close()
+    html = response.body.decode("utf-8")
 
     assert response.status_code == 200
-    assert "secret-value" not in response.text
+    assert "secret-value" not in html
+    assert "synthetic-secret" not in html
+    assert "*** REDACTED ***" in html
+    assert "Synthetic mailbox" in html
+    assert "********" in html
+    assert 'data-beeui-column-key="masked_value"' in html
+    assert 'data-beeui-column-key="password"' not in html
+    assert "Add" in html
+    assert "Edit" in html
+    assert '"name": "password"' in html
+    assert '"type": "password"' in html
+    assert '"label": "Password"' in html
 
 
 def test_page_tabs_renders_attached_card(tmp_path: Path) -> None:
@@ -3741,9 +3821,9 @@ def test_detail_display_is_used_for_long_and_automatic_collapsible_content() -> 
     css = (_resolve_templates_dir().parent / "static" / "css" / "beeui.css").read_text(
         encoding="utf-8"
     )
-    assert ".beeui-detail-modal > .modal-header" in css
+    assert ".modal-content > .modal-header" in css
     assert "border-bottom: 1px solid var(--beeui-border-light);" in css
-    assert ".beeui-detail-modal > .modal-footer" in css
+    assert ".modal-content > .modal-footer" in css
     assert "border-top: 1px solid var(--beeui-border-light);" in css
     assert "unsafe()" not in body
     assert "&lt;b&gt;Trigger&lt;/b&gt;" in body

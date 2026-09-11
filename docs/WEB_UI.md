@@ -31,7 +31,7 @@
 - package-local Litepicker asset (`static/vendor/litepicker/litepicker.min.js` + `litepicker.min.css`), без CDN;
 - условная загрузка Litepicker CSS/JS только когда на странице есть `filter_form.date_range` или `data_table.toolbar.fields[].date_range`.
 - каноническая toolbar-table композиция (Iteration 13.12): toolbar рендерится внутри card-header, column chooser использует горизонтальное многоточие, malformed columns/rows сохраняют canonical shell с degraded сообщением.
-- bounded table actions use the default Preview → confirmation → Execute flow; an explicit generic `direct_execute` form or controlled inline-row edit uses the same protected transport and refreshes only its live table surface. A direct refresh failure remains visible and does not reload or navigate the document.
+- bounded table actions use the default Preview → confirmation → Execute flow; an explicit generic `direct_execute` form, cell edit, or opt-in `inline_edit_mode: "row_form"` uses the same protected transport and refreshes only its live table surface. Bounded action fields support `text`, `email`, `number`, `select`, `checkbox`, `radio`, and `password`; an optional bounded `column_key` selects a cell-inline presentation target while `name` remains the submitted payload key. Password metadata is always normalized to an empty value and renders only a fresh password control. Malformed metadata is omitted. A direct refresh failure remains visible and does not reload or navigate the document.
 
 Предыдущая основа после Iteration 13.5:
 
@@ -1839,7 +1839,7 @@ JSONL response:
 - malformed JSON returns error state, не crash;
 - corrupted JSONL rows are row-level warnings, не crash;
 - unsupported files return metadata-only with `preview_type: "unsupported"`;
-- secrets are redacted via `redact_value()` / `redact_text()` placeholder;
+- structured values are redacted by sensitive dictionary key via `redact_value()` while layout schema strings such as a password field name, type or label remain intact; `redact_text()` continues to redact unstructured preview and log text;
 - HTML templates render content inside escaped `<pre><code>` — no `|safe`.
 
 ## Config read-model
@@ -1972,8 +1972,13 @@ Planned routes:
 ## Actions
 
 Iteration 13.16 adds a product-neutral `data_table` action presentation
-contract. Bounded actions are explicit and may use only `text` or `email`
-fields, bounded string `args`, and an optional bounded `confirmation` string.
+contract. Bounded actions are explicit and may use `text`, `email`, `number`,
+`select`, `checkbox`, `radio`, or `password` fields, bounded string `args`, and an optional bounded
+`confirmation` string. `inline_edit_mode: "row_form"` is an opt-in editor for
+bounded fields that are not visible table columns.
+An inline `direct_execute` action may declare a same-cell bounded
+`pending_action_id`; BeeUI restores the normal action cell, presents the pending
+state on that action, and executes only the submitted action.
 The default `preview_confirm_execute` browser flow is Preview, successful
 preview state, separate user confirmation, then Execute through protected
 `POST /api/actions/preview` and `POST /api/actions/execute`. Explicit
@@ -1981,6 +1986,16 @@ preview state, separate user confirmation, then Execute through protected
 forms or controlled inline-row edit. BeeUI does not derive actions from `href`, accept
 action URLs, or authorize product mutations. Existing actions without
 `confirmation` receive a safe BeeUI-owned confirmation fallback.
+Bounded direct form actions may pair `follow_up_action_id` with
+`follow_up_match_arg`; after primary success and table refresh, the response
+value only matches a server-rendered action whose own ID and args are executed.
+The resolved follow-up target must itself be a plain no-input,
+no-confirmation `direct_execute` action.
+`pending_action_id` remains a separate inline presentation-only contract.
+Default modal and scoped Detail section-card surfaces are centralized and
+theme-aware.
+Icon actions use canonical Tabler presentation; their pending state is
+borderless while the generic focus-visible treatment remains available.
 
 BeeUI can render bounded actions only if product adapter exposes them.
 
