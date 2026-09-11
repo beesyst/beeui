@@ -24,7 +24,11 @@ from beeui_module.api.envelopes import (
     invalid_id_envelope,
     malformed_payload_envelope,
 )
-from beeui_module.artifacts.redaction import redact_value
+from beeui_module.artifacts.redaction import (
+    redact_adapter_message,
+    redact_adapter_warnings,
+    redact_value,
+)
 from beeui_module.blocks.layout_renderer import (
     layout_has_charts,
     layout_has_date_ranges,
@@ -621,10 +625,10 @@ def _dashboard_html_context(
     if isinstance(result, AdapterErrorResult):
         code = result.error.get("code", "adapter_error")
         context["status"] = "error"
-        context["error"] = str(
-            redact_value(result.error.get("message", "Adapter error"))
+        context["error"] = redact_adapter_message(
+            result.error.get("message", "Adapter error")
         )
-        context["warnings"] = redact_value(
+        context["warnings"] = redact_adapter_warnings(
             [warning.to_dict() for warning in result.warnings]
         )
         context["meta"] = redact_value(result.meta)
@@ -655,7 +659,7 @@ def _dashboard_html_context(
     context["latest_run"] = _normalize_run_link(latest_run)
     context["summary_items"] = _mapping_items(payload.get("summary"))
     context["kpi_items"] = _normalize_kpi_items(payload.get("kpi_items"))
-    context["warnings"] = redact_value(
+    context["warnings"] = redact_adapter_warnings(
         [warning.to_dict() for warning in result.warnings]
     )
     context["meta"] = redact_value(result.meta)
@@ -692,10 +696,10 @@ def _runs_html_context(
     if isinstance(result, AdapterErrorResult):
         code = result.error.get("code", "adapter_error")
         context["status"] = "error"
-        context["error"] = str(
-            redact_value(result.error.get("message", "Adapter error"))
+        context["error"] = redact_adapter_message(
+            result.error.get("message", "Adapter error")
         )
-        context["warnings"] = redact_value(
+        context["warnings"] = redact_adapter_warnings(
             [warning.to_dict() for warning in result.warnings]
         )
         context["meta"] = redact_value(result.meta)
@@ -748,7 +752,7 @@ def _runs_html_context(
         runs.append(safe_run)
 
     context["runs"] = runs
-    context["warnings"] = redact_value(
+    context["warnings"] = redact_adapter_warnings(
         [
             *[warning.to_dict() for warning in result.warnings],
             *local_warnings,
@@ -789,10 +793,10 @@ def _run_detail_html_context(
     if isinstance(result, AdapterErrorResult):
         code = result.error.get("code", "adapter_error")
         context["status"] = "error"
-        context["error"] = str(
-            redact_value(result.error.get("message", "Adapter error"))
+        context["error"] = redact_adapter_message(
+            result.error.get("message", "Adapter error")
         )
-        context["warnings"] = redact_value(
+        context["warnings"] = redact_adapter_warnings(
             [warning.to_dict() for warning in result.warnings]
         )
         context["meta"] = redact_value(result.meta)
@@ -817,7 +821,7 @@ def _run_detail_html_context(
     artifacts, local_warnings = _normalize_artifacts(payload.get("artifacts"), run_id)
     context["run"] = payload
     context["artifacts"] = artifacts
-    context["warnings"] = redact_value(
+    context["warnings"] = redact_adapter_warnings(
         [
             *[warning.to_dict() for warning in result.warnings],
             *local_warnings,
@@ -858,10 +862,10 @@ def _venue_html_context(
     if isinstance(result, AdapterErrorResult):
         code = result.error.get("code", "adapter_error")
         context["status"] = "error"
-        context["error"] = str(
-            redact_value(result.error.get("message", "Adapter error"))
+        context["error"] = redact_adapter_message(
+            result.error.get("message", "Adapter error")
         )
-        context["warnings"] = redact_value(
+        context["warnings"] = redact_adapter_warnings(
             [warning.to_dict() for warning in result.warnings]
         )
         context["meta"] = redact_value(result.meta)
@@ -885,7 +889,7 @@ def _venue_html_context(
 
     context["dashboard"] = payload
     context["summary_items"] = _mapping_items(payload)
-    context["warnings"] = redact_value(
+    context["warnings"] = redact_adapter_warnings(
         [warning.to_dict() for warning in result.warnings]
     )
     context["meta"] = redact_value(result.meta)

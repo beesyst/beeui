@@ -3019,6 +3019,220 @@ def test_layout_data_table_actions_cell() -> None:
     assert cell["items"][0]["href"] == "/runs/001"
 
 
+def test_layout_data_table_action_icons_and_tones_are_bounded() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "data_table",
+                "title": "Actions",
+                "columns": [{"key": "a", "label": "", "cell": "actions"}],
+                "rows": [
+                    {
+                        "a": [
+                            {
+                                "action_id": "check_source",
+                                "label": "Check",
+                                "flow": "direct_execute",
+                                "icon": "check",
+                                "tone": "green",
+                                "args": {"source_id": "mailbox"},
+                            },
+                            {
+                                "action_id": "bad_icon",
+                                "label": "Bad",
+                                "flow": "direct_execute",
+                                "icon": "<svg>",
+                            },
+                        ]
+                    }
+                ],
+            }
+        ]
+    )
+    items = result[0]["rows"][0]["a"]["items"]
+    assert items == [
+        {
+            "action_id": "check_source",
+            "label": "Check",
+            "description": "",
+            "confirmation": "",
+            "flow": "direct_execute",
+            "icon": "check",
+            "tone": "green",
+            "inline_edit": False,
+            "inline_edit_mode": "",
+            "args": {"source_id": "mailbox"},
+            "fields": [],
+        }
+    ]
+
+
+def test_data_table_uses_canonical_icons_and_generic_pending_spinner() -> None:
+    template = Path(
+        "src/beeui_module/web/templates/components/layout/data_table.html"
+    ).read_text(encoding="utf-8")
+    script = Path("src/beeui_module/web/static/js/beeui.js").read_text(encoding="utf-8")
+    assert "import tabler_icon" in template
+    assert (
+        'tabler_icon(action.icon, "icon" ~ (" text-" ~ action.tone if action.tone else ""))'
+        in template
+    )
+    assert "spinner-border spinner-border-sm text-secondary" in script
+    assert 'button.setAttribute("aria-busy", "true")' in script
+    assert 'button.classList.add("beeui-action-pending")' in script
+    assert 'button.classList.remove("beeui-action-pending")' in script
+    assert "action_id: action.action_id, payload: payload" in script
+    assert "action_id: pending" not in script
+    stylesheet = Path("src/beeui_module/web/static/css/beeui.css").read_text(
+        encoding="utf-8"
+    )
+    assert ".btn.btn-action.beeui-action-pending:disabled" in stylesheet
+    assert "border-color: transparent;" in stylesheet
+
+
+def test_layout_data_table_follow_up_action_is_bounded() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "data_table",
+                "title": "Actions",
+                "columns": [{"key": "a", "label": "", "cell": "actions"}],
+                "rows": [
+                    {
+                        "a": [
+                            {
+                                "action_id": "add",
+                                "label": "Add",
+                                "flow": "direct_execute",
+                                "follow_up_action_id": "check",
+                                "follow_up_match_arg": "source_id",
+                                "fields": [
+                                    {
+                                        "name": "name",
+                                        "type": "text",
+                                        "label": "Name",
+                                        "value": "Mailbox",
+                                    }
+                                ],
+                            }
+                        ]
+                    }
+                ],
+            }
+        ]
+    )
+    action = result[0]["rows"][0]["a"]["items"][0]
+    assert action["follow_up_action_id"] == "check"
+    assert action["follow_up_match_arg"] == "source_id"
+
+    invalid = render_layout(
+        [
+            {
+                "type": "data_table",
+                "title": "Actions",
+                "columns": [{"key": "a", "label": "", "cell": "actions"}],
+                "rows": [
+                    {
+                        "a": [
+                            {
+                                "action_id": "add",
+                                "label": "Add",
+                                "flow": "direct_execute",
+                                "follow_up_action_id": "check",
+                                "fields": [
+                                    {
+                                        "name": "name",
+                                        "type": "text",
+                                        "label": "Name",
+                                        "value": "Mailbox",
+                                    }
+                                ],
+                            }
+                        ]
+                    }
+                ],
+            }
+        ]
+    )
+    assert invalid[0]["rows"][0]["a"]["items"] == []
+
+
+def test_layout_data_table_inline_pending_action_is_bounded() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "data_table",
+                "title": "Actions",
+                "columns": [{"key": "a", "label": "", "cell": "actions"}],
+                "rows": [
+                    {
+                        "a": [
+                            {
+                                "action_id": "edit_source",
+                                "label": "Edit",
+                                "flow": "direct_execute",
+                                "icon": "edit",
+                                "inline_edit": True,
+                                "pending_action_id": "check_source",
+                                "fields": [
+                                    {
+                                        "name": "name",
+                                        "type": "text",
+                                        "label": "Name",
+                                        "value": "Mailbox",
+                                    }
+                                ],
+                            }
+                        ]
+                    }
+                ],
+            }
+        ]
+    )
+    action = result[0]["rows"][0]["a"]["items"][0]
+    assert action["pending_action_id"] == "check_source"
+
+    invalid = render_layout(
+        [
+            {
+                "type": "data_table",
+                "title": "Actions",
+                "columns": [{"key": "a", "label": "", "cell": "actions"}],
+                "rows": [
+                    {
+                        "a": [
+                            {
+                                "action_id": "edit_source",
+                                "label": "Edit",
+                                "flow": "direct_execute",
+                                "icon": "edit",
+                                "inline_edit": True,
+                                "pending_action_id": "<unsafe>",
+                                "fields": [
+                                    {
+                                        "name": "name",
+                                        "type": "text",
+                                        "label": "Name",
+                                        "value": "Mailbox",
+                                    }
+                                ],
+                            },
+                            {
+                                "action_id": "edit_without_inline",
+                                "label": "Edit",
+                                "flow": "direct_execute",
+                                "icon": "edit",
+                                "pending_action_id": "check_source",
+                            },
+                        ]
+                    }
+                ],
+            }
+        ]
+    )
+    assert invalid[0]["rows"][0]["a"]["items"] == []
+
+
 def test_layout_data_table_actions_unsafe_link_rejected() -> None:
     result = render_layout(
         [
@@ -3127,6 +3341,126 @@ def test_layout_data_table_direct_action_is_opt_in_and_bounded() -> None:
     action = result[0]["toolbar"]["actions"][0]
     assert action["flow"] == "direct_execute"
     assert action["fields"][0]["value"] == "alice@example.com"
+    assert "column_key" not in action["fields"][0]
+
+
+def test_layout_data_table_password_field_discards_supplied_value() -> None:
+    supplied = "must-not-reach-metadata"
+    result = render_layout(
+        [
+            {
+                "type": "data_table",
+                "title": "Actions",
+                "toolbar": {
+                    "actions": [
+                        {
+                            "action_id": "save_secret",
+                            "label": "Save",
+                            "flow": "direct_execute",
+                            "fields": [
+                                {
+                                    "name": "password",
+                                    "type": "password",
+                                    "label": "Password",
+                                    "required": True,
+                                    "max_length": 1024,
+                                    "value": supplied,
+                                }
+                            ],
+                        }
+                    ]
+                },
+                "columns": [{"key": "actions", "label": "", "cell": "actions"}],
+                "rows": [{"actions": []}],
+            }
+        ]
+    )
+    field = result[0]["toolbar"]["actions"][0]["fields"][0]
+    assert field == {
+        "name": "password",
+        "type": "password",
+        "label": "Password",
+        "required": True,
+        "max_length": 1024,
+        "value": "",
+    }
+    assert supplied not in str(result)
+    javascript = Path("src/beeui_module/web/static/js/beeui.js").read_text(
+        encoding="utf-8"
+    )
+    assert "input.type = field.type;" in javascript
+    assert 'input.autocomplete = "new-password"' in javascript
+    assert 'field.type !== "password"' in javascript
+
+
+def test_layout_data_table_inline_field_column_key_is_bounded() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "data_table",
+                "title": "Actions",
+                "toolbar": {
+                    "actions": [
+                        {
+                            "action_id": "save_secret",
+                            "label": "Save",
+                            "flow": "direct_execute",
+                            "inline_edit": True,
+                            "icon": "edit",
+                            "fields": [
+                                {
+                                    "name": "password",
+                                    "column_key": "masked_value",
+                                    "type": "password",
+                                    "label": "Password",
+                                    "required": False,
+                                    "value": "must-not-reach-metadata",
+                                }
+                            ],
+                        }
+                    ]
+                },
+                "columns": [{"key": "actions", "label": "", "cell": "actions"}],
+                "rows": [{"actions": []}],
+            }
+        ]
+    )
+    field = result[0]["toolbar"]["actions"][0]["fields"][0]
+    assert field["name"] == "password"
+    assert field["column_key"] == "masked_value"
+    assert field["value"] == ""
+    javascript = Path("src/beeui_module/web/static/js/beeui.js").read_text(
+        encoding="utf-8"
+    )
+    assert "field.column_key || field.name" in javascript
+    assert "action.confirmation && !window.confirm(action.confirmation)" in javascript
+
+    malformed = render_layout(
+        [
+            {
+                "type": "data_table",
+                "title": "Actions",
+                "toolbar": {
+                    "actions": [
+                        {
+                            "action_id": "save_secret",
+                            "label": "Save",
+                            "fields": [
+                                {
+                                    "name": "password",
+                                    "column_key": "masked value",
+                                    "type": "password",
+                                }
+                            ],
+                        }
+                    ]
+                },
+                "columns": [{"key": "actions", "label": "", "cell": "actions"}],
+                "rows": [{"actions": []}],
+            }
+        ]
+    )
+    assert malformed[0]["toolbar"]["actions"] == []
 
 
 def test_layout_data_table_action_rejects_oversized_field_presentation() -> None:
@@ -3197,6 +3531,58 @@ def test_layout_data_table_bounded_action_rejects_unsafe_metadata() -> None:
     )
 
     assert result[0]["toolbar"]["actions"] == []
+
+
+def test_layout_data_table_radio_action_and_toggle_cell_normalize() -> None:
+    result = render_layout(
+        [
+            {
+                "type": "data_table",
+                "title": "Sources",
+                "toolbar": {
+                    "actions": [
+                        {
+                            "action_id": "add_source",
+                            "label": "Add",
+                            "flow": "direct_execute",
+                            "fields": [
+                                {
+                                    "name": "enabled",
+                                    "type": "radio",
+                                    "label": "Status",
+                                    "value": "true",
+                                    "options": [
+                                        {"value": "true", "label": "Enabled"},
+                                        {"value": "false", "label": "Disabled"},
+                                    ],
+                                }
+                            ],
+                        }
+                    ]
+                },
+                "columns": [{"key": "enabled", "label": "Status", "cell": "toggle"}],
+                "rows": [
+                    {
+                        "enabled": {
+                            "checked": True,
+                            "label": "Status",
+                            "field": "enabled",
+                            "action_id": "set_enabled",
+                            "args": {"source_id": "mailbox"},
+                        }
+                    }
+                ],
+            }
+        ]
+    )
+
+    action = result[0]["toolbar"]["actions"][0]
+    assert action["fields"][0]["type"] == "radio"
+    assert action["fields"][0]["options"][1]["value"] == "false"
+    toggle = result[0]["rows"][0]["enabled"]
+    assert toggle["type"] == "toggle"
+    assert toggle["checked"] is True
+    assert toggle["action"]["field"] == "enabled"
 
 
 def test_layout_data_table_missing_values_render_na() -> None:

@@ -7,7 +7,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
-from beeui_module.artifacts.redaction import redact_value
+from beeui_module.artifacts.redaction import redact_adapter_message, redact_value
 from beeui_module.blocks.layout_renderer import (
     layout_has_charts,
     layout_has_date_ranges,
@@ -414,7 +414,8 @@ def _resolve_page_tabs_data(
         "progressive": page.tabs.progressive,
         "surface": page.tabs.surface,
         "surface_id": page.page_id,
-        "show_icons": page.tabs.variant in {
+        "show_icons": page.tabs.variant
+        in {
             "icons",
             "fill_icons",
             "compact_fill_icons",
@@ -545,8 +546,8 @@ def register_adapter_custom_pages(
                     product_title,
                     product_id,
                     _page,
-                    error=str(
-                        redact_value(result.error.get("message", "Page unavailable"))
+                    error=redact_adapter_message(
+                        result.error.get("message", "Page unavailable")
                     ),
                     status_code=503,
                 )

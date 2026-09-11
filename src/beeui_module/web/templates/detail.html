@@ -28,7 +28,7 @@
     {% endif %}
 
     {% if has_sections %}
-    <div class="row row-deck row-cards g-3">
+    <div class="row row-deck row-cards g-3 beeui-detail-sections">
       {% for section in sections %}
         {% set section_index = loop.index0 %}
         {% if section["kind"] == "key_value" %}

@@ -10,6 +10,7 @@ from fastapi.templating import Jinja2Templates
 
 from beeui_module.adapters.base import ProductUiAdapter
 from beeui_module.adapters.envelopes import AdapterMetadata
+from beeui_module.artifacts.redaction import redact_adapter_message, redact_value
 from beeui_module.artifacts.routes import register_artifact_routes
 from beeui_module.auth.dependencies import require_csrf, require_role
 from beeui_module.auth.models import UserRole
@@ -523,7 +524,9 @@ def _register_protected_post_routes(
             return JSONResponse(
                 api_error_envelope(
                     code,
-                    str(result.error.get("message", "Adapter error")),
+                    redact_adapter_message(
+                        result.error.get("message", "Adapter error")
+                    ),
                 ),
                 status_code=status,
             )
@@ -534,7 +537,7 @@ def _register_protected_post_routes(
                 "ok": True,
                 "api": "beeui.v0",
                 "read_only": read_only,
-                "data": data,
+                "data": redact_value(data),
                 "warnings": [],
                 "meta": {},
             },

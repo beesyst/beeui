@@ -9,7 +9,11 @@ from beeui_module.adapters.envelopes import (
     error_result,
     error_result_from_exception,
 )
-from beeui_module.artifacts.redaction import redact_value
+from beeui_module.artifacts.redaction import (
+    redact_adapter_error,
+    redact_adapter_warnings,
+    redact_value,
+)
 
 API_VERSION = "beeui.v0"
 
@@ -59,14 +63,16 @@ def api_envelope_from_adapter(
     malformed_message: str = "Adapter returned malformed payload",
 ) -> tuple[dict[str, Any], int]:
     if isinstance(adapter_result, AdapterErrorResult):
-        error = adapter_result.error
+        error = redact_adapter_error(adapter_result.error)
         code = str(error.get("code", "adapter_error"))
-        message = str(redact_value(error.get("message", "Adapter error")))
+        message = str(error["message"])
         return (
             api_error_envelope(
                 code,
                 message,
-                warnings=redact_value(list(adapter_result.to_dict()["warnings"])),
+                warnings=redact_adapter_warnings(
+                    list(adapter_result.to_dict()["warnings"])
+                ),
                 meta=redact_value(adapter_result.meta),
             ),
             error_status_code(code),
@@ -81,7 +87,7 @@ def api_envelope_from_adapter(
     return (
         api_success_envelope(
             redact_value(adapter_payload["data"]),
-            warnings=redact_value(list(adapter_payload["warnings"])),
+            warnings=redact_adapter_warnings(list(adapter_payload["warnings"])),
             meta=redact_value(adapter_payload["meta"]),
             partial=adapter_payload["status"] == "partial",
         ),

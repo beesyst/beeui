@@ -45,11 +45,6 @@ def redact_value(value: Any) -> Any:
     if isinstance(value, list):
         return [redact_value(item) for item in value]
 
-    if isinstance(value, str) and any(
-        pattern in value.lower().replace("-", "_") for pattern in _REDACT_KEYS
-    ):
-        return _REDACTED_PLACEHOLDER
-
     return deepcopy(value)
 
 
@@ -63,3 +58,21 @@ def redact_text(text: str) -> str:
         else:
             result_lines.append(line)
     return "".join(result_lines)
+
+
+def redact_adapter_message(message: Any) -> str:
+    return redact_text(str(message))
+
+
+def redact_adapter_error(error: dict[str, Any]) -> dict[str, Any]:
+    redacted = redact_value(error)
+    redacted["message"] = redact_adapter_message(error.get("message", "Adapter error"))
+    return redacted
+
+
+def redact_adapter_warnings(warnings: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    redacted = redact_value(warnings)
+    for original, warning in zip(warnings, redacted, strict=True):
+        if isinstance(warning, dict) and "message" in original:
+            warning["message"] = redact_adapter_message(original["message"])
+    return redacted

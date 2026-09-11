@@ -1048,7 +1048,17 @@ def _render_run_table(raw: dict[str, Any], width_class: str) -> dict[str, Any]:
 
 
 _ALLOWED_DATA_TABLE_CELL_TYPES: frozenset = frozenset(
-    {"text", "muted", "link", "badge", "status", "avatar_text", "progress", "actions"}
+    {
+        "text",
+        "muted",
+        "link",
+        "badge",
+        "status",
+        "avatar_text",
+        "progress",
+        "actions",
+        "toggle",
+    }
 )
 _ALLOWED_DATA_TABLE_TONES: frozenset[str] = frozenset(
     {
@@ -1442,6 +1452,30 @@ def _render_data_table_cell(cell_raw: Any, cell_type: str) -> dict[str, Any]:
     if not isinstance(cell_raw, dict):
         return {"type": "text", "value": _display_value(cell_raw)}
 
+    if cell_type == "toggle":
+        checked = cell_raw.get("checked")
+        field = cell_raw.get("field")
+        action_id = cell_raw.get("action_id")
+        if not isinstance(checked, bool) or not isinstance(field, str):
+            return {"type": "text", "value": _display_value(cell_raw)}
+        action = _normalize_table_action(
+            {
+                "action_id": action_id,
+                "label": _display_value(cell_raw.get("label"), default=field),
+                "flow": "direct_execute",
+                "args": cell_raw.get("args", {}),
+            }
+        )
+        if action is None:
+            return {"type": "text", "value": _display_value(cell_raw)}
+        action["field"] = field
+        return {
+            "type": "toggle",
+            "checked": checked,
+            "label": action["label"],
+            "action": action,
+        }
+
     if cell_type == "link":
         href = validate_internal_href(cell_raw.get("href"))
         return {
@@ -1533,12 +1567,34 @@ def _normalize_table_action(raw: dict[str, Any]) -> dict[str, Any] | None:
     if flow not in {"preview_confirm_execute", "direct_execute"}:
         return None
     icon = raw.get("icon", "")
-    if icon not in {"", "edit", "trash", "device-floppy", "x"}:
+    if icon not in {
+        "",
+        "check",
+        "edit",
+        "trash",
+        "device-floppy",
+        "plug-connected",
+        "plug-connected-x",
+        "x",
+    }:
         return None
     inline_edit = raw.get("inline_edit", False)
     if not isinstance(inline_edit, bool):
         return None
-    if inline_edit and (flow != "direct_execute" or not icon):
+    inline_edit_mode = raw.get("inline_edit_mode", "cell" if inline_edit else "")
+    if inline_edit_mode not in {"", "cell", "row_form"}:
+        return None
+    if inline_edit and inline_edit_mode == "":
+        inline_edit_mode = "cell"
+    if (inline_edit or inline_edit_mode) and (flow != "direct_execute" or not icon):
+        return None
+    pending_action_id = raw.get("pending_action_id")
+    if pending_action_id is not None and (
+        not isinstance(pending_action_id, str)
+        or not _DATA_TABLE_ID_PATTERN.fullmatch(pending_action_id)
+        or flow != "direct_execute"
+        or not inline_edit
+    ):
         return None
     args_raw = raw.get("args", {})
     if not isinstance(args_raw, dict) or len(args_raw) > 10:
@@ -1560,39 +1616,156 @@ def _normalize_table_action(raw: dict[str, Any]) -> dict[str, Any] | None:
         if (
             not isinstance(name, str)
             or not _DATA_TABLE_ID_PATTERN.fullmatch(name)
-            or field_type not in {"text", "email"}
+            or field_type
+            not in {
+                "text",
+                "email",
+                "number",
+                "select",
+                "checkbox",
+                "radio",
+                "password",
+            }
         ):
             return None
-        max_length = field.get("max_length", 254)
-        if not isinstance(max_length, int) or isinstance(max_length, bool):
-            return None
         value = field.get("value", field.get("initial", ""))
-        if not isinstance(value, str) or len(value) > min(max(max_length, 1), 254):
-            return None
         field_label = _display_value(field.get("label"), default=name)
-        if len(field_label) > 256:
+        required = field.get("required", True)
+        if len(field_label) > 256 or not isinstance(required, bool):
             return None
-        fields.append(
-            {
-                "name": name,
-                "type": field_type,
-                "label": field_label,
-                "required": bool(field.get("required", True)),
-                "max_length": min(max(max_length, 1), 254),
-                "value": value,
-            }
-        )
-    return {
+        field_data: dict[str, Any] = {
+            "name": name,
+            "type": field_type,
+            "label": field_label,
+            "required": required,
+        }
+        column_key = field.get("column_key", name)
+        if not isinstance(column_key, str) or not _DATA_TABLE_ID_PATTERN.fullmatch(
+            column_key
+        ):
+            return None
+        if "column_key" in field:
+            field_data["column_key"] = column_key
+        visible_when = field.get("visible_when")
+        if visible_when is not None:
+            if not isinstance(visible_when, dict) or len(visible_when) != 1:
+                return None
+            condition_name, condition_value = next(iter(visible_when.items()))
+            if (
+                not isinstance(condition_name, str)
+                or not _DATA_TABLE_ID_PATTERN.fullmatch(condition_name)
+                or not isinstance(condition_value, (str, bool))
+            ):
+                return None
+            field_data["visible_when"] = {condition_name: condition_value}
+        if field_type in {"text", "email"}:
+            max_length = field.get("max_length", 254)
+            if (
+                not isinstance(max_length, int)
+                or isinstance(max_length, bool)
+                or not isinstance(value, str)
+                or len(value) > min(max(max_length, 1), 254)
+            ):
+                return None
+            field_data.update(
+                {"max_length": min(max(max_length, 1), 254), "value": value}
+            )
+        elif field_type == "password":
+            max_length = field.get("max_length", 1024)
+            if (
+                not isinstance(max_length, int)
+                or isinstance(max_length, bool)
+                or not 1 <= max_length <= 4096
+            ):
+                return None
+            field_data.update({"max_length": max_length, "value": ""})
+        elif field_type == "number":
+            if (
+                not isinstance(value, (int, float))
+                or isinstance(value, bool)
+                or not math.isfinite(value)
+            ):
+                return None
+            minimum, maximum = field.get("min"), field.get("max")
+            if minimum is not None and (
+                not isinstance(minimum, (int, float))
+                or isinstance(minimum, bool)
+                or not math.isfinite(minimum)
+            ):
+                return None
+            if maximum is not None and (
+                not isinstance(maximum, (int, float))
+                or isinstance(maximum, bool)
+                or not math.isfinite(maximum)
+            ):
+                return None
+            if minimum is not None and maximum is not None and minimum > maximum:
+                return None
+            field_data.update({"value": str(value), "min": minimum, "max": maximum})
+        elif field_type == "checkbox":
+            if not isinstance(value, bool):
+                return None
+            field_data["value"] = value
+        else:
+            options_raw = field.get("options")
+            if (
+                not isinstance(options_raw, list)
+                or not options_raw
+                or len(options_raw) > 100
+                or not isinstance(value, str)
+            ):
+                return None
+            options: list[dict[str, str]] = []
+            for option in options_raw:
+                if (
+                    not isinstance(option, dict)
+                    or not isinstance(option.get("value"), str)
+                    or not option["value"]
+                    or len(option["value"]) > 128
+                    or not isinstance(option.get("label"), str)
+                    or not option["label"]
+                    or len(option["label"]) > 256
+                ):
+                    return None
+                options.append({"value": option["value"], "label": option["label"]})
+            if value not in {option["value"] for option in options}:
+                return None
+            field_data.update({"value": value, "options": options})
+        fields.append(field_data)
+    follow_up_action_id = raw.get("follow_up_action_id")
+    follow_up_match_arg = raw.get("follow_up_match_arg")
+    if (follow_up_action_id is None) != (follow_up_match_arg is None):
+        return None
+    if follow_up_action_id is not None and (
+        not isinstance(follow_up_action_id, str)
+        or not _DATA_TABLE_ID_PATTERN.fullmatch(follow_up_action_id)
+        or not isinstance(follow_up_match_arg, str)
+        or not _DATA_TABLE_ID_PATTERN.fullmatch(follow_up_match_arg)
+        or flow != "direct_execute"
+        or inline_edit
+        or inline_edit_mode
+        or not fields
+    ):
+        return None
+    normalized = {
         "action_id": action_id,
         "label": label,
         "description": description,
         "confirmation": confirmation,
         "flow": flow,
         "icon": icon,
+        "tone": _safe_visual_token(raw.get("tone"), _ALLOWED_DATA_TABLE_TONES),
         "inline_edit": inline_edit,
+        "inline_edit_mode": inline_edit_mode,
         "args": args,
         "fields": fields,
     }
+    if pending_action_id is not None:
+        normalized["pending_action_id"] = pending_action_id
+    if follow_up_action_id is not None:
+        normalized["follow_up_action_id"] = follow_up_action_id
+        normalized["follow_up_match_arg"] = follow_up_match_arg
+    return normalized
 
 
 def _normalize_filter_fields(fields_raw: Any) -> list[dict[str, Any]]:
