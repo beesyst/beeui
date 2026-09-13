@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.30.0](https://github.com/beesyst/beeui/compare/beeui-v0.29.0...beeui-v0.30.0) (2026-09-13)
+
+
+### Features
+
+* **ui:** add leaderboard layout and improve ROP presentation ([a52da05](https://github.com/beesyst/beeui/commit/a52da05cfdf93d74b478b9ef44debad16137875b))
+* **ui:** support source management flows and secure adapter output ([cd1c448](https://github.com/beesyst/beeui/commit/cd1c448ca7dcfb0b235e0cee94fe135dfda30f1d))
+
+
+### Bug Fixes
+
+* **layout:** finalize operator hero trends ([5ad8801](https://github.com/beesyst/beeui/commit/5ad8801fbf762158e926697198be0d4c435abc63))
+* **ui:** show detail text in modals ([7bcede6](https://github.com/beesyst/beeui/commit/7bcede696cef0a97771d68107b9965be8e9ecab5))
+* **ui:** support detail field links ([99eee60](https://github.com/beesyst/beeui/commit/99eee608fe09beebe614912f38172ae387d87aa3))
+* **ui:** support detail table links ([fbdbb88](https://github.com/beesyst/beeui/commit/fbdbb8856aa6cbb2d435a010f79dd93b40ee4013))
+
 ## [0.29.0](https://github.com/beesyst/beeui/compare/beeui-v0.28.0...beeui-v0.29.0) (2026-09-03)
 
 
