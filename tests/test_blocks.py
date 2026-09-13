@@ -9,6 +9,72 @@ from beeui_module.pages.config import load_beeui_config
 from beeui_module.pages.links import validate_internal_href
 
 
+def test_layout_leaderboard_normalizes_bounded_generic_items() -> None:
+    block = render_layout(
+        [
+            {
+                "type": "leaderboard",
+                "title": "Team",
+                "subtitle": "Month",
+                "width": 6,
+                "items": [
+                    {
+                        "rank": 1,
+                        "label": "<name>",
+                        "initials": "AB",
+                        "avatar_tone": "purple",
+                        "value": "10",
+                        "meta": "100%",
+                        "progress": 101,
+                        "progress_tone": "green",
+                    },
+                    {"rank": 0, "label": "bad", "progress": 1},
+                ],
+            }
+        ]
+    )[0]
+    assert block["width_class"] == "col-12 col-lg-6"
+    assert block["items"] == [
+        {
+            "rank": 1,
+            "label": "<name>",
+            "initials": "AB",
+            "avatar_tone": "purple",
+            "value": "10",
+            "meta": "100%",
+            "progress": 100,
+            "progress_tone": "green",
+        }
+    ]
+
+
+def test_layout_leaderboard_rejects_nonfinite_progress_and_falls_back_tones() -> None:
+    block = render_layout(
+        [
+            {
+                "type": "leaderboard",
+                "title": "Team",
+                "items": [
+                    {
+                        "rank": 1,
+                        "label": "A",
+                        "initials": "A",
+                        "avatar_tone": "evil",
+                        "value": "1",
+                        "progress": -5,
+                        "progress_tone": "evil",
+                    },
+                    {"rank": 2, "progress": float("nan")},
+                ],
+            }
+        ]
+    )[0]
+    assert block["items"][0]["progress"] == 0
+    assert block["items"][0]["avatar_tone"] == "primary"
+    assert block["items"][0]["progress_tone"] == "primary"
+    assert len(block["items"]) == 1
+
+
 def _write_schema(tmp_path: Path, content: str) -> Path:
     schema_path = tmp_path / "schema.yml"
     schema_path.write_text(content, encoding="utf-8")

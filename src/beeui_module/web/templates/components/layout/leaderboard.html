@@ -1,0 +1,30 @@
+<div class="card beeui-layout-card">
+  <div class="card-header">
+    <div>
+      <h3 class="beeui-section-title">{{ block.title }}</h3>
+      {% if block.subtitle %}
+        <div class="beeui-section-subtitle mt-1">{{ block.subtitle }}</div>
+      {% endif %}
+    </div>
+  </div>
+  <div class="list-group list-group-flush">
+    {% for item in block["items"] %}
+    <div class="list-group-item">
+      <div class="row align-items-center g-2">
+        <div class="col-auto text-secondary fw-semibold">{{ item.rank }}</div>
+        <div class="col-auto"><span class="avatar rounded-circle bg-{{ item.avatar_tone }}-lt text-{{ item.avatar_tone }}">{{ item.initials }}</span></div>
+        <div class="col min-w-0">
+          <div class="fw-semibold text-truncate">{{ item.label }}</div>
+          <progress class="beeui-progress-native mt-2 beeui-progress-tone-{{ item.progress_tone }}" value="{{ item.progress }}" max="100">{{ item.progress }}%</progress>
+        </div>
+        <div class="col-auto text-end">
+          <div class="fw-semibold">{{ item.value }}</div>
+          {% if item.meta %}<div class="text-secondary small">{{ item.meta }}</div>{% endif %}
+        </div>
+      </div>
+    </div>
+    {% else %}
+    <div class="list-group-item text-secondary">{% if locale == 'ru' %}Нет элементов для отображения.{% else %}No items to display.{% endif %}</div>
+    {% endfor %}
+  </div>
+</div>

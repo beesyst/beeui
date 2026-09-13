@@ -45,6 +45,7 @@ _SUPPORTED_BLOCK_TYPES: set[str] = {
     "group",
     "data_table",
     "filter_form",
+    "leaderboard",
 }
 _RUN_TABLE_COLUMNS: tuple[str, ...] = (
     "Run",
@@ -99,6 +100,21 @@ _CHART_DISPLAY_TEXT_LIMIT = 256
 _PROGRESS_TONES: frozenset[str] = frozenset(
     {"bg-primary", "bg-secondary", "bg-success", "bg-warning", "bg-danger", "bg-info"}
 )
+_LEADERBOARD_TONES: frozenset[str] = frozenset(
+    {
+        "primary",
+        "secondary",
+        "success",
+        "warning",
+        "danger",
+        "info",
+        "purple",
+        "green",
+        "yellow",
+        "red",
+    }
+)
+_LEADERBOARD_ITEM_LIMIT = 100
 _OPERATOR_HERO_ILLUSTRATIONS: dict[str, str] = {
     "tabler_email_dark": "vendor/tabler/illustrations/dark/email.png",
 }
@@ -862,6 +878,53 @@ def _render_operator_hero(raw: dict[str, Any], width_class: str) -> dict[str, An
                 "alt": alt if isinstance(alt, str) else "",
             }
     return normalized
+
+
+def _render_leaderboard(raw: dict[str, Any], width_class: str) -> dict[str, Any]:
+    _require_title(raw)
+    _require_list(raw, "items")
+    items: list[dict[str, Any]] = []
+    for item in _safe_dict_list(raw.get("items"))[:_LEADERBOARD_ITEM_LIMIT]:
+        rank = item.get("rank")
+        progress = item.get("progress")
+        if (
+            not isinstance(rank, int)
+            or isinstance(rank, bool)
+            or not 1 <= rank <= 999
+            or not _is_finite_chart_number(progress)
+        ):
+            continue
+        avatar_tone = item.get("avatar_tone")
+        progress_tone = item.get("progress_tone")
+        items.append(
+            {
+                "rank": rank,
+                "label": _display_value(item.get("label")),
+                "initials": _display_value(item.get("initials"), default="?")[:8],
+                "avatar_tone": (
+                    avatar_tone
+                    if isinstance(avatar_tone, str)
+                    and avatar_tone in _LEADERBOARD_TONES
+                    else "primary"
+                ),
+                "value": _display_value(item.get("value")),
+                "meta": _display_value(item.get("meta"), default=""),
+                "progress": min(100, max(0, progress)),
+                "progress_tone": (
+                    progress_tone
+                    if isinstance(progress_tone, str)
+                    and progress_tone in _LEADERBOARD_TONES
+                    else "primary"
+                ),
+            }
+        )
+    return {
+        "type": "leaderboard",
+        "width_class": width_class,
+        "title": _display_value(raw.get("title")),
+        "subtitle": _safe_str(raw.get("subtitle", "")),
+        "items": items,
+    }
 
 
 def _render_venue_card(raw: dict[str, Any], width_class: str) -> dict[str, Any]:
@@ -1946,6 +2009,7 @@ _BLOCK_RENDERERS: dict[str, Any] = {
     "raw_json_panel": _render_raw_json_panel,
     "chart": _render_chart,
     "operator_hero": _render_operator_hero,
+    "leaderboard": _render_leaderboard,
     "venue_card": _render_venue_card,
     "kpi_grid": _render_kpi_grid,
     "state_grid": _render_state_grid,
