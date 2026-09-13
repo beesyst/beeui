@@ -90,6 +90,17 @@ Safe local chart renderer for adapter-backed `layout[]`. Supports controlled cha
 }
 ```
 
+### Leaderboard (`type: leaderboard`)
+
+Generic adapter-backed ranked-list card. It accepts a title, optional subtitle,
+standard layout width and product-provided items. An item contains bounded `rank`,
+escaped `label`, initials-only `initials`, allowlisted `avatar_tone`, escaped
+`value` and optional `meta`, plus finite `progress` clamped to `0..100` and an
+allowlisted `progress_tone`. The block renders a Tabler card with a flush list
+group and accessible progress bars. Invalid items are omitted and an empty valid
+list renders a generic empty state. Image URLs, arbitrary CSS/classes, HTML and
+product semantics are not part of this contract.
+
 ### Data table (`type: data_table`)
 
 Advanced Tabler-compatible data table for adapter-backed `layout[]`. Backward-compatible with existing `table_card`.

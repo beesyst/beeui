@@ -240,7 +240,7 @@ def test_mounted_artifact_and_catalog_links_use_effective_external_prefix() -> N
 
     catalog = client.get("/ui/components?lang=ru")
     assert catalog.status_code == 200
-    assert 'href="/ui/static/css/beeui.css?v=19"' in catalog.text
+    assert 'href="/ui/static/css/beeui.css?v=21"' in catalog.text
     assert 'href="/ui/"' in catalog.text
     assert 'href="/ui/components/interface?lang=ru"' in catalog.text
     assert 'href="/ui/components?lang=en"' in catalog.text
@@ -614,6 +614,71 @@ def test_adapter_chart_layout_block_renders() -> None:
 
     assert 'data-chart-unavailable-message="График недоступен"' in ru_response.text
     assert 'data-chart-error-message="Ошибка рендеринга графика"' in ru_response.text
+
+
+def test_leaderboard_layout_renders_escaped_initials_without_image_urls() -> None:
+    class LeaderboardAdapter(FakeProductConsoleAdapter):
+        def get_dashboard(self) -> Any:
+            return ok_result(
+                {
+                    "layout": [
+                        {
+                            "type": "leaderboard",
+                            "title": "<Team>",
+                            "subtitle": "September",
+                            "items": [
+                                {
+                                    "rank": 1,
+                                    "label": "<Name>",
+                                    "initials": "NN",
+                                    "avatar_tone": "purple",
+                                    "value": "19 emails",
+                                    "meta": "90%",
+                                    "progress": 90,
+                                    "progress_tone": "green",
+                                }
+                            ],
+                        }
+                    ]
+                }
+            )
+
+    response = TestClient(create_beeui_app(adapter=LeaderboardAdapter())).get("/")
+    assert response.status_code == 200
+    assert "&lt;Team&gt;" in response.text
+    assert "&lt;Name&gt;" in response.text
+    assert 'class="card beeui-layout-card"' in response.text
+    assert 'class="beeui-section-title"' in response.text
+    assert 'class="beeui-section-subtitle mt-1"' in response.text
+    assert 'class="avatar rounded-circle bg-purple-lt text-purple"' in response.text
+    assert 'class="list-group list-group-flush"' in response.text
+    assert (
+        'class="beeui-progress-native mt-2 beeui-progress-tone-green"' in response.text
+    )
+    assert 'value="90"' in response.text
+    assert 'max="100"' in response.text
+    assert "background-image" not in response.text
+
+
+def test_leaderboard_layout_renders_empty_state() -> None:
+    class EmptyLeaderboardAdapter(FakeProductConsoleAdapter):
+        def get_dashboard(self) -> Any:
+            return ok_result(
+                {
+                    "layout": [
+                        {
+                            "type": "leaderboard",
+                            "title": "Team leaderboard",
+                            "items": [],
+                        }
+                    ]
+                }
+            )
+
+    response = TestClient(create_beeui_app(adapter=EmptyLeaderboardAdapter())).get("/")
+
+    assert response.status_code == 200
+    assert "No items to display." in response.text
 
 
 def test_chart_layout_html_escapes_adapter_values() -> None:
@@ -2062,8 +2127,8 @@ def test_operator_hero_block_renders_through_layout() -> None:
     assert 'class="h3 mb-0"' in response.text
     assert "text-success ms-auto d-inline-flex align-items-center lh-1" in response.text
     assert "text-danger ms-auto d-inline-flex align-items-center lh-1" in response.text
-    assert "progress-bar bg-success" in response.text
-    assert "progress-bar bg-danger" in response.text
+    assert "beeui-progress-tone-success" in response.text
+    assert "beeui-progress-tone-danger" in response.text
     assert 'src="/static/vendor/tabler/illustrations/dark/email.png"' in response.text
     assert 'alt=""' in response.text
     asset = client.get("/static/vendor/tabler/illustrations/dark/email.png")

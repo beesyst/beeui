@@ -10,4 +10,6 @@ def is_safe_icon_name(value: object) -> bool:
 
 
 def safe_icon_name(value: object) -> str | None:
+    if not isinstance(value, str):
+        return None
     return value if is_safe_icon_name(value) else None

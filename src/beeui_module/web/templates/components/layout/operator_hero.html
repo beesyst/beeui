@@ -92,12 +92,7 @@
                     </div>
 
                     {% if item.progress is defined %}
-                      <div class="progress progress-sm mt-2">
-                        <div
-                          class="progress-bar {{ item.progress_tone or 'bg-primary' }}"
-                          style="width: {{ item.progress }}%"
-                        ></div>
-                      </div>
+                      <progress class="beeui-progress-native mt-2 beeui-progress-tone-{{ item.progress_tone[3:] }}" value="{{ item.progress }}" max="100">{{ item.progress }}%</progress>
                     {% endif %}
                   </div>
                 {% endfor %}
@@ -240,12 +235,7 @@
               </div>
 
               {% if item.progress is defined %}
-                <div class="progress progress-sm mt-2">
-                  <div
-                    class="progress-bar {{ item.progress_tone or 'bg-primary' }}"
-                    style="width: {{ item.progress }}%"
-                  ></div>
-                </div>
+                <progress class="beeui-progress-native mt-2 beeui-progress-tone-{{ item.progress_tone[3:] }}" value="{{ item.progress }}" max="100">{{ item.progress }}%</progress>
               {% endif %}
             </div>
           {% endfor %}

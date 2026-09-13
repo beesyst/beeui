@@ -222,6 +222,7 @@ Adapter-backed payloads (`dashboard`, `run`, `venue dashboard`, optionally `runs
 | `chart`              | Safe local chart renderer через package-local ApexCharts asset; поддерживает line/bar/area/donut/funnel; config сериализуется через `tojson`; arbitrary ApexCharts options не пробрасываются                                                                                                    |
 | `group`              | Nested container с `direction` (vertical), `children` (list of layout blocks), bounded recursion depth 3                                                                                                                                                                                        |
 | `data_table`         | Advanced Tabler-compatible table с toolbar, pagination, mobile labels, selectable rows и typed cells                                                                                                                                                                                            |
+| `leaderboard`        | Generic ranked list card with initials avatar, progress and trailing values                                                                                                                                                                                                                     |
 | `degraded`           | Fallback для malformed/unsupported blocks                                                                                                                                                                                                                                                       |
 
 ### Metric card
@@ -310,6 +311,16 @@ Children render through existing BeeUI block renderer. Depth is bounded at 3 lev
 - Unsupported or malformed `kind` renders the explicit `degraded` state.
 - Chart asset загружается только если на странице есть chart blocks.
 - Nested chart внутри `group.children` определяется рекурсивно.
+
+### Leaderboard block
+
+`leaderboard` is available only in adapter-backed `layout[]`, not the schema/demo
+contract. It has `title`, optional `subtitle`, regular layout sizing and `items[]`.
+Each retained item has a bounded positive `rank`, escaped `label`, initials-only
+`initials`, allowlisted `avatar_tone`, escaped `value` and optional `meta`, finite
+`progress` clamped to `0..100`, and allowlisted `progress_tone`. Invalid items are
+omitted, while no retained items produce a generic empty state. BeeUI accepts no
+image URL, arbitrary class, CSS, HTML or product-specific meaning for this block.
 
 ### Data table block (Iteration 13.6)
 
