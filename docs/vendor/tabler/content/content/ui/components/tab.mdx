@@ -4,6 +4,8 @@ summary: Tabs switch between related views in the same place on the page. They c
 description: Split content into tabs so users can switch between related views in the same context. Add icons or style the tabs as pills.
 related: [/ui/layout/navs-tabs]
 source: core/scss/ui/_nav.scss
+css-vars: nav-tabs
+sass-vars: nav
 classnames:
   component:
     - class: nav-tabs
@@ -230,6 +232,8 @@ Add the `.nav-fill` class to make the tabs take up the full space of the parent 
 Tabler activates the tab that matches the URL hash on page load, so you can link to a specific tab. This is the code that runs:
 
 <CodeDocs name="tab-init" file="core/js/src/tab.ts" />
+
+This runs on `DOMContentLoaded`, so `show.bs.tab` and `shown.bs.tab` for the hash tab fire before any script that itself waits for `DOMContentLoaded`. Add the listener earlier (a plain `<script>`, not one that is deferred or waits for the load event), or read `Tab.getInstance(triggerEl)` after `DOMContentLoaded` to find the tab that was activated.
 
 ## Accessibility
 

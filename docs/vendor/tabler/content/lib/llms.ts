@@ -5,9 +5,11 @@
 // component props. Stripping components wholesale — the usual llms.txt recipe —
 // would delete exactly that. So the components that hold content are unwrapped
 // into fenced code blocks instead, and only the decorative ones are dropped.
+// A component whose content is data rather than markup (<Colors />, <Flags />)
+// renders its own markdown in a comment, see shared/lib/markdown-source.ts.
 //
 // Prose comes from the MDX source, but example markup comes from the *rendered*
-// page (see renderedExamples below): a third of the examples are written with
+// page (see renderedPage below): a third of the examples are written with
 // docs components — <Icon>, <AvatarList>, <Badge> — and the source form of those
 // is of no use to a reader who wants the html.
 import type { CollectionEntry } from 'astro:content'
@@ -16,11 +18,13 @@ import { loadRenderers } from 'astro:container'
 import { experimental_AstroContainer as AstroContainer } from 'astro/container'
 import { getContainerRenderer } from '@astrojs/mdx/container-renderer'
 import { beautifyHtml, extractMarkedSnippet } from '@shared/lib/code-example'
+import { extractMarkdownSources } from '@shared/lib/markdown-source'
 import { site } from '@shared/lib/site'
 import { callouts } from '@components/callouts/index.ts'
 import docs from '@data/docs.json'
 import packageManagers from '@data/package-managers.json'
-import { cdnCssTag, cdnJsTag, cdnPackageSnippet, cdnPluginSnippet } from './cdn-snippets.ts'
+import payments from '@data/payments.json'
+import { cdnCssTag, cdnJsTag, cdnPackageSnippet, cdnPluginSnippet, cdnThemeJsTag } from './cdn-snippets.ts'
 
 // Lazy raw imports, same as CodeDocs.astro — node:fs paths break once this is
 // bundled into dist/.prerender.
@@ -35,12 +39,31 @@ const fence = (code: string, lang = 'html') => `\`\`\`${lang}\n${code.trim()}\n\
  */
 function resolveCodeTokens(snippet: string): string {
   const tokens: Record<string, () => string> = {
-    '${site.cdnUrl}': () => site.cdnUrl,
     '${cdnCssTag()}': cdnCssTag,
     '${cdnJsTag()}': cdnJsTag,
+    '${cdnThemeJsTag()}': cdnThemeJsTag,
   }
 
-  return Object.entries(tokens).reduce((text, [token, resolve]) => text.replaceAll(token, resolve()), snippet)
+  return Object.entries(tokens)
+    .reduce((text, [token, resolve]) => text.replaceAll(token, resolve()), snippet)
+    .replace(/\$\{site\.(\w+)\}/g, (match, key: string) => siteValue(key) ?? match)
+}
+
+/** A string or number field of `site`, as the MDX pages read it; undefined for anything else. */
+function siteValue(key: string): string | undefined {
+  const value = (site as Record<string, unknown>)[key]
+  return typeof value === 'string' || typeof value === 'number' ? String(value) : undefined
+}
+
+/**
+ * JSX expressions the pages use in prose — `{ site.iconsCount }`,
+ * `{ payments.length }` — and `${site.…}` inside template literals. MDX
+ * evaluates them in the browser; the markdown mirror has to do it here.
+ */
+function resolveExpressions(text: string): string {
+  return resolveCodeTokens(text)
+    .replace(/\{\s*site\.(\w+)\s*\}/g, (match, key: string) => siteValue(key) ?? match)
+    .replace(/\{\s*payments\.length\s*\}/g, String(payments.length))
 }
 
 /** Strip the common leading indentation from a block and trim blank edges. */
@@ -56,7 +79,7 @@ async function replaceAsync(input: string, pattern: RegExp, replacer: (match: Re
   const matches = [...input.matchAll(pattern)]
   if (!matches.length) return input
 
-  const replacements = await Promise.all(matches.map((match) => replacer(match as RegExpExecArray)))
+  const replacements = await Promise.all(matches.map((match) => replacer(match)))
 
   let result = ''
   let last = 0
@@ -82,7 +105,7 @@ async function resolveCodeDocs(tag: string): Promise<string> {
   const load = kind.sources[`../../${file}`]
   if (!load) return ''
 
-  let source = (await load()) as string
+  let source = await load()
   if (kind.lang === 'scss') source = source.replaceAll(' !default', '')
 
   const snippet = extractMarkedSnippet(source, kind.marker, name)
@@ -137,38 +160,51 @@ let container: Promise<AstroContainer> | undefined
 
 const getContainer = () => (container ??= loadRenderers([getContainerRenderer()]).then((renderers) => AstroContainer.create({ renderers })))
 
+type RenderedPage = {
+  /** final markup of every <Example>, in document order; null when the example renders nothing */
+  examples: (string | null)[]
+  /** markdown shipped by components via <MarkdownSource />, per component name */
+  sources: Map<string, string[]>
+}
+
+const EMPTY_PAGE: RenderedPage = { examples: [], sources: new Map() }
+
 /**
- * The final markup of every <Example> on a page, in document order — the same
- * html the page's copy button hands out, so components are already expanded.
- * An entry is null only when the example renders nothing, and the whole list is
- * empty when the page cannot be rendered.
+ * What the rendered page carries for the markdown mirror: the final markup of
+ * every <Example> — the same html the page's copy button hands out, so
+ * components are already expanded — and the markdown sources of data
+ * components. Both lists are empty when the page cannot be rendered.
  */
-async function renderedExamples(entry: CollectionEntry<'docs'>): Promise<(string | null)[]> {
+async function renderedPage(entry: CollectionEntry<'docs'>): Promise<RenderedPage> {
   try {
     const { Content } = await render(entry)
     // Same components the page route passes, or every page using a callout throws.
-    const html = await (await getContainer()).renderToString(Content, { props: { components: callouts } })
+    // The local tells <MarkdownSource /> this render is for the mirror.
+    const html = await (await getContainer()).renderToString(Content, { props: { components: callouts }, locals: { markdownMirror: true } })
 
-    return html
+    const examples = html
       .split(EXAMPLE_MARKER)
       .slice(1)
       .map((block) => {
         // the copy button, or the wrapper attribute when the example hides its code panel
-        const markup = block.match(/data-clipboard-text="([^"]*)"/) ?? block.match(/data-example-markup="([^"]*)"/)
+        const markup = block.match(/data-bs-text="([^"]*)"/) ?? block.match(/data-example-markup="([^"]*)"/)
         return markup ? beautifyHtml(decodeEntities(markup[1]!)) : null
       })
+
+    return { examples, sources: extractMarkdownSources(html) }
   } catch (error) {
     console.warn(`[llms] Rendering ${entry.id} failed, examples fall back to their MDX source:`, error)
-    return []
+    return EMPTY_PAGE
   }
 }
 
 /**
- * Turn one page's MDX body into plain markdown. `examples` comes from
- * renderedExamples() and replaces the source of each <Example> slot; it is
- * ignored unless it lines up one-to-one with the examples in the source.
+ * Turn one page's MDX body into plain markdown. `examples` and `sources` come
+ * from renderedPage(): the examples replace the source of each <Example> slot,
+ * the sources replace the tags of the components that shipped them. Either is
+ * ignored unless it lines up one-to-one with the tags in the source.
  */
-export async function mdxToMarkdown(body: string, examples: (string | null)[] = []): Promise<string> {
+export async function mdxToMarkdown(body: string, examples: (string | null)[] = [], sources: Map<string, string[]> = new Map()): Promise<string> {
   // `<Code lang code={`…`} />` first: its template literal contains backticks, which
   // would otherwise be mistaken for markdown code spans by protectCode() below.
   let text = body.replace(/<Code\b[^>]*?code=\{`([\s\S]*?)`\}[\s\S]*?\/>/g, (match, snippet: string) => {
@@ -183,12 +219,14 @@ export async function mdxToMarkdown(body: string, examples: (string | null)[] = 
   // top-level imports are wiring, not content
   text = text.replace(/^import\s+.+?from\s+['"][^'"]+['"];?[ \t]*$/gm, '')
 
-  // <Example> slots hold the markup the page is actually documenting
-  const examplePattern = /<Example\b[^>]*>([\s\S]*?)<\/Example>/g
+  // <Example> slots hold the markup the page is actually documenting: either
+  // wrapped in the tag, or passed as `html={\`…\`}` on a self-closing one (that
+  // template literal may contain `>`, so it is matched before the attribute scan)
+  const examplePattern = /<Example\b(?:[^>]*?html=\{`([\s\S]*?)`\})?[^>]*?(?:\/>|>([\s\S]*?)<\/Example>)/g
   const useRendered = examples.length === (text.match(examplePattern)?.length ?? 0)
   let exampleIndex = 0
-  text = text.replace(examplePattern, (_match, inner: string) => {
-    const snippet = (useRendered ? examples[exampleIndex++] : null) ?? dedent(inner)
+  text = text.replace(examplePattern, (_match, html: string | undefined, inner: string | undefined) => {
+    const snippet = (useRendered ? examples[exampleIndex++] : null) ?? dedent(html ?? inner ?? '')
     return snippet ? `\n${fence(snippet)}\n` : ''
   })
 
@@ -210,6 +248,14 @@ export async function mdxToMarkdown(body: string, examples: (string | null)[] = 
     return `\n${fence(cdnPluginSnippet(plugins))}\n`
   })
 
+  // data components that shipped their own markdown (<Colors />, <Flags />, …)
+  for (const [name, markdowns] of sources) {
+    const tagPattern = new RegExp(`<${name}\\b[^>]*/>`, 'g')
+    if ((text.match(tagPattern)?.length ?? 0) !== markdowns.length) continue
+    let sourceIndex = 0
+    text = text.replace(tagPattern, () => `\n${markdowns[sourceIndex++]}\n`)
+  }
+
   // the blocks just produced must be protected too, for the same reason
   text = protectCode(text, code)
 
@@ -220,7 +266,7 @@ export async function mdxToMarkdown(body: string, examples: (string | null)[] = 
   // MDX comments and leftover JSX expressions
   text = text.replace(/\{\/\*[\s\S]*?\*\/\}/g, '')
 
-  return restoreCode(text, code)
+  return resolveExpressions(restoreCode(text, code))
     .replace(/\n{3,}/g, '\n\n')
     .trim()
 }
@@ -229,7 +275,8 @@ async function buildPageMarkdown(entry: CollectionEntry<'docs'>, url: string): P
   const { title, summary, description } = entry.data
   const header = [`# ${title}`, '', `> ${summary}`, '', description, '', `Source: ${url}`, '', '---', ''].join('\n')
 
-  return `${header}\n${await mdxToMarkdown(entry.body ?? '', await renderedExamples(entry))}\n`
+  const { examples, sources } = await renderedPage(entry)
+  return `${header}\n${await mdxToMarkdown(entry.body ?? '', examples, sources)}\n`
 }
 
 // [...slug].md.ts and llms-full.txt.ts render the same pages in one build.
@@ -255,7 +302,7 @@ export function menuOrderedUrls(): string[] {
     return parts.length ? `/${parts.join('/')}` : '/'
   }
   const walk = (nodes: MenuNode[]): string[] => nodes.flatMap((node) => [...(node.url ? [normalize(node.url)] : []), ...walk(node.children ?? [])])
-  return [...new Set(walk(docs.menu as MenuNode[]))]
+  return [...new Set(walk(docs.menu))]
 }
 
 /** Absolute in production, root-relative in dev — same rule as sitemap.xml.ts. */
