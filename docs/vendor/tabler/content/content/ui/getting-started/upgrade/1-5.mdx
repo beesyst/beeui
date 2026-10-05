@@ -3,6 +3,7 @@ title: Upgrade to 1.5
 summary: Move a project from Tabler 1.4 to 1.5. Every breaking change is listed with a before and after example for markup, JavaScript and Sass.
 description: Upgrade guide from Tabler 1.4 to 1.5 with all breaking changes, renamed classes and Sass updates.
 added-in: '1.5.0'
+order: 2
 related: [/ui/getting-started/rtl]
 ---
 
@@ -26,6 +27,7 @@ Load `tabler-theme.js`|Pages follow the OS color scheme now - see [Color mode](#
 Use payment provider icons|Check the [removed providers](#removed-payment-providers)
 Link files inside `dist/libs`|Check the [moved paths](#smaller-distlibs-folder)
 Load `tabler.rtl.css`|You can drop it - plain `tabler.css` now handles RTL
+Have `.text-gray-*` classes in your markup|They color the text now - see [Gray text utilities](#gray-text-utilities)
 
 ## Update the package
 
@@ -273,8 +275,21 @@ These changes are not breaking, but they change how a page looks. Check your scr
 - **Links**: in dark mode, links use a lighter tint of the primary color, so they meet the 4.5:1 contrast ratio on dark surfaces. Override `--tblr-link-color` to change it.
 - **Sizes**: `.form-control`, `.btn` and `.input-group` now agree on `sm` and `lg` sizes, `.btn-icon` is square, and `.icon-sm` uses a `1.5` stroke width.
 - **Cards**: `--tblr-card-header-bg` and `--tblr-card-footer-bg` can be set on their own, and the card status bar is `3px`.
-- **Layout**: `scrollbar-gutter: stable` on `html` removes the white gap next to the scrollbar.
+- **Layout**: the `margin-inline-start: calc(100vw - 100%)` hack on the root element is gone, so there is no white gap on the left when a scrollbar is present.
 - **Trending**: the component uses the `arrow-up` and `arrow-down` icons instead of `trending-up` and `trending-down`.
+
+### Gray text utilities
+
+Tabler 1.4 had no `.text-gray-*` classes, only `.text-gray-*-fg`. A class like `.text-gray-200` in your markup did nothing, and the text kept the color of its parent. Tabler 1.5 adds `.text-gray-50` to `.text-gray-950`, so the same class now sets the color. On `.text-gray-200` that is a very light gray, which is hard to read on a white page.
+
+Pick the shade you want to see, or remove the class:
+
+```diff
+- <p class="text-gray-200">Last updated 3 hours ago</p>
++ <p class="text-gray-600">Last updated 3 hours ago</p>
+```
+
+For muted text, `.text-secondary` follows the theme and keeps enough contrast in dark mode.
 
 ## RTL
 
@@ -292,6 +307,16 @@ The `*.rtl.css` files are still published, so nothing breaks if you keep them. S
 
 - **ApexCharts** moved from 3.54 to 7.0. If you install ApexCharts yourself, update it too and read the [ApexCharts changelog](https://github.com/apexcharts/apexcharts.js/releases) - the major versions renamed several options. Charts also read `--chart-{id}-color-{index}` variables now.
 - **Tabler Icons** moved to 3.46, and **Tabler Illustrations** to 1.16.
+- **Tom Select** cannot be compiled from its Sass sources against Tabler anymore. Its `tom-select.bootstrap5.scss` reads Bootstrap variables such as `$border-color` and passes them to `color.adjust()`, but in Tabler these are now CSS variables like `var(--gray-200)`, which is not a color to Sass. Use the compiled `tom-select.bootstrap5.css` instead, or set the two variables Tom Select adjusts to plain colors before importing it:
+
+  ```scss
+  // `as *` keeps Tabler's variables visible to the @import below
+  @use '@tabler/core/scss/tabler' as *;
+
+  $select-color-text: #182433;
+  $select-color-item-border: #e6e7e9;
+  @import 'tom-select/dist/scss/tom-select.bootstrap5';
+  ```
 
 ## Browser support
 
