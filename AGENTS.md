@@ -38,13 +38,13 @@ Tool, authority and read-only restrictions apply only to the current task and ag
 
 When producing a prompt for another agent, do not copy the current agent's tool restrictions unless they are explicitly required for that executor.
 
-Planning, prompt-preparation and review tasks may use Bee Dev MCP in read-only mode.
+Planning, prompt-preparation and review tasks may use BeeMCP in read-only mode.
 
 Implementation and correction prompts are executed by DeepSeek through Copilot or by Codex. They must instruct the executor to work in the exact target worktree using its available local repository tools.
 
 Implementation prompts must not require:
 
-- Bee Dev MCP;
+- BeeMCP;
 - an MCP target;
 - MCP Mode;
 - read-only behavior.
@@ -53,11 +53,11 @@ Implementation executors may inspect files, modify the exact target worktree and
 
 They must not commit, push, create or update a PR, or merge unless the current task explicitly authorizes that operation.
 
-## Bee Dev MCP rules
+## BeeMCP rules
 
-These rules apply only when the current task explicitly selects Bee Dev MCP for read-only planning, prompt preparation or review.
+These rules apply only when the current task explicitly selects BeeMCP for read-only planning, prompt preparation or review.
 
-Bee Dev MCP is read-only.
+BeeMCP is read-only.
 
 Available repository tools include:
 
@@ -479,6 +479,13 @@ uv lock --check
 
 Do not modify `uv.lock` for unrelated cleanup.
 
+## Git safety
+
+- Work only in the specified worktree and current branch.
+- Never create, switch, delete, or rename branches or worktrees without explicit user approval.
+- Never commit, push, merge, reset, or discard changes without explicit user approval.
+- Preserve all existing uncommitted changes.
+
 ## Documentation and contracts
 
 Update relevant documentation when implementation changes:
@@ -559,7 +566,7 @@ Use `uv run` for Python commands.
 
 Use `./start.sh` for repository entrypoints where applicable.
 
-Review agents using Bee Dev MCP cannot execute commands.
+Review agents using BeeMCP cannot execute commands.
 
 They may use supplied command output as evidence, but must:
 

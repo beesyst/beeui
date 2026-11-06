@@ -11,7 +11,7 @@ Use this workflow after implementation and verification are complete.
 
 This workflow:
 
-- uses only Bee Dev MCP;
+- uses only BeeMCP;
 - is read-only;
 - reviews one exact BeeUI target against one declared base branch;
 - returns one consolidated verdict.
@@ -238,7 +238,7 @@ The following are supporting evidence only:
 
 Current manifest, diff, files, contracts and observable implementation are authoritative.
 
-Bee Dev MCP does not execute tests.
+BeeMCP does not execute tests.
 
 For supplied test or smoke output:
 
@@ -423,7 +423,7 @@ Select and name the executor:
 - Copilot for localized, clearly specified corrections;
 - Codex for broad diagnosis, multi-layer, dependency-sensitive or security-sensitive corrections.
 
-The correction prompt is for an implementation executor, not Bee Dev MCP.
+The correction prompt is for an implementation executor, not BeeMCP.
 
 It must contain:
 
@@ -501,7 +501,7 @@ The correction prompt must:
 
 Do not copy into the correction prompt:
 
-- Bee Dev MCP restrictions;
+- BeeMCP restrictions;
 - review-only read-only restrictions;
 - MCP target identifiers;
 - the full approved Issue;

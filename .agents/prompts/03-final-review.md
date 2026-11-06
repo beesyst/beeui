@@ -1,6 +1,6 @@
 # BeeUI final review
 
-Используй только Bee Dev MCP.
+Используй только BeeMCP.
 
 Прочитай:
 
