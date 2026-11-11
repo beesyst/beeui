@@ -1230,7 +1230,204 @@
     });
   }
 
+  function initChatWorkspace(workspace) {
+    if (workspace.beeuiChatCleanup) return;
+    var composer = JSON.parse(workspace.getAttribute("data-composer") || "null");
+    var refresh = JSON.parse(workspace.getAttribute("data-refresh") || "null");
+    var labels = JSON.parse(workspace.getAttribute("data-labels") || "{}");
+    var form = workspace.querySelector("[data-chat-composer]");
+    var submit = form.querySelector("button[type=submit]");
+    var notice = workspace.querySelector("[data-chat-notice]");
+    var controller = new AbortController();
+    var timer, attempts = 0, failures = 0, fingerprint = "", disposed = false;
+    function safeUrl(href) {
+      if (typeof href !== "string" || !href.startsWith("/") || href.startsWith("//") || /[\\\u0000-\u001f]/.test(decodeURIComponent(href))) throw new Error("Invalid workspace URL");
+      var url = new URL(href, window.location.origin);
+      if (url.origin !== window.location.origin) throw new Error("Foreign workspace URL");
+      return url;
+    }
+    async function boundedJson(response) {
+      if (!response.ok || !response.body) throw new Error("Workspace request refused");
+      var reader = response.body.getReader(), parts = [], size = 0;
+      try {
+        while (true) {
+          var chunk = await reader.read();
+          if (chunk.done) break;
+          size += chunk.value.byteLength;
+          if (size > 131072) throw new Error("Workspace response limit");
+          parts.push(chunk.value);
+        }
+      } finally { await reader.cancel(); }
+      var bytes = new Uint8Array(size), offset = 0;
+      parts.forEach(function (part) { bytes.set(part, offset); offset += part.byteLength; });
+      return JSON.parse(new TextDecoder().decode(bytes));
+    }
+    function renderMessages(messages) {
+      if (!Array.isArray(messages) || messages.length > 100) throw new Error("Invalid messages");
+      var seen = new Set(), total = 0;
+      messages.forEach(function (message) {
+        if (!message || typeof message.id !== "string" || !message.id || message.id.length > 128 || seen.has(message.id) || !["operator", "host", "assistant"].includes(message.sender) || typeof message.name !== "string" || message.name.length > 256 || typeof message.text !== "string" || message.text.length > 4096 || typeof message.status !== "string" || message.status.length > 80 || typeof message.timestamp !== "string" || message.timestamp.length > 40) throw new Error("Invalid message");
+        seen.add(message.id); total += message.text.length;
+      });
+      if (total > 32768) throw new Error("Message limit");
+      var next = JSON.stringify(messages);
+      if (next === fingerprint) return;
+      var nodes = messages.map(function (message) {
+        var bubble = document.createElement("div"), title = document.createElement("div"), author = document.createElement("span"), body = document.createElement("div");
+        bubble.className = "chat-bubble" + (message.sender === "operator" ? " chat-bubble-me" : "");
+        bubble.setAttribute("data-message-id", message.id);
+        title.className = "chat-bubble-title"; author.className = "chat-bubble-author";
+        author.textContent = message.name; title.append(author);
+        if (message.timestamp) { var date = document.createElement("time"); date.className = "chat-bubble-date"; date.textContent = message.timestamp; title.append(date); }
+        if (message.status) { var status = document.createElement("span"); status.className = "badge bg-secondary-lt"; status.textContent = message.status; title.append(status); }
+        body.className = "chat-bubble-body"; body.textContent = message.text;
+        bubble.append(title, body); return bubble;
+      });
+      var scroll = workspace.querySelector(".beeui-chat-messages");
+      var nearEnd = scroll.scrollHeight - scroll.scrollTop - scroll.clientHeight < 80;
+      workspace.querySelector("[data-chat-messages]").replaceChildren.apply(workspace.querySelector("[data-chat-messages]"), nodes);
+      if (nearEnd) scroll.scrollTop = scroll.scrollHeight;
+      fingerprint = next;
+    }
+    function renderContext(context) {
+      var root = workspace.querySelector("[data-chat-context]");
+      if (context == null) return;
+      if (!root || typeof context.title !== "string" || context.title.length > 256 || !Array.isArray(context.sections) || context.sections.length > 8) throw new Error("Invalid context");
+      var seen = new Set(), count = 0, total = 0;
+      context.sections.forEach(function (section) {
+        if (!section || typeof section.id !== "string" || !/^[A-Za-z][A-Za-z0-9_-]{0,63}$/.test(section.id) || seen.has(section.id) || typeof section.title !== "string" || section.title.length > 256 || !Array.isArray(section.items) || section.items.length > 64) throw new Error("Invalid context section");
+        seen.add(section.id); total += section.title.length;
+        var keys = new Set();
+        section.items.forEach(function (item) {
+          if (!item || typeof item.id !== "string" || !item.id || item.id.length > 128 || keys.has(item.id)) throw new Error("Invalid context identity");
+          keys.add(item.id); count++;
+          ["label", "value", "detail"].forEach(function (key) {
+            if (typeof item[key] !== "string" || item[key].length > (key === "label" ? 256 : 4096)) throw new Error("Invalid context text");
+            total += item[key].length;
+          });
+        });
+      });
+      if (total > 32768 || count > 128) throw new Error("Context limit");
+      var fingerprint = JSON.stringify(context);
+      if (root.beeuiContextFingerprint === fingerprint) return;
+      var expanded = new Set();
+      root.querySelectorAll("details[open]").forEach(function (node) { expanded.add(node.parentElement.getAttribute("data-context-section") + ":" + node.getAttribute("data-context-id")); });
+      var nodes = context.sections.map(function (section) {
+        var node = document.createElement("section"), heading = document.createElement("h4");
+        node.className = "mb-3"; node.setAttribute("data-context-section", section.id);
+        heading.className = "subheader mb-2"; heading.textContent = section.title; node.append(heading);
+        section.items.forEach(function (item) {
+          var entry = document.createElement(item.detail ? "details" : "div"), content = item.detail ? document.createElement("summary") : entry;
+          entry.className = "beeui-chat-context-item"; entry.setAttribute("data-context-id", item.id);
+          var label = document.createElement("span"), value = document.createElement("span");
+          label.className = "text-secondary small d-block"; label.textContent = item.label; value.textContent = item.value; content.append(label, value);
+          if (item.detail) {
+            var detail = document.createElement("p"); detail.className = "small mt-2 mb-0 text-secondary"; detail.textContent = item.detail;
+            entry.open = expanded.has(section.id + ":" + item.id); entry.append(content, detail);
+          }
+          node.append(entry);
+        });
+        return node;
+      });
+      root.replaceChildren.apply(root, nodes); root.beeuiContextFingerprint = fingerprint;
+    }
+    workspace.querySelectorAll("[data-chat-panel-target]").forEach(function (button) {
+      button.addEventListener("click", function () {
+        workspace.setAttribute("data-chat-panel", button.getAttribute("data-chat-panel-target"));
+        workspace.querySelectorAll("[data-chat-panel-target]").forEach(function (item) { item.setAttribute("aria-pressed", String(item === button)); });
+      });
+    });
+    async function poll() {
+      if (!workspace.isConnected || controller.signal.aborted || attempts >= refresh.max_attempts) return;
+      if (document.hidden) { timer = setTimeout(poll, refresh.interval_ms); return; }
+      attempts += 1;
+      var deadline = setTimeout(function () { notice.textContent = labels.failed; controller.abort(); }, 15000);
+      try {
+        var response = await fetch(safeUrl(refresh.href), { credentials: "same-origin", cache: "no-store", redirect: "error", signal: controller.signal });
+        var envelope = await boundedJson(response);
+        var data = envelope && envelope.data && envelope.data.presentation;
+        if (envelope.ok !== true || !data || typeof data.state !== "string" || data.state.length > 80 || typeof data.complete !== "boolean" || !Array.isArray(data.values) || data.values.length > 12) throw new Error("Invalid workspace projection");
+        renderContext(data.context);
+        renderMessages(data.messages);
+        workspace.querySelector("[data-chat-state]").textContent = data.state;
+        data.values.forEach(function (item) {
+          if (!item || typeof item.id !== "string" || !/^[A-Za-z][A-Za-z0-9_-]{0,63}$/.test(item.id) || typeof item.value !== "string" || item.value.length > 256) throw new Error("Invalid workspace value");
+          document.querySelectorAll("[data-beeui-value-id]").forEach(function (node) { if (node.getAttribute("data-beeui-value-id") === item.id) node.textContent = item.value; });
+        });
+        var activeHistory = workspace.querySelector("[aria-current=page] [data-history-status]");
+        if (activeHistory) activeHistory.textContent = data.state;
+        failures = 0;
+        if (data.complete) { window.location.reload(); return; }
+        notice.textContent = labels.pending;
+      } catch (error) {
+        if (controller.signal.aborted) return;
+        notice.textContent = labels.failed;
+        if (++failures >= 5) return;
+      } finally { clearTimeout(deadline); }
+      timer = setTimeout(poll, refresh.interval_ms);
+    }
+    if (composer.submit_on_enter) {
+      form.querySelectorAll("textarea").forEach(function (input) {
+        var composing = false;
+        input.addEventListener("compositionstart", function () { composing = true; });
+        input.addEventListener("compositionend", function () { composing = false; });
+        input.addEventListener("keydown", function (event) {
+          if (event.key === "Enter" && !event.shiftKey && !composing && !event.isComposing && event.keyCode !== 229) {
+            event.preventDefault();
+            form.requestSubmit();
+          }
+        });
+      });
+    }
+    form.addEventListener("submit", function (event) {
+      event.preventDefault();
+      if (submit.disabled || composer.disabled) return;
+      composer.fields.forEach(function (field) {
+        var input = form.elements.namedItem(field.name);
+        if (!input || typeof input.setCustomValidity !== "function") return;
+        var valid = !field.required || input.value.trim().length > 0;
+        if (valid && field.protocols && field.protocols.length) {
+          try {
+            var target = new URL(input.value);
+            valid = field.protocols.includes(target.protocol.slice(0, -1));
+            if (field.origin_only) valid = valid && !target.username && !target.password && target.pathname === "/" && !target.search && !target.hash;
+          } catch (_) { valid = false; }
+        }
+        input.setCustomValidity(valid ? "" : field.invalid_message);
+      });
+      if (!form.checkValidity()) {
+        var invalid = form.querySelector(":invalid"), settings = invalid && invalid.closest(".offcanvas");
+        if (settings && window.bootstrap) {
+          settings.addEventListener("shown.bs.offcanvas", function () { form.reportValidity(); }, { once: true });
+          window.bootstrap.Offcanvas.getOrCreateInstance(settings).show();
+        } else { form.reportValidity(); notice.textContent = invalid ? invalid.validationMessage : labels.failed; }
+        return;
+      }
+      submit.disabled = true;
+      clearTimeout(timer);
+      controller.abort();
+      notice.textContent = labels.pending;
+      var payload = Object.assign({}, composer.args);
+      composer.fields.forEach(function (field) { payload[field.name] = form.elements.namedItem(field.name).value; });
+      requestBoundedAction("execute", { action_id: composer.action_id, payload: payload }).then(function (response) {
+        if (disposed) return;
+        if (response.ok !== true) throw new Error("Action refused");
+        if (composer.navigate) {
+          var value = response.data && response.data[composer.navigate.result_key];
+          if (typeof value !== "string" || !/^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$/.test(value)) throw new Error("Invalid result identity");
+          var url = safeUrl(composer.navigate.href);
+          url.searchParams.set(composer.navigate.param, value);
+          window.location.assign(url.href);
+        } else { window.location.reload(); }
+      }).catch(function () { if (!disposed) notice.textContent = labels.failed; });
+    });
+    workspace.beeuiChatCleanup = function () { disposed = true; clearTimeout(timer); controller.abort(); window.removeEventListener("pagehide", workspace.beeuiChatCleanup); };
+    window.addEventListener("pagehide", workspace.beeuiChatCleanup, { once: true });
+    if (refresh) poll();
+  }
+
   function initComponents(scope) {
+    scope.querySelectorAll("[data-beeui-chat]").forEach(initChatWorkspace);
     var target = scope || document;
     return loadComponentAssets(target).then(function () {
       initDatepickers(target);
@@ -1239,6 +1436,7 @@
   }
 
   function destroyComponents(scope) {
+    scope.querySelectorAll("[data-beeui-chat]").forEach(function (workspace) { if (workspace.beeuiChatCleanup) workspace.beeuiChatCleanup(); });
     destroyDatepickers(scope);
     destroyCharts(scope);
   }

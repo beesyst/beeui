@@ -1,59 +1,59 @@
 # CONTRIBUTING
 
-Этот репозиторий использует Conventional Commits, чтобы release-please автоматически:
+This repository uses Conventional Commits so that release-please can automatically:
 
-- повышал версию (SemVer)
-- генерировал Release Notes / CHANGELOG
-- создавал теги вида vX.Y.Z
+- bump the version (SemVer)
+- generate Release Notes / CHANGELOG
+- create tags in the form vX.Y.Z
 
-Важно: версия повышается не на каждый коммит, а при выпуске релиза (через Release PR от release-please).
+Important: the version is bumped when a release is published (through a Release PR from release-please), rather than with every commit.
 
-Простой и дисциплинированный workflow:
+A simple, disciplined workflow:
 
 `ROADMAP → Issue → branch → code → tests → artifacts → PR → merge`
 
-Цель:
+Goals:
 
-- маленькие и понятные изменения;
-- воспроизводимые проверки;
-- минимальная бюрократия;
-- чистая история изменений;
-- безопасная работа с core platform.
+- small, clear changes;
+- reproducible checks;
+- minimal bureaucracy;
+- a clean change history;
+- safe work on the core platform.
 
-## Главные правила
+## Core rules
 
-- `main` — единственная стабильная ветка;
-- любая работа делается в отдельной ветке;
-- любые изменения закрываются через PR;
-- не смешивать несколько разных задач в одном PR.
+- `main` is the only stable branch;
+- all work takes place on a separate branch;
+- all changes go through a PR;
+- do not mix unrelated tasks in a single PR.
 
-## Ветки
+## Branches
 
-Правило: `main` — единственная стабильная/релизная ветка. Любые изменения делаем в отдельной ветке → PR → merge в `main` (желательно `Squash and merge`).
+Rule: `main` is the only stable/release branch. Make all changes on a separate branch → PR → merge into `main` (preferably using `Squash and merge`).
 
-Именование веток (ветка = одна задача):
+Branch naming (one branch = one task):
 
-- `feat/<short-title>` — новая функциональность
-- `fix/<short-title>` — исправление бага
-- `docs/<short-title>` — изменения только в документации
-- `chore/<short-title>` — обслуживание/инфра/настройки/вспомогательные изменения без новой фичи
+- `feat/<short-title>` — new functionality
+- `fix/<short-title>` — a bug fix
+- `docs/<short-title>` — documentation-only changes
+- `chore/<short-title>` — maintenance/infrastructure/settings/supporting changes without a new feature
 
-Если есть номер Issue, добавляй его в имя ветки:
+If an Issue number is available, include it in the branch name:
 
 - `feat/12-config-schema`
 - `fix/7-parser-crash`
 - `docs/18-roadmap-update`
 - `chore/22-repo-cleanup`
 
-Правила именования:
+Naming rules:
 
-- коротко;
-- в lowercase;
-- слова разделять через `-`;
-- одна ветка = одна задача;
-- не смешивать в одной ветке feature/fix/docs/chore разного смысла.
+- keep names short;
+- use lowercase;
+- separate words with `-`;
+- one branch = one task;
+- do not mix unrelated feature/fix/docs/chore changes in a single branch.
 
-Примеры:
+Examples:
 
 - `feat/risk-profiles`
 - `fix/parser-empty-input`
@@ -62,34 +62,34 @@
 - `chore/contributing-update`
 - `chore/repo-cleanup`
 
-Примеры команд:
+Example commands:
 
-- создать ветку: `git switch -c docs/roadmap-update`
-- отправить в origin: `git push -u origin docs/roadmap-update`
+- create a branch: `git switch -c docs/roadmap-update`
+- push to origin: `git push -u origin docs/roadmap-update`
 
-### Команды
+### Commands
 
-| Шаг | Цель (что делаем)                                        | Команда(ы)                                     | Что ты увидишь / как понять                                                                                                      |
-| --: | -------------------------------------------------------- | ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-|   0 | Проверить, что рабочая папка чистая и ты на нужной ветке | `git status`                                   | `On branch main` (или другая) + `working tree clean` = всё ок. Если есть “Changes not staged…” — есть незакоммиченные изменения. |
-|   1 | Посмотреть локальные ветки и текущую ветку               | `git branch`                                   | Текущая ветка помечена `*` (например `* main`).                                                                                  |
-|   2 | Создать новую ветку под задачу и переключиться на неё    | `git switch -c docs/contributing`              | Git переключит тебя на новую ветку. Проверка: `git status` покажет `On branch docs/contributing`.                                |
-|   3 | Добавить нужный файл(ы) в индекс (staging)               | `git add docs/CONTRIBUTING.md`                 | После этого в `git status` файл будет в `Changes to be committed`.                                                               |
-|   4 | Создать коммит с правильным сообщением                   | `git commit -m "docs: add contributing guide"` | Git создаст коммит и покажет, сколько файлов изменено.                                                                           |
-|   5 | Запушить ветку на GitHub и “привязать” upstream          | `git push -u origin docs/contributing`         | Ветка появится на GitHub. `-u` позволит дальше пушить просто `git push`.                                                         |
-|   6 | Открыть PR на GitHub и влить в `main`                    | _(в браузере)_ PR → **Squash and merge**       | После мержа изменения окажутся в `main`. Обычно ветку можно удалить кнопкой “Delete branch”.                                     |
-|   7 | Обновить локальный `main` после мержа PR                 | `git switch main` + `git pull`                 | Локальный `main` подтянет изменения, которые ты влил через PR.                                                                   |
-|   8 | Посмотреть удалённые ветки (origin)                      | `git branch -r`                                | Список веток на сервере, например `origin/main`, `origin/docs/contributing`.                                                     |
-|   9 | Посмотреть все ветки (локальные + удалённые)             | `git branch -a`                                | Полный список: локальные + `remotes/origin/...`.                                                                                 |
-|  10 | (Опционально) Удалить локальную ветку после мержа        | `git branch -d docs/contributing`              | Удалит ветку локально, если она уже смержена. Если не даёт — значит не смержена.                                                 |
+| Step | Goal                                                                   | Command(s)                                     | Expected output / interpretation                                                                                          |
+| ---: | ---------------------------------------------------------------------- | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+|    0 | Check that the working tree is clean and you are on the correct branch | `git status`                                   | `On branch main` (or another branch) + `working tree clean` = ready. “Changes not staged…” indicates uncommitted changes. |
+|    1 | List local branches and identify the current branch                    | `git branch`                                   | The current branch is marked with `*` (for example, `* main`).                                                            |
+|    2 | Create a new branch for the task and switch to it                      | `git switch -c docs/contributing`              | Git switches to the new branch. To verify, `git status` should show `On branch docs/contributing`.                        |
+|    3 | Stage the required file(s)                                             | `git add docs/CONTRIBUTING.md`                 | The file then appears under `Changes to be committed` in `git status`.                                                    |
+|    4 | Create a commit with the correct message                               | `git commit -m "docs: add contributing guide"` | Git creates a commit and reports how many files changed.                                                                  |
+|    5 | Push the branch to GitHub and set its upstream                         | `git push -u origin docs/contributing`         | The branch appears on GitHub. With `-u`, subsequent pushes can use just `git push`.                                       |
+|    6 | Open a PR on GitHub and merge it into `main`                           | _(in the browser)_ PR → **Squash and merge**   | After the merge, the changes are in `main`. You can usually delete the branch with the “Delete branch” button.            |
+|    7 | Update local `main` after merging the PR                               | `git switch main` + `git pull`                 | Local `main` receives the changes merged through the PR.                                                                  |
+|    8 | List remote branches (origin)                                          | `git branch -r`                                | Lists branches on the server, such as `origin/main` and `origin/docs/contributing`.                                       |
+|    9 | List all branches (local + remote)                                     | `git branch -a`                                | Shows the complete list: local branches + `remotes/origin/...`.                                                           |
+|   10 | (Optional) Delete the local branch after the merge                     | `git branch -d docs/contributing`              | Deletes the local branch if it has already been merged. If Git refuses, the branch has not been merged.                   |
 
-Мини-цепочка на каждую задачу: status → switch -c → add → commit → push → PR → switch main → pull
+Short sequence for each task: status → switch -c → add → commit → push → PR → switch main → pull
 
-## Процесс работы
+## Workflow
 
-### Tech Lead (мержит в main)
+### Tech Lead (merges into main)
 
-**Старт и создание новой ветки**
+**Start work and create a new branch**
 
 ```
 git switch main
@@ -97,7 +97,7 @@ git pull --ff-only
 git switch -c feat/8-iteration-0-frame_and_launch
 ```
 
-или переключиться на другую ветку:
+Or switch to another branch:
 
 ```
 git switch feat/44-it10-guardrails-v0
@@ -105,7 +105,7 @@ git fetch origin
 git rebase origin/main
 ```
 
-**Коммит + пуш**
+**Commit + push**
 
 ```
 git add .
@@ -113,53 +113,53 @@ git commit -m "feat: iteration 0 fame and launch"
 git push -u origin feat/8-iteration-0-frame_and_launch
 ```
 
-**PR и для проверок соразработчика**
+**Create a PR for contributor review**
 
-1. Перейти в PR на GitHub, найти `feat/8-iteration-0-frame_and_launch` и нажать `Compare & pull request`.
-2. В `Add a description` внести `Fixes #8` (номер закрывающего ишью) и нажать `Create pull request`.
-3. `Squash and merge` → `Confirm squash and merge` в `main`.
+1. Go to the pull requests section on GitHub, find `feat/8-iteration-0-frame_and_launch`, and click `Compare & pull request`.
+2. Enter `Fixes #8` (the Issue number to close) in `Add a description` and click `Create pull request`.
+3. Select `Squash and merge` → `Confirm squash and merge` to merge into `main`.
 
-Правило:
+Rule:
 
-- `Squash and merge` выполняет только Tech Lead после проверки PR;
-- соразработчик PR не мержит самостоятельно.
+- only the Tech Lead performs `Squash and merge`, after reviewing the PR;
+- contributors do not merge their own PRs.
 
-4. `Delete branch`
-5. После мержа обновить локальный `main`:
+4. Click `Delete branch`.
+5. After the merge, update local `main`:
 
 ```
 git switch main
 git pull --ff-only
 ```
 
-4. Удалить локальную ветку:
+4. Delete the local branch:
 
 ```
 git branch -d feat/8-iteration-0-frame_and_launch
 ```
 
-или удалить ветку на origin:
+Or delete the branch on origin:
 
 ```
 git push origin --delete feat/8-iteration-0-frame_and_launch
 ```
 
-и почистить локальные ссылки
+And prune local references:
 
 ```
 git fetch -p
 ```
 
-5. Опубликовать новую версию `beeui` как устанавливаемый пакет:
+5. Publish a new version of `beeui` as an installable package:
 
 ```
 uv build
 uv publish
 ```
 
-### Проверка PR соразработчика
+### Reviewing a contributor's PR
 
-**Создать отдельную папку под PR, выполняется из основной папке проекта**
+**Create a separate directory for the PR, starting from the main project directory**
 
 ```
 git fetch origin
@@ -170,33 +170,33 @@ git status
 git branch
 ```
 
-**Посмотреть, какие файлы изменил соразработчик относительно origin/main**
+**See which files the contributor changed relative to origin/main**
 
 ```
 git fetch origin
 git diff --name-only origin/main...HEAD
 ```
 
-или посмотреть, что соразработчик изменил в конкретном файле
+Or see what the contributor changed in a specific file:
 
 ```
 git diff origin/main...HEAD -- config/start.py
 ```
 
-**Делай `git restore` только для тех файлов, которые не относятся к текущей задаче**
+**Use `git restore` only for files unrelated to the current task**
 
 ```
 git restore uv.lock docs/AUTH_LOGS.md
 git status
 ```
 
-**Наложить ветку помощника на свежий `origin/main`, но сначала убедись, что рабочее дерево чистое**
+**Rebase the contributor's branch onto the latest `origin/main`, first ensuring that the working tree is clean**
 
 ```
 git status
 ```
 
-Если есть `Changes not staged / Changes to be committed`, то сделай коммит и `rebase`:
+If there are `Changes not staged / Changes to be committed`, commit them and rebase:
 
 ```
 git add .
@@ -205,34 +205,34 @@ git fetch origin
 git rebase origin/main
 ```
 
-Если нет изменений после `git status`, то:
+If `git status` shows no changes:
 
 ```
 git fetch origin
 git rebase origin/main
 ```
 
-**Если нет ошибок**
+**If there are no errors**
 
 ```
 uv run pytest -q
 ```
 
-**Запушить изменения в ветку соразработчика**
+**Push the changes to the contributor's branch**
 
 ```
 git push --force-with-lease origin HEAD:feat/137-local_env_and_auth_diagnostics
 ```
 
-**Если всё ок**
+**If everything looks good**
 
-- обновить описание PR;
-- ппроверить вкладку Files changed;
-- выполнить Squash and merge;
-- удалить ветку на GitHub;
-- обновить локальный main.
+- update the PR description;
+- check the Files changed tab;
+- perform Squash and merge;
+- delete the branch on GitHub;
+- update local main.
 
-**Из основной папки репо удалить worktree, ветку и обновить main**
+**From the main repository directory, remove the worktree and branch, then update main**
 
 ```
 cd ../beeui
@@ -242,9 +242,9 @@ git switch main
 git pull --ff-only
 ```
 
-### Соразработчик (делает PR)
+### Contributor (creates PRs)
 
-**Перед началом задачи**
+**Before starting a task**
 
 ```
 git switch main
@@ -252,7 +252,7 @@ git pull --ff-only
 git switch -c feat/<short-title>
 ```
 
-**Коммит + пуш + PR**
+**Commit + push + PR**
 
 ```
 git add .
@@ -260,14 +260,14 @@ git commit -m "feat: <short>"
 git push -u origin feat/<short-title>
 ```
 
-В PR:
+In the PR:
 
-- укажи Refs #<issue> пока PR на проверке;
-- не выполняй merge самостоятельно;
-- не нажимай Squash and merge;
-- после замечаний Tech Lead допушивай изменения в ту же ветку PR.
+- use Refs #<issue> while the PR is under review;
+- do not merge it yourself;
+- do not click Squash and merge;
+- after feedback from the Tech Lead, push updates to the same PR branch.
 
-**Если пока соразработчик работает, в main вмержили новые изменения**
+**If new changes are merged into main while the contributor is working**
 
 ```
 git fetch origin
@@ -275,48 +275,48 @@ git rebase origin/main
 git push --force-with-lease
 ```
 
-**После мержа PR**
+**After the PR is merged**
 
 ```
 git switch main
 git pull --ff-only
 ```
 
-## Issues и Kanban
+## Issues and Kanban
 
-Любая работа и любая идея оформляется как Issue (не как отдельная карточка в Project). Project (Kanban) показывает статус Issues.
+Create an Issue for every task and idea (rather than a separate card in a Project). The Project (Kanban) displays Issue status.
 
-Правило:
+Rule:
 
-1. Создай Issue (таск = Issue).
-2. Создай ветку под Issue.
-3. Сделай PR в main.
-4. В описании PR используй:
+1. Create an Issue (task = Issue).
+2. Create a branch for the Issue.
+3. Open a PR targeting main.
+4. In the PR description, use:
 
-- `Refs #123` — если PR еще в работе или на ревью;
-- `Fixes #123` / `Closes #123` — когда PR подтвержден к merge.
+- `Refs #123` — while the PR is in progress or under review;
+- `Fixes #123` / `Closes #123` — when the PR is approved for merge.
 
-Важно:
+Important:
 
-- `Fixes/Closes` в PR **не закрывает** Issue в момент создания PR;
-- Issue закроется **только после merge PR в `main`**;
-- по умолчанию для PR соразработчика лучше ставить `Refs #123`, а перед merge Tech Lead меняет на `Closes #123`.
+- `Fixes/Closes` in a PR **does not close** the Issue when the PR is created;
+- the Issue closes **only after the PR is merged into `main`**;
+- for a contributor's PR, use `Refs #123` by default; the Tech Lead changes it to `Closes #123` before merging.
 
-Лейблы:
+Labels:
 
 - prio:high/medium/low
-- (опционально) bug/enhancement/doc/idea
+- (optional) bug/enhancement/doc/idea
 
-Используй:
+Use:
 
-- `Feature: <short title>` — новая функциональность
-- `Fix: <short title>` — исправление бага
-- `Bug: <short title>` — баг-репорт (ещё не факт что фиксишь прямо сейчас)
-- `Docs: <short title>` — документация
-- `Chore: <short title>` — обслуживание/инфра/рефактор без фич
-- `Idea: <short title>` — идея/набросок (потом можно превратить в Feature/Fix)
+- `Feature: <short title>` — new functionality
+- `Fix: <short title>` — a bug fix
+- `Bug: <short title>` — a bug report (not necessarily being fixed immediately)
+- `Docs: <short title>` — documentation
+- `Chore: <short title>` — maintenance/infrastructure/refactoring without new features
+- `Idea: <short title>` — an idea/outline (can later become a Feature/Fix)
 
-**Примеры:**
+**Examples:**
 
 - `Feature: add risk profiles (conservative/normal/aggressive)`
 - `Fix: prevent crash on empty candles`
@@ -325,31 +325,31 @@ git pull --ff-only
 - `Chore: add pre-commit formatting`
 - `Idea: capital allocation per strategy`
 
-## Коммиты
+## Commits
 
-Формат: <type>(<scope>)!: <кратко что сделано>
+Format: <type>(<scope>)!: <short description of the change>
 
-scope — опционально (например: api, parser, docs, ci). ! — признак ломающего изменения (MAJOR).
+scope is optional (for example: api, parser, docs, ci). ! indicates a breaking change (MAJOR).
 
-Таблица типов (KISS):
+Commit types (KISS):
 
-| Тип       | Когда использовать                          | Влияние на версию |
-| --------- | ------------------------------------------- | ----------------- |
-| feat:     | новая функциональность                      | +MINOR            |
-| fix:      | исправление бага                            | +PATCH            |
-| docs:     | изменения только в документации             | нет               |
-| refactor: | рефакторинг без изменения поведения         | нет               |
-| test:     | тесты                                       | нет               |
-| chore:    | обслуживание (deps, конфиги, мелкие правки) | нет               |
-| ci:       | GitHub Actions / CI/CD                      | нет               |
-| build:    | сборка/пакеты/докер/релиз-инструменты       | нет               |
+| Type      | When to use                                              | Version impact |
+| --------- | -------------------------------------------------------- | -------------- |
+| feat:     | new functionality                                        | +MINOR         |
+| fix:      | a bug fix                                                | +PATCH         |
+| docs:     | documentation-only changes                               | none           |
+| refactor: | refactoring without behavior changes                     | none           |
+| test:     | tests                                                    | none           |
+| chore:    | maintenance (dependencies, configuration, minor changes) | none           |
+| ci:       | GitHub Actions / CI/CD                                   | none           |
+| build:    | builds/packages/Docker/release tooling                   | none           |
 
-MAJOR (ломающие изменения):
+MAJOR (breaking changes):
 
-- feat!: ... или fix!: ...
-- или футер в коммите: BREAKING CHANGE: ...
+- feat!: ... or fix!: ...
+- or a commit footer: BREAKING CHANGE: ...
 
-Примеры:
+Examples:
 
 - `feat(core): add module contract v0`
 - `feat(registry): add local module loading`
@@ -357,12 +357,12 @@ MAJOR (ломающие изменения):
 - `docs(roadmap): update stage 3 module platform`
 - `test(core): add artifact api smoke coverage`
 
-MINOR: feat(api): добавить эндпоинт поиска
+MINOR: feat(api): add a search endpoint
 
-PATCH: fix(parser): не падать на пустом вводе
+PATCH: fix(parser): handle empty input without crashing
 
-NO VERSION: docs: обновить README chore: добавить базовые шаблоны refactor(parser): упростить разбор без изменения поведения
+NO VERSION: docs: update README chore: add basic templates refactor(parser): simplify parsing without changing behavior
 
-MAJOR (breaking): feat!: сменить формат конфигурации
+MAJOR (breaking): feat!: change the configuration format
 
-BREAKING CHANGE: ключи settings.yml переименованы; обновите конфиг
+BREAKING CHANGE: settings.yml keys have been renamed; update the configuration

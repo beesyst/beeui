@@ -308,8 +308,9 @@ Before issuing a verdict, confirm:
 - complete manifest consumed;
 - complete non-truncated diff consumed;
 - one consistent snapshot used;
-- changed and untracked files inventoried;
-- changed files read completely;
+- all changed and untracked paths inventoried;
+- all files included in the intended PR change set read completely;
+- unrelated dirty paths explicitly identified and verified as excluded;
 - deleted and renamed paths inspected;
 - relevant unchanged contracts and callers read;
 - applicable additional targets evaluated;

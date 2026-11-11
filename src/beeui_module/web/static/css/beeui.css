@@ -1292,3 +1292,32 @@ a:focus-visible {
     min-width: 0;
   }
 }
+
+.beeui-chat-workspace{width:100%;min-width:0;height:clamp(28rem,65vh,44rem);min-height:0;overflow:hidden}
+.beeui-chat-panels{display:grid;grid-template-columns:20% minmax(0,1fr);flex:1;min-height:0}
+.beeui-chat-panels.beeui-chat-has-context{grid-template-columns:18% minmax(0,1fr) 26%}
+.beeui-chat-workspace .beeui-chat-main{display:flex;flex-direction:column;min-width:0;min-height:0}
+.beeui-chat-workspace .beeui-chat-messages{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain}
+.beeui-chat-workspace .beeui-chat-sidebar{display:flex;flex-direction:column;min-width:0;min-height:0}
+.beeui-chat-workspace .beeui-chat-history{overflow-y:auto;min-height:0;overscroll-behavior:contain}
+.beeui-chat-workspace .beeui-chat-context{min-width:0;overflow-y:auto;overscroll-behavior:contain;overflow-wrap:anywhere}
+.beeui-chat-workspace .beeui-chat-context-item{padding:.4rem 0;border-bottom:1px solid var(--tblr-border-color);white-space:pre-wrap}
+.beeui-chat-workspace .chat-bubble{max-width:95%;margin-bottom:.75rem;overflow-wrap:anywhere}
+.beeui-chat-workspace .chat-bubble-me{margin-left:auto}
+.beeui-chat-workspace .chat-bubble-body{white-space:pre-wrap}
+.beeui-chat-workspace .card-header{min-width:0;gap:.75rem;flex-shrink:0}
+.beeui-chat-workspace .card-title{font-size:1rem}
+.beeui-chat-workspace .beeui-chat-composer{flex-shrink:0;padding:.75rem}
+.beeui-chat-composer .min-width-0{min-width:0}
+.beeui-chat-composer textarea{resize:vertical;max-height:8rem}
+.beeui-chat-workspace .beeui-chat-views{display:none}
+@media(max-width:1199px){
+  .beeui-chat-workspace .beeui-chat-views{display:flex;flex-shrink:0}
+  .beeui-chat-panels,.beeui-chat-panels.beeui-chat-has-context{display:flex}
+  .beeui-chat-panels > *{display:none!important;width:100%}
+  [data-chat-panel="history"] .beeui-chat-sidebar,[data-chat-panel="conversation"] .beeui-chat-main,[data-chat-panel="context"] .beeui-chat-context{display:flex!important;flex-direction:column}
+  .beeui-chat-workspace .offcanvas{max-width:100vw}
+}
+.beeui-chat-workspace .beeui-chat-context summary{list-style:none;cursor:pointer}
+.beeui-chat-workspace .beeui-chat-context summary::after{content:"+";float:right;color:var(--tblr-secondary)}
+.beeui-chat-workspace .beeui-chat-context details[open] summary::after{content:"−"}

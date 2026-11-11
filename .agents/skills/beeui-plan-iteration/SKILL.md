@@ -354,7 +354,7 @@ Read at minimum in BeeUI:
 
 Read as applicable:
 
-- `README.ru.md`;
+- `README.md`;
 - `docs/DEV_GUIDE.md`;
 - `docs/SPEC.md`;
 - `docs/WEB_UI.md`;
@@ -842,45 +842,45 @@ DoD
 Use this form:
 
 ```
-## Этап <номер> — <English stage title>
+## Stage <number> — <English stage title>
 
-### Итерация <ID> — <English iteration title>
+### Iteration <ID> — <English iteration title>
 
-**Статус:** PLANNED
+**Status:** PLANNED
 
 #### Goal
 
-<Russian content>
+<English content>
 
 #### Scope
 
-<Russian content>
+<English content>
 
 #### Excluded
 
-<Russian content>
+<English content>
 
 #### Deliverable
 
-<Russian content>
+<English content>
 
 #### Acceptance criteria
 
-<Russian content>
+<English content>
 
 #### Checks
 
-<Russian content>
+<English content>
 
 #### DoD
 
-<Russian content>
+<English content>
 ```
 
 Rules:
 
-- stage and iteration titles are English;
-- body is Russian;
+- stage titles, iteration titles and body are English;
+- status labels are English;
 - technical identifiers remain unchanged;
 - include only iteration-level information;
 - move implementation detail into the Issue;
@@ -911,7 +911,7 @@ DoD:
 Roadmap insertion required: no
 ```
 
-Use Russian except for technical identifiers.
+Write copy-ready standalone task contracts in English.
 
 Do not invent an iteration number.
 
@@ -1141,7 +1141,7 @@ Add `## Assumptions or blockers` only when necessary.
 Write:
 
 - planning analysis in Russian;
-- roadmap body in Russian;
+- copy-ready roadmap content in English;
 - roadmap stage and iteration titles in English;
 - Issues in English;
 - technical identifiers unchanged.

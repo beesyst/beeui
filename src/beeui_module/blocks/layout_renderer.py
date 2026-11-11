@@ -6,8 +6,12 @@ import math
 import re
 from typing import Any
 
-from beeui_module.pages.links import prefix_internal_href, validate_internal_href
+from beeui_module.blocks.chat_workspace import (
+    render_chat_workspace,
+    resolve_chat_links,
+)
 from beeui_module.pages.icons import safe_icon_name
+from beeui_module.pages.links import prefix_internal_href, validate_internal_href
 
 _WIDTH_MAP: dict[int, str] = {
     12: "col-12",
@@ -25,6 +29,7 @@ _SIZE_MAP: dict[str, int] = {
 }
 _DEFAULT_WIDTH_CLASS = "col-12"
 _SUPPORTED_BLOCK_TYPES: set[str] = {
+    "chat_workspace",
     "hero_snapshot",
     "metric_card",
     "kpi_strip",
@@ -427,6 +432,12 @@ def _render_metric_card(raw: dict[str, Any], width_class: str) -> dict[str, Any]
 
     return {
         "type": "metric_card",
+        "id": (
+            raw["id"]
+            if isinstance(raw.get("id"), str)
+            and _DATA_TABLE_ID_PATTERN.fullmatch(raw["id"])
+            else ""
+        ),
         "width_class": width_class,
         "title": _safe_str(raw.get("title")),
         "value": _safe_str(raw.get("value", "n/a")),
@@ -870,7 +881,9 @@ def _render_operator_hero(raw: dict[str, Any], width_class: str) -> dict[str, An
     illustration = raw.get("illustration")
     if isinstance(illustration, dict):
         asset = illustration.get("asset")
-        source = _OPERATOR_HERO_ILLUSTRATIONS.get(asset)
+        source = (
+            _OPERATOR_HERO_ILLUSTRATIONS.get(asset) if isinstance(asset, str) else None
+        )
         if source is not None:
             alt = illustration.get("alt", "")
             normalized["illustration"] = {
@@ -891,7 +904,9 @@ def _render_leaderboard(raw: dict[str, Any], width_class: str) -> dict[str, Any]
             not isinstance(rank, int)
             or isinstance(rank, bool)
             or not 1 <= rank <= 999
-            or not _is_finite_chart_number(progress)
+            or not isinstance(progress, (int, float))
+            or isinstance(progress, bool)
+            or not math.isfinite(progress)
         ):
             continue
         avatar_tone = item.get("avatar_tone")
@@ -1997,6 +2012,7 @@ def _render_filter_form(raw: dict[str, Any], width_class: str) -> dict[str, Any]
 
 
 _BLOCK_RENDERERS: dict[str, Any] = {
+    "chat_workspace": render_chat_workspace,
     "hero_snapshot": _render_hero_snapshot,
     "metric_card": _render_metric_card,
     "kpi_strip": _render_kpi_strip,
@@ -2033,6 +2049,8 @@ def resolve_layout_links(
     current_path: str,
 ) -> None:
     for block in blocks:
+        if block.get("type") == "chat_workspace":
+            resolve_chat_links(block, route_prefix)
         if block.get("type") == "group":
             children = block.get("children")
             if isinstance(children, list):

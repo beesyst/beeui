@@ -4,6 +4,7 @@ import vercel from '@astrojs/vercel'
 import mdx from '@astrojs/mdx'
 import { satteri } from '@astrojs/markdown-satteri'
 import { unwrapJsxParagraphs } from './lib/satteri-unwrap-jsx-paragraphs.mjs'
+import { wrapTables } from './lib/satteri-wrap-tables.mjs'
 import { fileURLToPath } from 'node:url'
 import { copyAssets } from '../.build/copy-assets'
 import { redirects } from './lib/redirects.ts'
@@ -26,11 +27,7 @@ export default defineConfig({
   },
   // Static output + the Vercel adapter: turns `redirects` below into real HTTP
   // redirects at Vercel's routing layer (no adapter = meta-refresh HTML pages).
-  adapter: vercel({
-    webAnalytics: {
-      enabled: true,
-    },
-  }),
+  adapter: vercel(),
   // renamed/moved pages, shared with middleware.ts
   redirects,
   // pages live at the package root (./pages) — content-first layout; all
@@ -115,7 +112,11 @@ export default defineConfig({
   ],
   markdown: {
     // No typographic quote rewriting.
-    processor: satteri({ features: { smartPunctuation: false }, mdastPlugins: [unwrapJsxParagraphs] }),
+    processor: satteri({
+      features: { smartPunctuation: false },
+      mdastPlugins: [unwrapJsxParagraphs],
+      hastPlugins: [wrapTables],
+    }),
     shikiConfig: {
       theme: 'github-dark',
     },

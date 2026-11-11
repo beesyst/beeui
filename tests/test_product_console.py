@@ -240,7 +240,7 @@ def test_mounted_artifact_and_catalog_links_use_effective_external_prefix() -> N
 
     catalog = client.get("/ui/components?lang=ru")
     assert catalog.status_code == 200
-    assert 'href="/ui/static/css/beeui.css?v=21"' in catalog.text
+    assert 'href="/ui/static/css/beeui.css?v=24"' in catalog.text
     assert 'href="/ui/"' in catalog.text
     assert 'href="/ui/components/interface?lang=ru"' in catalog.text
     assert 'href="/ui/components?lang=en"' in catalog.text

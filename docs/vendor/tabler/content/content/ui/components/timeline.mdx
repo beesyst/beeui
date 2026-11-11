@@ -4,6 +4,7 @@ summary: A timeline is a list of events in order, with an icon or an avatar per 
 description: Visualize events in chronological order with a timeline. Add icons, avatars, and text to present processes and activity feeds.
 related: [/ui/components/step, /ui/components/status]
 source: core/scss/ui/_timeline.scss
+css-vars: timeline
 classnames:
   component:
     - class: timeline
@@ -92,7 +93,7 @@ The icon marker is a plain box, so any [icon](/ui/components/icon) or [avatar](/
 Add `.timeline-simple` to hide the icons and pull the cards to the edge. Use it when the events need less decoration, for example in a narrow column.
 
 <Example>
-<Timeline simple />
+<Timeline simple titleAs="h3" />
 </Example>
 
 ## Examples
@@ -100,7 +101,7 @@ Add `.timeline-simple` to hide the icons and pull the cards to the edge. Use it 
 A timeline works well as an activity feed, where each event mixes text, links and its own time.
 
 <Example>
-<Timeline />
+<Timeline titleAs="h3" />
 </Example>
 
 ## Accessibility
@@ -111,11 +112,3 @@ A timeline is a list of events, so keep the list markup and let the content say 
 - Put the event time in a `time` element with a `datetime` attribute, so "2 hrs ago" also has an exact value.
 - The icon is decoration on top of the text. Keep the meaning in the heading or the body of the card, never in the icon color alone.
 - Keep heading levels in order. `h4` inside a card only sets the look - pick the level that fits the page outline.
-
-## SCSS variables
-
-The size of the icon marker comes from one custom property, which also sets where the line is drawn:
-
-| Variable                    | Description                        | Default  |
-|-----------------------------|------------------------------------|----------|
-| `--tblr-timeline-icon-size` | Width and height of the event icon | `2.5rem` |

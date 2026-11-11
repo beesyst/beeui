@@ -1,13 +1,13 @@
 # BeeUI planning
 
-Используй только BeeMCP.
+Use only BeeMCP.
 
-Прочитай:
+Read:
 
 - `AGENTS.md`
 - `.agents/skills/beeui-plan-iteration/SKILL.md`
 
-## Основной проект
+## Primary project
 
 - Project: `beeui`
 - Worktree: `<MAIN_WORKTREE>`
@@ -16,32 +16,32 @@
 - Mode: `<MODE>`
 - Roadmap context: `<ROADMAP_CONTEXT>`
 
-## Предлагаемая задача
+## Proposed task
 
 ```text
 <TASK_OR_IDEA>
 ```
 
-## Комментарии и ограничения
+## Context and constraints
 
 ```text
 <CONTEXT_OR_NONE>
 ```
 
-## Дополнительные проекты
+## Additional projects
 
 ```text
 <ADDITIONAL_PROJECTS_OR_NONE>
 ```
 
-Проверь актуальную реализацию, ROADMAP, public contracts, границы BeeUI/product repositories и необходимость задачи.
+Inspect the current implementation, ROADMAP, public contracts, ownership boundaries between BeeUI and product repositories, and whether the task is necessary.
 
-Если задача оправдана, подготовь:
+If the task is justified, prepare:
 
-1. формулировку итерации или standalone-задачи на русском;
-2. полный Issue на английском по repository Issue template;
-3. рекомендуемые branch и Conventional Commit;
-4. task-specific ограничения для реализации и проверки;
-5. зависимости и порядок выполнения, если необходимы изменения в нескольких repositories.
+1. a complete copy-ready roadmap iteration or standalone task in English;
+2. a complete Issue in English using the repository Issue template;
+3. a recommended branch name and Conventional Commit message;
+4. task-specific constraints for implementation and verification;
+5. dependencies and execution order if changes are required in multiple repositories.
 
-Верни результат строго по planning skill.
+Return the result strictly in accordance with the planning skill.

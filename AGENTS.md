@@ -66,8 +66,11 @@ Available repository tools include:
 - `get_project_context`;
 - `get_review_manifest`;
 - `get_review_bundle_page`;
+- `get_review_sources_page`;
 - `get_review_bundle` — compatibility only;
 - `read_project_file`;
+- `read_local_artifact`;
+- `read_project_visual`;
 - `search_project`;
 - `get_github_context`.
 
@@ -173,7 +176,7 @@ Common documents include:
 - relevant section of `docs/ROADMAP.md`;
 - `docs/SDLC.md`;
 - `docs/SECURITY.md`;
-- `README.ru.md`.
+- `README.md`.
 
 When relevant, also read:
 
@@ -488,33 +491,44 @@ Do not modify `uv.lock` for unrelated cleanup.
 
 ## Documentation and contracts
 
-Update relevant documentation when implementation changes:
+Reading documentation does not imply permission or a requirement to edit it.
 
-- public runtime behavior;
-- route surface;
-- API envelope or schema;
-- page, component or block contract;
-- configuration;
-- embedded integration contract;
-- adapter protocol;
-- artifact presentation;
-- auth, session, CSRF or authority boundary;
-- theme or locale behavior;
-- static asset policy;
-- packaging behavior.
+Documentation changes are not mandatory for every Issue, iteration or implementation.
 
-Check, as applicable:
+Edit only the owning document when an explicitly approved documentation task requires it, or when an approved implementation materially changes the documented public behavior or contract.
 
-- `docs/ROADMAP.md`;
-- `docs/DEV_GUIDE.md`;
-- `docs/SDLC.md`;
-- `docs/SECURITY.md`;
-- `docs/WEB_UI.md`;
-- `docs/INTEGRATION.md`;
-- `docs/API_CONTRACT.md`;
-- `docs/COMPONENTS.md`;
-- `docs/THEME.md`;
-- `README.ru.md`.
+Rules:
+
+- Do not update documentation merely because code, tests or an iteration changed.
+- Do not rewrite, reorganize, reformat or synchronize unaffected documentation.
+- Do not append iteration history, implementation summaries, test results or PR evidence to normative documents.
+- Do not change ROADMAP statuses or historical iterations unless explicitly required by the approved task or delivery workflow.
+- Do not modify `AGENTS.md`, `.agents/`, `docs/SECURITY.md` or `docs/SDLC.md` unless their actual policies or workflows require an approved change.
+- Do not introduce public APIs, configuration keys or runtime behavior solely to make documentation examples consistent.
+- Preserve unrelated documentation and existing uncommitted changes.
+- Keep new and edited technical documentation in English.
+- When no documentation update is necessary, leave it untouched and report `Documentation: no change required`.
+
+Record implementation details, verification results and delivery evidence in the Issue or PR rather than unrelated documentation.
+
+Documentation ownership:
+
+- `docs/ROADMAP.md`: approved iterations, delivery status and future plans.
+- `docs/SPEC.md`: supported product behavior and limitations.
+- `docs/ARCHITECTURE.md`: framework responsibilities and integration boundaries.
+- `docs/CONFIG.md`: runtime settings and declarative UI configuration.
+- `docs/API_CONTRACT.md`: HTTP/API envelopes and public data contracts.
+- `docs/COMPONENTS.md`: generic component and layout contracts.
+- `docs/WEB_UI.md`: implemented routes and browser behavior.
+- `docs/INTEGRATION.md`: embedded integration and adapter contracts.
+- `docs/THEME.md`: appearance and preference contracts.
+- `docs/DEV_GUIDE.md`: development, testing and packaging instructions.
+- `docs/SECURITY.md`: standing security requirements.
+- `docs/SDLC.md`: development and delivery process.
+
+Update only the owning documentation affected by the approved change.
+
+Treat `docs/vendor/tabler/` as a separate upstream documentation snapshot. Do not synchronize it or upgrade runtime assets during unrelated feature work.
 
 Do not update unrelated documentation.
 
@@ -526,6 +540,21 @@ When public data fields or contracts change:
 - update contract tests;
 - provide safe examples;
 - distinguish schema/config validation from malformed adapter degradation.
+
+## Markdown formatting
+
+Use one logical prose paragraph per physical line in Markdown documentation.
+
+Rules:
+
+- One prose paragraph = one physical line.
+- One list item = one physical line.
+- Do not hard-wrap prose at 80, 88, 100 or 120 columns.
+- Preserve structural line breaks in headings, lists, tables, blockquotes, code fences and examples.
+- Do not automatically reflow unaffected Markdown.
+- Preserve the existing formatting policy in changed sections.
+
+Formatting alone is not justification for modifying unrelated documentation.
 
 ## Verification
 

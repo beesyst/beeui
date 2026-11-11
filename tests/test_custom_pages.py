@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from fastapi.testclient import TestClient
 import pytest
+from fastapi.testclient import TestClient
 
 from beeui_module.web.app import create_beeui_app
 
@@ -760,7 +760,7 @@ def test_custom_route_rop_registers_with_adapter(tmp_path: Path) -> None:
     assert 'href="/ui/rop?sort=run"' in response.text
     assert 'aria-sort="ascending"' in response.text
     assert 'class="table-sort asc"' in response.text
-    assert 'href="/ui/static/css/beeui.css?v=21"' in response.text
+    assert 'href="/ui/static/css/beeui.css?v=24"' in response.text
     assert 'href="/ui/"' in response.text
     assert 'href="/ui/rop?lang=ru"' in response.text
     assert 'href="/ui/rop?tab=overview"' in response.text
@@ -1189,3 +1189,116 @@ def test_adapter_custom_pages_use_navigation_visibility_resolver(
     assert "Custom Metric" in response.text
     assert 'href="/rop"' not in response.text
     assert 'href="/"' in response.text
+
+
+@pytest.mark.parametrize("locale", ["en", "ru"])
+def test_generic_chat_adapter_uses_canonical_page_and_mount(tmp_path, locale):
+    from fastapi import FastAPI
+    from test_adapters import FakeAdapter
+    from test_blocks import _chat_payload
+
+    from beeui_module.adapters.envelopes import ok_result
+    from beeui_module.web.app import mount_beeui
+
+    class ConversationAdapter(FakeAdapter):
+        def get_page(self, page_id, query):
+            assert page_id == "conversation"
+            return ok_result({"layout": [_chat_payload()]})
+
+    config = _custom_page_schema(
+        tmp_path,
+        "/conversations",
+        page_id="conversation",
+        route_mode="adapter",
+        locale_block="  locale:\n    default: en\n    available: [en, ru]\n",
+    )
+    parent = FastAPI()
+    mount_beeui(
+        parent, path="/ui", config_path=str(config), adapter=ConversationAdapter()
+    )
+    client = TestClient(parent)
+    page = client.get("/ui/conversations", params={"lang": locale})
+    assert page.status_code == 200
+    assert f'<html lang="{locale}"' in page.text
+    assert 'class="page-header' in page.text
+    assert "container-xl" in page.text
+    assert "data-beeui-chat" in page.text
+    assert "/ui/api/progress?id=one" in page.text
+    assert "/ui/conversations?id=one" in page.text
+    assert "&lt;script&gt;alert(1)&lt;/script&gt;" in page.text
+    assert "<script>alert(1)</script>" not in page.text
+    assert client.get("/ui/static/js/beeui.js").status_code == 200
+    assert client.get("/ui/static/css/beeui.css").status_code == 200
+
+
+def test_progressive_tabs_preserve_bounded_case_search(tmp_path):
+    from html.parser import HTMLParser
+    from urllib.parse import parse_qs, urlsplit
+
+    from beeui_module.adapters.base import ProductUiAdapterBase
+    from beeui_module.adapters.envelopes import AdapterMetadata, ok_result
+
+    class Adapter(ProductUiAdapterBase):
+        def __init__(self):
+            super().__init__(
+                AdapterMetadata(
+                    product_id="test",
+                    title="Test",
+                    version="1",
+                    capabilities=("custom_pages",),
+                )
+            )
+
+        def get_dashboard(self):
+            return ok_result({})
+
+        def list_runs(self):
+            return ok_result([])
+
+        def get_run(self, run_id):
+            return ok_result({})
+
+        def list_artifacts(self, run_id):
+            return ok_result([])
+
+        def read_artifact(self, run_id, artifact_id):
+            return ok_result({})
+
+        def get_config_read_model(self):
+            return ok_result({})
+
+        def get_page(self, page_id, query):
+            return ok_result(
+                {"layout": [{"type": "state_grid", "title": "Result", "items": []}]}
+            )
+
+    class Links(HTMLParser):
+        def __init__(self):
+            super().__init__()
+            self.links = []
+
+        def handle_starttag(self, tag, attrs):
+            attrs = dict(attrs)
+            if tag == "a" and attrs.get("data-beeui-page-tab"):
+                self.links.append(attrs["href"])
+
+    path = _custom_page_schema(
+        tmp_path,
+        "/custom",
+        page_blocks=(
+            "    tabs:\n      variant: fill_icons\n      progressive: true\n      surface: separated\n      active_param: tab\n      items:\n"
+            "        - id: one\n          title: One\n          href: /custom?tab=one\n"
+            "        - id: two\n          title: Two\n          href: /custom?tab=two\n    blocks: []\n"
+        ),
+    )
+    app = create_beeui_app(config_path=str(path), adapter=Adapter())
+    page = TestClient(app).get("/custom", params={"run_id": "run-one", "q": "<x> & y"})
+    assert page.status_code == 200
+    links = Links()
+    links.feed(page.text)
+    assert len(links.links) == 2
+    for href in links.links:
+        query = parse_qs(urlsplit(href).query)
+        assert query["run_id"] == ["run-one"]
+        assert query["q"] == ["<x> & y"]
+    assert "<x> & y" not in page.text

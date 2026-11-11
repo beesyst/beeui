@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "beeui"
 version = "0.30.0"
 description = "Reusable UI framework for Bee products"
-readme = "README.ru.md"
+readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
     "fastapi==0.141.1",
