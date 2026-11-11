@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.31.0](https://github.com/beesyst/beeui/compare/beeui-v0.30.0...beeui-v0.31.0) (2026-11-11)
+
+
+### Features
+
+* add generic adapter-backed chat workspace ([#135](https://github.com/beesyst/beeui/issues/135)) ([bca6d64](https://github.com/beesyst/beeui/commit/bca6d64c0ccfd95854730289ce8f37662afea2a2))
+
 ## [0.30.0](https://github.com/beesyst/beeui/compare/beeui-v0.29.0...beeui-v0.30.0) (2026-09-13)
 
 
