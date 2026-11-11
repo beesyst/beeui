@@ -1,14 +1,14 @@
 # BeeUI implementation and test prompt preparation
 
-Используй только BeeMCP.
+Use only BeeMCP.
 
-Прочитай:
+Read:
 
 - `AGENTS.md`
 - `.agents/skills/beeui-implement-issue/SKILL.md`
 - `.agents/skills/beeui-verify-and-correct/SKILL.md`
 
-## Основной target
+## Primary target
 
 - Project: `beeui`
 - Worktree: `<TARGET_WORKTREE>`
@@ -17,53 +17,53 @@
 - Mode: `<MODE>`
 - Roadmap context: `<ROADMAP_CONTEXT>`
 
-## Контекст планирования
+## Planning context
 
 ```text
 <PLANNING_CONTEXT_OR_NONE>
 ```
 
-## Утверждённый Issue
+## Approved Issue
 
 ```text
 <FULL_APPROVED_ISSUE>
 ```
 
-## Дополнительные проекты
+## Additional projects
 
 ```text
 <ADDITIONAL_PROJECTS_OR_NONE>
 ```
 
-Проверь точный target, branch, Issue, repository boundaries и применимые skills.
+Verify the exact target, branch, Issue, repository ownership boundaries, and applicable skills.
 
-Не реализуй задачу, не изменяй файлы и не запускай команды.
+Do not implement the task, modify files, or run commands.
 
-Подготовь ровно два коротких готовых prompt:
+Prepare exactly two concise, ready-to-use prompts:
 
 1. `Copilot implementation`
-   - реализация Scope и Acceptance Criteria;
-   - обязательные проверки по фактическому change level;
-   - полный implementation and verification report.
+   - implement the Scope and meet the Acceptance Criteria;
+   - run the required checks for the actual change level;
+   - provide a complete implementation and verification report.
 
 2. `Codex verification and correction`
-   - самостоятельная проверка фактического состояния target worktree;
-   - проверка всех Acceptance Criteria без отчёта первого executor;
-   - только необходимые in-scope исправления;
-   - повтор required checks;
-   - полный consolidated verification report.
+   - independently verify the actual state of the target worktree;
+   - verify all Acceptance Criteria without the first executor's report;
+   - apply only necessary corrections within scope;
+   - rerun the required checks;
+   - provide a complete consolidated verification report.
 
-Оба prompt должны:
+Both prompts must:
 
-- быть независимыми и самодостаточными;
-- не требовать данных или отчёта другого executor;
-- содержать точные worktree, branch и base branch;
-- ссылаться на `AGENTS.md` и соответствующий skill;
-- содержать Issue source, если он был передан, и одинаковый компактный snapshot утверждённого task contract: Summary, Scope, Excluded, Deliverable, Acceptance Criteria, Change level, required checks и task-specific constraints;
-- учитывать только task-specific ограничения;
-- учитывать дополнительные repositories только в заявленной роли;
-- не дублировать постоянные repository rules;
-- запрещать commit, push, PR и merge;
-- не требовать BeeMCP, MCP Mode или read-only behavior от Copilot и Codex.
+- be independent and self-contained;
+- require no data or report from the other executor;
+- specify the exact worktree, branch, and base branch;
+- reference `AGENTS.md` and the applicable skill;
+- include the Issue source, if provided, and the same compact snapshot of the approved task contract: Summary, Scope, Excluded, Deliverable, Acceptance Criteria, Change level, required checks, and task-specific constraints;
+- account only for task-specific constraints;
+- account for additional repositories only in their declared roles;
+- avoid duplicating standing repository rules;
+- prohibit commits, pushes, PR operations, and merges;
+- require neither BeeMCP, MCP Mode, nor read-only behavior from Copilot or Codex.
 
-Верни только два готовых executor-prompts без дополнительного анализа.
+Return only the two ready-to-use executor prompts, without additional analysis.

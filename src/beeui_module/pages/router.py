@@ -383,12 +383,18 @@ def _resolve_page_tabs_data(
     if run_id:
         preserved["run_id"] = run_id
 
+    search = qp.get("q")
+    if search and len(search) <= 128:
+        preserved["q"] = search
+
     items_list = []
     for item in page.tabs.items:
         resolved_title = resolve_localized_text(item.title, locale, default_locale)
         href = prefix_internal_href(route_prefix, item.href)
         if href is not None:
-            href = add_preserved_params_to_href(href, preserved)
+            href = add_preserved_params_to_href(
+                href, preserved, allowlist=frozenset({"lang", "period", "run_id", "q"})
+            )
         items_list.append(
             {
                 "id": item.tab_id,

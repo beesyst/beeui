@@ -1,79 +1,46 @@
-# Theme
+# THEME — BeeUI
 
-## Назначение
+## Purpose
 
-BeeUI поддерживает три режима темы:
+BeeUI supports three presentation modes: `system`, `light` and `dark`. A theme choice changes only presentation. It cannot affect product execution, permissions, session claims or audit records.
 
-- `system` — автоматический выбор на основе `prefers-color-scheme`;
-- `light` — светлая тема;
-- `dark` — тёмная тема.
+## Configuration
 
-Тема является только presentation preference. Она не влияет на product behavior, авторизацию или бизнес-логику.
-
-## Механизм
-
-### HTML-атрибут
-
-Текущая тема устанавливается как `data-bs-theme` на корневом `<html>` элементе. Tabler и BeeUI CSS используют этот атрибут для переключения стилей.
-
-### FOUC prevention
-
-Для предотвращения Flash of Uncolored Theme используется inline `<script>` в `<head>`, который синхронно читает `localStorage` и устанавливает атрибут до первого рендеринга страницы:
-
-```javascript
-var d=document.documentElement,c=d.getAttribute('data-beeui-theme-config'),s=window.localStorage.getItem('beeui-theme');
-if(s!=='system'&&s!=='light'&&s!=='dark'){if(s)window.localStorage.removeItem('beeui-theme');s=null}
-var m=s||((c==='system'||c==='light'||c==='dark')?c:'system');
-d.setAttribute('data-bs-theme',m==='system'&&window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':m==='system'?'light':m);
-```
-
-Правила:
-
-- Только canonical allowlisted значения (`system`, `light`, `dark`) принимаются из `localStorage`.
-- Если сохранённого выбора нет, применяется configured mode; `prefers-color-scheme` используется только для effective `system`.
-- Invalid stored value удаляется и ignored.
-- FOUC bootstrap не принимает произвольный JS/data.
-
-### Переключение темы
-
-Кнопки переключения темы (`system`, `light`, `dark`) сохраняют explicit canonical choice в `localStorage` и изменяют `data-bs-theme` на effective `light` или `dark`.
-
-### Синхронизация графиков
-
-При загрузке страницы тема графиков ApexCharts синхронизируется с текущей `data-bs-theme`:
-
-```javascript
-var themeMode = html.getAttribute('data-bs-theme') === 'dark' ? 'dark' : 'light';
-config.theme = config.theme || {};
-config.theme.mode = themeMode;
-```
-
-При переключении темы все зарегистрированные графики обновляются через `chart.updateOptions()`.
-
-## Конфигурация
-
-Начальная тема в demo mode задаётся через `config/schema.yml`:
+The validated UI configuration may specify a default theme:
 
 ```yaml
 app:
   theme:
-    mode: dark
+    mode: system
+    primary: blue
+    base: gray
+    font: sans-serif
+    radius: 1
+    density: default
 ```
 
-Поддерживаемые значения `mode`:
+The canonical values for `mode` are `system`, `light` and `dark`. The compatibility alias `auto` is normalized to `system` when accepted by configuration loading. Invalid values fail validation. Other theme tokens are constrained by their owning configuration schema; arbitrary CSS is not an allowed configuration value.
 
-- `light`
-- `dark`
-- `system`
+## Browser behavior
 
-Compatibility alias `auto` принимается только при загрузке существующей config и нормализуется к `system`.
+The effective theme is expressed with the `data-bs-theme` attribute on the root `<html>` element. Tabler and BeeUI styles use this attribute rather than product-specific theme logic.
 
-Invalid mode в config приводит к fail-fast при загрузке.
+The page's early theme bootstrap reads the allowlisted `beeui-theme` value from `localStorage` before initial rendering to reduce a light/dark flash. It uses the configured default if no valid browser preference exists. `system` resolves through the browser's `prefers-color-scheme` media query. Invalid stored values are discarded.
 
-## Границы безопасности
+The operator can explicitly select system, light or dark. The selection persists as a local browser preference; it is not a server authorization decision, session token or source of product configuration.
 
-- `localStorage` не влияет на product behavior или authorization.
-- Browser state не является вторым product/config source of truth.
-- Тема — только presentation preference.
-- Session cookie и auth decisions не зависят от `data-bs-theme`.
-- Нет external scripts, CDN или tracking для theme.
+## Charts and dynamic components
+
+ApexCharts theme mode follows the effective `data-bs-theme` attribute. When the operator changes the theme, registered chart instances are updated through their supported chart update lifecycle. New chart instances inherit the current mode.
+
+Progressive page tabs and dynamically inserted blocks must continue to use the current theme, while remaining compatible with both light and dark modes.
+
+## Security and asset policy
+
+- Never evaluate arbitrary theme JavaScript or CSS from a product read-model.
+- Do not load scripts, fonts, stylesheets or tracking pixels from unapproved CDNs.
+- Do not use browser theme state to make role, Scope or product permission decisions.
+- Escape labels and validate any theme-related configuration.
+- Package runtime Tabler/theme assets locally. `docs/vendor/tabler/` contains reference documentation and does not determine which runtime assets are installed.
+
+See [WEB_UI.md](WEB_UI.md) for browser integration and [SECURITY.md](SECURITY.md) for untrusted-data rules.

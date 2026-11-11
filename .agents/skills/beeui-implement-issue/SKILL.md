@@ -136,7 +136,9 @@ During implementation:
 
 - reuse existing contracts, helpers, templates, components and tests;
 - preserve BeeUI/product/domain ownership;
-- update public contracts and documentation when observable behavior changes;
+- update only the owning documentation when the approved change materially changes a public contract or makes its current description incorrect;
+- do not update ROADMAP status, SDLC, security policy, unrelated documentation or upstream vendor snapshots as routine implementation cleanup;
+- report `Documentation: no change required` when no material documentation change is needed;
 - preserve backward compatibility unless the Issue explicitly permits a breaking change;
 - keep dependency declarations and project version unchanged unless the Issue explicitly requires otherwise;
 - keep all changes attributable to the current Issue.

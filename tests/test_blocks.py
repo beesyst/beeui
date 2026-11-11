@@ -5654,3 +5654,249 @@ def test_event_table_layout_renders() -> None:
         ]
     )
     assert result[0]["type"] == "event_table"
+
+
+def _chat_payload():
+    return {
+        "type": "chat_workspace",
+        "id": "conversation",
+        "title": "Review <input>",
+        "new_href": "/conversations",
+        "state": "RUNNING",
+        "history": [
+            {
+                "id": "one",
+                "title": "<script>alert(1)</script>",
+                "href": "/conversations?id=one",
+                "active": True,
+            }
+        ],
+        "messages": [
+            {
+                "id": "one:input",
+                "sender": "operator",
+                "name": "Operator",
+                "text": "<script>alert(1)</script>",
+            }
+        ],
+        "composer": {
+            "action_id": "continue",
+            "label": "Continue",
+            "args": {"nonce": "opaque"},
+            "disabled": False,
+            "fields": [
+                {
+                    "name": "task",
+                    "type": "textarea",
+                    "label": "Task",
+                    "max_length": 1024,
+                }
+            ],
+            "navigate": {"href": "/conversations", "param": "id", "result_key": "id"},
+        },
+        "refresh": {
+            "href": "/api/progress?id=one",
+            "interval_ms": 3000,
+            "max_attempts": 5,
+        },
+    }
+
+
+def test_chat_workspace_normalization_and_prefixed_links():
+    block = render_layout([_chat_payload()])[0]
+    assert block["type"] == "chat_workspace"
+    assert block["messages"][0]["timestamp"] == ""
+    assert block["composer"]["disabled"] is False
+    assert block["composer"]["fields"][0]["max_length"] == 1024
+    assert block["history"][0]["active"] is True
+    resolve_layout_links([block], "/embed", "/embed/conversations")
+    assert block["history"][0]["href"] == "/embed/conversations?id=one"
+    assert block["refresh"]["href"] == "/embed/api/progress?id=one"
+    assert block["composer"]["navigate"]["href"] == "/embed/conversations"
+    assert block["new_href"] == "/embed/conversations"
+
+
+def test_chat_workspace_malformed_contract_fails_closed():
+    from copy import deepcopy
+
+    changes = [
+        {"composer": None},
+        {"history": [None]},
+        {"history": [{}] * 26},
+        {"messages": [{"id": "one", "sender": "system", "text": "x"}]},
+        {"messages": [{"id": "one", "sender": "host", "text": "x" * 4097}]},
+        {"messages": [{"id": "one", "sender": "host"}] * 2},
+        {"messages": [{"id": "one", "sender": "host", "timestamp": "invented"}]},
+        {"refresh": {"href": "/api/progress", "interval_ms": 0}},
+        {"refresh": {"href": "/api/progress", "max_attempts": 301}},
+        {"search": {"href": "/conversations", "name": "q", "value": "x" * 129}},
+    ]
+    for href in (
+        "https://foreign.test",
+        "//foreign.test",
+        "/../private",
+        "/%2f%2fforeign",
+        "/%5cforeign",
+        "/%0aevil",
+    ):
+        changes.extend([{"new_href": href}, {"refresh": {"href": href}}])
+    for change in changes:
+        assert (
+            render_layout([{**deepcopy(_chat_payload()), **change}])[0]["type"]
+            == "degraded"
+        )
+    for change in (
+        {"args": {"task": []}},
+        {"args": {"task": "x" * 4097}},
+        {"args": {"__proto__": "x"}},
+        {"action_id": "../execute"},
+        {"navigate": {"href": "//foreign", "param": "id", "result_key": "id"}},
+        {"fields": [{"name": "nonce", "type": "text"}]},
+        {"fields": [{"name": "task", "type": "html"}]},
+        {
+            "fields": [
+                {
+                    "name": "mode",
+                    "type": "select",
+                    "value": "bad",
+                    "options": [{"value": "good", "label": "Good"}],
+                }
+            ]
+        },
+    ):
+        payload = _chat_payload()
+        payload["composer"].update(change)
+        assert render_layout([payload])[0]["type"] == "degraded"
+
+
+def test_chat_workspace_template_escapes_and_disables():
+    from jinja2 import Environment, FileSystemLoader, select_autoescape
+
+    env = Environment(
+        loader=FileSystemLoader("src/beeui_module/web/templates"),
+        autoescape=select_autoescape(),
+    )
+    payload = _chat_payload()
+    payload["composer"].pop("disabled")
+    block = render_layout([payload])[0]
+    assert block["composer"]["disabled"] is True
+    html = env.get_template("components/layout/chat_workspace.html").render(block=block)
+    assert "&lt;script&gt;alert(1)&lt;/script&gt;" in html
+    assert "<script>alert(1)</script>" not in html
+    assert 'type="submit" disabled' in html
+    assert "data-beeui-chat" in html
+    assert "data-message-id" in html
+    assert "data-composer=" in html
+    assert "chat-bubble-me" in html
+
+
+def test_chat_workspace_readonly_context_bounds_and_escaping():
+    from copy import deepcopy
+
+    from jinja2 import Environment, FileSystemLoader, select_autoescape
+
+    payload = _chat_payload()
+    payload["context"] = {
+        "title": "Inspection",
+        "sections": [
+            {
+                "id": "evidence",
+                "title": "Saved evidence",
+                "items": [
+                    {
+                        "id": "finding-1",
+                        "label": "<script>label</script>",
+                        "value": "candidate",
+                        "detail": "<img src=x onerror=alert(1)>",
+                    }
+                ],
+            }
+        ],
+    }
+    block = render_layout([payload])[0]
+    assert block["context"] == payload["context"]
+    env = Environment(
+        loader=FileSystemLoader("src/beeui_module/web/templates"),
+        autoescape=select_autoescape(),
+    )
+    html = env.get_template("components/layout/chat_workspace.html").render(block=block)
+    assert "&lt;img" in html and "<img src=x" not in html
+    assert "&lt;script&gt;label" in html
+    assert "<details" in html
+    assert "data-chat-panel-target" in html
+    for sections in (
+        [payload["context"]["sections"][0]] * 2,
+        [{"id": "bad", "title": "Bad", "items": [{}] * 65}],
+        [{"id": "bad", "title": "Bad", "items": [{"id": "one", "detail": "x" * 4097}]}],
+        [{"id": "bad", "title": "Bad", "items": [{"id": "one"}, {"id": "one"}]}],
+        [
+            {
+                "id": "bad",
+                "title": "Bad",
+                "items": [{"id": str(i), "value": "x" * 4096} for i in range(9)],
+            }
+        ],
+    ):
+        malformed = deepcopy(payload)
+        malformed["context"]["sections"] = sections
+        assert render_layout([malformed])[0]["type"] == "degraded"
+    payload["composer"]["fields"][0]["placement"] = "arbitrary"
+    assert render_layout([payload])[0]["type"] == "degraded"
+
+
+def test_compact_workspace_target_radio_and_disabled_menu():
+    from jinja2 import Environment, FileSystemLoader, select_autoescape
+
+    payload = _chat_payload()
+    payload["composer"].update(
+        variant="compact",
+        submit_on_enter=True,
+        menu={"label": "More actions", "items": ["Import", "Export"]},
+    )
+    payload["composer"]["fields"].extend(
+        [
+            {
+                "name": "target",
+                "label": "Target",
+                "type": "target",
+                "value": "https://example.test",
+                "protocols": ["http", "https"],
+                "origin_only": True,
+                "invalid_message": "HTTP origin required",
+            },
+            {
+                "name": "mode",
+                "label": "Mode",
+                "type": "segmented",
+                "value": "quick",
+                "options": [
+                    {"value": v, "label": v.title()}
+                    for v in ("quick", "standard", "deep")
+                ],
+            },
+        ]
+    )
+    block = render_layout([payload])[0]
+    assert block["type"] == "chat_workspace"
+    env = Environment(
+        loader=FileSystemLoader("src/beeui_module/web/templates"),
+        autoescape=select_autoescape(),
+    )
+    html = env.get_template("components/layout/chat_workspace.html").render(block=block)
+    assert 'type="text"' in html and 'type="url"' not in html
+    assert html.count('type="radio"') == 3
+    assert html.count(" checked") == 1
+    assert 'aria-label="Continue"' in html
+    assert 'href="#"' not in html and 'type="file"' not in html
+    assert html.count('disabled aria-disabled="true"') == 2
+    assert "ti-target" in html and "ti-send" in html and "ti-dots" in html
+    assert "offcanvas" not in html
+    for change in (
+        {"variant": "other"},
+        {"menu": {"label": "More", "items": ["x"] * 7}},
+    ):
+        bad = _chat_payload()
+        bad["composer"].update(change)
+        assert render_layout([bad])[0]["type"] == "degraded"
+    payload["composer"]["fields"][1]["protocols"] = ["bad:scheme"]
+    assert render_layout([payload])[0]["type"] == "degraded"

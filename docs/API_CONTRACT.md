@@ -1,36 +1,20 @@
-# API contract BeeUI
+# API CONTRACT — BeeUI
 
-## Область действия
+## Scope and sources of truth
 
-Iteration 13 добавляет auth error envelopes, login/logout/CSRF routes и защищённые POST transport stubs. Iteration 13.4 расширяет только adapter-backed presentation contract `layout[]`: `kpi_grid.columns` и `type: group`. JSON API envelope, route behavior и artifact API contract не менялись. Iteration 13.6 также расширяет только adapter-backed presentation contract `layout[]`: добавлены `chart` и `data_table`. JSON API envelope, route behavior и artifact API contract не менялись. Это не schema/demo block contract и не `config/settings.yml`. Iteration 13.8 добавляет generic detail page presentation contract. JSON API envelope, route behavior и artifact API contract не менялись. Новый `render_beeui_detail_page()` helper — это Python render entrypoint, не JSON API endpoint.
+This document defines the implemented HTTP response envelopes and presentation integration boundary. Exact adapter signatures are in `src/beeui_module/adapters/base.py`; route registration is in `src/beeui_module/web/app.py` and `src/beeui_module/pages/router.py`; typed layout blocks are documented in [COMPONENTS.md](COMPONENTS.md).
 
-Iteration 13.9 добавляет generic operator UX presentation contracts: `filter_form`, `data_table` sortable columns, locale persistence, theme, chart state handling. JSON API envelope, route behavior и artifact API contract не менялись.
+Do not confuse three different contracts:
 
-Iteration 13.10–13.12 расширяют adapter-backed `data_table` presentation: Tabler Datepicker для date_range, функциональная GET toolbar (Iteration 13.11), и canonical toolbar-table composition с toolbar внутри card-header (Iteration 13.12). JSON API envelope, route behavior и artifact API contract не менялись.
+1. **Product console read APIs** use the stable `beeui.v0` envelope.
+2. **Artifact APIs** retain their earlier adapter-result envelope (`status`/`data`/`meta`), not `beeui.v0`.
+3. **Adapter `layout[]`** is a Python presentation model, not a separate HTTP endpoint or a new configuration key.
 
-Canonical `data_table` также поддерживает opt-in progressive enhancement функциональной GET toolbar: product остаётся авторитетным для query, фильтрации, сортировки и pagination, а BeeUI заменяет только таблицу с безопасным стабильным `id` после того же GET response.
+Product-specific APIs mounted by the embedding application, including BeeAgent's BeeScan status and Case APIs, are owned by that product and are not part of the generic BeeUI API contract.
 
-Iteration 13.16 extends only the adapter-backed `data_table` presentation with
-an optional bounded action variant. It uses explicit `action_id`, controlled
-escaped labels, bounded string args, optional text/email/number/select/checkbox/radio/password
-fields, and optional
-bounded confirmation presentation. The default browser flow is Preview,
-separate confirmation, then Execute; explicit `direct_execute` uses only
-protected Execute for bounded toolbar or inline-row actions. The existing protected POST route and response
-envelopes remain unchanged.
+## Product console read response
 
-Locale resolution is `valid ?lang=` → valid `beeui_lang` cookie → configured default. Built-in BeeUI-owned presentation labels use the bounded `en`/`ru` catalog; product labels remain product-owned.
-
-Iteration 12 определяет стабильный read-only envelope для adapter-backed маршрутов product console:
-
-- `GET /api/dashboard`
-- `GET /api/runs`
-- `GET /api/runs/{run_id}`
-- `GET /api/venues/{venue_id}/dashboard`
-
-Artifact API routes сохраняют существующий contract Iteration 11.
-
-## Успешный ответ
+A successful read-only response is:
 
 ```json
 {
@@ -43,9 +27,9 @@ Artifact API routes сохраняют существующий contract Iterati
 }
 ```
 
-Для adapter result со статусом `partial` ответ остаётся успешным, а `meta.status` получает значение `"partial"`.
+A normalized adapter result with `status: partial` remains a successful response and records `meta.status: "partial"` rather than claiming completeness.
 
-## Ответ с ошибкой
+An error response is:
 
 ```json
 {
@@ -61,388 +45,169 @@ Artifact API routes сохраняют существующий contract Iterati
 }
 ```
 
-Ожидаемое соответствие HTTP status:
+Representative stable error-to-HTTP mapping:
 
-- `invalid_id` → `400`
-- `permission_denied` → `403`
-- `not_found` → `404`
-- `unavailable` / `adapter_unavailable` → `503`
-- некорректные adapter results и неожиданные ошибки adapter → `502`
+| Error                                                    | HTTP status |
+| -------------------------------------------------------- | ----------- |
+| `invalid_id`                                             | 400         |
+| `permission_denied`, `forbidden`, `csrf_failed`          | 403         |
+| `unauthenticated`, `authentication_failed`               | 401         |
+| `not_found`                                              | 404         |
+| `unavailable`, `adapter_unavailable`                     | 503         |
+| Malformed adapter envelope or unexpected adapter failure | 502         |
 
-## Правила
+Do not leak adapter traceback, runtime secrets or raw source artifacts in either `message` or `meta`. The exact protected-route error message may depend on the session/role state; its code and HTTP behavior remain authoritative.
 
-- Product console API routes существуют только при передаче adapter во время создания приложения.
-- Product console read API routes используют GET и содержат `read_only: true`.
-- Protected config/action transport routes используют POST и описаны отдельно в разделе Auth/error envelopes.
-- `run_id` и `venue_id` валидируются до вызова adapter.
-- Исключения adapter нормализуются, внутренние детали исключений не раскрываются.
-- Adapter payload считается недоверенным входом.
-- Секреты не должны попадать в HTML или API responses.
-- Route prefix и embedded mount сохраняют тот же envelope.
-- Artifact API routes не переводятся на `beeui.v0` и сохраняют contract Iteration 11.
+## Implemented product console routes
 
-## Auth/error envelopes (Iteration 13)
+| Method and path                                  | Ownership and behavior                                         |
+| ------------------------------------------------ | -------------------------------------------------------------- |
+| `GET /api/dashboard`                             | `adapter.get_dashboard()`; read-only `beeui.v0`.               |
+| `GET /api/runs`                                  | `adapter.list_runs()`; read-only `beeui.v0`.                   |
+| `GET /api/runs/{run_id}`                         | Validated ID; `adapter.get_run(run_id)`; read-only `beeui.v0`. |
+| `GET /api/venues/{venue_id}/dashboard`           | Optional adapter venue dashboard; read-only `beeui.v0`.        |
+| `GET /api/runs/{run_id}/artifacts`               | Allowlisted artifact references; distinct artifact envelope.   |
+| `GET /api/runs/{run_id}/artifacts/{artifact_id}` | Bounded artifact preview; distinct artifact envelope.          |
 
-Auth-disabled mode используется при `auth.enabled: false`. В этом режиме все routes доступны без аутентификации.
+The product console routes require an installed adapter; the demo/configured experience is not a substitute for product data. Browser HTML counterparts are documented in [WEB_UI.md](WEB_UI.md). All paths may be mounted beneath an approved route prefix.
 
-Auth-enabled mode (`auth.enabled: true`) требует аутентификации для POST routes на config/action endpoints.
+Route/run/venue/artifact IDs are validated before the corresponding adapter invocation. GET must not modify product storage or initiate an external action.
 
-BeeUI реализует transport/security boundary. Product adapter остаётся владельцем config/action semantics.
+## Artifact API envelope
 
-### Неаутентифицированный запрос (401)
+Artifact APIs preserve their established response shape instead of adopting `beeui.v0`:
 
 ```json
 {
-  "ok": false,
-  "api": "beeui.v0",
-  "read_only": true,
-  "error": {
-    "code": "unauthenticated",
-    "message": "Authentication required"
-  },
+  "status": "ok",
+  "data": [
+    { "artifact_id": "report_json", "content_type": "application/json" }
+  ],
   "warnings": [],
-  "meta": {}
+  "meta": { "product": "example", "run_id": "run_001" }
 }
 ```
 
-### Доступ запрещён (403)
+An artifact preview can look like:
 
 ```json
 {
-  "ok": false,
-  "api": "beeui.v0",
-  "read_only": true,
-  "error": {
-    "code": "forbidden",
-    "message": "Insufficient role: viewer"
+  "status": "ok",
+  "data": {
+    "artifact_id": "report_json",
+    "content_type": "application/json",
+    "preview_type": "json",
+    "preview_data": { "status": "ok" },
+    "truncated": false,
+    "row_count": null,
+    "row_warnings": [],
+    "error": null,
+    "metadata_only": false
   },
   "warnings": [],
-  "meta": {}
+  "meta": { "product": "example", "run_id": "run_001" }
 }
 ```
 
-### Ошибка CSRF (403)
+Supported preview families are JSON, JSONL and text. Unsupported/binary or oversized sources yield metadata-only states; malformed JSON/JSONL produces explicit errors or row warnings rather than a crash. The established limits include 512 KiB JSON/JSONL, 500 JSONL rows and 100,000 text characters, with source constants in `src/beeui_module/artifacts/preview.py`.
 
-```json
-{
-  "ok": false,
-  "api": "beeui.v0",
-  "read_only": true,
-  "error": {
-    "code": "csrf_failed",
-    "message": "CSRF validation failed"
-  },
-  "warnings": [],
-  "meta": {}
-}
+`artifact_id` is an opaque allowlisted key. The product adapter maps it to an authorized resource; no URL supplies an arbitrary filesystem path. Sensitive structured keys and unstructured preview text are redacted before escaped output.
+
+## Authentication and protected actions
+
+BeeUI's protected POST transport consists of:
+
+| Route                       | Required role | Required feature flag       |
+| --------------------------- | ------------- | --------------------------- |
+| `POST /api/config/preview`  | `admin`       | `features.config_preview`   |
+| `POST /api/config/apply`    | `admin`       | `features.config_apply`     |
+| `POST /api/actions/preview` | `operator`    | `features.operator_actions` |
+| `POST /api/actions/execute` | `operator`    | `features.operator_actions` |
+
+With authentication enabled, a valid authenticated session and CSRF token are required for these routes. The role check precedes all product mutation callbacks. BeeUI validates transport, bounded shape and feature eligibility; product callbacks decide whether the action or config candidate is currently allowed and how it is audited.
+
+`auth.enabled: false` is explicit local/dev mode and is not permission for a production product to bypass its domain policy. Product authority applies regardless of BeeUI's transport state.
+
+An action is identified by an allowlisted `action_id` and bounded arguments/fields, **not** by a browser-provided arbitrary URL. A preview/confirmation UI never substitutes for server-side execution authorization.
+
+## Adapter result envelopes
+
+The public adapter protocol returns `AdapterResult` or `AdapterErrorResult` from `src/beeui_module/adapters/envelopes.py`. Do not return raw FastAPI `Response` objects, unhandled exceptions or direct HTML fragments as adapter data. Adapter errors are normalized, and optional unavailable operations must report unavailable explicitly.
+
+Example Python usage:
+
+```python
+from beeui_module.adapters.envelopes import ok_result
+
+# Returned by an implementation of ProductUiAdapter.get_page(...)
+return ok_result({
+    "layout": [
+        {"type": "metric_card", "title": "Authorized cases", "value": "2", "width": 4}
+    ]
+})
 ```
 
-### Ошибка входа (401)
+This presentation result is not a new JSON HTTP endpoint. The page renderer validates the nested blocks before emitting HTML.
+
+## Adapter-backed `layout[]` contract
+
+Product read-models may include `layout` as a list of typed blocks:
 
 ```json
 {
-  "ok": false,
-  "api": "beeui.v0",
-  "read_only": true,
-  "error": {
-    "code": "authentication_failed",
-    "message": "Invalid credentials"
-  },
-  "warnings": [],
-  "meta": {}
-}
-```
-
-### Защищённые POST routes
-
-| Route                       | Required role | CSRF     | Feature flag                |
-| --------------------------- | ------------- | -------- | --------------------------- |
-| `POST /api/config/preview`  | admin         | required | `features.config_preview`   |
-| `POST /api/config/apply`    | admin         | required | `features.config_apply`     |
-| `POST /api/actions/preview` | operator      | required | `features.operator_actions` |
-| `POST /api/actions/execute` | operator      | required | `features.operator_actions` |
-
-Product callbacks are not invoked before auth and CSRF pass. These routes are protected transport stubs: BeeUI validates session, role, CSRF and request shape, while product adapter owns validation/apply/action domain behavior.
-
-## Контракт layout blocks (Iteration 12.1)
-
-Это presentation contract для adapter-backed product console HTML pages. Он не заменяет schema block contract из `config/schema.yml`.
-
-Schema blocks используются в demo/schema mode. `layout[]` blocks используются в product console mode и приходят из product adapter.
-
-Adapter-backed payloads (`dashboard`, `run`, `venue dashboard`, optionally `runs`) могут содержать optional поле `layout`:
-
-```json
-{
-  "latest_run": {...},
-  "summary": {...},
   "layout": [
     {
-      "type": "hero_snapshot",
-      "title": "System",
-      "subtitle": "Read-only state",
-      "width": 6,
-      "status": "runtime_stopped",
-      "items": [
-        {"label": "Latest run", "value": "run_001", "href": "/runs/run_001"},
-        {"label": "Runtime", "value": "stopped"}
-      ],
-      "links": [
-        {"label": "Open runs", "href": "/runs"}
-      ]
+      "type": "metric_card",
+      "title": "Cases",
+      "value": "2",
+      "width": 4
+    },
+    {
+      "type": "quick_links",
+      "title": "Navigation",
+      "items": [{ "label": "Runs", "href": "/runs" }],
+      "width": 8
     }
   ]
 }
 ```
 
-При наличии `layout` c непустым массивом HTML-страницы рендерят blocks из `layout[]` как Tabler dashboard. При отсутствии `layout` или пустом массиве используется generic fallback renderer.
+This is used on adapter-backed pages, not the schema/demo block definition in `config/schema.yml`. A nonempty valid `layout[]` is rendered through the normalized generic layout system; when no layout is provided the page may use its existing generic fallback. Invalid or optional block values degrade according to the owning block renderer; they must not grant execution rights.
 
-`kpi_grid.columns` и `type: group` относятся к adapter-backed `layout[]`. Они не добавляют новые required keys в `config/settings.yml` и не расширяют schema/demo block contract в `config/schema.yml`.
+Supported block types include `hero_snapshot`, `metric_card`, `kpi_strip`, `kpi_grid`, `venue_summary_grid`, `venue_card`, `mode_cards`, `operator_hero`, `state_grid`, `quick_links`, `run_table`, `status_table`, `event_table`, `attention_list`, `artifact_links`, `raw_json_panel`, `chart`, `leaderboard`, `group`, `data_table`, `filter_form` and `chat_workspace`. An explicit `degraded` view is used for rejected block content.
 
-### Поддерживаемые block types
+Sizing is mutually exclusive: one of `width`, `span` or `size` (`S/M/L/XL`). Valid widths/spans are 1 through 12, mapped through fixed responsive column classes. For adapter payloads, invalid sizing degrades to a full-width column; required schema/config sizing follows its own fail-fast validation. `kpi_grid.columns` supports 1–4, defaulting to four for absent/invalid adapter values. Group nesting has a bounded depth and does not permit arbitrary component recursion.
 
-| Type                 | Описание                                                                                                                                                                                                                                                                                        |
-| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `hero_snapshot`      | Card с title/subtitle/status, списком items (label+value+опциональный href) и links                                                                                                                                                                                                             |
-| `metric_card`        | Compact card с title, value, status badge и hint; optional `href`, `icon`, `icon_tone`                                                                                                                                                                                                          |
-| `kpi_strip`          | Горизонтальная полоса KPI items (label+value+status)                                                                                                                                                                                                                                            |
-| `kpi_grid`           | Responsive KPI stat cards с label/value/unit/status/hint; optional `columns` (1..4, default 4)                                                                                                                                                                                                  |
-| `venue_summary_grid` | Card c grid layout venue summary items                                                                                                                                                                                                                                                          |
-| `venue_card`         | Compact venue summary card с items, alerts и links                                                                                                                                                                                                                                              |
-| `mode_cards`         | Cards для режимов (label+value+status+опциональный href/latest/latest_href)                                                                                                                                                                                                                     |
-| `operator_hero`      | High-level system/operator snapshot с title/subtitle/status, datagrid items и primary_links; item may opt into a numeric metric and a finite numeric trend with allowlisted up/down/neutral direction; optional illustration accepts only a registered package-local asset with an optional alt |
-| `state_grid`         | Dense key/value state section с datagrid layout и опциональным status badge                                                                                                                                                                                                                     |
-| `quick_links`        | List group internal operator links                                                                                                                                                                                                                                                              |
-| `run_table`          | Operator run/event/artifact table с columns и dict rows (run_href, artifact_href)                                                                                                                                                                                                               |
-| `status_table`       | Table с columns/rows                                                                                                                                                                                                                                                                            |
-| `event_table`        | Table с columns/rows для событий                                                                                                                                                                                                                                                                |
-| `attention_list`     | List group с severity-dot indicators (severity: warning/error/info/ok/unknown)                                                                                                                                                                                                                  |
-| `artifact_links`     | List group artifact links с content_type badge                                                                                                                                                                                                                                                  |
-| `raw_json_panel`     | Card c raw JSON data                                                                                                                                                                                                                                                                            |
-| `chart`              | Safe local chart renderer через package-local ApexCharts asset; поддерживает line/bar/area/donut/funnel; config сериализуется через `tojson`; arbitrary ApexCharts options не пробрасываются                                                                                                    |
-| `group`              | Nested container с `direction` (vertical), `children` (list of layout blocks), bounded recursion depth 3                                                                                                                                                                                        |
-| `data_table`         | Advanced Tabler-compatible table с toolbar, pagination, mobile labels, selectable rows и typed cells                                                                                                                                                                                            |
-| `leaderboard`        | Generic ranked list card with initials avatar, progress and trailing values                                                                                                                                                                                                                     |
-| `degraded`           | Fallback для malformed/unsupported blocks                                                                                                                                                                                                                                                       |
+For exact fields of charts, tables, forms and chat, see [COMPONENTS.md](COMPONENTS.md). No adapter-provided CSS classes, raw ApexCharts options, scripts or external destinations are accepted.
 
-### Metric card
+## Generic detail page contract
 
-`metric_card` accepts optional presentation fields `href`, `icon` and `icon_tone`. `href` is internal-only and invalid, protocol-relative or external values are omitted. `icon` is normalized through the safe Tabler icon-name contract. `icon_tone` uses a fixed BeeUI allowlist and invalid values fall back to `primary`. Payloads without `href` preserve legacy non-clickable metric-card rendering.
-
-### Mapping `width`/`span`/`size`
-
-`width` (1..12), `span` (1..12) and `size` (S/M/L/XL) are mutually exclusive. Only one sizing key may be present per block placement.
-
-| Key           | Value | Column class               |
-| ------------- | ----- | -------------------------- |
-| `width`       | 12    | `col-12`                   |
-| `width`       | 8     | `col-12 col-lg-8`          |
-| `width`       | 6     | `col-12 col-lg-6`          |
-| `width`       | 4     | `col-12 col-md-6 col-lg-4` |
-| `width`       | 3     | `col-12 col-sm-6 col-lg-3` |
-| `width`       | 2     | `col-12 col-sm-6 col-lg-2` |
-| `span`        | 12    | `col-12`                   |
-| `span`        | 8     | `col-12 col-lg-8`          |
-| `span`        | 6     | `col-12 col-lg-6`          |
-| `span`        | 4     | `col-12 col-md-6 col-lg-4` |
-| `span`        | 3     | `col-12 col-sm-6 col-lg-3` |
-| `span`        | 2     | `col-12 col-sm-6 col-lg-2` |
-| `size`        | XL    | `col-12`                   |
-| `size`        | L     | `col-12 col-lg-8`          |
-| `size`        | M     | `col-12 col-lg-6`          |
-| `size`        | S     | `col-12 col-md-6 col-lg-4` |
-| other/invalid | —     | `col-12` (default)         |
-
-For schema/demo placements: invalid or conflicting sizing keys fail fast. For adapter-backed `layout[]`: invalid or conflicting sizing keys degrade to `col-12`.
-
-### Колонки KPI grid
-
-`kpi_grid` supports optional `columns` field:
-
-| columns     | CSS classes                |
-| ----------- | -------------------------- |
-| 1           | `col-12`                   |
-| 2           | `col-12 col-sm-6`          |
-| 3           | `col-12 col-sm-6 col-lg-4` |
-| 4 (default) | `col-12 col-sm-6 col-lg-3` |
-
-Missing or invalid adapter values degrade to default 4 (no 500). `columns` не является CSS class и не пробрасывается в HTML напрямую. BeeUI использует fixed whitelist mapping.
-
-### Layout group (`type: group`)
-
-| Field       | Type   | Required | Description                                                                       |
-| ----------- | ------ | -------- | --------------------------------------------------------------------------------- |
-| `type`      | string | yes      | Must be `"group"`                                                                 |
-| `width`     | int    | no       | Column width 1..12                                                                |
-| `direction` | string | no       | `"vertical"` only in v1; missing/invalid value defaults to `"vertical"`           |
-| `children`  | array  | yes      | List of layout block items; missing/invalid value renders the group as `degraded` |
-
-Children render through existing BeeUI block renderer. Depth is bounded at 3 levels; exceeded depth renders as `degraded`.
-
-### Chart block (Iteration 13.6)
-
-`chart` поддерживается только в adapter-backed `layout[]`.
-
-Поля:
-
-| Field                     | Type       | Обязательное | Описание                                                                                   |
-| ------------------------- | ---------- | ------------ | ------------------------------------------------------------------------------------------ |
-| `type`                    | string     | yes          | Должно быть `"chart"`                                                                      |
-| `title`                   | string     | no           | Заголовок                                                                                  |
-| `subtitle`                | string     | no           | Подзаголовок                                                                               |
-| `kind`                    | string     | no           | `line`, `bar`, `area`, `donut`, `funnel`; unsupported or malformed kind renders `degraded` |
-| `height`                  | int        | no           | Ограниченная высота                                                                        |
-| `series`                  | array      | no           | Series payload для выбранного kind                                                         |
-| `categories`              | array      | no           | X-axis categories для line/bar/area/funnel                                                 |
-| `labels`                  | array      | no           | Labels для donut                                                                           |
-| `unit`                    | string     | no           | Единица отображения                                                                        |
-| `empty_message`           | string     | no           | Сообщение для empty state                                                                  |
-| `status`                  | string     | no           | Текст статуса                                                                              |
-| `hint`                    | string     | no           | Подсказка                                                                                  |
-| `width` / `span` / `size` | int/string | no           | Стандартный adapter-backed sizing                                                          |
-
-Правила:
-
-- `chart` не является schema/demo block contract и не добавляет keys в `config/settings.yml`.
-- Arbitrary ApexCharts options от adapter не пробрасываются.
-- CDN не используется; renderer использует package-local ApexCharts asset.
-- Chart config сериализуется через Jinja `tojson` в JSON script node.
-- Empty/malformed data рендерится как empty/degraded state, без 500.
-- Unsupported or malformed `kind` renders the explicit `degraded` state.
-- Chart asset загружается только если на странице есть chart blocks.
-- Nested chart внутри `group.children` определяется рекурсивно.
-
-### Leaderboard block
-
-`leaderboard` is available only in adapter-backed `layout[]`, not the schema/demo
-contract. It has `title`, optional `subtitle`, regular layout sizing and `items[]`.
-Each retained item has a bounded positive `rank`, escaped `label`, initials-only
-`initials`, allowlisted `avatar_tone`, escaped `value` and optional `meta`, finite
-`progress` clamped to `0..100`, and allowlisted `progress_tone`. Invalid items are
-omitted, while no retained items produce a generic empty state. BeeUI accepts no
-image URL, arbitrary class, CSS, HTML or product-specific meaning for this block.
-
-### Data table block (Iteration 13.6)
-
-`data_table` поддерживается только в adapter-backed `layout[]`. Existing schema/demo `table_card` остаётся без изменений.
-
-Поля:
-
-| Field                     | Type       | Обязательное | Описание                                                                                                                  |
-| ------------------------- | ---------- | ------------ | ------------------------------------------------------------------------------------------------------------------------- |
-| `type`                    | string     | yes          | Должно быть `"data_table"`                                                                                                |
-| `title`                   | string     | yes          | Заголовок                                                                                                                 |
-| `description`             | string     | no           | Описание                                                                                                                  |
-| `variant`                 | string     | no           | `"card"`                                                                                                                  |
-| `striped`                 | bool       | no           | Tabler striped table                                                                                                      |
-| `mobile`                  | string     | no           | Mobile labels breakpoint                                                                                                  |
-| `selectable`              | bool       | no           | Selectable rows UI                                                                                                        |
-| `nowrap`                  | bool       | no           | No-wrap table cells                                                                                                       |
-| `compact`                 | bool       | no           | Compact table sizing                                                                                                      |
-| `id`                      | string     | no           | Safe stable table identity (`[A-Za-z][A-Za-z0-9_-]{0,63}`) for optional live GET replacement                              |
-| `toolbar`                 | object     | no           | Toolbar with optional functional GET form: `{search, entries, actions, fields[], hidden, column_toggles[], apply, reset}` |
-| `columns`                 | array      | yes          | Column definitions                                                                                                        |
-| `rows`                    | array      | yes          | Row data keyed by column key                                                                                              |
-| `pagination`              | object     | no           | Label, page links, optional previous/next controls and page-size options                                                  |
-| `width` / `span` / `size` | int/string | no           | Стандартный adapter-backed sizing                                                                                         |
-
-Типы ячеек:
-
-- `text`;
-- `muted`;
-- `link`;
-- `badge`;
-- `status`;
-- `avatar_text`;
-- `progress`;
-- `actions`.
-
-Правила:
-
-- `data_table` не является schema/demo block contract и не добавляет keys в `config/settings.yml`.
-- Links являются internal-only.
-- Layout links могут включать query string, например `/runs?page=2`.
-- Links отклоняют scheme, netloc, protocol-relative values, traversal и control characters.
-- `toolbar.fields[]` поддерживает те же типы полей, что и `filter_form`: `date_range`, `text`, `select`, `checkboxes`.
-- `toolbar.hidden` передаёт скрытые query-параметры.
-- `toolbar.column_toggles[]` определяет видимость колонок.
-- `toolbar.apply` отображается только при явном указании; `toolbar.reset` — стандартная кнопка сброса.
-- Apply не создаётся неявно при наличии date_range.
-- Стрелка с многоточием (ellipsis) после поиска открывает список выбора колонок.
-- Каноническое отображение таблицы делегирует шаблону `components/primitives/canonical_table.html`.
-- Фильтры дат внутри `data_table.toolbar.fields[]` включают условную загрузку Litepicker.
-- Links префиксуются BeeUI route prefix / embedded mount path.
-- Visual tokens проходят allowlist перед использованием как CSS classes.
-- Malformed `columns` или `rows` рендерятся как canonical `data_table` card с `degraded_error` сообщением, сохраняя title и toolbar.
-- Unknown cell type fallback к escaped text.
-- Missing values рендерятся как `n/a`.
-- No DataTables/List.js runtime.
-- При `id` BeeUI progressively enhances only explicit table controls (toolbar filter links, sortable headers, pagination and page-size), using same-origin GET/fetch; row, detail, artifact and ordinary toolbar action links are not intercepted. Without JavaScript or on an unsafe/failed replacement, normal href/form GET navigation remains available.
-- Text search with an `id` table debounces trimmed queries of three or more characters for 275 ms; an initial query of zero to two trimmed characters does not automatically request. After an automatic server search is active, shrinking the query to zero to two characters clears that automatic search with a GET that omits the short search parameter and resets configurable `pagination.page_param` (default `page`) to `1`. Direct URLs and normal GET submission retain their product-owned short-query semantics. Stale requests are aborted/suppressed and URL state updates with `history.replaceState` after a successful replacement.
-- Canonical functional table GET forms and their text search inputs set `autocomplete="off"` to suppress browser autocomplete and search-history suggestions without changing field names or GET fallback.
-- `pagination.pages[]` accepts a safe internal `href`, display `label` and optional page `number`. A positive numeric `number` or numeric `label` supplies the page number; missing, non-numeric or non-positive page numbers fall back to the item's 1-based list position for backward-compatible ordering. BeeUI renders first/current/last plus a bounded adjacent window and ellipses. Optional `previous`/`next` are safe internal controls, or are derived from adjacent supplied pages. Entries with an invalid href or a duplicate resolved page number are omitted.
-- Optional `pagination.page_size` is `{label?, current?, options[]}` where each option supplies `label`, optional `value`, safe internal `href` and optional `active`. BeeUI does not invent page-size values; invalid entries are omitted and the list is bounded to 20 options.
-- `toolbar.actions[]` and `actions` cells may be either existing safe `href` GET actions or an opt-in bounded action with `action_id`, `label`, optional `description`, `confirmation`, bounded string `args`, and zero or more `text`/`email`/`number`/`select`/`checkbox`/`radio`/`password` fields. Labels, descriptions, confirmation text, options, and fields are escaped; malformed or unsafe metadata is omitted. A field may optionally declare a bounded `column_key` for its inline presentation cell; it defaults to `name` and never changes the submitted payload key. A password field always normalizes to an empty value and renders a fresh `password` control; no supplied password metadata is exposed. `inline_edit_mode: "row_form"` is a generic opt-in direct-action editor for fields that are not visible table columns. An inline `direct_execute` action may declare a same-cell bounded `pending_action_id`; BeeUI restores the normal action cell, shows its pending indicator on that action, and executes only the submitted action, never the pending action.
-- Bounded actions have no adapter-provided destination. The default `preview_confirm_execute` flow requires preview and separate confirmation; input changes invalidate that state. Explicit `direct_execute` is limited to the same protected Execute endpoint for a bounded form or inline-row action and refreshes only its identified live table. This presentation step never replaces server-side authorization, CSRF, or product validation.
-- A bounded direct form action with fields may declare `follow_up_action_id` and `follow_up_match_arg`. After primary success and table refresh, BeeUI uses the response value only to match an already-rendered bounded action, then executes that action's own ID and args. It accepts no adapter URL or browser callback. This is distinct from inline `pending_action_id`, which remains presentation-only.
-- The resolved follow-up target must itself be a plain no-input, no-confirmation `direct_execute` action.
-- Default BeeUI modal and Detail section-card surfaces are centralized and theme-aware; modal headers and footers and scoped Detail card headers use the standard tinted surface.
-- Icon actions use canonical Tabler icon presentation. While an icon action is pending, its generic border is removed without altering the shared focus-visible treatment.
-
-### Правила безопасности
-
-- Все adapter-provided text values проходят через Jinja autoescaping.
-- Ссылки (`href`) принимаются только internal: начинаются с `/` и не начинаются с `//`.
-- Неизвестный или malformed block type рендерится как `degraded` block, а не вызывает crash.
-- `layout` не меняет JSON API envelope и route behavior.
-- Если adapter возвращает `layout` в payload, оно может оставаться внутри `data`; клиенты должны считать его optional presentation metadata.
-- `/api/runs` сохраняет backward-compatible list contract: если adapter возвращает wrapper `{layout, runs}` или `{layout, items}`, API отдаёт список runs/items в `data`.
-- Layout blocks не содержат и не допускают arbitrary HTML/JS.
-- Chart config сериализуется как JSON script node, не как raw HTML attribute.
-- Unsafe `|safe` не используется для adapter/config values.
-- Table visual tokens проходят allowlist перед CSS class suffix rendering.
-- Table links являются internal-only и prefix-aware.
-- Browser-executed chart path остаётся product-neutral.
-- Unsupported chart kind renders an explicit degraded state; it never falls back to `line`.
-- Chart runtime errors, including rejected `render()` promises, render a localized bounded error state and do not log raw adapter payloads.
-
-## Iteration 13.8 — Generic detail page presentation contract
-
-Iteration 13.8 добавляет detail page presentation contract для product-neutral detail page renderer. Это Python render entrypoint, не JSON API endpoint.
-
-JSON API envelope, route behavior и artifact API contract не меняются.
-
-### Detail page model
+`render_beeui_detail_page()` is a Python rendering entrypoint, not a JSON API route. Its normalized model is:
 
 ```json
 {
   "page_id": "event_detail",
   "title": "Event detail",
-  "subtitle": "Read-only event details",
+  "subtitle": "Read-only event data",
   "back_href": "/events",
   "warnings": [],
-  "sections": [...]
+  "sections": [
+    {
+      "kind": "key_value",
+      "title": "Attributes",
+      "items": [{ "label": "Status", "value": "ok" }]
+    }
+  ]
 }
 ```
 
-### Section kinds
+Implemented section kinds: `key_value`, `text`, `table`, `links`. Unsafe `back_href`/links are rejected, missing values display as unavailable, unsupported sections are omitted/degraded, and raw content fields are not automatically exposed. This rendering contract does not create a new config key or API endpoint.
 
-| Kind        | Fields                                      | Description                        |
-| ----------- | ------------------------------------------- | ---------------------------------- |
-| `key_value` | `title`, `items[]` (label, value)           | Tabler card with datagrid          |
-| `text`      | `title`, `body`                             | Tabler card with preformatted text |
-| `table`     | `title`, `columns[]` (key, label), `rows[]` | Tabler card with responsive table  |
-| `links`     | `title`, `items[]` (label, href)            | Tabler card with list-group        |
+## Compatibility and evolution
 
-### Rules
+- Preserve `beeui.v0` for existing console GET APIs; do not silently replace the artifact API envelope.
+- Keep public action field names, callback signatures and route-prefix behavior backward compatible until an approved breaking change.
+- The optional chart/table/chat presentation extensions do not imply new product execution capabilities.
+- Future config-editor, admin service or a distinct frontend API require explicit implementation and versioned contracts; do not document examples as functioning routes until verified.
 
-- Detail page не является `layout[]` block contract и не добавляет keys в `config/settings.yml`.
-- Detail page не является JSON API endpoint.
-- `render_beeui_detail_page()` принимает dict, нормализует и рендерит через Jinja template.
-- Unsupported/malformed sections безопасно опускаются, без 500.
-- Missing значения рендерятся как `n/a`.
-- `back_href` и link hrefs валидируются как safe internal paths.
-- Raw поля (`raw_eml`, `attachment_content`, `payload_bytes`, `content_bytes`) не рендерятся.
-- HTML autoescape остаётся включённым.
-- Unsafe `|safe` не используется.
-- Route prefix / embedded mount поддерживаются через существующие link helpers.
+See [INTEGRATION.md](INTEGRATION.md) for adapter ownership and [SECURITY.md](SECURITY.md) for trust-boundary enforcement.

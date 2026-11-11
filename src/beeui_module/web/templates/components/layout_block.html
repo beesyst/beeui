@@ -1,4 +1,6 @@
-{% if block.type == "hero_snapshot" %}
+{% if block.type == "chat_workspace" %}
+  {% include "components/layout/chat_workspace.html" %}
+{% elif block.type == "hero_snapshot" %}
   {% include "components/layout/hero_snapshot.html" %}
 {% elif block.type == "metric_card" %}
   {% include "components/layout/metric_card.html" %}
