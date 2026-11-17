@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Any
 
@@ -21,6 +22,7 @@ from beeui_module.core.settings import load_settings
 from beeui_module.core.version import get_version
 from beeui_module.pages.component_catalog import register_component_catalog_routes
 from beeui_module.pages.config import load_beeui_config
+from beeui_module.pages.icons import safe_icon_name
 from beeui_module.pages.links import effective_external_prefix, prefix_internal_href
 from beeui_module.pages.locale import translate
 from beeui_module.pages.models import BeeUiConfig, BeeUiPage
@@ -30,7 +32,6 @@ from beeui_module.pages.router import (
     register_adapter_custom_pages,
     register_configured_pages,
 )
-from beeui_module.pages.icons import safe_icon_name
 
 
 def _normalize_prefix(route_prefix: str) -> str:
@@ -442,9 +443,18 @@ def _register_protected_post_routes(
 
     async def _read_json_object(
         request: Request,
+        limit: int | None = None,
     ) -> tuple[dict[str, Any] | None, JSONResponse | None]:
         try:
-            body = await request.json()
+            if limit is None:
+                body = await request.json()
+            else:
+                raw = bytearray()
+                async for chunk in request.stream():
+                    raw.extend(chunk)
+                    if len(raw) > limit:
+                        raise ValueError("Action input limit")
+                body = json.loads(raw)
         except Exception:
             return None, JSONResponse(
                 api_error_envelope("invalid_input", "Invalid JSON body"),
@@ -601,6 +611,11 @@ def _register_protected_post_routes(
             )
 
     if actions_enabled:
+        from beeui_module.web.uploads import register_upload_routes
+
+        register_upload_routes(app, route_prefix, adapter)
+
+    if actions_enabled:
         p = (
             f"{route_prefix}/api/actions/preview"
             if route_prefix
@@ -615,7 +630,7 @@ def _register_protected_post_routes(
         ) -> JSONResponse:
             if adapter is None:
                 return _adapter_unavailable()
-            body, error_response = await _read_json_object(request)
+            body, error_response = await _read_json_object(request, limit=131072)
             if error_response is not None:
                 return error_response
             assert body is not None
@@ -644,7 +659,7 @@ def _register_protected_post_routes(
         ) -> JSONResponse:
             if adapter is None:
                 return _adapter_unavailable()
-            body, error_response = await _read_json_object(request)
+            body, error_response = await _read_json_object(request, limit=131072)
             if error_response is not None:
                 return error_response
             assert body is not None

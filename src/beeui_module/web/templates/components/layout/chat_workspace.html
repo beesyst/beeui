@@ -1,12 +1,22 @@
-{% macro field_input(field) %}
-<label class="form-label{% if field.type in ['textarea', 'target', 'segmented'] %} visually-hidden{% endif %}" for="{{ block.id }}-{{ field.name }}">{{ field.label }}</label>
-{% if field.type == 'textarea' %}<textarea id="{{ block.id }}-{{ field.name }}" name="{{ field.name }}" class="form-control" rows="2" placeholder="{{ field.label }}" maxlength="{{ field.max_length }}"{% if field.required %} required{% endif %}{% if field.readonly %} readonly{% endif %}>{{ field.value }}</textarea>
-{% elif field.type == 'target' %}<div class="input-group input-group-flat"><span class="input-group-text"><i class="ti ti-target" aria-hidden="true"></i></span><input id="{{ block.id }}-{{ field.name }}" name="{{ field.name }}" type="text" class="form-control" value="{{ field.value }}" placeholder="{{ field.label }}" maxlength="{{ field.max_length }}"{% if field.required %} required{% endif %}{% if field.readonly %} readonly{% endif %}></div>
-{% elif field.type == 'segmented' %}<div class="btn-group" role="group" aria-label="{{ field.label }}">{% for option in field.options %}<input class="btn-check" type="radio" name="{{ field.name }}" id="{{ block.id }}-{{ field.name }}-{{ loop.index }}" value="{{ option.value }}"{% if option.value == field.value %} checked{% endif %}{% if field.required %} required{% endif %}{% if field.readonly %} disabled{% endif %}><label class="btn btn-sm" for="{{ block.id }}-{{ field.name }}-{{ loop.index }}">{{ option.label }}</label>{% endfor %}</div>
-{% elif field.type == 'select' %}<select id="{{ block.id }}-{{ field.name }}" name="{{ field.name }}" class="form-select"{% if field.required %} required{% endif %}{% if field.readonly %} disabled{% endif %}>{% for option in field.options %}<option value="{{ option.value }}"{% if option.value == field.value %} selected{% endif %}>{{ option.label }}</option>{% endfor %}</select>
-{% else %}<input id="{{ block.id }}-{{ field.name }}" name="{{ field.name }}" type="{{ field.type }}" class="form-control" value="{{ field.value }}" maxlength="{{ field.max_length }}"{% if field.required %} required{% endif %}{% if field.readonly %} readonly{% endif %}>{% endif %}
+{% macro field_input(field, prefix="") %}
+<label class="form-label{% if field.type in ['textarea', 'target', 'segmented', 'select'] %} visually-hidden{% endif %}" for="{{ block.id }}-{{ prefix }}{{ field.name }}">{{ field.label }}</label>
+{% if field.type == 'textarea' %}<textarea id="{{ block.id }}-{{ prefix }}{{ field.name }}" name="{{ field.name }}" class="form-control" rows="2" placeholder="{{ field.label }}" maxlength="{{ field.max_length }}"{% if field.required %} required{% endif %}{% if field.readonly %} readonly{% endif %}>{{ field.value }}</textarea>
+{% elif field.type == 'secret' %}<input id="{{ block.id }}-{{ prefix }}{{ field.name }}" name="{{ field.name }}" type="password" class="form-control" autocomplete="new-password" maxlength="{{ field.max_length }}"{% if field.required %} required{% endif %}>
+{% elif field.type == 'target' %}<div class="input-group input-group-flat"><span class="input-group-text"><i class="ti ti-target" aria-hidden="true"></i></span><input id="{{ block.id }}-{{ prefix }}{{ field.name }}" name="{{ field.name }}" type="text" class="form-control" value="{{ field.value }}" placeholder="{{ field.label }}" maxlength="{{ field.max_length }}"{% if field.required %} required{% endif %}{% if field.readonly %} readonly{% endif %}></div>
+{% elif field.type == 'segmented' %}<div class="btn-group" role="group" aria-label="{{ field.label }}">{% for option in field.options %}<input class="btn-check" type="radio" name="{{ field.name }}" id="{{ block.id }}-{{ prefix }}{{ field.name }}-{{ loop.index }}" value="{{ option.value }}"{% if option.value == field.value %} checked{% endif %}{% if field.required %} required{% endif %}{% if field.readonly %} disabled{% endif %}><label class="btn btn-sm" for="{{ block.id }}-{{ prefix }}{{ field.name }}-{{ loop.index }}">{{ option.label }}</label>{% endfor %}</div>
+{% elif field.type == 'select' and field.widget == 'dropdown' %}<input id="{{ block.id }}-{{ prefix }}{{ field.name }}" name="{{ field.name }}" type="hidden" value="{{ field.value }}"><div class="dropdown"><button class="btn btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="{{ field.label }}" data-chat-select="{{ field.name }}"{% if field.readonly %} disabled{% endif %}><span data-chat-selected-label>{% for option in field.options if option.value == field.value %}{{ option.label }}{% endfor %}</span></button><div class="dropdown-menu dropdown-menu-end" role="menu" aria-label="{{ field.label }}">{% for option in field.options %}<button type="button" class="dropdown-item{% if option.value == field.value %} active{% endif %}" role="menuitemradio" aria-checked="{{ 'true' if option.value == field.value else 'false' }}" data-chat-select-option="{{ option.value }}" data-chat-select-name="{{ field.name }}">{{ option.label }}</button>{% endfor %}</div></div>
+{% elif field.type == 'select' %}<select id="{{ block.id }}-{{ prefix }}{{ field.name }}" name="{{ field.name }}" class="form-select"{% if field.required %} required{% endif %}{% if field.readonly %} disabled{% endif %}>{% for option in field.options %}<option value="{{ option.value }}"{% if option.value == field.value %} selected{% endif %}>{{ option.label }}</option>{% endfor %}</select>
+{% else %}<input id="{{ block.id }}-{{ prefix }}{{ field.name }}" name="{{ field.name }}" type="{{ field.type }}" class="form-control" value="{{ field.value }}" maxlength="{{ field.max_length }}"{% if field.required %} required{% endif %}{% if field.readonly %} readonly{% endif %}>{% endif %}
 {% endmacro %}
-<div class="card beeui-chat-workspace" id="{{ block.id }}" data-beeui-chat data-chat-panel="conversation" data-refresh='{{ block.refresh | tojson }}' data-composer='{{ block.composer | tojson }}' data-labels='{{ block.labels | tojson }}'>
+{% macro menu_trigger() %}
+            {% if block.composer.menu %}
+            <div class="dropdown">
+              <button class="btn btn-sm btn-icon p-2" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="{{ block.composer.menu.label }}"><i class="ti {{ "ti-dots" if block.composer.menu["items"][0] is string else "ti-plus" }} fs-3" aria-hidden="true"></i></button>
+              <div class="dropdown-menu" role="menu" aria-label="{{ block.composer.menu.label }}">{% for item in block.composer.menu['items'] %}{% if item is string %}<button class="dropdown-item" type="button" role="menuitem" disabled aria-disabled="true">{{ item }}</button>{% else %}<button class="dropdown-item" type="button" role="menuitem" data-chat-menu="{{ item.id }}"{% if item.action.disabled %} disabled{% endif %}>{{ item.label }}</button>{% endif %}{% endfor %}</div>
+            </div>
+            {% endif %}
+{% endmacro %}
+<div class="card beeui-chat-workspace{% if block.message_style == 'conversation' %} beeui-chat-conversation{% endif %}" id="{{ block.id }}" data-beeui-chat data-chat-panel="conversation" data-refresh='{{ block.refresh | tojson }}' data-composer='{{ block.composer | tojson }}' data-labels='{{ block.labels | tojson }}' data-chat-message-style="{{ block.message_style }}" data-chat-errors='{{ block.errors | tojson }}'>
   <nav class="beeui-chat-views btn-group p-2" aria-label="{{ block.title }}">
     <button class="btn" type="button" data-chat-panel-target="history" aria-controls="{{ block.id }}-history" aria-pressed="false">{{ block.labels.history }}</button>
     <button class="btn" type="button" data-chat-panel-target="conversation" aria-controls="{{ block.id }}-conversation" aria-pressed="true">{{ block.labels.conversation or block.title }}</button>
@@ -25,30 +35,33 @@
       {% endif %}
       {% if block.history_notice %}<p class="small text-secondary" role="status">{{ block.history_notice }}</p>{% endif %}
       <nav class="list-group list-group-flush beeui-chat-history" aria-label="{{ block.labels.history }}">
-        {% for item in block.history %}<a class="list-group-item list-group-item-action{% if item.active %} active{% endif %}" data-history-id="{{ item.id }}" href="{{ item.href }}"{% if item.active %} aria-current="page"{% endif %}><div class="text-break">{{ item.title }}</div><span class="badge bg-secondary-lt" data-history-status>{{ item.status }}</span></a>{% endfor %}
+        {% for item in block.history %}<div class="list-group-item d-flex align-items-center gap-1{% if item.active %} active{% endif %}" data-history-id="{{ item.id }}"><a class="flex-fill text-reset text-decoration-none min-width-0" href="{{ item.href }}"{% if item.active %} aria-current="page"{% endif %}><div class="text-break">{{ item.title }}</div><span class="badge bg-secondary-lt" data-history-status>{{ item.status }}</span></a>{% if item.actions %}<div class="dropdown"><button type="button" class="btn btn-sm btn-icon beeui-chat-history-menu" data-bs-toggle="dropdown" aria-expanded="false" aria-label="{{ item.title }}"><i class="ti ti-dots" aria-hidden="true"></i></button><div class="dropdown-menu dropdown-menu-end" role="menu">{% for action in item.actions %}<button type="button" role="menuitem" class="dropdown-item" data-chat-action='{{ action | tojson }}'{% if action.disabled %} disabled{% endif %}>{{ action.label }}</button>{% endfor %}</div></div>{% endif %}</div>{% endfor %}
       </nav>
     </aside>
     <section id="{{ block.id }}-conversation" class="beeui-chat-main" aria-label="{{ block.title }}">
       <div class="card-header"><h3 class="card-title text-break">{{ block.title }}</h3><span class="badge bg-secondary-lt ms-auto" data-chat-state>{{ block.state }}</span></div>
       <div class="card-body beeui-chat-messages chat" tabindex="0" aria-label="{{ block.title }}">
         <div class="chat-bubbles" data-chat-messages aria-live="polite" aria-relevant="additions text">
-          {% for message in block.messages %}<div class="chat-bubble{% if message.sender == 'operator' %} chat-bubble-me{% endif %}" data-message-id="{{ message.id }}"><div class="chat-bubble-title"><span class="chat-bubble-author">{{ message.name }}</span>{% if message.timestamp %}<time class="chat-bubble-date">{{ message.timestamp }}</time>{% endif %}{% if message.status %}<span class="badge bg-secondary-lt">{{ message.status }}</span>{% endif %}</div><div class="chat-bubble-body">{{ message.text }}</div></div>{% else %}<p class="text-secondary">{{ block.empty_message }}</p>{% endfor %}
+          {% for message in block.messages %}<div class="chat-bubble{% if message.sender == 'operator' %} chat-bubble-me{% endif %}" data-message-id="{{ message.id }}"><div class="chat-bubble-title">{% if block.message_style == 'standard' %}<span class="chat-bubble-author">{{ message.name }}</span>{% endif %}{% if message.timestamp %}<time class="chat-bubble-date" datetime="{{ message.timestamp }}"{% if block.message_style == 'conversation' %} data-chat-local-time{% endif %}>{{ message.timestamp }}</time>{% endif %}{% if message.status and block.message_style == 'standard' %}<span class="badge bg-secondary-lt">{{ message.status }}</span>{% endif %}</div><div class="chat-bubble-body">{{ message.text }}</div></div>{% else %}<p class="text-secondary">{{ block.empty_message }}</p>{% endfor %}
         </div>
       </div>
       <div class="card-footer beeui-chat-composer">
         <form id="{{ block.id }}-composer" data-chat-composer novalidate>
+          <div class="d-flex flex-wrap gap-1 mb-2" data-chat-chips>
+            {% for chip in block.composer.chips %}<span class="badge bg-secondary-lt text-wrap" data-chip-id="{{ chip.id }}">{{ chip.label }}{% if chip.edit %}<button type="button" class="btn btn-sm btn-icon" data-chat-action='{{ chip.edit | tojson }}' aria-label="{{ chip.edit.label }}"{% if chip.edit.disabled %} disabled{% endif %}><i class="ti ti-pencil" aria-hidden="true"></i></button>{% endif %}{% if chip.remove %}<button type="button" class="btn btn-sm btn-icon" data-chat-action='{{ chip.remove | tojson }}' aria-label="{{ chip.remove.label }}"{% if chip.remove.disabled %} disabled{% endif %}><i class="ti ti-x" aria-hidden="true"></i></button>{% endif %}</span>{% endfor %}
+          </div>
           {% if block.composer.variant == 'compact' %}
-          {% for field in block.composer.fields if field.type == 'textarea' %}<div class="mb-2">{{ field_input(field) }}</div>{% endfor %}
-          {% for field in block.composer.fields if field.type not in ['textarea', 'segmented'] %}<div class="mb-2">{{ field_input(field) }}</div>{% endfor %}
-          <div class="d-flex align-items-center gap-2">
-            {% for field in block.composer.fields if field.type == 'segmented' %}{{ field_input(field) }}{% endfor %}
-            {% if block.composer.menu %}
-            <div class="dropdown">
-              <button class="btn btn-sm btn-icon p-2" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="{{ block.composer.menu.label }}"><i class="ti ti-dots fs-3" aria-hidden="true"></i></button>
-              <div class="dropdown-menu" role="menu" aria-label="{{ block.composer.menu.label }}">{% for label in block.composer.menu['items'] %}<button class="dropdown-item" type="button" role="menuitem" disabled aria-disabled="true">{{ label }}</button>{% endfor %}</div>
+          {% for field in block.composer.fields if field.type not in ['textarea', 'segmented', 'select'] %}<div class="mb-2">{{ field_input(field) }}</div>{% endfor %}
+          <div class="border rounded-4 p-2 bg-body beeui-chat-input">
+            <div class="min-width-0">{% for field in block.composer.fields if field.type == 'textarea' %}{{ field_input(field) }}{% endfor %}</div>
+            <div class="d-flex align-items-center gap-2 mt-2">
+              {{ menu_trigger() }}
+              <div class="d-flex align-items-center gap-2 ms-auto min-width-0">
+                {% for field in block.composer.fields if field.type in ['segmented', 'select'] %}<div>{{ field_input(field) }}</div>{% endfor %}
+                {% if block.composer.primary %}<button class="btn btn-sm" type="button" data-chat-action='{{ block.composer.primary | tojson }}'{% if block.composer.primary.disabled %} disabled{% endif %}>{{ block.composer.primary.label }}</button>{% endif %}
+                <button id="{{ block.id }}-submit" class="btn btn-primary btn-icon rounded-circle" type="submit" aria-label="{{ block.composer.label }}" title="{{ block.composer.label }}"{% if block.composer.disabled %} disabled{% endif %}><i class="ti ti-arrow-up fs-3" aria-hidden="true"></i></button>
+              </div>
             </div>
-            {% endif %}
-            <button id="{{ block.id }}-submit" class="btn btn-sm btn-primary btn-icon p-2 ms-auto" type="submit" aria-label="{{ block.composer.label }}" title="{{ block.composer.label }}"{% if block.composer.disabled %} disabled{% endif %}><i class="ti ti-send fs-3" aria-hidden="true"></i></button>
           </div>
           {% else %}
           {% set settings_fields = block.composer.fields | selectattr('placement', 'equalto', 'settings') | list %}
@@ -60,11 +73,14 @@
           </div>
           {% endif %}
           <div class="d-flex gap-2 align-items-end">
+            {{ menu_trigger() }}
             <div class="flex-fill min-width-0">{% for field in block.composer.fields if field.placement == 'inline' %}{{ field_input(field) }}{% endfor %}</div>
+            {% if block.composer.primary %}<button class="btn" type="button" data-chat-action='{{ block.composer.primary | tojson }}'{% if block.composer.primary.disabled %} disabled{% endif %}>{{ block.composer.primary.label }}</button>{% endif %}
             <button id="{{ block.id }}-submit" class="btn btn-primary" type="submit"{% if block.composer.disabled %} disabled{% endif %}>{{ block.composer.label }}</button>
           </div>
           {% endif %}
         </form>
+        <div data-chat-forms></div>
         {% if block.composer.hint %}<p class="small text-secondary mt-2 mb-0">{{ block.composer.hint }}</p>{% endif %}
         <p class="small mt-1 mb-0" role="status" data-chat-notice></p>
       </div>
@@ -76,8 +92,8 @@
         {% for section in block.context.sections %}
         <section class="mb-3" data-context-section="{{ section.id }}"><h4 class="subheader mb-2">{{ section.title }}</h4>
           {% for item in section['items'] %}
-          {% if item.detail %}<details class="beeui-chat-context-item" data-context-id="{{ item.id }}"><summary><span class="text-secondary small d-block">{{ item.label }}</span><span>{{ item.value }}</span></summary><p class="small mt-2 mb-0 text-secondary">{{ item.detail }}</p></details>
-          {% else %}<div class="beeui-chat-context-item" data-context-id="{{ item.id }}"><span class="text-secondary small d-block">{{ item.label }}</span><span>{{ item.value }}</span></div>{% endif %}
+          {% if item.detail %}<details class="beeui-chat-context-item" data-context-id="{{ item.id }}"><summary><span class="text-secondary small d-block">{{ item.label }}</span>{% if item.href %}<a href="{{ item.href }}">{{ item.value }}</a>{% else %}<span>{{ item.value }}</span>{% endif %}</summary><p class="small mt-2 mb-0 text-secondary">{{ item.detail }}</p></details>
+          {% else %}<div class="beeui-chat-context-item" data-context-id="{{ item.id }}"><span class="text-secondary small d-block">{{ item.label }}</span>{% if item.href %}<a href="{{ item.href }}">{{ item.value }}</a>{% else %}<span>{{ item.value }}</span>{% endif %}</div>{% endif %}
           {% endfor %}
         </section>
         {% endfor %}

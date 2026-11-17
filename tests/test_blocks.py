@@ -5889,7 +5889,7 @@ def test_compact_workspace_target_radio_and_disabled_menu():
     assert 'aria-label="Continue"' in html
     assert 'href="#"' not in html and 'type="file"' not in html
     assert html.count('disabled aria-disabled="true"') == 2
-    assert "ti-target" in html and "ti-send" in html and "ti-dots" in html
+    assert "ti-target" in html and "ti-arrow-up" in html and "ti-dots" in html
     assert "offcanvas" not in html
     for change in (
         {"variant": "other"},

@@ -40,6 +40,8 @@ def redact_value(value: Any) -> Any:
                 result[k] = _REDACTED_PLACEHOLDER
             else:
                 result[k] = redact_value(v)
+        if value.get("type") == "secret" and "value" in result:
+            result["value"] = ""
         return result
 
     if isinstance(value, list):

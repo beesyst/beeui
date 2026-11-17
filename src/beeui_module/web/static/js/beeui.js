@@ -142,7 +142,11 @@
     var headers = { "Content-Type": "application/json", "X-CSRF-Token": (csrf.data || {}).csrf_token || "" };
     var response = await fetch(actionApiPath(name), { method: "POST", credentials: "same-origin", headers: headers, body: JSON.stringify(body) });
     var data = await response.json().catch(function () { return {}; });
-    if (!response.ok) throw new Error((data.error || {}).message || "Action request failed");
+    if (!response.ok) {
+      var failure = new Error((data.error || {}).message || "Action request failed");
+      failure.code = (data.error || {}).code;
+      throw failure;
+    }
     return data;
   }
 
@@ -1235,13 +1239,27 @@
     var composer = JSON.parse(workspace.getAttribute("data-composer") || "null");
     var refresh = JSON.parse(workspace.getAttribute("data-refresh") || "null");
     var labels = JSON.parse(workspace.getAttribute("data-labels") || "{}");
+    var errorLabels = JSON.parse(workspace.getAttribute("data-chat-errors") || "{}");
+    var conversational = workspace.getAttribute("data-chat-message-style") === "conversation";
+    function localTime(node) {
+      if (!conversational) return;
+      var date = new Date(node.getAttribute("datetime"));
+      if (!Number.isFinite(date.getTime())) return;
+      node.textContent = new Intl.DateTimeFormat(document.documentElement.lang || "en", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(date);
+    }
+    workspace.querySelectorAll("[data-chat-local-time]").forEach(localTime);
+    function actionFailure(error) {
+      return error && Object.prototype.hasOwnProperty.call(errorLabels, error.code) ? errorLabels[error.code] : labels.failed;
+    }
     var form = workspace.querySelector("[data-chat-composer]");
     var submit = form.querySelector("button[type=submit]");
     var notice = workspace.querySelector("[data-chat-notice]");
     var controller = new AbortController();
-    var timer, attempts = 0, failures = 0, fingerprint = "", disposed = false;
+    var timer, attempts = 0, failures = 0, fingerprint = "", disposed = false, terminal = false;
     function safeUrl(href) {
       if (typeof href !== "string" || !href.startsWith("/") || href.startsWith("//") || /[\\\u0000-\u001f]/.test(decodeURIComponent(href))) throw new Error("Invalid workspace URL");
+      var path = decodeURIComponent(href.split(/[?#]/)[0]);
+      if (href.length > 2048 || path.indexOf("//") !== -1 || path.split("/").some(function (part) { return part === "." || part === ".."; })) throw new Error("Invalid workspace URL");
       var url = new URL(href, window.location.origin);
       if (url.origin !== window.location.origin) throw new Error("Foreign workspace URL");
       return url;
@@ -1262,6 +1280,137 @@
       parts.forEach(function (part) { bytes.set(part, offset); offset += part.byteLength; });
       return JSON.parse(new TextDecoder().decode(bytes));
     }
+    function refreshWorkspace(url, historyMode) {
+      var values = {};
+      composer.fields.forEach(function (field) { if (field.type !== "secret") values[field.name] = form.elements.namedItem(field.name).value; });
+      submit.disabled = true;
+      replacePageTabs(workspace.closest("[data-beeui-page-tabs-surface]") || workspace, url, historyMode, function (replacement) {
+        var next = replacement.matches("[data-beeui-chat]") ? replacement : replacement.querySelector("#" + workspace.id + "[data-beeui-chat]");
+        var nextComposer = next && JSON.parse(next.getAttribute("data-composer"));
+        if (nextComposer) nextComposer.fields.forEach(function (field) {
+          var input = next.querySelector("[data-chat-composer]").elements.namedItem(field.name);
+          if (field.type !== "secret" && Object.prototype.hasOwnProperty.call(values, field.name) && input) {
+            input.value = values[field.name];
+            if (field.widget === "dropdown") {
+              next.querySelectorAll("[data-chat-select-option]").forEach(function (option) {
+                if (option.getAttribute("data-chat-select-name") !== field.name) return;
+                var active = option.getAttribute("data-chat-select-option") === input.value;
+                option.classList.toggle("active", active); option.setAttribute("aria-checked", String(active));
+                if (active) option.closest(".dropdown").querySelector("[data-chat-selected-label]").textContent = option.textContent;
+              });
+            }
+          }
+        });
+      });
+    }
+    function actionResult(action, response, preserveDraft) {
+      if (response.ok !== true) throw new Error("Action refused");
+      var url = new URL(window.location.href);
+      if (action.redirect) {
+        url = safeUrl(action.redirect);
+        preserveDraft = preserveDraft && url.href === window.location.href;
+      } else if (action.navigate) {
+        var value = response.data && response.data[action.navigate.result_key];
+        if (typeof value !== "string" || !/^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$/.test(value)) throw new Error("Invalid identity");
+        url = safeUrl(action.navigate.href);
+        url.searchParams.set(action.navigate.param, value);
+      }
+      if (preserveDraft) refreshWorkspace(url, "replace");
+      else window.location.assign(url.href);
+    }
+    function contextAction(action, kind) {
+      if (!action || action.disabled || disposed) return;
+      var container = workspace.querySelector("[data-chat-forms]");
+      container.replaceChildren();
+      if (kind === "file") {
+        var picker = document.createElement("input");
+        picker.type = "file"; picker.multiple = true; picker.className = "visually-hidden";
+        picker.setAttribute("aria-label", action.label);
+        container.append(picker);
+        picker.addEventListener("change", async function () {
+          var files = Array.from(picker.files || []);
+          if (!files.length) return;
+          if (files.length > 8 || files.some(function (file) { return file.size > 2097152; })) { notice.textContent = labels.failed; picker.value = ""; return; }
+          picker.disabled = true;
+          try {
+            var data = new FormData();
+            data.append("action_id", action.action_id);
+            data.append("payload", JSON.stringify(action.args));
+            files.forEach(function (file) { data.append("files", file); });
+            var csrfResponse = await fetch(csrfPath(), { credentials: "same-origin", redirect: "error", signal: controller.signal });
+            var csrf = await boundedJson(csrfResponse);
+            var response = await fetch(actionApiPath("upload"), { method: "POST", credentials: "same-origin", redirect: "error", signal: controller.signal, headers: { "X-CSRF-Token": (csrf.data || {}).csrf_token || "" }, body: data });
+            actionResult(action, await boundedJson(response), true);
+          } catch (_) { notice.textContent = labels.failed; }
+          finally { picker.value = ""; picker.disabled = false; }
+        });
+        picker.click();
+        return;
+      }
+      var modal = document.createElement("div"), dialog = document.createElement("div");
+      modal.className = "modal modal-blur"; modal.tabIndex = -1;
+      modal.setAttribute("aria-labelledby", workspace.id + "-context-title");
+      dialog.className = "modal-dialog modal-dialog-centered modal-dialog-scrollable";
+      var contextForm = document.createElement("form");
+      contextForm.className = "modal-content";
+      var heading = document.createElement("h3"), body = document.createElement("div"), footer = document.createElement("div");
+      heading.className = "modal-title"; heading.id = workspace.id + "-context-title"; heading.textContent = action.label;
+      var header = document.createElement("div"); header.className = "modal-header"; header.append(heading);
+      body.className = "modal-body"; footer.className = "modal-footer";
+      if (action.confirmation) { var confirmation = document.createElement("p"); confirmation.textContent = action.confirmation; body.append(confirmation); }
+      contextForm.append(header, body, footer); dialog.append(contextForm); modal.append(dialog); container.append(modal);
+      var modalControl = (window.tabler || window.bootstrap).Modal.getOrCreateInstance(modal);
+      var trigger = document.activeElement;
+      modal.addEventListener("hidden.bs.modal", function () { contextForm.reset(); modalControl.dispose(); modal.remove(); if (trigger && trigger.isConnected) trigger.focus(); if (terminal && refresh) poll(); }, { once: true });
+      contextForm.setAttribute("aria-label", action.label);
+      action.fields.forEach(function (field) {
+        var group = document.createElement("div"), label = document.createElement("label");
+        group.className = "mb-2"; label.className = "form-label"; label.textContent = field.label;
+        var input = document.createElement(field.type === "select" ? "select" : field.type === "textarea" ? "textarea" : "input");
+        input.id = workspace.id + "-context-field-" + field.name; input.name = field.name;
+        input.className = field.type === "select" ? "form-select" : "form-control";
+        label.htmlFor = input.id;
+        if (field.type === "select") field.options.forEach(function (option) { var node = document.createElement("option"); node.value = option.value; node.textContent = option.label; input.append(node); });
+        else if (field.type !== "textarea") input.type = field.type === "secret" ? "password" : field.type;
+        input.maxLength = field.max_length; input.required = field.required;
+        input.autocomplete = "off";
+        var source = composer.fields.find(function (item) { return item.name === field.name; });
+        var inherited = field.inherit === true && source && source.type !== "secret" && form.elements.namedItem(field.name);
+        if (field.type !== "secret") input.value = inherited ? inherited.value : field.value;
+        group.append(label, input); body.append(group);
+      });
+      var save = document.createElement("button"), cancel = document.createElement("button");
+      save.type = "submit"; save.className = "btn btn-primary btn-sm"; save.textContent = action.label;
+      cancel.type = "button"; cancel.className = "btn btn-sm"; cancel.textContent = labels.close || actionLabels().cancel;
+      cancel.addEventListener("click", function () { modalControl.hide(); });
+      var actionError = document.createElement("p"); actionError.className = "text-danger"; actionError.setAttribute("role", "alert"); body.append(actionError);
+      footer.append(cancel, save);
+      modal.addEventListener("shown.bs.modal", function () { if (contextForm.elements.length) contextForm.elements[0].focus(); }, { once: true });
+      modalControl.show();
+      contextForm.addEventListener("submit", function (event) {
+        event.preventDefault();
+        if (!contextForm.reportValidity() || save.disabled) return;
+        var payload = Object.assign({}, action.args);
+        action.fields.forEach(function (field) { payload[field.name] = contextForm.elements.namedItem(field.name).value; });
+        save.disabled = true;
+        requestBoundedAction("execute", { action_id: action.action_id, payload: payload }).then(function (response) {
+          contextForm.reset(); modalControl.hide(); actionResult(action, response, true);
+        }).catch(function (error) { actionError.textContent = actionFailure(error); }).finally(function () {
+          action.fields.forEach(function (field) { if (field.type === "secret") { contextForm.elements.namedItem(field.name).value = ""; delete payload[field.name]; } });
+          save.disabled = false;
+        });
+      });
+      if (kind === "action" && !action.fields.length) contextForm.requestSubmit();
+    }
+    workspace.querySelectorAll("[data-chat-menu]").forEach(function (button) {
+      button.addEventListener("click", function () {
+        var item = composer.menu.items.find(function (entry) { return entry.id === button.getAttribute("data-chat-menu"); });
+        if (item) contextAction(item.action, item.kind);
+      });
+    });
+    workspace.querySelectorAll("[data-chat-action]").forEach(function (button) {
+      button.addEventListener("click", function () { contextAction(JSON.parse(button.getAttribute("data-chat-action")), "form"); });
+    });
     function renderMessages(messages) {
       if (!Array.isArray(messages) || messages.length > 100) throw new Error("Invalid messages");
       var seen = new Set(), total = 0;
@@ -1277,9 +1426,9 @@
         bubble.className = "chat-bubble" + (message.sender === "operator" ? " chat-bubble-me" : "");
         bubble.setAttribute("data-message-id", message.id);
         title.className = "chat-bubble-title"; author.className = "chat-bubble-author";
-        author.textContent = message.name; title.append(author);
-        if (message.timestamp) { var date = document.createElement("time"); date.className = "chat-bubble-date"; date.textContent = message.timestamp; title.append(date); }
-        if (message.status) { var status = document.createElement("span"); status.className = "badge bg-secondary-lt"; status.textContent = message.status; title.append(status); }
+        author.textContent = message.name; if (!conversational) title.append(author);
+        if (message.timestamp) { var date = document.createElement("time"); date.className = "chat-bubble-date"; date.setAttribute("datetime", message.timestamp); date.textContent = message.timestamp; localTime(date); title.append(date); }
+        if (message.status && !conversational) { var status = document.createElement("span"); status.className = "badge bg-secondary-lt"; status.textContent = message.status; title.append(status); }
         body.className = "chat-bubble-body"; body.textContent = message.text;
         bubble.append(title, body); return bubble;
       });
@@ -1291,8 +1440,8 @@
     }
     function renderContext(context) {
       var root = workspace.querySelector("[data-chat-context]");
-      if (context == null) return;
-      if (!root || typeof context.title !== "string" || context.title.length > 256 || !Array.isArray(context.sections) || context.sections.length > 8) throw new Error("Invalid context");
+      if (context == null || !root) return;
+      if (typeof context.title !== "string" || context.title.length > 256 || !Array.isArray(context.sections) || context.sections.length > 8) throw new Error("Invalid context");
       var seen = new Set(), count = 0, total = 0;
       context.sections.forEach(function (section) {
         if (!section || typeof section.id !== "string" || !/^[A-Za-z][A-Za-z0-9_-]{0,63}$/.test(section.id) || seen.has(section.id) || typeof section.title !== "string" || section.title.length > 256 || !Array.isArray(section.items) || section.items.length > 64) throw new Error("Invalid context section");
@@ -1320,6 +1469,12 @@
           var entry = document.createElement(item.detail ? "details" : "div"), content = item.detail ? document.createElement("summary") : entry;
           entry.className = "beeui-chat-context-item"; entry.setAttribute("data-context-id", item.id);
           var label = document.createElement("span"), value = document.createElement("span");
+          if (item.href != null) {
+            var link = document.createElement("a"), linkUrl = safeUrl(item.href);
+            var prefix = (document.body.getAttribute("data-beeui-route-prefix") || "").replace(/\/$/, "");
+            if (prefix && linkUrl.pathname !== prefix && linkUrl.pathname.indexOf(prefix + "/") !== 0) linkUrl = safeUrl(prefix + item.href);
+            link.href = linkUrl.href; value = link;
+          }
           label.className = "text-secondary small d-block"; label.textContent = item.label; value.textContent = item.value; content.append(label, value);
           if (item.detail) {
             var detail = document.createElement("p"); detail.className = "small mt-2 mb-0 text-secondary"; detail.textContent = item.detail;
@@ -1357,7 +1512,15 @@
         var activeHistory = workspace.querySelector("[aria-current=page] [data-history-status]");
         if (activeHistory) activeHistory.textContent = data.state;
         failures = 0;
-        if (data.complete) { window.location.reload(); return; }
+        if (data.complete) {
+          terminal = true;
+          if (workspace.querySelector("[data-chat-forms] form")) return;
+          var draft = form.querySelector("textarea");
+          if (draft && draft.value.trim()) {
+            refreshWorkspace(new URL(window.location.href), "none");
+          } else { window.location.reload(); }
+          return;
+        }
         notice.textContent = labels.pending;
       } catch (error) {
         if (controller.signal.aborted) return;
@@ -1366,6 +1529,22 @@
       } finally { clearTimeout(deadline); }
       timer = setTimeout(poll, refresh.interval_ms);
     }
+    workspace.querySelectorAll("[data-chat-select-option]").forEach(function (button) {
+      button.addEventListener("click", function () {
+        var name = button.getAttribute("data-chat-select-name"), value = button.getAttribute("data-chat-select-option");
+        var field = composer.fields.find(function (item) { return item.name === name && item.widget === "dropdown"; });
+        if (!field || field.readonly || !field.options.some(function (item) { return item.value === value; })) return;
+        form.elements.namedItem(name).value = value;
+        var group = button.closest(".dropdown");
+        group.querySelector("[data-chat-selected-label]").textContent = field.options.find(function (item) { return item.value === value; }).label;
+        group.querySelectorAll("[data-chat-select-option]").forEach(function (option) { var active = option === button; option.classList.toggle("active", active); option.setAttribute("aria-checked", String(active)); });
+        group.querySelector("[data-chat-select]").focus();
+      });
+    });
+    form.querySelectorAll("textarea").forEach(function (input) {
+      function grow() { input.style.height = "auto"; input.style.height = Math.min(input.scrollHeight, 160) + "px"; }
+      input.addEventListener("input", grow); grow();
+    });
     if (composer.submit_on_enter) {
       form.querySelectorAll("textarea").forEach(function (input) {
         var composing = false;
@@ -1419,7 +1598,7 @@
           url.searchParams.set(composer.navigate.param, value);
           window.location.assign(url.href);
         } else { window.location.reload(); }
-      }).catch(function () { if (!disposed) notice.textContent = labels.failed; });
+      }).catch(function (error) { if (!disposed) { notice.textContent = actionFailure(error); submit.disabled = false; controller = new AbortController(); if (refresh) { attempts = 0; poll(); } } });
     });
     workspace.beeuiChatCleanup = function () { disposed = true; clearTimeout(timer); controller.abort(); window.removeEventListener("pagehide", workspace.beeuiChatCleanup); };
     window.addEventListener("pagehide", workspace.beeuiChatCleanup, { once: true });
@@ -1466,7 +1645,7 @@
     pageTabState.controller = null;
   }
 
-  function replacePageTabs(surface, url, historyMode) {
+  function replacePageTabs(surface, url, historyMode, restored) {
     if (!window.fetch || !window.DOMParser || !window.history || !isSafePageTabUrl(url)) {
       window.location.assign(url.href);
       return;
@@ -1485,13 +1664,17 @@
       if (pageTabState.version !== version) return;
       var documentNode = new DOMParser().parseFromString(result.html, "text/html");
       var surfaceId = surface.getAttribute("data-beeui-page-tabs-surface");
-      var replacement = findPageTabsSurface(documentNode, surfaceId);
-      if (!replacement || replacement.getAttribute("data-beeui-page-tabs-progressive") !== "true") throw new Error("page_tabs_identity");
+      var chat = surface.matches("[data-beeui-chat]");
+      var replacement = chat ? documentNode.getElementById(surface.id) : findPageTabsSurface(documentNode, surfaceId);
+      if (!replacement || (chat ? !replacement.matches("[data-beeui-chat]") : replacement.getAttribute("data-beeui-page-tabs-progressive") !== "true")) throw new Error("page_tabs_identity");
       replacement.querySelectorAll('script:not(script[type="application/json"].beeui-chart-config)').forEach(function (script) { script.remove(); });
       replacement = document.importNode(replacement, true);
       destroyComponents(surface);
       surface.replaceWith(replacement);
       if (historyMode === "push") window.history.pushState({}, "", result.url.href);
+      if (historyMode === "replace") window.history.replaceState({}, "", result.url.href);
+      if (restored) restored(replacement);
+      if (chat) initChatWorkspace(replacement);
       initComponents(replacement);
     }).catch(function (error) {
       if (pageTabState.version !== version || (error && error.name === "AbortError")) return;
