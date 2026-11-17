@@ -123,12 +123,19 @@ BeeUI's protected POST transport consists of:
 | `POST /api/config/apply`    | `admin`       | `features.config_apply`     |
 | `POST /api/actions/preview` | `operator`    | `features.operator_actions` |
 | `POST /api/actions/execute` | `operator`    | `features.operator_actions` |
+| `POST /api/actions/upload` | `operator` | `features.operator_actions` and registered upload callback |
 
-With authentication enabled, a valid authenticated session and CSRF token are required for these routes. The role check precedes all product mutation callbacks. BeeUI validates transport, bounded shape and feature eligibility; product callbacks decide whether the action or config candidate is currently allowed and how it is audited.
+With authentication enabled, a valid authenticated session and CSRF token are required for these routes. JSON action bodies are capped at 128 KiB before parsing. The role check precedes all product mutation callbacks. BeeUI validates transport, bounded shape and feature eligibility; product callbacks decide whether the action or config candidate is currently allowed and how it is audited.
 
 `auth.enabled: false` is explicit local/dev mode and is not permission for a production product to bypass its domain policy. Product authority applies regardless of BeeUI's transport state.
 
 An action is identified by an allowlisted `action_id` and bounded arguments/fields, **not** by a browser-provided arbitrary URL. A preview/confirmation UI never substitutes for server-side execution authorization.
+
+### Registered multipart uploads
+
+An optional adapter attribute `upload_actions: dict[str, Callable]` registers trusted product callbacks at application construction. Without registrations the upload route is absent. Callbacks receive `(payload, files, actor)` and return an adapter result; each file contains bounded `filename`, `content_type` and byte `content`. Product ownership, parsing, persistence and per-resource limits remain product responsibilities.
+
+The multipart fields are exactly one `action_id`, one JSON object `payload` (up to ten string arguments, 4096 characters each) and one to eight `files`. The transport caps the complete stream at 17 MiB and each file at 2 MiB. An authenticated operator session and `X-CSRF-Token` header are mandatory even in demo mode; authorization precedes multipart parsing and callback invocation. Unknown registrations, duplicate fields and malformed/oversized input fail closed. Successful responses retain the `beeui.v0` action envelope with `read_only: false` and `Cache-Control: no-store`.
 
 ## Adapter result envelopes
 

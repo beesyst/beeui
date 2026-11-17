@@ -133,34 +133,44 @@ The adapter-only `chat_workspace` displays bounded conversation history, escaped
 
 ### History and messages
 
-- `history`: at most 25 unique entries containing bounded `id`, `title`, internal `href`, optional `active` and `status`.
+- `history`: at most 25 unique entries containing bounded `id`, `title`, internal `href`, optional `active`, `status` and up to two bounded protected `actions`. History actions use the contextual composer-action schema and render in a Tabler ellipsis dropdown as a sibling of the title link; buttons are never nested in links. The product owns ownership, freshness, rename, archival and evidence semantics.
 - `messages`: at most 100 unique entries with `id`, `sender` (`operator`, `host`, `assistant`), bounded `name`, plaintext `text`, optional valid ISO timestamp and status.
 - Message IDs are at most 128 characters; name up to 256; message text up to 4096, combined message text up to 32768 characters. Live updates use safe text insertion and stable identities.
+- `message_style`: optional `standard` (default, compatible author/status/ISO presentation) or `conversation` (author and status badges omitted, ISO timestamps displayed with `Intl.DateTimeFormat` in the browser locale/timezone). Original timestamp data remains unchanged and DOM insertion stays escaped.
+- `errors`: optional mapping of up to 16 bounded error-code identifiers to escaped localized messages of at most 512 characters; contextual action failures select only an explicit matching code, otherwise the existing generic failure label. Product exception bodies are not displayed.
 - `history_notice`: optional escaped 1024-character notice for empty/filter states.
 - `search`: optional GET `{href, name, value?, hidden?}`, with up to 128 characters of text and at most four bounded hidden entries. Tabs preserve bounded search and selected Case/run query state through canonical URLs.
 
 ### Read-only context
 
-`context` accepts `{title, sections}` with up to eight unique sections. Each section has `{id, title, items}` with unique items `{id, label, value, detail?}`. There are at most 128 items total, at most 64 per section and a combined text budget of 32768 characters. Detail disclosures are escaped and preserve expansion state on polling. Context does not grant execution or arbitrary links.
+`context` accepts `{title, sections}` with up to eight unique sections. Each section has `{id, title, items}` with unique items `{id, label, value, detail?, href?}`. Optional `href` is a validated bounded internal link with mount-prefix resolution; it never supplies action authority. Normalization defaults `detail` to an empty string, and products must use the same shape for initial context and live projections. A missing optional context DOM is ignored safely during live updates. There are at most 128 items total, at most 64 per section and a combined text budget of 32768 characters. Detail disclosures are escaped and preserve expansion state on polling. Context does not grant execution or arbitrary links.
 
 ### Composer
 
-`composer` supports `action_id`, `label`, `disabled`, `hint`, `args`, `fields`, optional `navigate`, `settings_label`, `variant`, `submit_on_enter` and `menu`.
+`composer` supports `action_id`, `label`, `disabled`, `hint`, `args`, `fields`, optional `navigate`, `redirect`, `confirmation`, `settings_label`, `variant`, `submit_on_enter` and `menu`.
 
 - Up to 10 bounded, named string args; up to eight uniquely named fields. A field name cannot override an existing arg.
-- Field kinds: `text`, `url`, `textarea`, `select`, `target`, `segmented`. Fields carry a validated name, label, bounded value, length 1–4096, `required`/`readonly` and `placement` (`inline`/`settings`).
+- Field kinds: `text`, `url`, `textarea`, `select`, `target`, `segmented`, `secret`. Fields carry a validated name, label, bounded value, length 1–4096, `required`/`readonly` and `placement` (`inline`/`settings`).
+- Contextual non-secret fields may opt into `inherit: true` to initialize from a same-named non-secret main composer control; this is presentation-only and the host revalidates submitted values. Secret inputs cannot inherit values.
+- Main composer `select` fields may use `widget: dropdown` for a canonical Tabler menu with bounded options, keyboard/touch controls and selected-state feedback; `widget: native` is the compatible default. Selection still submits one named field and does not authorize execution.
 - `select`/`segmented` provide 1–20 `{value,label}` options with a matching selected value; segmented selection uses native radio inputs.
-- `variant: compact` renders Task/Target/radios/menu/send within one Tabler card footer; `form` retains the existing conventional composer form.
+- `variant: compact` renders one rounded message container with a bounded auto-growing textarea and an internal bottom toolbar: menu left, optional selections and upward-arrow Send right; visible labels for these toolbar selections remain available to assistive technology; `form` retains the existing conventional composer form.
 - `target` is a neutral-icon text input, optionally with up to four allowlisted `protocols`, boolean `origin_only` and an escaped `invalid_message`. Browser target feedback is not product authorization and does not expand supported target types.
 - `submit_on_enter: true` opts into textarea Enter submission; Shift+Enter inserts a newline, and IME composition is protected. The accessible icon-only submit remains available for pointer/touch use.
-- `menu: {label, items}` holds one to six bounded labels rendered **disabled only**. It provides no upload, import, export or hidden handler.
+- `menu: {label, items}` retains one to six legacy string labels as disabled items. Interactive entries use `{id, label, kind, action}` with unique validated IDs and `kind: form`, `action` or `file`. Each action uses the bounded composer action shape (`action_id`, `args`, `fields`, `label`, `disabled`, optional `navigate`, `redirect` and escaped `confirmation`); nested controls are omitted. `action` and `file` entries have no fields. The interactive `+` trigger sits at the bottom-left inside the compact composer. Contextual forms open in a canonical Tabler modal with focus trapping, Escape/cancel and write-only secret cleanup; they do not expand the composer. A product may enable actions before a conversation exists, and owns any first-mutation creation semantics.
+- `chips` accepts at most 32 unique `{id, label, edit?, remove?}` entries. Edit/remove use the same protected action shape. The product returns replacement chips after successful mutations; the renderer never mutates product state itself.
+- Optional `primary` remains compatible and uses the same action shape to open a contextual modal. Mode selection can use select/segmented composer fields or a contextual action field.
+- `secret` fields always normalize to an empty value, render as password inputs and clear after submission or cancellation. They are excluded from retained presentation state; adapters must never supply secrets through args, messages or error text.
+- File actions open native file selection and POST multipart only to the fixed same-origin `/api/actions/upload` transport. An adapter must explicitly register that action ID through `upload_actions`; no adapter-provided upload URL is accepted.
+- The complete normalized workspace has a 128 KiB serialized bound.
+- `redirect` is an optional validated internal destination for successful protected actions without a returned identity; `confirmation` is optional escaped dialog text (maximum 1024 characters), with no implicit execution.
 - `navigate: {href, param, result_key}` appends one validated result identifier to an internal destination after a successful protected action. No untrusted returned action URL is opened.
 
 ### Polling
 
 Optional `refresh` contains a safe internal `href`, interval 1000–30000 ms (default 3000) and attempt bound 1–300 (default 300). The browser fetches only same-origin, bounded, non-redirecting read responses; pauses when hidden; stops after repeated failures; aborts on page disposal. Its normalized product payload is `data.presentation = {state, messages, values, complete, context?}`.
 
-`values` is a bounded list of at most 12 `{id,value}` updates for already-rendered metric cards. Live messages and context use the same limits as initial render. `complete: true` reloads the canonical page to re-evaluate final state and permitted product actions. A read-only status GET never sends a target request.
+`values` is a bounded list of at most 12 `{id,value}` updates for already-rendered metric cards. Live messages and context use the same limits as initial render. `complete: true` reloads the canonical page to re-evaluate final state and permitted product actions. A non-secret message draft is kept in memory while a canonical GET replaces the matching chat or tab surface and refreshes action arguments; it is never stored in browser storage. An open contextual form defers replacement until it is closed. Secret fields are not copied into the replacement. A read-only status GET never sends a target request.
 
 ### Security and ownership
 

@@ -1,0 +1,329 @@
+import json
+from copy import deepcopy
+from types import SimpleNamespace
+
+import pytest
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
+from jinja2 import Environment, FileSystemLoader, select_autoescape
+
+from beeui_module.adapters.envelopes import ok_result
+from beeui_module.artifacts.redaction import redact_value
+from beeui_module.auth.models import UserRole
+from beeui_module.auth.service import AuthService
+from beeui_module.blocks.chat_workspace import render_chat_workspace, resolve_chat_links
+from beeui_module.web.uploads import register_upload_routes
+
+
+def payload():
+    action = {
+        "action_id": "save_context",
+        "label": "Save",
+        "disabled": False,
+        "args": {"revision": "1"},
+        "fields": [
+            {
+                "name": "credential",
+                "type": "secret",
+                "value": "NEVER-REFLECT",
+                "label": "Credential",
+            }
+        ],
+        "navigate": {"href": "/cases", "param": "id", "result_key": "id"},
+    }
+    return {
+        "id": "chat",
+        "new_href": "/cases",
+        "composer": {
+            "variant": "compact",
+            "action_id": "ask",
+            "disabled": False,
+            "fields": [{"name": "question", "type": "textarea"}],
+            "menu": {
+                "label": "Context",
+                "items": [
+                    {
+                        "id": "context",
+                        "kind": "form",
+                        "label": "Context",
+                        "action": action,
+                    }
+                ],
+            },
+            "chips": [
+                {
+                    "id": "context",
+                    "label": "<script>",
+                    "edit": action,
+                    "remove": {"action_id": "remove_context", "disabled": False},
+                }
+            ],
+        },
+    }
+
+
+def test_interactive_secret_nonreflection_and_prefix():
+    source = payload()
+    block = render_chat_workspace(source, "col-12")
+    assert "NEVER-REFLECT" not in json.dumps(block)
+    assert "NEVER-REFLECT" not in json.dumps(redact_value(source))
+    resolve_chat_links(block, "/mount/prefix")
+    assert (
+        block["composer"]["menu"]["items"][0]["action"]["navigate"]["href"]
+        == "/mount/prefix/cases"
+    )
+    env = Environment(
+        loader=FileSystemLoader("src/beeui_module/web/templates"),
+        autoescape=select_autoescape(),
+    )
+    html = env.get_template("components/layout/chat_workspace.html").render(block=block)
+    assert "NEVER-REFLECT" not in html and "<script>" not in html
+    assert html.index("<textarea") < html.index("ti-plus") < html.index("ti-arrow-up")
+    assert "data-chat-action" in html
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        {"kind": "javascript"},
+        {"id": "../escape"},
+        {"id": "__proto__"},
+        {"action": {"action_id": "../escape"}},
+        {
+            "action": {
+                "action_id": "upload",
+                "navigate": {"href": "//foreign", "param": "id", "result_key": "id"},
+            }
+        },
+    ],
+)
+def test_untrusted_menu_refusal(change):
+    source = payload()
+    source["composer"]["menu"]["items"][0].update(change)
+    with pytest.raises(ValueError):
+        render_chat_workspace(source, "col-12")
+
+
+def test_bounded_menu_property_inputs():
+    for count in range(7, 40):
+        source = payload()
+        source["composer"]["menu"]["items"] *= count
+        with pytest.raises(ValueError):
+            render_chat_workspace(source, "col-12")
+    for bad in (None, False, 1, [], "text", {"action_id": "a", "args": {"x": []}}):
+        source = payload()
+        source["composer"]["menu"]["items"][0]["action"] = deepcopy(bad)
+        with pytest.raises(ValueError):
+            render_chat_workspace(source, "col-12")
+
+
+def test_registered_upload_auth_csrf_limits_and_embedded_mount():
+    calls = []
+
+    def callback(arguments, files, actor):
+        calls.append((arguments, files, actor))
+        return ok_result({"id": "saved"})
+
+    child = FastAPI()
+    service = AuthService(
+        {
+            "enabled": True,
+            "session_secret": "test-only-secret",
+            "operator_token": "op",
+            "admin_token": "admin",
+            "cookie_secure": False,
+            "cookie_samesite": "lax",
+        }
+    )
+    child.state.beeui_auth_service = service
+    register_upload_routes(
+        child, "/prefix", SimpleNamespace(upload_actions={"attach": callback})
+    )
+    app = FastAPI()
+    app.mount("/embed", child)
+    client = TestClient(app)
+    path = "/embed/prefix/api/actions/upload"
+    body = {"action_id": "attach", "payload": '{"revision":"1"}'}
+    files = {"files": ("note.txt", b"bounded", "text/plain")}
+    assert client.post(path, data=body, files=files).status_code == 401
+    viewer, cookie = service.create_principal_session("viewer", UserRole.viewer)
+    assert viewer is not None
+    assert cookie is not None
+    client.cookies.set(service.cookie_name(), cookie)
+    assert (
+        client.post(
+            path, data=body, files=files, headers={"X-CSRF-Token": viewer.csrf_token}
+        ).status_code
+        == 403
+    )
+    session, cookie = service.create_principal_session("operator", UserRole.operator)
+    assert session is not None
+    assert cookie is not None
+    client.cookies.set(service.cookie_name(), cookie)
+    assert client.post(path, data=body, files=files).status_code == 403
+    assert (
+        client.post(
+            path, data=body, files=files, headers={"X-CSRF-Token": "wrong"}
+        ).status_code
+        == 403
+    )
+    assert calls == []
+    headers = {"X-CSRF-Token": session.csrf_token}
+    assert (
+        client.post(
+            path, data={**body, "action_id": "foreign"}, files=files, headers=headers
+        ).status_code
+        == 400
+    )
+    assert (
+        client.post(
+            path, data=body, files={"files": ("large", b"x" * 2097153)}, headers=headers
+        ).status_code
+        == 400
+    )
+    response = client.post(path, data=body, files=files, headers=headers)
+    assert response.status_code == 200
+    assert response.json()["data"]["id"] == "saved"
+    assert len(calls) == 1 and calls[0][2]["user_id"] == "operator"
+
+
+def test_context_field_inheritance_is_explicit_and_excludes_secrets():
+    source = payload()
+    fields = source["composer"]["menu"]["items"][0]["action"]["fields"]
+    fields[0]["inherit"] = True
+    with pytest.raises(ValueError):
+        render_chat_workspace(source, "col-12")
+    fields[0].update(type="text", inherit="true")
+    with pytest.raises(ValueError):
+        render_chat_workspace(source, "col-12")
+    fields[0]["inherit"] = True
+    block = render_chat_workspace(source, "col-12")
+    assert (
+        block["composer"]["menu"]["items"][0]["action"]["fields"][0]["inherit"] is True
+    )
+
+
+def test_history_actions_are_bounded_siblings_and_prefix_safe():
+    source = payload()
+    source["history"] = [
+        {
+            "id": "owned",
+            "title": "<case>",
+            "href": "/cases?id=owned",
+            "actions": [
+                {
+                    "action_id": "rename",
+                    "label": "Rename",
+                    "disabled": False,
+                    "fields": [{"name": "title", "type": "text"}],
+                    "redirect": "/cases?id=owned",
+                },
+                {
+                    "action_id": "archive",
+                    "disabled": False,
+                    "confirmation": "Preserve evidence",
+                    "redirect": "/cases",
+                },
+            ],
+        }
+    ]
+    block = render_chat_workspace(source, "col-12")
+    resolve_chat_links(block, "/embed")
+    assert block["history"][0]["actions"][0]["redirect"] == "/embed/cases?id=owned"
+    env = Environment(
+        loader=FileSystemLoader("src/beeui_module/web/templates"),
+        autoescape=select_autoescape(),
+    )
+    html = env.get_template("components/layout/chat_workspace.html").render(block=block)
+    row = html.split('data-history-id="owned"', 1)[1].split("</nav>", 1)[0]
+    assert row.index("</a>") < row.index("<button")
+    assert "<case>" not in row and 'data-bs-toggle="dropdown"' in row
+    for bad in ("//foreign", "https://foreign", "/../escape"):
+        source["history"][0]["actions"][0]["redirect"] = bad
+        with pytest.raises(ValueError):
+            render_chat_workspace(source, "col-12")
+    source["history"][0]["actions"] *= 2
+    with pytest.raises(ValueError):
+        render_chat_workspace(source, "col-12")
+
+
+def test_optional_conversation_presentation_context_links_and_dropdown():
+    source = payload()
+    source["message_style"] = "conversation"
+    source["errors"] = {"invalid_target": "Safe localized explanation"}
+    source["context"] = {
+        "title": "Summary",
+        "sections": [
+            {
+                "id": "case",
+                "title": "Case",
+                "items": [
+                    {
+                        "id": "child",
+                        "label": "Results",
+                        "value": "CANDIDATE",
+                        "href": "/cases?id=child",
+                    }
+                ],
+            }
+        ],
+    }
+    source["messages"] = [
+        {
+            "id": "message",
+            "sender": "operator",
+            "name": "Hidden author",
+            "status": "question",
+            "text": "Safe text",
+            "timestamp": "2026-11-16T12:00:00+00:00",
+        }
+    ]
+    source["composer"]["fields"].append(
+        {
+            "name": "mode",
+            "type": "select",
+            "widget": "dropdown",
+            "value": "quick",
+            "options": [
+                {"value": "quick", "label": "Quick"},
+                {"value": "deep", "label": "Deep"},
+            ],
+        }
+    )
+    block = render_chat_workspace(source, "col-12")
+    resolve_chat_links(block, "/embed")
+    assert (
+        block["context"]["sections"][0]["items"][0]["href"] == "/embed/cases?id=child"
+    )
+    env = Environment(
+        loader=FileSystemLoader("src/beeui_module/web/templates"),
+        autoescape=select_autoescape(),
+    )
+    html = env.get_template("components/layout/chat_workspace.html").render(block=block)
+    assert (
+        "data-chat-local-time" in html
+        and 'datetime="2026-11-16T12:00:00+00:00"' in html
+    )
+    assert 'class="chat-bubble-author"' not in html
+    assert 'role="menuitemradio"' in html and 'data-chat-select="mode"' in html
+    assert '<select id="chat-mode"' not in html
+    assert 'href="/embed/cases?id=child"' in html
+    for bad in ("https://foreign", "//foreign", "/../unsafe"):
+        source["context"]["sections"][0]["items"][0]["href"] = bad
+        with pytest.raises(ValueError):
+            render_chat_workspace(source, "col-12")
+
+
+@pytest.mark.parametrize(
+    "key,value",
+    [
+        ("message_style", "javascript"),
+        ("errors", {"invalid": "x" * 513}),
+        ("errors", {"../escape": "unsafe"}),
+    ],
+)
+def test_rejects_unbounded_optional_presentation(key, value):
+    source = payload()
+    source[key] = value
+    with pytest.raises(ValueError):
+        render_chat_workspace(source, "col-12")

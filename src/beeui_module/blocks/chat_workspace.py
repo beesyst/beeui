@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import re
 from datetime import datetime
 from typing import Any
@@ -58,6 +59,10 @@ def normalize_messages(value: Any) -> list[dict]:
                 "text": _text(item.get("text", ""), 4096),
                 "timestamp": timestamp,
                 "status": _text(item.get("status", ""), 80),
+                "actions": [
+                    _composer(action, controls=False)
+                    for action in _items(item.get("actions", []), 2)
+                ],
             }
         )
     if sum(len(item["text"]) for item in messages) > 32768:
@@ -94,6 +99,8 @@ def normalize_context(value: Any) -> dict | None:
                 "value": _text(item.get("value", ""), 4096),
                 "detail": _text(item.get("detail", ""), 4096),
             }
+            if item.get("href") is not None:
+                entry["href"] = _link(item["href"])
             total += sum(len(entry[k]) for k in ("label", "value", "detail"))
             count += 1
             items.append(entry)
@@ -103,7 +110,7 @@ def normalize_context(value: Any) -> dict | None:
     return {"title": _text(value.get("title", "")), "sections": sections}
 
 
-def _composer(value: Any) -> dict:
+def _composer(value: Any, *, controls: bool = True) -> dict:
     if not isinstance(value, dict):
         raise ValueError("Invalid composer")
     args = value.get("args", {})
@@ -118,7 +125,16 @@ def _composer(value: Any) -> dict:
         if (
             name in names
             or name in args
-            or kind not in {"text", "url", "textarea", "select", "target", "segmented"}
+            or kind
+            not in {
+                "text",
+                "url",
+                "textarea",
+                "select",
+                "target",
+                "segmented",
+                "secret",
+            }
         ):
             raise ValueError("Invalid composer field")
         names.add(name)
@@ -129,12 +145,29 @@ def _composer(value: Any) -> dict:
             "name": name,
             "type": kind,
             "label": _text(item.get("label", name)),
-            "value": _text(item.get("value", ""), maximum),
+            "value": "" if kind == "secret" else _text(item.get("value", ""), maximum),
             "max_length": maximum,
             "required": item.get("required") is True,
             "readonly": item.get("readonly") is True,
             "placement": item.get("placement", "inline"),
         }
+        widget = item.get("widget", "native")
+        if (
+            widget not in {"native", "dropdown"}
+            or widget == "dropdown"
+            and kind != "select"
+        ):
+            raise ValueError("Invalid composer widget")
+        field["widget"] = widget
+        if "inherit" in item:
+            if (
+                type(item["inherit"]) is not bool
+                or item["inherit"]
+                and kind == "secret"
+            ):
+                raise ValueError("Invalid inherited field")
+            if item["inherit"]:
+                field["inherit"] = True
         if field["placement"] not in {"inline", "settings"}:
             raise ValueError("Invalid field placement")
         if kind in {"select", "segmented"}:
@@ -179,21 +212,74 @@ def _composer(value: Any) -> dict:
     variant = value.get("variant", "form")
     if variant not in {"form", "compact"}:
         raise ValueError("Invalid composer variant")
-    menu = value.get("menu")
+    menu = value.get("menu") if controls else None
     if menu is not None:
         if not isinstance(menu, dict):
             raise ValueError("Invalid composer menu")
         items = menu.get("items")
         if not isinstance(items, list) or not 1 <= len(items) <= 6:
-            raise ValueError("Invalid disabled menu items")
-        menu = {
-            "label": _text(menu.get("label")),
-            "items": [_text(item) for item in items],
-        }
+            raise ValueError("Invalid menu items")
+        normalized = []
+        identities = set()
+        for item in items:
+            if isinstance(item, str):
+                normalized.append(_text(item))
+                continue
+            if not isinstance(item, dict):
+                raise ValueError("Invalid menu entry")
+            identity = _id(item.get("id"))
+            if identity in identities or item.get("kind") not in {
+                "form",
+                "action",
+                "file",
+            }:
+                raise ValueError("Invalid menu action")
+            identities.add(identity)
+            action = _composer(item.get("action"), controls=False)
+            if any(
+                field["type"] not in {"text", "url", "textarea", "select", "secret"}
+                for field in action["fields"]
+            ):
+                raise ValueError("Unsupported contextual field")
+            if item["kind"] in {"action", "file"} and action["fields"]:
+                raise ValueError("Unexpected menu fields")
+            normalized.append(
+                {
+                    "id": identity,
+                    "label": _text(item.get("label")),
+                    "kind": item["kind"],
+                    "action": action,
+                }
+            )
+        menu = {"label": _text(menu.get("label")), "items": normalized}
+    chips = []
+    seen = set()
+    for item in _items(value.get("chips", []) if controls else [], 32):
+        identity = _id(item.get("id"))
+        if identity in seen:
+            raise ValueError("Duplicate context chip")
+        seen.add(identity)
+        chips.append(
+            {
+                "id": identity,
+                "label": _text(item.get("label")),
+                "edit": _composer(item["edit"], controls=False)
+                if item.get("edit")
+                else None,
+                "remove": _composer(item["remove"], controls=False)
+                if item.get("remove")
+                else None,
+            }
+        )
+    primary = value.get("primary") if controls else None
+    if primary is not None:
+        primary = _composer(primary, controls=False)
     return {
         "variant": variant,
         "submit_on_enter": value.get("submit_on_enter") is True,
         "menu": menu,
+        "chips": chips,
+        "primary": primary,
         "action_id": _id(value.get("action_id")),
         "args": args,
         "fields": fields,
@@ -201,6 +287,10 @@ def _composer(value: Any) -> dict:
         "label": _text(value.get("label", "")),
         "hint": _text(value.get("hint", ""), 1024),
         "navigate": navigate,
+        "redirect": _link(value["redirect"])
+        if value.get("redirect") is not None
+        else None,
+        "confirmation": _text(value.get("confirmation", ""), 1024),
         "settings_label": _text(value.get("settings_label", "")),
     }
 
@@ -220,6 +310,10 @@ def render_chat_workspace(raw: dict, width_class: str) -> dict:
                 "href": _link(item.get("href")),
                 "active": item.get("active") is True,
                 "status": _text(item.get("status", ""), 80),
+                "actions": [
+                    _composer(action, controls=False)
+                    for action in _items(item.get("actions", []), 2)
+                ],
             }
         )
     refresh = raw.get("refresh")
@@ -253,12 +347,21 @@ def render_chat_workspace(raw: dict, width_class: str) -> dict:
             "value": _text(search.get("value", ""), 128),
             "hidden": {_id(k): _text(v, 128) for k, v in hidden.items()},
         }
-    return {
+    message_style = raw.get("message_style", "standard")
+    if message_style not in {"standard", "conversation"}:
+        raise ValueError("Invalid message presentation")
+    errors = raw.get("errors", {})
+    if not isinstance(errors, dict) or len(errors) > 16:
+        raise ValueError("Invalid workspace errors")
+    errors = {_id(key): _text(value, 512) for key, value in errors.items()}
+    result = {
         "type": "chat_workspace",
         "width_class": width_class,
         "id": _id(raw.get("id")),
         "title": _text(raw.get("title", "")),
         "state": _text(raw.get("state", ""), 80),
+        "message_style": message_style,
+        "errors": errors,
         "history": history,
         "messages": normalize_messages(raw.get("messages", [])),
         "empty_message": _text(raw.get("empty_message", ""), 1024),
@@ -283,6 +386,10 @@ def render_chat_workspace(raw: dict, width_class: str) -> dict:
         "refresh": refresh,
     }
 
+    if len(json.dumps(result).encode()) > 131072:
+        raise ValueError("Workspace payload limit")
+    return result
+
 
 def resolve_chat_links(block: dict, prefix: str) -> None:
     for item in block["history"]:
@@ -291,3 +398,30 @@ def resolve_chat_links(block: dict, prefix: str) -> None:
     for value in (block["refresh"], block["search"], block["composer"]["navigate"]):
         if value:
             value["href"] = prefix_internal_href(prefix, value["href"])
+
+    def resolve_action(action):
+        if action and action["redirect"]:
+            action["redirect"] = prefix_internal_href(prefix, action["redirect"])
+        if action and action["navigate"]:
+            action["navigate"]["href"] = prefix_internal_href(
+                prefix, action["navigate"]["href"]
+            )
+
+    for item in block["history"]:
+        for action in item["actions"]:
+            resolve_action(action)
+    resolve_action(block["composer"])
+    if block["context"]:
+        for section in block["context"]["sections"]:
+            for item in section["items"]:
+                if item.get("href"):
+                    item["href"] = prefix_internal_href(prefix, item["href"])
+    composer = block["composer"]
+    resolve_action(composer["primary"])
+    if composer["menu"]:
+        for item in composer["menu"]["items"]:
+            if isinstance(item, dict):
+                resolve_action(item["action"])
+    for chip in composer["chips"]:
+        resolve_action(chip["edit"])
+        resolve_action(chip["remove"])

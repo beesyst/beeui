@@ -6625,143 +6625,63 @@ SCA is not required if dependencies do not change.
 
 ### Iteration 13.17 — Interactive Chat Composer and Context Attachments MVP
 
-**Status:** PLANNED
+**Status:** DONE
 
 #### Goal
 
-Extend the existing generic `chat_workspace` with a functional, product-neutral chat composer, interactive context menu, safe attachment presentation and continuous conversation behavior.
-
-Reuse canonical Tabler components and existing BeeUI protected-action transport.
-
-#### Depends on
-
-- Existing `chat_workspace` block.
-- Existing BeeUI session, role and CSRF contracts.
-- Existing protected action and adapter contracts.
-- Package-local Tabler components and assets.
-- Paired BeeAgent BS-19.
-
-#### Change level
-
-`security-sensitive`
+Extend the existing product-neutral `chat_workspace` into an interactive, continuous conversation interface with protected context actions and bounded file attachment presentation.
 
 #### Scope
 
-**1. Interactive composer**
-
-- Extend the existing `chat_workspace` without replacing its renderer.
-- Keep a compact persistent message textarea.
-- Add an icon-only `+` button immediately to the left of the composer.
-- Add a bounded dropdown with product-supplied menu actions.
-- Support controlled action identifiers, labels, icons and bounded arguments.
-- Use existing protected BeeUI action transport.
-- Keep primary send/execute action and optional effort selector on the right.
-- Keep textarea enabled when a conversation is complete.
-- Preserve Enter/Shift+Enter and IME behavior.
-- Support pending, success, validation, refusal and failure states.
-
-**2. Context attachment presentation**
-
-- Display compact context chips above the composer.
-- Support safe removal and replacement actions supplied by the product.
-- Provide reusable contextual modal/offcanvas forms.
-- Support bounded text, URL, select and secret-input presentation.
-- Support bounded file selection and upload handoff to product-owned protected endpoints.
-- Never render secret field values back into normal adapter read-models.
-- Keep file processing, storage and authorization in the embedding product.
-- Do not make BeeUI an attachment database or credential manager.
-
-**3. Tabler presentation**
-
-Reuse the existing local Tabler implementation:
-
-- `chat`
-- `chat-bubbles`
-- `chat-bubble`
-- `chat-bubble-me`
-- `card-footer`
-- `input-group input-group-flat`
-- `dropdown`
-- `dropdown-menu`
-- `dropdown-item`
-- `btn`
-- `btn-icon`
-- `form-control`
-- `form-select`
-- `modal` / `offcanvas`
-
-Use the existing package-local icons, styles and JavaScript.
-
-Reference:
-
-- `docs/vendor/tabler/`
-- Tabler Chat example supplied for the integration.
-
-**4. Security and compatibility**
-
-- Preserve adapter-only product semantics.
-- Preserve existing message/history/context contracts where compatible.
-- Allow only bounded, explicitly declared interactive menu actions.
-- Route all mutations through protected product callbacks/endpoints.
-- Preserve role, session and CSRF enforcement.
-- Validate action IDs, internal destinations, field sizes and attachment metadata.
-- Escape untrusted content.
-- Preserve route-prefix and embedded-mount behavior.
-- Maintain safe polling and incremental message rendering.
-- Support RU/EN, light/dark and responsive layouts.
+- Reuse the existing chat history, messages, composer, context, polling and protected-action transport.
+- Add a functional `+` dropdown to the left of the message composer.
+- Support bounded declarative menu actions and reusable contextual forms.
+- Display removable context chips above the composer.
+- Support text, URL, select, secret-entry and native file-selection controls.
+- Preserve a persistent message composer after completed operations.
+- Support an optional compact mode/effort selector and primary action on the right.
+- Use existing package-local Tabler components and assets.
+- Preserve existing route-prefix, embedded, RU/EN, light/dark and responsive behavior.
+- Keep all product semantics, authorization, attachment processing and storage in the embedding product.
 
 #### Excluded
 
-- BeeScan-specific Target, Scope, Cookie or scanning logic.
-- Credential storage, document parsing or artifact persistence.
-- AI runtime and conversation database.
-- Arbitrary JavaScript/HTML from adapters.
-- External action URLs or unrestricted upload destinations.
-- React/Vue or a new frontend build chain.
-- Copying Tabler demo telemetry, PostHog, remote assets or external fonts.
-- Unrelated table, dashboard, navigation or ROP redesign.
+- Product-specific Target, Scope, Cookie or scanning rules.
+- AI runtime, Case storage, credential storage or file processing.
+- Arbitrary action URLs, unrestricted uploads or adapter-supplied JavaScript.
+- React/Vue, new frontend framework, Dropzone dependency or remote assets.
+- Unrelated dashboard, table or navigation changes.
 
 #### Deliverable
 
-`Product Adapter → Generic Interactive Chat + Context Menu + Protected Actions + Safe Attachment Presentation`
+`Product Adapter → Interactive Chat + Context Menu + Protected Forms + Safe Attachment Presentation`
 
 #### Acceptance criteria
 
-- The `+` menu works by mouse, touch and keyboard.
-- Menu entries invoke only explicitly approved product actions.
-- A product can add and remove context items without reimplementing the chat UI.
-- A product can provide controlled file selection and upload handling.
-- A secret input is never echoed in rendered HTML, polling responses or action results.
-- The primary message composer remains enabled after a completed operation.
-- Enter sends and Shift+Enter inserts a newline.
-- Quick/Standard/Deep-style selection is supported as a generic bounded field.
-- Successful protected actions preserve the selected conversation.
-- Unauthorized actions cannot invoke product callbacks.
-- Invalid CSRF, malformed fields and unsafe URLs fail closed.
-- Existing `chat_workspace` consumers remain compatible.
-- Desktop/mobile, RU/EN and light/dark layouts remain usable.
-- No remote telemetry/assets or product-specific imports are introduced.
+- The `+` menu works with mouse, keyboard and touch.
+- Context can be added, replaced and removed through authorized product callbacks.
+- Secret values are never reflected into rendered HTML, read-models or polling responses.
+- File selection submits only through an approved same-origin protected upload handler.
+- Message submission remains available after a completed operation.
+- Enter/Shift+Enter and IME behavior remain correct.
+- A compact mode selector and primary action work without layout overflow.
+- Invalid CSRF, unsupported actions, unsafe links and malformed data fail closed.
+- Existing chat consumers remain backward-compatible.
 - Paired BeeAgent BS-19 completes real browser acceptance.
 
 #### Checks
 
-- Chat block normalization and rendering tests.
-- Protected action dispatch and CSRF tests.
-- Context chip add/remove and modal tests.
-- Attachment presentation and malformed upload tests.
-- XSS, unsafe links and secret reflection tests.
-- Keyboard, focus, screen-reader and mobile behavior.
-- Route prefix and embedded mount tests.
-- Existing chat, table and protected-action regressions.
-- Full BeeUI pytest, wheel build and asset inspection.
-- Real browser checks in both supported locales and themes.
-- Independent BeeMCP review and hosted CI.
+- Chat normalization, template and JavaScript tests.
+- Protected action, role, session and CSRF tests.
+- Context menu, forms, chips and native upload tests.
+- XSS, unsafe link, secret-reflection and malformed-input tests.
+- Route-prefix, embedded, RU/EN, theme and responsive browser tests.
+- Full pytest, package build and installed-wheel asset inspection.
+- Paired BeeAgent BS-19 E2E, independent review and hosted CI.
 
 #### DoD
 
-BeeUI provides a reusable interactive chat interface with a functional `+` menu, protected contextual actions, attachment presentation and a continuous message composer.
-
-BeeAgent BS-19 can use the component without product-specific HTML templates, duplicated frontend JavaScript or an alternative chat runtime.
+BeeUI provides a reusable interactive chat composer and protected context controls without product-specific logic, a second frontend runtime or new unnecessary dependencies.
 
 ---
 
