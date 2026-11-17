@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.32.0](https://github.com/beesyst/beeui/compare/beeui-v0.31.0...beeui-v0.32.0) (2026-11-17)
+
+
+### Features
+
+* **chat:** add interactive composer and protected context actions ([#139](https://github.com/beesyst/beeui/issues/139)) ([6425aa2](https://github.com/beesyst/beeui/commit/6425aa27d82a0c117845e5f7a477cc79de223d45))
+
 ## [0.31.0](https://github.com/beesyst/beeui/compare/beeui-v0.30.0...beeui-v0.31.0) (2026-11-11)
 
 
