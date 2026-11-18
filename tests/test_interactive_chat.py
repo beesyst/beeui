@@ -327,3 +327,67 @@ def test_rejects_unbounded_optional_presentation(key, value):
     source[key] = value
     with pytest.raises(ValueError):
         render_chat_workspace(source, "col-12")
+
+
+def test_message_actions_details_and_navigation_render_safely():
+    source = payload()
+    source["messages"] = [
+        {
+            "id": "milestone",
+            "sender": "host",
+            "text": "Observed result",
+            "details": "<script>private()</script>",
+            "details_label": "Details",
+            "links": [{"label": "Earlier", "href": "/cases?message_page=0"}],
+            "actions": [
+                {
+                    "action_id": "investigate",
+                    "label": label,
+                    "disabled": disabled,
+                    "args": {"source": "observed"},
+                    "fields": [],
+                    "navigate": {"href": "/cases", "param": "id", "result_key": "id"},
+                }
+                for label, disabled in (
+                    ("First", False),
+                    ("Second", False),
+                    ("Third", True),
+                )
+            ],
+        }
+    ]
+    block = render_chat_workspace(source, "col-12")
+    resolve_chat_links(block, "/embed")
+    message = block["messages"][0]
+    assert len(message["actions"]) == 3
+    assert message["links"][0]["href"] == "/embed/cases?message_page=0"
+    assert message["actions"][0]["navigate"]["href"] == "/embed/cases"
+    env = Environment(
+        loader=FileSystemLoader("src/beeui_module/web/templates"),
+        autoescape=select_autoescape(),
+    )
+    html = env.get_template("components/layout/chat_workspace.html").render(block=block)
+    assert html.count("data-chat-message-action") == 3
+    assert "<script>private()</script>" not in html
+    assert "&lt;script&gt;private()&lt;/script&gt;" in html
+    assert 'href="/embed/cases?message_page=0"' in html
+    source["messages"][0]["actions"].append(source["messages"][0]["actions"][0])
+    with pytest.raises(ValueError):
+        render_chat_workspace(source, "col-12")
+
+
+@pytest.mark.parametrize(
+    "href", ["//foreign", "https://foreign", "/../escape", "javascript:alert(1)"]
+)
+def test_message_navigation_refuses_unsafe_links(href):
+    source = payload()
+    source["messages"] = [
+        {
+            "id": "message",
+            "sender": "host",
+            "text": "History",
+            "links": [{"label": "History", "href": href}],
+        }
+    ]
+    with pytest.raises(ValueError):
+        render_chat_workspace(source, "col-12")
