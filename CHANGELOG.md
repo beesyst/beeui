@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.32.1](https://github.com/beesyst/beeui/compare/beeui-v0.32.0...beeui-v0.32.1) (2026-11-18)
+
+
+### Bug Fixes
+
+* **chat:** add bounded investigation message actions, details and links ([#141](https://github.com/beesyst/beeui/issues/141)) ([7157faf](https://github.com/beesyst/beeui/commit/7157faf684065c0f9da9012b473a7703528e1530))
+
 ## [0.32.0](https://github.com/beesyst/beeui/compare/beeui-v0.31.0...beeui-v0.32.0) (2026-11-17)
 
 
