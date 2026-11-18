@@ -58,14 +58,20 @@ def normalize_messages(value: Any) -> list[dict]:
                 "name": _text(item.get("name", "")),
                 "text": _text(item.get("text", ""), 4096),
                 "timestamp": timestamp,
+                "details": _text(item.get("details", ""), 4096),
+                "details_label": _text(item.get("details_label", "")),
+                "links": [
+                    {"label": _text(link.get("label")), "href": _link(link.get("href"))}
+                    for link in _items(item.get("links", []), 8)
+                ],
                 "status": _text(item.get("status", ""), 80),
                 "actions": [
                     _composer(action, controls=False)
-                    for action in _items(item.get("actions", []), 2)
+                    for action in _items(item.get("actions", []), 3)
                 ],
             }
         )
-    if sum(len(item["text"]) for item in messages) > 32768:
+    if sum(len(item["text"]) + len(item["details"]) for item in messages) > 32768:
         raise ValueError("Workspace message limit")
     return messages
 
@@ -410,6 +416,11 @@ def resolve_chat_links(block: dict, prefix: str) -> None:
     for item in block["history"]:
         for action in item["actions"]:
             resolve_action(action)
+    for message in block["messages"]:
+        for action in message["actions"]:
+            resolve_action(action)
+        for link in message["links"]:
+            link["href"] = prefix_internal_href(prefix, link["href"])
     resolve_action(block["composer"])
     if block["context"]:
         for section in block["context"]["sections"]:

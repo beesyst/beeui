@@ -1408,19 +1408,36 @@
         if (item) contextAction(item.action, item.kind);
       });
     });
-    workspace.querySelectorAll("[data-chat-action]").forEach(function (button) {
-      button.addEventListener("click", function () { contextAction(JSON.parse(button.getAttribute("data-chat-action")), "form"); });
+    workspace.addEventListener("click", function (event) {
+      var button = event.target.closest("[data-chat-action]");
+      if (!button || !workspace.contains(button) || button.disabled) return;
+      var action = JSON.parse(button.getAttribute("data-chat-action"));
+      contextAction(action, button.hasAttribute("data-chat-message-action") && !action.fields.length ? "action" : "form");
     });
     function renderMessages(messages) {
       if (!Array.isArray(messages) || messages.length > 100) throw new Error("Invalid messages");
       var seen = new Set(), total = 0;
       messages.forEach(function (message) {
         if (!message || typeof message.id !== "string" || !message.id || message.id.length > 128 || seen.has(message.id) || !["operator", "host", "assistant"].includes(message.sender) || typeof message.name !== "string" || message.name.length > 256 || typeof message.text !== "string" || message.text.length > 4096 || typeof message.status !== "string" || message.status.length > 80 || typeof message.timestamp !== "string" || message.timestamp.length > 40) throw new Error("Invalid message");
-        seen.add(message.id); total += message.text.length;
+        if (message.details != null && (typeof message.details !== "string" || message.details.length > 4096 || typeof message.details_label !== "string" || message.details_label.length > 256)) throw new Error("Invalid message details");
+        if (message.links != null && (!Array.isArray(message.links) || message.links.length > 8)) throw new Error("Invalid message links");
+        (message.links || []).forEach(function (link) { if (!link || typeof link.label !== "string" || link.label.length > 256) throw new Error("Invalid message link"); safeUrl(link.href); });
+        if (message.actions != null && (!Array.isArray(message.actions) || message.actions.length > 3)) throw new Error("Invalid message actions");
+        (message.actions || []).forEach(function (action) {
+          if (!action || typeof action.action_id !== "string" || !/^[A-Za-z][A-Za-z0-9_-]{0,63}$/.test(action.action_id) || typeof action.label !== "string" || action.label.length > 256 || typeof action.disabled !== "boolean" || !action.args || typeof action.args !== "object" || Array.isArray(action.args) || Object.keys(action.args).length > 10 || !Array.isArray(action.fields) || action.fields.length > 8 || JSON.stringify(action).length > 32768) throw new Error("Invalid message action");
+          Object.keys(action.args).forEach(function (key) { if (!/^[A-Za-z][A-Za-z0-9_-]{0,63}$/.test(key) || typeof action.args[key] !== "string" || action.args[key].length > 4096) throw new Error("Invalid message argument"); });
+        });
+        seen.add(message.id); total += message.text.length + (message.details || "").length;
       });
       if (total > 32768) throw new Error("Message limit");
       var next = JSON.stringify(messages);
       if (next === fingerprint) return;
+      var expandedDetails = new Set();
+      workspace.querySelectorAll("[data-message-id] details[open]").forEach(function (node) { expandedDetails.add(node.closest("[data-message-id]").getAttribute("data-message-id")); });
+      function messageUrl(href) {
+        var url = safeUrl(href), prefix = (document.body.getAttribute("data-beeui-route-prefix") || "").replace(/\/$/, "");
+        return prefix && url.pathname !== prefix && url.pathname.indexOf(prefix + "/") !== 0 ? safeUrl(prefix + href) : url;
+      }
       var nodes = messages.map(function (message) {
         var bubble = document.createElement("div"), title = document.createElement("div"), author = document.createElement("span"), body = document.createElement("div");
         bubble.className = "chat-bubble" + (message.sender === "operator" ? " chat-bubble-me" : "");
@@ -1430,7 +1447,11 @@
         if (message.timestamp) { var date = document.createElement("time"); date.className = "chat-bubble-date"; date.setAttribute("datetime", message.timestamp); date.textContent = message.timestamp; localTime(date); title.append(date); }
         if (message.status && !conversational) { var status = document.createElement("span"); status.className = "badge bg-secondary-lt"; status.textContent = message.status; title.append(status); }
         body.className = "chat-bubble-body"; body.textContent = message.text;
-        bubble.append(title, body); return bubble;
+        bubble.append(title, body);
+        if (message.details) { var details = document.createElement("details"), summary = document.createElement("summary"), detail = document.createElement("div"); details.className = "mt-2"; details.setAttribute("data-chat-message-details", ""); details.open = expandedDetails.has(message.id); summary.textContent = message.details_label; detail.className = "small text-secondary text-break"; detail.textContent = message.details; details.append(summary, detail); bubble.append(details); }
+        if (message.links && message.links.length) { var navigation = document.createElement("nav"); navigation.className = "d-flex flex-wrap gap-2 mt-2"; navigation.setAttribute("aria-label", message.text); message.links.forEach(function (link) { var a = document.createElement("a"); a.href = messageUrl(link.href).href; a.textContent = link.label; navigation.append(a); }); bubble.append(navigation); }
+        if (message.actions && message.actions.length) { var actions = document.createElement("div"); actions.className = "d-flex flex-wrap gap-2 mt-2"; message.actions.forEach(function (action) { var button = document.createElement("button"); button.type = "button"; button.className = "btn btn-sm"; button.textContent = action.label; button.disabled = action.disabled; button.setAttribute("data-chat-message-action", ""); var bound = Object.assign({}, action); if (action.redirect) bound.redirect = messageUrl(action.redirect).pathname + messageUrl(action.redirect).search + messageUrl(action.redirect).hash; if (action.navigate) bound.navigate = Object.assign({}, action.navigate, { href: messageUrl(action.navigate.href).pathname + messageUrl(action.navigate.href).search + messageUrl(action.navigate.href).hash }); button.setAttribute("data-chat-action", JSON.stringify(bound)); actions.append(button); }); bubble.append(actions); }
+        return bubble;
       });
       var scroll = workspace.querySelector(".beeui-chat-messages");
       var nearEnd = scroll.scrollHeight - scroll.scrollTop - scroll.clientHeight < 80;
