@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.33.0](https://github.com/beesyst/beeui/compare/beeui-v0.32.1...beeui-v0.33.0) (2026-11-19)
+
+
+### Features
+
+* **chat:** add compact execution cards and shared inspector ([#144](https://github.com/beesyst/beeui/issues/144)) ([6629e08](https://github.com/beesyst/beeui/commit/6629e082851e5823f909ff0f7d6c06391fa64f43))
+
 ## [0.32.1](https://github.com/beesyst/beeui/compare/beeui-v0.32.0...beeui-v0.32.1) (2026-11-18)
 
 
