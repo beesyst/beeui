@@ -6699,9 +6699,9 @@ Deliver a complete reusable UI capability without introducing a new frontend fra
 
 #### Depends on
 
-- BeeUI 13.8 generic detail renderer.
+- BeeUI 13.08 generic detail renderer.
 - Existing `chat_workspace`, polling and Tabler primitives.
-- Companion BeeAgent BS-22 product integration.
+- Companion BeeAgent BS-21 product integration.
 
 #### Change level
 
@@ -6771,7 +6771,7 @@ Escalate to `security-sensitive` if authentication, protected actions, artifact 
 
 BeeUI can display a real product-supplied execution timeline as compact interactive cards with one shared technical inspector, while preserving the existing chat, authentication transport and polling behavior.
 
-Companion BeeAgent BS-22 integration is independently verified.
+Companion BeeAgent BS-21 integration is independently verified.
 
 ---
 
