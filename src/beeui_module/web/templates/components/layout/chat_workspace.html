@@ -1,3 +1,36 @@
+{% set ru = locale == 'ru' %}
+{% set inspector_label = 'Инспектор' if ru else 'Inspector' %}
+{% set close_label = 'Закрыть' if ru else 'Close' %}
+{% set history_label = block.labels.history or ('История' if ru else 'History') %}
+{% set tone_icons = {'green': 'check', 'blue': 'loader', 'yellow': 'alert-triangle', 'red': 'x', 'secondary': 'circle-dashed'} %}
+{% macro execution_card(message=none, result=false) %}
+{% set card = (message.result if result else message.execution) if message else none %}
+{% set tone = card.tone if card else 'secondary' %}
+{% if result %}
+<a class="card card-link beeui-result-card text-reset" data-message-id="{{ message.id if message else '' }}"{% if card %} href="{{ card.href }}"{% endif %}>
+{% else %}
+<button class="card card-link beeui-execution-card text-reset text-start" type="button" data-message-id="{{ message.id if message else '' }}" aria-haspopup="dialog" data-chat-inspect="{{ (card.inspector_href or '') if card else '' }}" data-bs-toggle="tooltip" data-bs-placement="top"{% if message %} data-bs-title="{{ message.status }}{% if card.outcome and card.outcome != message.status %} · {{ card.outcome }}{% endif %}" aria-label="{{ message.name }} · {{ message.status }}{% if card.outcome and card.outcome != message.status %} · {{ card.outcome }}{% endif %}"{% endif %}{% if not card or not card.inspector_href %} disabled{% endif %}>
+{% endif %}
+  <span class="card-body p-2 d-flex gap-2 w-100">
+    <span class="avatar avatar-sm bg-{{ tone }}-lt" data-card-tone><i class="ti ti-{{ tone_icons[tone] }}" data-card-icon aria-hidden="true"></i></span>
+    <span class="flex-fill min-width-0">
+      <span class="d-block fw-semibold" data-execution-name>{{ message.name if message else '' }}</span>
+      {% if result %}
+      <span class="badge bg-{{ tone }}-lt text-wrap" data-execution-status>{{ message.status if message else '' }}</span>
+      <span class="small text-secondary" data-execution-outcome{% if not card or not card.outcome %} hidden{% endif %}>{{ card.outcome if card else '' }}</span>
+      {% endif %}
+      <span class="beeui-card-meta small text-secondary" data-execution-metrics{% if not card or not card.metrics %} hidden{% endif %}>
+        {% if card %}{% for metric in card.metrics %}<span>{{ metric.label }}: {{ metric.value }}</span>{% endfor %}{% endif %}
+      </span>
+      <span class="beeui-card-meta small text-secondary">
+        <time data-execution-time data-chat-local-time datetime="{{ message.timestamp if message else '' }}"{% if not message or not message.timestamp %} hidden{% endif %}>{{ message.timestamp if message else '' }}</time>
+        <span data-execution-duration{% if not card or card.duration_ms is none %} hidden{% endif %}>{% if card and card.duration_ms is not none %}{{ (card.duration_ms / 1000) | round(2) }} {{ 'с' if ru else 's' }}{% endif %}</span>
+      </span>
+      <progress class="progress w-100 mt-1" aria-label="{{ 'Ход выполнения' if ru else 'Execution progress' }}" data-execution-progress{% if not card or card.progress is none %} hidden{% elif card.progress.total is not none %} max="{{ card.progress.total }}" value="{{ card.progress.completed }}"{% endif %}></progress>
+    </span>
+  </span>
+{% if result %}</a>{% else %}</button>{% endif %}
+{% endmacro %}
 {% macro field_input(field, prefix="") %}
 <label class="form-label{% if field.type in ['textarea', 'target', 'segmented', 'select'] %} visually-hidden{% endif %}" for="{{ block.id }}-{{ prefix }}{{ field.name }}">{{ field.label }}</label>
 {% if field.type == 'textarea' %}<textarea id="{{ block.id }}-{{ prefix }}{{ field.name }}" name="{{ field.name }}" class="form-control" rows="2" placeholder="{{ field.label }}" maxlength="{{ field.max_length }}"{% if field.required %} required{% endif %}{% if field.readonly %} readonly{% endif %}>{{ field.value }}</textarea>
@@ -18,13 +51,14 @@
 {% endmacro %}
 <div class="card beeui-chat-workspace{% if block.message_style == 'conversation' %} beeui-chat-conversation{% endif %}" id="{{ block.id }}" data-beeui-chat data-chat-panel="conversation" data-refresh='{{ block.refresh | tojson }}' data-composer='{{ block.composer | tojson }}' data-labels='{{ block.labels | tojson }}' data-chat-message-style="{{ block.message_style }}" data-chat-errors='{{ block.errors | tojson }}'>
   <nav class="beeui-chat-views btn-group p-2" aria-label="{{ block.title }}">
-    <button class="btn" type="button" data-chat-panel-target="history" aria-controls="{{ block.id }}-history" aria-pressed="false">{{ block.labels.history }}</button>
+    <button class="btn d-lg-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#{{ block.id }}-history" aria-controls="{{ block.id }}-history">{{ history_label }}</button>
     <button class="btn" type="button" data-chat-panel-target="conversation" aria-controls="{{ block.id }}-conversation" aria-pressed="true">{{ block.labels.conversation or block.title }}</button>
     {% if block.context %}<button class="btn" type="button" data-chat-panel-target="context" aria-controls="{{ block.id }}-context" aria-pressed="false">{{ block.labels.context or block.context.title }}</button>{% endif %}
   </nav>
   <div class="beeui-chat-panels{% if block.context %} beeui-chat-has-context{% endif %}">
-    <aside id="{{ block.id }}-history" class="beeui-chat-sidebar border-end p-3" aria-label="{{ block.labels.history }}">
-      <h3 class="card-title mb-3">{{ block.labels.history }}</h3>
+    <aside id="{{ block.id }}-history" class="offcanvas-lg offcanvas-start beeui-chat-sidebar border-end" tabindex="-1" aria-labelledby="{{ block.id }}-history-title">
+      <div class="offcanvas-header"><h3 class="offcanvas-title" id="{{ block.id }}-history-title">{{ history_label }}</h3><button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#{{ block.id }}-history" aria-label="{{ close_label }}"></button></div>
+      <div class="offcanvas-body p-3">
       <a class="btn btn-primary w-100 mb-3" href="{{ block.new_href }}">{{ block.labels.new }}</a>
       {% if block.search %}
       <form method="get" action="{{ block.search.href }}" role="search" class="mb-3" autocomplete="off">
@@ -34,15 +68,16 @@
       </form>
       {% endif %}
       {% if block.history_notice %}<p class="small text-secondary" role="status">{{ block.history_notice }}</p>{% endif %}
-      <nav class="list-group list-group-flush beeui-chat-history" aria-label="{{ block.labels.history }}">
+      <nav class="list-group list-group-flush beeui-chat-history" aria-label="{{ history_label }}">
         {% for item in block.history %}<div class="list-group-item d-flex align-items-center gap-1{% if item.active %} active{% endif %}" data-history-id="{{ item.id }}"><a class="flex-fill text-reset text-decoration-none min-width-0" href="{{ item.href }}"{% if item.active %} aria-current="page"{% endif %}><div class="text-break">{{ item.title }}</div><span class="badge bg-secondary-lt" data-history-status>{{ item.status }}</span></a>{% if item.actions %}<div class="dropdown"><button type="button" class="btn btn-sm btn-icon beeui-chat-history-menu" data-bs-toggle="dropdown" aria-expanded="false" aria-label="{{ item.title }}"><i class="ti ti-dots" aria-hidden="true"></i></button><div class="dropdown-menu dropdown-menu-end" role="menu">{% for action in item.actions %}<button type="button" role="menuitem" class="dropdown-item" data-chat-action='{{ action | tojson }}'{% if action.disabled %} disabled{% endif %}>{{ action.label }}</button>{% endfor %}</div></div>{% endif %}</div>{% endfor %}
       </nav>
+      </div>
     </aside>
     <section id="{{ block.id }}-conversation" class="beeui-chat-main" aria-label="{{ block.title }}">
-      <div class="card-header"><h3 class="card-title text-break">{{ block.title }}</h3><span class="badge bg-secondary-lt ms-auto" data-chat-state>{{ block.state }}</span></div>
+      <div class="card-header"><button type="button" class="btn btn-sm d-none d-lg-inline-flex" data-chat-history-toggle aria-controls="{{ block.id }}-history" aria-expanded="true"><i class="ti ti-layout-sidebar me-1" aria-hidden="true"></i>{{ history_label }}</button><h3 class="card-title text-break">{{ block.title }}</h3><span class="badge bg-secondary-lt ms-auto" data-chat-state>{{ block.state }}</span></div>
       <div class="card-body beeui-chat-messages chat" tabindex="0" aria-label="{{ block.title }}">
         <div class="chat-bubbles" data-chat-messages aria-live="polite" aria-relevant="additions text">
-          {% for message in block.messages %}<div class="chat-bubble{% if message.sender == 'operator' %} chat-bubble-me{% endif %}" data-message-id="{{ message.id }}"><div class="chat-bubble-title">{% if block.message_style == 'standard' %}<span class="chat-bubble-author">{{ message.name }}</span>{% endif %}{% if message.timestamp %}<time class="chat-bubble-date" datetime="{{ message.timestamp }}"{% if block.message_style == 'conversation' %} data-chat-local-time{% endif %}>{{ message.timestamp }}</time>{% endif %}{% if message.status and block.message_style == 'standard' %}<span class="badge bg-secondary-lt">{{ message.status }}</span>{% endif %}</div><div class="chat-bubble-body">{{ message.text }}</div>{% if message.details %}<details class="mt-2" data-chat-message-details><summary>{{ message.details_label }}</summary><div class="small text-secondary text-break">{{ message.details }}</div></details>{% endif %}{% if message.links %}<nav class="d-flex flex-wrap gap-2 mt-2" aria-label="{{ message.text }}">{% for link in message.links %}<a href="{{ link.href }}">{{ link.label }}</a>{% endfor %}</nav>{% endif %}{% if message.actions %}<div class="d-flex flex-wrap gap-2 mt-2">{% for action in message.actions %}<button type="button" class="btn btn-sm" data-chat-message-action data-chat-action='{{ action | tojson }}'{% if action.disabled %} disabled{% endif %}>{{ action.label }}</button>{% endfor %}</div>{% endif %}</div>{% else %}<p class="text-secondary">{{ block.empty_message }}</p>{% endfor %}
+          {% for message in block.messages %}{% if message.kind == "execution" %}{{ execution_card(message) }}{% elif message.kind == "result" %}{{ execution_card(message, true) }}{% else %}<div class="chat-bubble{% if message.sender == 'operator' %} chat-bubble-me{% endif %}" data-message-id="{{ message.id }}"><div class="chat-bubble-title">{% if block.message_style == 'standard' %}<span class="chat-bubble-author">{{ message.name }}</span>{% endif %}{% if message.timestamp %}<time class="chat-bubble-date" datetime="{{ message.timestamp }}"{% if block.message_style == 'conversation' %} data-chat-local-time{% endif %}>{{ message.timestamp }}</time>{% endif %}{% if message.status and block.message_style == 'standard' %}<span class="badge bg-secondary-lt">{{ message.status }}</span>{% endif %}</div><div class="chat-bubble-body">{{ message.text }}</div>{% if message.details %}<details class="mt-2" data-chat-message-details><summary>{{ message.details_label }}</summary><div class="small text-secondary text-break">{{ message.details }}</div></details>{% endif %}{% if message.links %}<nav class="d-flex flex-wrap gap-2 mt-2" aria-label="{{ message.text }}">{% for link in message.links %}<a href="{{ link.href }}">{{ link.label }}</a>{% endfor %}</nav>{% endif %}{% if message.actions %}<div class="d-flex flex-wrap gap-2 mt-2">{% for action in message.actions %}<button type="button" class="btn btn-sm" data-chat-message-action data-chat-action='{{ action | tojson }}'{% if action.disabled %} disabled{% endif %}>{{ action.label }}</button>{% endfor %}</div>{% endif %}</div>{% endif %}{% else %}<p class="text-secondary">{{ block.empty_message }}</p>{% endfor %}
         </div>
       </div>
       <div class="card-footer beeui-chat-composer">
@@ -58,7 +93,7 @@
               {{ menu_trigger() }}
               <div class="d-flex align-items-center gap-2 ms-auto min-width-0">
                 {% for field in block.composer.fields if field.type in ['segmented', 'select'] %}<div>{{ field_input(field) }}</div>{% endfor %}
-                {% if block.composer.primary %}<button class="btn btn-sm" type="button" data-chat-action='{{ block.composer.primary | tojson }}'{% if block.composer.primary.disabled %} disabled{% endif %}>{{ block.composer.primary.label }}</button>{% endif %}
+                {% if block.composer.primary %}<button class="btn btn-sm" type="button" data-chat-primary data-chat-action='{{ block.composer.primary | tojson }}'{% if block.composer.primary.disabled %} disabled{% endif %}>{{ block.composer.primary.label }}</button>{% endif %}
                 <button id="{{ block.id }}-submit" class="btn btn-primary btn-icon rounded-circle" type="submit" aria-label="{{ block.composer.label }}" title="{{ block.composer.label }}"{% if block.composer.disabled %} disabled{% endif %}><i class="ti ti-arrow-up fs-3" aria-hidden="true"></i></button>
               </div>
             </div>
@@ -75,7 +110,7 @@
           <div class="d-flex gap-2 align-items-end">
             {{ menu_trigger() }}
             <div class="flex-fill min-width-0">{% for field in block.composer.fields if field.placement == 'inline' %}{{ field_input(field) }}{% endfor %}</div>
-            {% if block.composer.primary %}<button class="btn" type="button" data-chat-action='{{ block.composer.primary | tojson }}'{% if block.composer.primary.disabled %} disabled{% endif %}>{{ block.composer.primary.label }}</button>{% endif %}
+            {% if block.composer.primary %}<button class="btn" type="button" data-chat-primary data-chat-action='{{ block.composer.primary | tojson }}'{% if block.composer.primary.disabled %} disabled{% endif %}>{{ block.composer.primary.label }}</button>{% endif %}
             <button id="{{ block.id }}-submit" class="btn btn-primary" type="submit"{% if block.composer.disabled %} disabled{% endif %}>{{ block.composer.label }}</button>
           </div>
           {% endif %}
@@ -90,15 +125,54 @@
       <h3 class="card-title">{{ block.context.title }}</h3>
       <div data-chat-context>
         {% for section in block.context.sections %}
-        <section class="mb-3" data-context-section="{{ section.id }}"><h4 class="subheader mb-2">{{ section.title }}</h4>
+        <section class="mb-3" data-context-section="{{ section.id }}"{% if section.inline %} data-context-inline{% endif %}>{% if section.title %}<h4 class="subheader {{ 'mb-0' if section.inline else 'mb-2' }}">{{ section.title }}</h4>{% endif %}
           {% for item in section['items'] %}
-          {% if item.detail %}<details class="beeui-chat-context-item" data-context-id="{{ item.id }}"><summary><span class="text-secondary small d-block">{{ item.label }}</span>{% if item.href %}<a href="{{ item.href }}">{{ item.value }}</a>{% else %}<span>{{ item.value }}</span>{% endif %}</summary><p class="small mt-2 mb-0 text-secondary">{{ item.detail }}</p></details>
-          {% else %}<div class="beeui-chat-context-item" data-context-id="{{ item.id }}"><span class="text-secondary small d-block">{{ item.label }}</span>{% if item.href %}<a href="{{ item.href }}">{{ item.value }}</a>{% else %}<span>{{ item.value }}</span>{% endif %}</div>{% endif %}
+          {% if item.focus_primary %}
+          {% if block.composer.primary and not block.composer.primary.disabled %}
+          <div class="beeui-chat-context-item" data-context-id="{{ item.id }}"><span class="text-secondary small d-block">{{ item.label }}</span><button class="btn btn-sm" type="button" data-chat-focus-primary>{{ item.value }}</button></div>
+          {% endif %}
+          {% elif item.detail %}<details class="beeui-chat-context-item" data-context-id="{{ item.id }}"><summary><span class="text-secondary small d-block">{{ item.label }}</span>{% if item.href %}<a href="{{ item.href }}">{{ item.value }}</a>{% else %}<span>{{ item.value }}</span>{% endif %}</summary><p class="small mt-2 mb-0 text-secondary">{{ item.detail }}</p></details>
+          {% else %}<div class="beeui-chat-context-item" data-context-id="{{ item.id }}">{% if item.tone %}<span class="status-dot bg-{{ item.tone }}" aria-hidden="true"></span>{% endif %}<span class="text-secondary small d-block">{{ item.label }}</span>{% if item.href %}<a href="{{ item.href }}">{{ item.value }}</a>{% else %}<span>{{ item.value }}</span>{% endif %}</div>{% endif %}
           {% endfor %}
         </section>
         {% endfor %}
       </div>
     </aside>
     {% endif %}
+  </div>
+  <template data-chat-execution-template>{{ execution_card() }}</template>
+  <template data-chat-result-template>{{ execution_card(result=true) }}</template>
+  <div class="modal modal-blur" tabindex="-1" aria-labelledby="{{ block.id }}-inspector-title" data-chat-inspector data-loading="{{ 'Загрузка…' if ru else 'Loading…' }}" data-unavailable="{{ 'Недоступно' if ru else 'Unavailable' }}" data-duration-unit="{{ 'с' if ru else 's' }}" data-copy-label="{{ 'Скопировать' if ru else 'Copy' }}" data-copied-label="{{ 'Скопировано' if ru else 'Copied' }}">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header"><h3 class="modal-title text-break" id="{{ block.id }}-inspector-title" data-inspector-title>{{ inspector_label }}</h3><button class="btn-close" type="button" data-bs-dismiss="modal" aria-label="{{ close_label }}"></button></div>
+        <div class="modal-body">
+          <p class="text-secondary" data-inspector-notice role="status"></p>
+          {% set sections = {'overview': ('Обзор' if ru else 'Overview'), 'checks': ('Проверки' if ru else 'Checks'), 'events': ('Хронология' if ru else 'Timeline / Events'), 'logs': ('Журнал' if ru else 'Logs'), 'technical': ('Технические детали' if ru else 'Technical Details'), 'connections': ('Связи' if ru else 'Connections')} %}
+          <div class="row g-2">
+            {% for key, title in sections.items() %}
+            <section class="{{ 'col-12 col-lg-6' if key in ('overview', 'checks', 'events', 'logs') else 'col-12' }}" data-inspector-section="{{ key }}" hidden>
+              <div class="card card-sm"><div class="card-body">
+                {% if key in ('technical', 'connections') %}<details><summary class="fw-semibold">{{ title }}</summary>{% else %}<h4 class="mb-2">{{ title }}</h4>{% endif %}
+                <div class="{{ 'vstack gap-2' if key == 'logs' else 'datagrid beeui-inspector-datagrid' }}" data-inspector-rows></div>
+                <p class="mb-0 text-secondary" data-inspector-empty hidden>{{ ('Записи журнала отсутствуют' if ru else 'No log entries available') if key == 'logs' else ('Недоступно' if ru else 'Unavailable') }}</p>
+                {% if key in ('technical', 'connections') %}</details>{% endif %}
+              </div></div>
+            </section>
+            {% if key == 'checks' %}
+            <section class="col-12" data-inspector-table hidden>
+              <div class="card card-sm">
+                <div class="card-header"><h4 class="card-title" id="{{ block.id }}-inspector-checks">{{ 'Детали проверок' if ru else 'Check details' }}</h4></div>
+                <div class="table-responsive">
+                  <table class="table table-sm table-vcenter card-table" aria-labelledby="{{ block.id }}-inspector-checks"><thead></thead><tbody></tbody></table>
+                </div>
+              </div>
+            </section>
+            {% endif %}
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </div>

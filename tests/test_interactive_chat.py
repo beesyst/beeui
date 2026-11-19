@@ -11,7 +11,11 @@ from beeui_module.adapters.envelopes import ok_result
 from beeui_module.artifacts.redaction import redact_value
 from beeui_module.auth.models import UserRole
 from beeui_module.auth.service import AuthService
-from beeui_module.blocks.chat_workspace import render_chat_workspace, resolve_chat_links
+from beeui_module.blocks.chat_workspace import (
+    normalize_messages,
+    render_chat_workspace,
+    resolve_chat_links,
+)
 from beeui_module.web.uploads import register_upload_routes
 
 
@@ -60,6 +64,126 @@ def payload():
             ],
         },
     }
+
+
+def test_execution_cards_render_identity_progress_and_safe_inspector():
+    source = payload()
+    message = {
+        "id": "run-1",
+        "sender": "host",
+        "kind": "execution",
+        "name": "<img src=x>",
+        "status": "RUNNING",
+        "timestamp": "2026-11-19T00:00:00+00:00",
+        "execution": {
+            "tone": "blue",
+            "outcome": "Inconclusive",
+            "duration_ms": 0,
+            "progress": {"completed": 2, "total": 4},
+            "metrics": [{"label": "Count", "value": "<script>"}],
+            "inspector_href": "/api/execution?id=run-1",
+        },
+    }
+    unknown = deepcopy(message)
+    unknown["id"] = "run-2"
+    unknown["execution"]["progress"] = {"completed": None, "total": None}
+    result = {
+        "id": "result-1",
+        "sender": "host",
+        "kind": "result",
+        "name": "Summary",
+        "status": "Partial",
+        "result": {"href": "/results?id=run-1", "tone": "yellow"},
+    }
+    source["messages"] = [
+        {"id": "question", "sender": "operator", "text": "Hi"},
+        message,
+        unknown,
+        result,
+    ]
+    block = render_chat_workspace(source, "col-12")
+    assert "kind" not in block["messages"][0]
+    assert normalize_messages(block["messages"]) == block["messages"]
+    resolve_chat_links(block, "/mount/prefix")
+    env = Environment(
+        loader=FileSystemLoader("src/beeui_module/web/templates"),
+        autoescape=select_autoescape(),
+    )
+    html = env.get_template("components/layout/chat_workspace.html").render(
+        block=block, locale="ru"
+    )
+    assert html.index('data-message-id="question"') < html.index(
+        'data-message-id="run-1"'
+    )
+    assert html.index('data-message-id="run-1"') < html.index('data-message-id="run-2"')
+    assert html.count("data-chat-inspector data-loading=") == 1
+    assert 'data-chat-inspect="/mount/prefix/api/execution?id=run-1"' in html
+    assert 'data-execution-progress max="4" value="2"' in html
+    assert "data-execution-progress></progress>" in html
+    assert 'class="modal-dialog modal-xl' in html
+    assert 'data-message-id="result-1" href="/mount/prefix/results?id=run-1"' in html
+    assert 'type="button" data-message-id="run-1" aria-haspopup="dialog"' in html
+    assert 'data-bs-title="RUNNING · Inconclusive"' in html
+    assert 'aria-label="&lt;img src=x&gt; · RUNNING · Inconclusive"' in html
+    assert html.count("data-execution-status") == 2
+    assert "0.0 с" in html
+    result["result"]["href"] = "//foreign"
+    with pytest.raises(ValueError, match="Invalid workspace link"):
+        normalize_messages([result])
+    assert "<img src=x>" not in html and "<script>" not in html
+
+
+@pytest.mark.parametrize(
+    "execution",
+    [
+        {"tone": []},
+        {"tone": "javascript"},
+        {"inspector_href": "/%2e%2e/other"},
+        {"inspector_href": "//foreign"},
+        {"inspector_href": "https://foreign"},
+        {"duration_ms": True},
+        {"duration_ms": 10**12 + 1},
+        {"progress": {"completed": 1, "total": 0}},
+        {"progress": {"completed": 2, "total": 1}},
+        {"progress": {"total": 1}},
+        {"progress": []},
+        {"metrics": [{"label": "x", "value": "y" * 81}]},
+        {"metrics": [{"label": "x", "value": "y"}] * 9},
+        {"outcome": "x" * 161},
+    ],
+)
+def test_execution_card_rejects_malformed_projection(execution):
+    message = {
+        "id": "run",
+        "sender": "host",
+        "kind": "execution",
+        "name": "Check",
+        "status": "Running",
+        "execution": execution,
+    }
+    with pytest.raises(ValueError):
+        normalize_messages([message])
+
+
+@pytest.mark.parametrize(
+    "timestamp",
+    ["unknown", "2026-02-31", "2026-11-19T24:00:00Z", "2026-11-19x09:00"],
+)
+def test_execution_card_rejects_invalid_timestamps(timestamp):
+    with pytest.raises(ValueError):
+        normalize_messages(
+            [
+                {
+                    "id": "run",
+                    "sender": "host",
+                    "kind": "execution",
+                    "name": "Check",
+                    "status": "Running",
+                    "timestamp": timestamp,
+                    "execution": {},
+                }
+            ]
+        )
 
 
 def test_interactive_secret_nonreflection_and_prefix():
@@ -257,12 +381,14 @@ def test_optional_conversation_presentation_context_links_and_dropdown():
             {
                 "id": "case",
                 "title": "Case",
+                "inline": True,
                 "items": [
                     {
                         "id": "child",
                         "label": "Results",
                         "value": "CANDIDATE",
                         "href": "/cases?id=child",
+                        "tone": "yellow",
                     }
                 ],
             }
@@ -300,6 +426,8 @@ def test_optional_conversation_presentation_context_links_and_dropdown():
         autoescape=select_autoescape(),
     )
     html = env.get_template("components/layout/chat_workspace.html").render(block=block)
+    assert "data-context-inline" in html
+    assert 'class="status-dot bg-yellow"' in html
     assert (
         "data-chat-local-time" in html
         and 'datetime="2026-11-16T12:00:00+00:00"' in html
@@ -308,6 +436,40 @@ def test_optional_conversation_presentation_context_links_and_dropdown():
     assert 'role="menuitemradio"' in html and 'data-chat-select="mode"' in html
     assert '<select id="chat-mode"' not in html
     assert 'href="/embed/cases?id=child"' in html
+    assert "data-chat-focus-primary" not in html
+    context_items = source["context"]["sections"][0]["items"]
+    context_items.append(
+        {
+            "id": "focus",
+            "label": "Next",
+            "value": "Go to primary",
+            "focus_primary": True,
+        }
+    )
+    source["composer"]["primary"] = {
+        "action_id": "prepare",
+        "label": "Primary",
+        "disabled": False,
+    }
+    template = env.get_template("components/layout/chat_workspace.html")
+    with_primary = template.render(block=render_chat_workspace(source, "col-12"))
+    assert "data-chat-primary" in with_primary
+    assert "data-chat-focus-primary" in with_primary
+    source["composer"]["primary"]["disabled"] = True
+    assert "data-chat-focus-primary" not in template.render(
+        block=render_chat_workspace(source, "col-12")
+    )
+    for invalid in (
+        {"focus_primary": "true"},
+        {"href": "/cases"},
+        {"detail": "Details"},
+    ):
+        context_items[-1].update(invalid)
+        with pytest.raises(ValueError, match="Invalid context composer focus"):
+            render_chat_workspace(source, "col-12")
+        context_items[-1].pop(next(iter(invalid)))
+        context_items[-1]["focus_primary"] = True
+    context_items.pop()
     for bad in ("https://foreign", "//foreign", "/../unsafe"):
         source["context"]["sections"][0]["items"][0]["href"] = bad
         with pytest.raises(ValueError):

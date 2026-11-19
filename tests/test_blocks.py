@@ -5890,7 +5890,8 @@ def test_compact_workspace_target_radio_and_disabled_menu():
     assert 'href="#"' not in html and 'type="file"' not in html
     assert html.count('disabled aria-disabled="true"') == 2
     assert "ti-target" in html and "ti-arrow-up" in html and "ti-dots" in html
-    assert "offcanvas" not in html
+    assert 'data-bs-target="#conversation-settings"' not in html
+    assert 'data-bs-target="#conversation-history"' in html
     for change in (
         {"variant": "other"},
         {"menu": {"label": "More", "items": ["x"] * 7}},

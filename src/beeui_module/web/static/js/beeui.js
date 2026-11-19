@@ -1242,7 +1242,7 @@
     var errorLabels = JSON.parse(workspace.getAttribute("data-chat-errors") || "{}");
     var conversational = workspace.getAttribute("data-chat-message-style") === "conversation";
     function localTime(node) {
-      if (!conversational) return;
+      if (!conversational && !node.hasAttribute("data-execution-time")) return;
       var date = new Date(node.getAttribute("datetime"));
       if (!Number.isFinite(date.getTime())) return;
       node.textContent = new Intl.DateTimeFormat(document.documentElement.lang || "en", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(date);
@@ -1254,8 +1254,25 @@
     var form = workspace.querySelector("[data-chat-composer]");
     var submit = form.querySelector("button[type=submit]");
     var notice = workspace.querySelector("[data-chat-notice]");
+    var historyToggle = workspace.querySelector("[data-chat-history-toggle]");
+    var historyHiddenKey = "beeui-chat-history:" + window.location.pathname + ":" + workspace.id;
+    function setHistoryHidden(hidden) {
+      workspace.toggleAttribute("data-chat-history-hidden", hidden);
+      historyToggle.setAttribute("aria-expanded", String(!hidden));
+    }
+    try { setHistoryHidden(sessionStorage.getItem(historyHiddenKey) === "true"); } catch (_) { }
+    historyToggle.addEventListener("click", function () {
+      var hidden = !workspace.hasAttribute("data-chat-history-hidden");
+      setHistoryHidden(hidden);
+      try { sessionStorage.setItem(historyHiddenKey, String(hidden)); } catch (_) { }
+    });
     var controller = new AbortController();
     var timer, attempts = 0, failures = 0, fingerprint = "", disposed = false, terminal = false;
+    var inspector = workspace.querySelector("[data-chat-inspector]");
+    var inspectorNotice = inspector.querySelector("[data-inspector-notice]");
+    var inspectorSections = Array.from(inspector.querySelectorAll("[data-inspector-section]"));
+    var inspectorTable = inspector.querySelector("[data-inspector-table]");
+    var inspectorRequest, inspectedId;
     function safeUrl(href) {
       if (typeof href !== "string" || !href.startsWith("/") || href.startsWith("//") || /[\\\u0000-\u001f]/.test(decodeURIComponent(href))) throw new Error("Invalid workspace URL");
       var path = decodeURIComponent(href.split(/[?#]/)[0]);
@@ -1280,7 +1297,241 @@
       parts.forEach(function (part) { bytes.set(part, offset); offset += part.byteLength; });
       return JSON.parse(new TextDecoder().decode(bytes));
     }
-    function refreshWorkspace(url, historyMode) {
+    function messageUrl(href) {
+      var url = safeUrl(href), prefix = (document.body.getAttribute("data-beeui-route-prefix") || "").replace(/\/$/, "");
+      return prefix && url.pathname !== prefix && url.pathname.indexOf(prefix + "/") !== 0 ? safeUrl(prefix + href) : url;
+    }
+    function boundedText(value, limit) {
+      return typeof value === "string" && Array.from(value).length <= limit;
+    }
+    function executionCount(value, maximum) {
+      return Number.isInteger(value) && value >= 0 && value <= maximum;
+    }
+    function validExecutionTime(value) {
+      if (!value) return true;
+      var match = /^(\d{4}-\d{2}-\d{2})(?:[T ](?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d{1,6})?)?(?:Z|[+-](?:[01]\d|2[0-3]):[0-5]\d)?)?$/.exec(value);
+      if (!match || match[0] !== value || value.startsWith("0000-") || !Number.isFinite(Date.parse(value))) return false;
+      return new Date(match[1]).toISOString().slice(0, 10) === match[1];
+    }
+    function executionCard(message) {
+      var result = message.kind === "result";
+      var execution = result ? message.result : message.execution;
+      if (!execution || typeof execution !== "object" || Array.isArray(execution)) {
+        throw new Error("Invalid execution card");
+      }
+      var progress = execution.progress;
+      var tone = execution.tone === undefined ? "secondary" : execution.tone;
+      var outcomeText = execution.outcome === undefined ? "" : execution.outcome;
+      var rows = execution.metrics === undefined ? [] : execution.metrics;
+      if (!message.name || !message.status || !validExecutionTime(message.timestamp) ||
+          !["secondary", "blue", "green", "yellow", "red"].includes(tone) ||
+          !boundedText(outcomeText, 160) ||
+          (execution.duration_ms != null && !executionCount(execution.duration_ms, 10 ** 12)) ||
+          !Array.isArray(rows) || rows.length > 8 ||
+          (result && (progress != null || execution.inspector_href != null)) ||
+          (progress != null && (typeof progress !== "object" || Array.isArray(progress) ||
+            (progress.completed != null && !executionCount(progress.completed, 10 ** 9)) ||
+            (progress.total != null && (!executionCount(progress.total, 10 ** 9) ||
+              progress.total === 0 || progress.completed == null || progress.completed > progress.total))))) {
+        throw new Error("Invalid execution card");
+      }
+      var template = result ? "[data-chat-result-template]" : "[data-chat-execution-template]";
+      var card = workspace.querySelector(template).content.firstElementChild.cloneNode(true);
+      var icons = { green: "check", blue: "loader", yellow: "alert-triangle", red: "x", secondary: "circle-dashed" };
+      card.querySelector("[data-card-tone]").classList.replace("bg-secondary-lt", "bg-" + tone + "-lt");
+      card.querySelector("[data-card-icon]").classList.replace("ti-circle-dashed", "ti-" + icons[tone]);
+      card.setAttribute("data-message-id", message.id);
+      card.querySelector("[data-execution-name]").textContent = message.name;
+      if (result) {
+        var status = card.querySelector("[data-execution-status]");
+        status.classList.replace("bg-secondary-lt", "bg-" + tone + "-lt");
+        status.textContent = message.status;
+        var outcome = card.querySelector("[data-execution-outcome]");
+        outcome.textContent = outcomeText;
+        outcome.hidden = !outcomeText;
+      } else {
+        var description = [message.status];
+        if (outcomeText && outcomeText !== message.status) description.push(outcomeText);
+        card.setAttribute("data-bs-title", description.join(" · "));
+        card.setAttribute("aria-label", [message.name].concat(description).join(" · "));
+      }
+      var time = card.querySelector("[data-execution-time]");
+      time.dateTime = message.timestamp;
+      time.textContent = message.timestamp;
+      time.hidden = !message.timestamp;
+      localTime(time);
+      var duration = card.querySelector("[data-execution-duration]");
+      duration.hidden = execution.duration_ms == null;
+      if (!duration.hidden) duration.textContent = new Intl.NumberFormat(document.documentElement.lang, { maximumFractionDigits: 2 }).format(execution.duration_ms / 1000) + " " + inspector.dataset.durationUnit;
+      var metrics = card.querySelector("[data-execution-metrics]");
+      rows.forEach(function (row) {
+        if (!row || !boundedText(row.label, 80) || !boundedText(row.value, 80)) throw new Error("Invalid execution metric");
+        var group = document.createElement("span");
+        group.textContent = row.label + ": " + row.value;
+        metrics.append(group);
+      });
+      metrics.hidden = !rows.length;
+      var bar = card.querySelector("[data-execution-progress]");
+      bar.hidden = progress == null;
+      if (progress && progress.total != null) {
+        bar.max = progress.total;
+        bar.value = progress.completed;
+      }
+      if (result) {
+        card.href = messageUrl(execution.href).href;
+      } else if (execution.inspector_href != null) {
+        var url = messageUrl(execution.inspector_href);
+        card.dataset.chatInspect = url.pathname + url.search + url.hash;
+        card.disabled = false;
+      }
+      return card;
+    }
+    function inspectorTableRows(table) {
+      if (table == null) return null;
+      if (!Array.isArray(table.columns) || table.columns.length < 1 || table.columns.length > 6 ||
+          !Array.isArray(table.rows) || !table.rows.length || table.rows.length > 16 ||
+          !table.columns.every(function (column) { return column && boundedText(column, 128); }) ||
+          !table.rows.every(function (row) {
+            return Array.isArray(row) && row.length === table.columns.length &&
+              row.every(function (cell) { return boundedText(cell, 128); });
+          })) throw new Error("Invalid inspector table");
+      function tableRow(cells, heading) {
+        var row = document.createElement("tr");
+        cells.forEach(function (text) {
+          var cell = document.createElement(heading ? "th" : "td");
+          if (heading) cell.scope = "col";
+          cell.textContent = text;
+          row.append(cell);
+        });
+        return row;
+      }
+      return {
+        header: tableRow(table.columns, true),
+        body: table.rows.map(function (row) { return tableRow(row, false); })
+      };
+    }
+    function renderInspector(data) {
+      if (!data || data.id !== inspectedId || !data.sections || typeof data.sections !== "object" || Array.isArray(data.sections)) throw new Error("Invalid inspector");
+      var tableRows = inspectorTableRows(data.checks_table);
+      var count = 0, size = 0;
+      var content = inspectorSections.map(function (section) {
+        var key = section.dataset.inspectorSection;
+        var rows = Object.hasOwn(data.sections, key) ? data.sections[key] : [];
+        if (!Array.isArray(rows) || rows.length > 32) throw new Error("Invalid inspector section");
+        return rows.map(function (row) {
+          if (!row || !boundedText(row.label, 128) || !boundedText(row.value, 1024)) throw new Error("Invalid inspector row");
+          count++;
+          size += row.label.length + row.value.length;
+          var log = key === "logs";
+          var item = document.createElement("div");
+          item.className = log ? "" : "datagrid-item";
+          var label = document.createElement("div");
+          label.className = "datagrid-title";
+          label.textContent = row.label;
+          var level = row.level;
+          if (log && ["INFO", "WARNING", "ERROR"].includes(level)) {
+            var badge = document.createElement("span");
+            badge.className = "badge " + { INFO: "bg-blue-lt", WARNING: "bg-yellow-lt", ERROR: "bg-red-lt" }[level];
+            badge.textContent = level;
+            label.prepend(badge, " ");
+          }
+          var value = document.createElement(log ? "pre" : "div");
+          value.className = log ? "mb-0 mt-1 beeui-inspector-log" : "datagrid-content text-break";
+          var content = log ? document.createElement("code") : document.createElement("span");
+          if (row.href != null) {
+            content = document.createElement("a");
+            content.href = messageUrl(row.href).href;
+          }
+          content.textContent = row.value;
+          if (row.format === "timestamp") {
+            if (!validExecutionTime(row.value) || !row.value) throw new Error("Invalid inspector timestamp");
+            content.textContent = new Intl.DateTimeFormat(document.documentElement.lang, { dateStyle: "medium", timeStyle: "medium" }).format(new Date(row.value));
+          }
+          value.append(content);
+          if (row.copy === true && ["technical", "connections"].includes(key) && row.href == null && navigator.clipboard) {
+            var copy = document.createElement("button");
+            copy.type = "button";
+            copy.className = "btn btn-sm btn-icon btn-ghost-secondary ms-1";
+            copy.setAttribute("aria-label", inspector.dataset.copyLabel + " " + row.label);
+            var icon = document.createElement("i");
+            icon.className = "ti ti-copy";
+            icon.setAttribute("aria-hidden", "true");
+            copy.append(icon);
+            copy.addEventListener("click", function () {
+              navigator.clipboard.writeText(row.value).then(function () {
+                icon.className = "ti ti-check text-green";
+                copy.setAttribute("aria-label", inspector.dataset.copiedLabel + " " + row.label);
+              }).catch(function () {});
+            });
+            value.append(copy);
+          }
+          item.append(label, value);
+          return item;
+        });
+      });
+      if (count > 100 || size > 32768) throw new Error("Inspector limit");
+      inspectorNotice.hidden = true;
+      if (tableRows) {
+        inspectorTable.querySelector("thead").replaceChildren(tableRows.header);
+        inspectorTable.querySelector("tbody").replaceChildren.apply(inspectorTable.querySelector("tbody"), tableRows.body);
+        inspectorTable.hidden = false;
+      }
+      inspectorSections.forEach(function (section, index) {
+        var items = content[index];
+        section.hidden = false;
+        var list = section.querySelector("[data-inspector-rows]");
+        list.replaceChildren.apply(list, items);
+        section.querySelector("[data-inspector-empty]").hidden = Boolean(items.length);
+      });
+    }
+    workspace.addEventListener("click", async function (event) {
+      var button = event.target.closest("[data-chat-inspect]");
+      if (!button || button.disabled || inspectedId) return;
+      var card = button.closest("[data-message-id]");
+      inspectedId = card.dataset.messageId;
+      inspector.querySelector("[data-inspector-title]").textContent = card.querySelector("[data-execution-name]").textContent;
+      inspectorNotice.textContent = inspector.dataset.loading;
+      inspectorNotice.hidden = false;
+      inspectorTable.hidden = true;
+      inspectorTable.querySelector("thead").replaceChildren();
+      inspectorTable.querySelector("tbody").replaceChildren();
+      inspectorSections.forEach(function (section) {
+        section.hidden = true;
+        section.querySelector("[data-inspector-rows]").replaceChildren();
+      });
+      (window.tabler || window.bootstrap).Modal.getOrCreateInstance(inspector).show(button);
+      var request = new AbortController();
+      inspectorRequest = request;
+      var deadline = setTimeout(function () { request.abort(); }, 10000);
+      try {
+        var response = await fetch(safeUrl(button.dataset.chatInspect), {
+          credentials: "same-origin", cache: "no-store", redirect: "error", signal: request.signal
+        });
+        var envelope = await boundedJson(response);
+        if (envelope.ok !== true) throw new Error("Inspector request refused");
+        if (request === inspectorRequest) renderInspector(envelope.data);
+      } catch (_) {
+        if (request === inspectorRequest) inspectorNotice.textContent = inspector.dataset.unavailable;
+      } finally {
+        clearTimeout(deadline);
+      }
+    });
+    function focusExecution(root, id) {
+      var card = Array.from(root.querySelectorAll("[data-chat-messages] [data-message-id]")).find(function (node) {
+        return node.dataset.messageId === id;
+      });
+      var trigger = card && card.matches("[data-chat-inspect]:enabled, .beeui-result-card") && card;
+      (trigger || root.querySelector(".beeui-chat-messages")).focus();
+    }
+    inspector.addEventListener("hidden.bs.modal", function () {
+      if (inspectorRequest) inspectorRequest.abort();
+      inspectorRequest = null;
+      var closedId = inspectedId;
+      inspectedId = null;
+      focusExecution(workspace, closedId);
+      if (terminal && refresh) finishPolling(closedId);
+    });
+    function refreshWorkspace(url, historyMode, focusId) {
       var values = {};
       composer.fields.forEach(function (field) { if (field.type !== "secret") values[field.name] = form.elements.namedItem(field.name).value; });
       submit.disabled = true;
@@ -1301,6 +1552,7 @@
             }
           }
         });
+        if (next && focusId) focusExecution(next, focusId);
       });
     }
     function actionResult(action, response, preserveDraft) {
@@ -1414,8 +1666,22 @@
       var action = JSON.parse(button.getAttribute("data-chat-action"));
       contextAction(action, button.hasAttribute("data-chat-message-action") && !action.fields.length ? "action" : "form");
     });
+    var executionTooltip = (window.tabler || window.bootstrap || {}).Tooltip;
+    function cardTooltips(scope, dispose) {
+      if (!executionTooltip) return;
+      scope.querySelectorAll("[data-chat-inspect][data-bs-title]").forEach(function (card) {
+        if (dispose) executionTooltip.getInstance(card)?.dispose();
+        else executionTooltip.getOrCreateInstance(card, { container: document.body, html: false });
+      });
+    }
+    cardTooltips(workspace, false);
     function renderMessages(messages) {
       if (!Array.isArray(messages) || messages.length > 100) throw new Error("Invalid messages");
+      messages = messages.map(function (message) {
+        return message && ["execution", "result"].includes(message.kind)
+          ? { text: "", timestamp: "", ...message }
+          : message;
+      });
       var seen = new Set(), total = 0;
       messages.forEach(function (message) {
         if (!message || typeof message.id !== "string" || !message.id || message.id.length > 128 || seen.has(message.id) || !["operator", "host", "assistant"].includes(message.sender) || typeof message.name !== "string" || message.name.length > 256 || typeof message.text !== "string" || message.text.length > 4096 || typeof message.status !== "string" || message.status.length > 80 || typeof message.timestamp !== "string" || message.timestamp.length > 40) throw new Error("Invalid message");
@@ -1434,11 +1700,9 @@
       if (next === fingerprint) return;
       var expandedDetails = new Set();
       workspace.querySelectorAll("[data-message-id] details[open]").forEach(function (node) { expandedDetails.add(node.closest("[data-message-id]").getAttribute("data-message-id")); });
-      function messageUrl(href) {
-        var url = safeUrl(href), prefix = (document.body.getAttribute("data-beeui-route-prefix") || "").replace(/\/$/, "");
-        return prefix && url.pathname !== prefix && url.pathname.indexOf(prefix + "/") !== 0 ? safeUrl(prefix + href) : url;
-      }
       var nodes = messages.map(function (message) {
+        if (["execution", "result"].includes(message.kind)) return executionCard(message);
+        if (message.kind != null && message.kind !== "text") throw new Error("Invalid message kind");
         var bubble = document.createElement("div"), title = document.createElement("div"), author = document.createElement("span"), body = document.createElement("div");
         bubble.className = "chat-bubble" + (message.sender === "operator" ? " chat-bubble-me" : "");
         bubble.setAttribute("data-message-id", message.id);
@@ -1454,9 +1718,20 @@
         return bubble;
       });
       var scroll = workspace.querySelector(".beeui-chat-messages");
-      var nearEnd = scroll.scrollHeight - scroll.scrollTop - scroll.clientHeight < 80;
-      workspace.querySelector("[data-chat-messages]").replaceChildren.apply(workspace.querySelector("[data-chat-messages]"), nodes);
-      if (nearEnd) scroll.scrollTop = scroll.scrollHeight;
+      var scrollTop = scroll.scrollTop;
+      var nearEnd = scroll.scrollHeight - scrollTop - scroll.clientHeight < 80;
+      var focused = document.activeElement;
+      var focusedCard = focused && focused.matches("[data-chat-inspect], .beeui-result-card") && focused.closest("[data-message-id]");
+      var root = workspace.querySelector("[data-chat-messages]");
+      cardTooltips(root, true);
+      root.replaceChildren.apply(root, nodes);
+      cardTooltips(root, false);
+      if (focusedCard && !inspectedId) {
+        var card = nodes.find(function (node) { return node.dataset.messageId === focusedCard.dataset.messageId; });
+        var button = card && card.matches("[data-chat-inspect]:enabled, .beeui-result-card") && card;
+        (button || scroll).focus({ preventScroll: true });
+      }
+      scroll.scrollTop = nearEnd ? scroll.scrollHeight : scrollTop;
       fingerprint = next;
     }
     function renderContext(context) {
@@ -1466,11 +1741,15 @@
       var seen = new Set(), count = 0, total = 0;
       context.sections.forEach(function (section) {
         if (!section || typeof section.id !== "string" || !/^[A-Za-z][A-Za-z0-9_-]{0,63}$/.test(section.id) || seen.has(section.id) || typeof section.title !== "string" || section.title.length > 256 || !Array.isArray(section.items) || section.items.length > 64) throw new Error("Invalid context section");
+        if (section.inline !== undefined && typeof section.inline !== "boolean") throw new Error("Invalid context layout");
         seen.add(section.id); total += section.title.length;
         var keys = new Set();
         section.items.forEach(function (item) {
           if (!item || typeof item.id !== "string" || !item.id || item.id.length > 128 || keys.has(item.id)) throw new Error("Invalid context identity");
+          if (item.tone != null && !["red", "yellow", "blue", "green", "secondary"].includes(item.tone)) throw new Error("Invalid context tone");
           keys.add(item.id); count++;
+          if (item.focus_primary !== undefined && (typeof item.focus_primary !== "boolean" ||
+              (item.focus_primary && (item.href != null || item.detail)))) throw new Error("Invalid context composer focus");
           ["label", "value", "detail"].forEach(function (key) {
             if (typeof item[key] !== "string" || item[key].length > (key === "label" ? 256 : 4096)) throw new Error("Invalid context text");
             total += item[key].length;
@@ -1485,16 +1764,29 @@
       var nodes = context.sections.map(function (section) {
         var node = document.createElement("section"), heading = document.createElement("h4");
         node.className = "mb-3"; node.setAttribute("data-context-section", section.id);
-        heading.className = "subheader mb-2"; heading.textContent = section.title; node.append(heading);
+        if (section.inline) node.setAttribute("data-context-inline", "");
+        if (section.title) { heading.className = section.inline ? "subheader mb-0" : "subheader mb-2"; heading.textContent = section.title; node.append(heading); }
         section.items.forEach(function (item) {
+          if (item.focus_primary && !form.querySelector("[data-chat-primary]:enabled")) return;
           var entry = document.createElement(item.detail ? "details" : "div"), content = item.detail ? document.createElement("summary") : entry;
           entry.className = "beeui-chat-context-item"; entry.setAttribute("data-context-id", item.id);
           var label = document.createElement("span"), value = document.createElement("span");
-          if (item.href != null) {
+          if (item.focus_primary) {
+            value = document.createElement("button");
+            value.type = "button";
+            value.className = "btn btn-sm";
+            value.setAttribute("data-chat-focus-primary", "");
+          } else if (item.href != null) {
             var link = document.createElement("a"), linkUrl = safeUrl(item.href);
             var prefix = (document.body.getAttribute("data-beeui-route-prefix") || "").replace(/\/$/, "");
             if (prefix && linkUrl.pathname !== prefix && linkUrl.pathname.indexOf(prefix + "/") !== 0) linkUrl = safeUrl(prefix + item.href);
             link.href = linkUrl.href; value = link;
+          }
+          if (item.tone != null && !item.detail && !item.focus_primary) {
+            var dot = document.createElement("span");
+            dot.className = "status-dot bg-" + item.tone;
+            dot.setAttribute("aria-hidden", "true");
+            content.append(dot);
           }
           label.className = "text-secondary small d-block"; label.textContent = item.label; value.textContent = item.value; content.append(label, value);
           if (item.detail) {
@@ -1513,6 +1805,22 @@
         workspace.querySelectorAll("[data-chat-panel-target]").forEach(function (item) { item.setAttribute("aria-pressed", String(item === button)); });
       });
     });
+    workspace.addEventListener("click", function (event) {
+      if (!event.target.closest("[data-chat-focus-primary]")) return;
+      var primary = form.querySelector("[data-chat-primary]:enabled");
+      if (!primary) return;
+      workspace.querySelector('[data-chat-panel-target="conversation"]').click();
+      primary.focus();
+    });
+    function finishPolling(focusId) {
+      if (inspectedId || workspace.querySelector("[data-chat-forms] form")) return;
+      var draft = form.querySelector("textarea");
+      if (focusId || (draft && draft.value)) {
+        refreshWorkspace(new URL(window.location.href), "none", focusId);
+      } else {
+        window.location.reload();
+      }
+    }
     async function poll() {
       if (!workspace.isConnected || controller.signal.aborted || attempts >= refresh.max_attempts) return;
       if (document.hidden) { timer = setTimeout(poll, refresh.interval_ms); return; }
@@ -1535,11 +1843,8 @@
         failures = 0;
         if (data.complete) {
           terminal = true;
-          if (workspace.querySelector("[data-chat-forms] form")) return;
-          var draft = form.querySelector("textarea");
-          if (draft && draft.value.trim()) {
-            refreshWorkspace(new URL(window.location.href), "none");
-          } else { window.location.reload(); }
+          notice.textContent = "";
+          finishPolling();
           return;
         }
         notice.textContent = labels.pending;
@@ -1621,7 +1926,15 @@
         } else { window.location.reload(); }
       }).catch(function (error) { if (!disposed) { notice.textContent = actionFailure(error); submit.disabled = false; controller = new AbortController(); if (refresh) { attempts = 0; poll(); } } });
     });
-    workspace.beeuiChatCleanup = function () { disposed = true; clearTimeout(timer); controller.abort(); window.removeEventListener("pagehide", workspace.beeuiChatCleanup); };
+    workspace.beeuiChatCleanup = function () {
+      disposed = true;
+      clearTimeout(timer);
+      controller.abort();
+      if (inspectorRequest) inspectorRequest.abort();
+      inspectorRequest = null;
+      cardTooltips(workspace, true);
+      window.removeEventListener("pagehide", workspace.beeuiChatCleanup);
+    };
     window.addEventListener("pagehide", workspace.beeuiChatCleanup, { once: true });
     if (refresh) poll();
   }
