@@ -3032,7 +3032,7 @@ Automated checks:
 - no product-specific logic is added to BeeUI;
 - documentation clearly distinguishes local/operator-only mode from customer/public-safe mode.
 
-### Iteration 13.1 — Dashboard layout primitives, URL tabs and locale seed
+### Iteration 13.01 — Dashboard layout primitives, URL tabs and locale seed
 
 **Status:** DONE
 
@@ -3244,7 +3244,7 @@ Automated checks:
 - no external CDNs/scripts/tracking are added;
 - documentation reflects the updated layout/tabs/locale contract.
 
-### Iteration 13.2 — Generic adapter pages and configurable Tabler primitives
+### Iteration 13.02 — Generic adapter pages and configurable Tabler primitives
 
 **Status:** DONE
 
@@ -3538,7 +3538,7 @@ Automated checks:
 - GET routes do not mutate product storage/config/artifacts;
 - documentation reflects the actual config/component/page contracts.
 
-### Iteration 13.3 — Tabler attached tabs and accordion visual parity hardening
+### Iteration 13.03 — Tabler attached tabs and accordion visual parity hardening
 
 **Status:** DONE
 
@@ -3781,7 +3781,7 @@ Expected:
 - documentation reflects actual tabs/accordion/page rendering behavior;
 - BeeAgent UI-5 can proceed after a dependency update and smoke verification.
 
-### Iteration 13.4 — Generic layout groups, KPI grid columns, and page spacing normalization
+### Iteration 13.04 — Generic layout groups, KPI grid columns, and page spacing normalization
 
 **Status:** DONE
 
@@ -4075,7 +4075,7 @@ git diff -- pyproject.toml uv.lock
 - `uv.lock` is unchanged.
 - The PR is ready for review.
 
-### Iteration 13.5 — Product console route metadata and navigation compatibility
+### Iteration 13.05 — Product console route metadata and navigation compatibility
 
 **Status:** DONE
 
@@ -4418,7 +4418,7 @@ GET /modes/live
 - `pyproject.toml.version` is unchanged.
 - The PR is ready for review.
 
-### Iteration 13.6 — Safe charts and advanced Tabler tables for product dashboards
+### Iteration 13.06 — Safe charts and advanced Tabler tables for product dashboards
 
 **Status:** DONE
 
@@ -4822,7 +4822,7 @@ Expected:
 - Docs reflect the actual chart/table block contracts.
 - PR is ready for review before BeeAgent Iteration 14.
 
-### Iteration 13.7 — Locale-aware shell labels, language switcher and query-preserving navigation
+### Iteration 13.07 — Locale-aware shell labels, language switcher and query-preserving navigation
 
 **Status:** DONE
 
@@ -5146,7 +5146,7 @@ Expected:
 - Docs reflect the actual locale/navigation contract.
 - PR is ready for review before BeeAgent UI-6 closure.
 
-### Iteration 13.8 — Generic detail page template and render helper
+### Iteration 13.08 — Generic detail page template and render helper
 
 **Status:** DONE
 
@@ -5484,7 +5484,7 @@ Iteration 13.8 adds:
 - `uv.lock` is not changed.
 - PR is ready for review before BeeAgent event detail cleanup is closed.
 
-### Iteration 13.9 — Operator UX presentation contracts, locale persistence, theme, and chart state handling
+### Iteration 13.09 — Operator UX presentation contracts, locale persistence, theme, and chart state handling
 
 **Status:** DONE
 
@@ -6685,9 +6685,99 @@ BeeUI provides a reusable interactive chat composer and protected context contro
 
 ---
 
-## Stage 7 — Consumer integration record
+## Stage 7 — Human-First Investigation Workspaces
 
-### Iteration 14 — BeeAgent adapter fixture MVP
+### Iteration 14 — Collapsible Chat, Execution Cards and Unified Inspector
+
+**Status:** PLANNED
+
+#### Goal
+
+Extend the existing generic BeeUI `chat_workspace` with a compact, inspectable execution presentation suitable for long-running operator workflows.
+
+Deliver a complete reusable UI capability without introducing a new frontend framework or product-specific security logic.
+
+#### Depends on
+
+- BeeUI 13.8 generic detail renderer.
+- Existing `chat_workspace`, polling and Tabler primitives.
+- Companion BeeAgent BS-22 product integration.
+
+#### Change level
+
+`runtime-risk`.
+
+Escalate to `security-sensitive` if authentication, protected actions, artifact access or execution boundaries change.
+
+#### Scope
+
+- Add desktop history collapse/expand behavior to the existing `chat_workspace`.
+- Fully reclaim conversation width when history is hidden.
+- Preserve the selected conversation, composer draft and polling state.
+- Use the existing Tabler offcanvas pattern on mobile.
+- Extend the generic message presentation to support bounded execution cards.
+- Display 3–4 cards per row on wide screens, 2 on medium screens and 1 on mobile.
+- Keep ordinary operator and assistant text messages compatible.
+- Support stable execution identities, labels, statuses, counters, timestamps and optional verified progress.
+- Use Tabler cards, badges, progress bars and semantic colors.
+- Support indeterminate progress when total work is unknown.
+- Add a shared read-only execution inspector using the existing Tabler modal primitives.
+- Inspector sections: Overview, Timeline, Logs, Technical Details and Connections, only where authenticated data is available.
+- Preserve card identity, modal state where practical, and scroll position across polling updates.
+- Keep HTML escaping, internal-link validation, payload limits and keyboard accessibility.
+- Reuse package-local Tabler assets and local documentation under `docs/vendor/tabler/`.
+- Maintain RU/EN, light/dark and responsive layouts.
+
+#### Excluded
+
+- BeeScan Case, Finding or verification semantics.
+- Tool execution, network requests or authorization decisions.
+- New database, message service or frontend framework.
+- Unrestricted terminal or shell.
+- Graph canvas, DAG editor or node-driven execution.
+- Copied Tabler demo scripts or external CDN assets.
+
+#### Deliverable
+
+`Generic Chat + Structured Execution Records → Compact Cards → Read-Only Technical Inspector`
+
+#### Acceptance criteria
+
+- History collapse genuinely expands the conversation area.
+- Reopening history preserves the selected conversation.
+- Ordinary messages and existing protected composer actions work unchanged.
+- Multiple executions of the same tool remain distinguishable.
+- Initial HTML and polling render equivalent execution cards.
+- Progress is displayed only from valid supplied counters.
+- Unknown progress never receives a fabricated percentage.
+- Selecting a card opens the corresponding inspector.
+- Missing optional metrics, events and logs degrade safely.
+- Unsafe links, malformed records and HTML injection are rejected.
+- Browser back/refresh and polling do not duplicate execution records.
+- RU/EN, light/dark, desktop and 390px mobile pass browser acceptance.
+- Keyboard navigation, focus trapping and modal close behavior work correctly.
+- Existing BeeUI and BeeAgent product integrations remain compatible.
+
+#### Checks
+
+- Contract normalization and malformed-input tests.
+- Chat rendering and polling regression tests.
+- Modal, focus, keyboard and responsive browser tests.
+- Accessibility, escaping and internal-link security checks.
+- Installed-wheel asset/template verification.
+- Full pytest and independent BeeMCP review.
+
+#### DoD
+
+BeeUI can display a real product-supplied execution timeline as compact interactive cards with one shared technical inspector, while preserving the existing chat, authentication transport and polling behavior.
+
+Companion BeeAgent BS-22 integration is independently verified.
+
+---
+
+## Stage 8 — Consumer integration record
+
+### Iteration 15 — BeeAgent adapter fixture MVP
 
 **Status:** RETIRED
 
@@ -6707,9 +6797,9 @@ src/beeagent_module/interfaces/ui/
 
 ---
 
-## Stage 8 — Future frontend/no-code/standalone
+## Stage 9 — Future frontend/no-code/standalone
 
-### Iteration 15 — Dashboard schema editor v0
+### Iteration 16 — Dashboard schema editor v0
 
 **Status:** FUTURE
 
