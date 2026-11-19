@@ -8,6 +8,11 @@ from typing import Any
 from beeui_module.pages.links import prefix_internal_href, validate_internal_href
 
 _ID = re.compile(r"[A-Za-z][A-Za-z0-9_-]{0,63}")
+_EXECUTION_TIME = re.compile(
+    r"[0-9]{4}-[0-9]{2}-[0-9]{2}(?:[T ](?:[01][0-9]|2[0-3]):[0-5][0-9]"
+    r"(?::[0-5][0-9](?:\.[0-9]{1,6})?)?"
+    r"(?:Z|[+-](?:[01][0-9]|2[0-3]):[0-5][0-9])?)?"
+)
 
 
 def _text(value: Any, limit: int = 256) -> str:
@@ -37,6 +42,50 @@ def _link(value: Any) -> str:
     return href
 
 
+def _execution(value: Any) -> dict:
+    if not isinstance(value, dict):
+        raise ValueError("Invalid execution")
+    tone = value.get("tone", "secondary")
+    if tone not in ("secondary", "blue", "green", "yellow", "red"):
+        raise ValueError("Invalid execution tone")
+    duration = value.get("duration_ms")
+    if duration is not None and (
+        type(duration) is not int or not 0 <= duration <= 10**12
+    ):
+        raise ValueError("Invalid execution duration")
+    progress = value.get("progress")
+    if progress is not None:
+        if not isinstance(progress, dict):
+            raise ValueError("Invalid execution progress")
+        done, total = progress.get("completed"), progress.get("total")
+        if (
+            done is not None
+            and (type(done) is not int or not 0 <= done <= 10**9)
+            or total is not None
+            and (
+                type(total) is not int
+                or done is None
+                or not 0 <= done <= total <= 10**9
+                or total == 0
+            )
+        ):
+            raise ValueError("Invalid execution progress")
+        progress = {"completed": done, "total": total}
+    metrics = [
+        {"label": _text(row.get("label"), 80), "value": _text(row.get("value"), 80)}
+        for row in _items(value.get("metrics", []), 8)
+    ]
+    href = value.get("inspector_href")
+    return {
+        "tone": tone,
+        "outcome": _text(value.get("outcome", ""), 160),
+        "duration_ms": duration,
+        "progress": progress,
+        "metrics": metrics,
+        "inspector_href": _link(href) if href is not None else None,
+    }
+
+
 def normalize_messages(value: Any) -> list[dict]:
     messages = []
     seen = set()
@@ -46,7 +95,7 @@ def normalize_messages(value: Any) -> list[dict]:
             raise ValueError("Invalid message identity")
         seen.add(identity)
         sender = item.get("sender")
-        if sender not in {"operator", "host", "assistant"}:
+        if sender not in ("operator", "host", "assistant"):
             raise ValueError("Invalid message sender")
         timestamp = _text(item.get("timestamp", ""), 40)
         if timestamp:
@@ -71,6 +120,20 @@ def normalize_messages(value: Any) -> list[dict]:
                 ],
             }
         )
+        kind = item.get("kind")
+        if kind in ("execution", "result"):
+            if not messages[-1]["name"] or not messages[-1]["status"]:
+                raise ValueError("Missing execution label")
+            if timestamp and not _EXECUTION_TIME.fullmatch(timestamp):
+                raise ValueError("Invalid execution timestamp")
+            card = _execution(item.get(kind))
+            if kind == "result":
+                if card["progress"] is not None or card["inspector_href"] is not None:
+                    raise ValueError("Result cards require a details link")
+                card["href"] = _link(item["result"].get("href"))
+            messages[-1].update({"kind": kind, kind: card})
+        elif item.get("kind") not in (None, "text"):
+            raise ValueError("Invalid message kind")
     if sum(len(item["text"]) + len(item["details"]) for item in messages) > 32768:
         raise ValueError("Workspace message limit")
     return messages
@@ -93,13 +156,16 @@ def normalize_context(value: Any) -> dict | None:
         items = []
         seen = set()
         title = _text(section.get("title"))
+        inline = section.get("inline", False)
+        if type(inline) is not bool:
+            raise ValueError("Invalid context layout")
         total += len(title)
         for item in _items(section.get("items"), 64):
             key = _text(item.get("id"), 128)
             if not key or key in seen:
                 raise ValueError("Invalid context identity")
             seen.add(key)
-            entry = {
+            entry: dict[str, Any] = {
                 "id": key,
                 "label": _text(item.get("label", "")),
                 "value": _text(item.get("value", ""), 4096),
@@ -107,10 +173,24 @@ def normalize_context(value: Any) -> dict | None:
             }
             if item.get("href") is not None:
                 entry["href"] = _link(item["href"])
+            if item.get("tone") is not None:
+                if item["tone"] not in ("red", "yellow", "blue", "green", "secondary"):
+                    raise ValueError("Invalid context tone")
+                entry["tone"] = item["tone"]
+            focus_primary = item.get("focus_primary", False)
+            if type(focus_primary) is not bool or (
+                focus_primary and ("href" in entry or entry["detail"])
+            ):
+                raise ValueError("Invalid context composer focus")
+            if focus_primary:
+                entry["focus_primary"] = True
             total += sum(len(entry[k]) for k in ("label", "value", "detail"))
             count += 1
             items.append(entry)
-        sections.append({"id": identity, "title": title, "items": items})
+        section_data = {"id": identity, "title": title, "items": items}
+        if inline:
+            section_data["inline"] = True
+        sections.append(section_data)
     if total > 32768 or count > 128:
         raise ValueError("Workspace context limit")
     return {"title": _text(value.get("title", "")), "sections": sections}
@@ -417,6 +497,14 @@ def resolve_chat_links(block: dict, prefix: str) -> None:
         for action in item["actions"]:
             resolve_action(action)
     for message in block["messages"]:
+        if message.get("result"):
+            result = message["result"]
+            result["href"] = prefix_internal_href(prefix, result["href"])
+        execution = message.get("execution")
+        if execution and execution["inspector_href"]:
+            execution["inspector_href"] = prefix_internal_href(
+                prefix, execution["inspector_href"]
+            )
         for action in message["actions"]:
             resolve_action(action)
         for link in message["links"]:

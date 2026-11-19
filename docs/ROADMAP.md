@@ -6689,7 +6689,7 @@ BeeUI provides a reusable interactive chat composer and protected context contro
 
 ### Iteration 14 — Collapsible Chat, Execution Cards and Unified Inspector
 
-**Status:** PLANNED
+**Status:** DONE
 
 #### Goal
 
