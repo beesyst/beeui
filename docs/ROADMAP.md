@@ -6773,11 +6773,161 @@ BeeUI can display a real product-supplied execution timeline as compact interact
 
 Companion BeeAgent BS-21 integration is independently verified.
 
+### Iteration 15 — Interactive Research Workspace and Investigation Graph
+
+**Status:** PLANNED
+
+#### Goal
+
+Extend the existing generic BeeUI framework with reusable research-workspace components for interactive investigation, execution observability and evidence navigation.
+
+Deliver functional Results tables, structured Case Detail pages, interactive node graphs and safe technical logs as one integrated operator-facing capability.
+
+Support BeeAgent BS-22 without introducing BeeScan-specific security semantics or a separate frontend runtime.
+
+#### Depends on
+
+- Completed BeeUI Iteration 14.
+- Existing generic detail renderer and canonical Tabler table.
+- Existing chat_workspace, polling and shared execution Inspector.
+- Existing embedded ProductUiAdapter contracts.
+- Existing local Tabler documentation in docs/vendor/.
+- Companion BeeAgent BS-22.
+
+#### Change level
+
+`runtime-risk`
+
+Escalate to `security-sensitive` if authentication, protected actions, artifact access or execution-authority boundaries change.
+
+#### Scope
+
+**Generic Results Tables**
+
+- Reuse existing Tabler table, toolbar, search, sorting and filtering components.
+- Support compact status badges and grouped severity/count indicators.
+- Support authorized detail links and safe internal navigation.
+- Support localized human-readable timestamps.
+- Maintain responsive layout and accessible table behavior.
+- Preserve generic rendering independently of BeeScan domain logic.
+
+**Generic Detail Workspace**
+
+- Reuse existing detail-page, card and datagrid primitives.
+- Support grouped summary cards, related-record tables and collapsible technical sections.
+- Render bounded product-supplied execution, finding, evidence and report references.
+- Support safe related-record navigation.
+- Preserve current locale, theme and selected context.
+- Avoid duplicated product-owned HTML templates.
+
+**Interactive Investigation Graph**
+
+- Add a reusable read-only node/edge graph component.
+- Evaluate Cytoscape.js, vis-network and existing project capabilities before selecting a library.
+- Prefer a locally bundled, permissively licensed JavaScript library without React.
+- Support directed graphs, automatic layout, pan, zoom and node selection.
+- Support stable product-supplied node/edge identities and relationship types.
+- Render source-provided status, label, icon and optional verified metrics.
+- Support keyboard-accessible selection and an accessible non-canvas fallback.
+- Open authorized details or the existing shared Inspector for supported nodes.
+- Preserve selected node and rendering state where practical.
+- Bound graph size and reject malformed, duplicate or inconsistent identities.
+- Never infer missing relationships.
+- Never execute actions directly from the graph.
+
+**Safe Technical Logs**
+
+- Implement a reusable bounded technical-log viewer using local Tabler components.
+- Support timestamp, level, source and sanitized message.
+- Support INFO, WARNING and ERROR indicators.
+- Support safe one-click copying of explicitly approved content.
+- Provide readable long-line handling, scrolling and responsive layout.
+- Distinguish empty, unavailable and rejected log data.
+- Never invent log entries or include unapproved sensitive data.
+
+**Unified Presentation**
+
+- Reuse the existing execution Inspector across cards and graph nodes.
+- Preserve existing chat_workspace and ordinary messages.
+- Maintain initial HTML and JavaScript/polling consistency.
+- Support generic product-supplied internal links.
+- Preserve route prefixes and embedded-mode behavior.
+- Reuse package-local Tabler assets.
+- Maintain RU/EN, Light/Dark and mobile compatibility.
+
+#### Excluded
+
+- BeeScan vulnerability classification or domain-specific decisions.
+- Tool execution, scanner integration or network access.
+- Authorization decisions or independent execution authority.
+- New database, Case Store or artifact storage layer.
+- Graph editing or node-driven workflow execution.
+- Arbitrary commands, shell or terminal.
+- React, Vue or a second frontend framework.
+- External CDN runtime dependencies.
+- Arbitrary product-supplied HTML or JavaScript.
+- New standalone UI service.
+
+#### Deliverable
+
+`Generic Results Table + Structured Detail Page + Interactive Node Graph + Safe Technical Logs → Reusable Research Workspace`
+
+One reusable BeeUI capability demonstrated through a complete BeeAgent BS-22 integration.
+
+#### Acceptance criteria
+
+- Existing canonical Tabler tables support the required search, sorting, status and severity presentation.
+- Generic Detail pages render structured product-supplied data correctly.
+- The graph renders supplied nodes and valid relationships without fabricated edges.
+- Multiple executions of the same tool remain distinguishable by identity.
+- Users can zoom, pan, select nodes and open authorized details.
+- Supported execution nodes reuse the existing Inspector.
+- Invalid, oversized, duplicated or inconsistent graph data fails safely.
+- An accessible list/detail fallback works without graphical interaction.
+- Safe technical logs display correct timestamps, levels and source labels.
+- Copy actions expose only approved sanitized content.
+- Empty and unavailable log states remain distinguishable.
+- Existing chat_workspace, messages and protected composer interactions remain compatible.
+- Initial rendering and polling preserve stable identities.
+- Keyboard navigation, focus and modal behavior remain accessible.
+- RU/EN, Light/Dark and desktop/mobile layouts work.
+- Embedded prefixes and installed-wheel assets work correctly.
+- Existing BeeUI product consumers remain compatible.
+- BeeUI introduces no product execution authority.
+- Companion BeeAgent BS-22 demonstrates actual Case, Graph, Inspector and Results integration.
+
+#### Checks
+
+- Generic table, detail and graph contract tests.
+- Graph identity, layout, selection and navigation tests.
+- Malformed, oversized and substituted graph-data tests.
+- Technical-log validation, limits and copy tests.
+- Unsafe-link, HTML injection and secret-reflection tests.
+- Table search, sorting, severity and detail-navigation tests.
+- Initial HTML/polling consistency tests.
+- Modal, keyboard and accessibility checks.
+- RU/EN, Light/Dark and responsive browser E2E.
+- Installed-wheel template, JavaScript and static-asset verification.
+- Existing BeeUI consumer regression tests.
+- BeeAgent BS-22 integration acceptance.
+- Full pytest, build, relevant security checks and independent review.
+- Hosted CI.
+
+#### DoD
+
+BeeUI provides reusable interactive graph, structured detail-page, results-table and safe-log components integrated with the existing Tabler UI and shared execution Inspector.
+
+BeeAgent BS-22 demonstrates an authenticated end-to-end Research Workspace using these components.
+
+Existing BeeUI consumers remain compatible.
+
+No new frontend runtime, graph database or product-specific security logic is introduced.
+
 ---
 
 ## Stage 8 — Consumer integration record
 
-### Iteration 15 — BeeAgent adapter fixture MVP
+### Iteration 16 — BeeAgent adapter fixture MVP
 
 **Status:** RETIRED
 
@@ -6799,7 +6949,7 @@ src/beeagent_module/interfaces/ui/
 
 ## Stage 9 — Future frontend/no-code/standalone
 
-### Iteration 16 — Dashboard schema editor v0
+### Iteration 17 — Dashboard schema editor v0
 
 **Status:** FUTURE
 
@@ -6850,7 +7000,7 @@ Operators can change layouts through a safe schema without manually editing YAML
 - unsafe templates/scripts are rejected;
 - the source of truth remains product/config-owned.
 
-### Iteration 16 — Separate frontend contract v0
+### Iteration 18 — Separate frontend contract v0
 
 **Status:** FUTURE
 
@@ -6898,7 +7048,7 @@ BeeUI can serve as the backend for a future separate frontend.
 - no second source of truth is added;
 - product adapters remain the canonical product boundary.
 
-### Iteration 17 — Standalone BeeUI service v0
+### Iteration 19 — Standalone BeeUI service v0
 
 **Status:** FUTURE
 
